@@ -1,0 +1,4 @@
+{:paths ["src/main"]
+ :deps  {com.fulcrologic/guardrails {:mvn/version "0.0.12"}
+         com.wsscode/async          {:mvn/version "1.0.8"}
+         edn-query-language/eql     {:mvn/version "1.0.0"}}}
