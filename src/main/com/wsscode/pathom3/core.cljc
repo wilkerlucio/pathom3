@@ -2,36 +2,10 @@
   (:require [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
             [clojure.spec.alpha :as s]))
 
-(defprotocol IResolver
-  (-resolve [this env input])
-  (-merge-result [this entity result]))
-
-(defrecord SinglePropResolver [config resolve output-prop]
-  IResolver
-  (-resolve [this env input]
-    (resolve env input))
-
-  (-merge-result [_ entity result]
-    (assoc entity output-prop result))
-
-  clojure.lang.IFn
-  (invoke [this env input] (resolve env input)))
-
-(defrecord MultiPropResolver [config resolve]
-  IResolver
-  (-resolve [this env input]
-    (resolve env input))
-
-  (-merge-result [_ entity result]
-    (merge entity result))
-
-  clojure.lang.IFn
-  (invoke [this env input] (resolve env input)))
-
 (>defn resolver
   "Helper to return a resolver map"
   [sym {::keys [transform] :as options} resolve]
-  [symbol? map? fn? => map?]
+  [symbol? (s/keys :req ) fn? => map?]
   (cond-> (merge {::sym sym ::resolve resolve} options)
     transform transform))
 
@@ -61,11 +35,11 @@
     (s/cat :sym symbol?
            :docstring (s/? string?)
            :arglist ::operation-args
-           :output-prop (s/? keyword?)
+           :output-attr (s/? keyword?)
            :options (s/? map?)
            :body (s/+ any?))
-    (fn must-have-output-prop-or-options [{:keys [output-prop options]}]
-      (or output-prop options))))
+    (fn must-have-output-prop-or-options [{:keys [output-attr options]}]
+      (or output-attr options))))
 
 (defmacro defresolver
   "Defines a new Pathom resolver.
@@ -91,9 +65,9 @@
   The extended version:
 
       (p/defresolver tao [env {:keys [pi]}]
-        {::p/input           [:pi]
-         ::p/output          [:tao]
-         ::p/output-property :tao}
+        {::p/input            [:pi]
+         ::p/output           [:tao]
+         ::p/output-attribute :tao}
 
   "
   {:arglists '([sym docstring? arglist output-prop? options? & body])}
