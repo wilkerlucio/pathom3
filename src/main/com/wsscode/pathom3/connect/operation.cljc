@@ -14,6 +14,10 @@
 (defprotocol IMutate
   (-mutate [this env params]))
 
+; endregion
+
+; region records
+
 (defrecord SinglePropResolver [config resolve output-attr]
   IOperation
   (-operation-config [_] config)
