@@ -2,14 +2,7 @@
   (:require [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
             [clojure.spec.alpha :as s]))
 
-; region specs
-
-(>def ::name symbol?)
-(>def ::input vector?)
-(>def ::output vector?)
-(>def ::output-attribute keyword?)
-
-; endregion
+; region protocols
 
 (defprotocol IOperation
   (-operation-config [this]))
@@ -49,14 +42,32 @@
   clojure.lang.IFn
   (invoke [this env input] (resolve env input)))
 
+; endregion
+
+; region specs
+
+(>def ::name symbol?)
+(>def ::input vector?)
+(>def ::output vector?)
+(>def ::output-attribute keyword?)
+(>def ::resolve fn?)
+(>def ::resolver #(and (satisfies? IOperation %)
+                       (satisfies? IResolver %)))
+
+; endregion
+
+; region constructors
+
 (>defn resolver
   "Helper to return a resolver map"
-  [sym {::keys [output-attribute] :as config} resolve]
-  [symbol? (s/keys :req [::output]) fn? => map?]
-  (let [config' (assoc config ::name sym)]
+  [name {::keys [output-attribute] :as config} resolve]
+  [::name (s/keys :req [::output]) ::resolve => ::resolver]
+  (let [config' (assoc config ::name name)]
     (if output-attribute
       (->SinglePropResolver config' resolve output-attribute)
       (->MultiPropResolver config' resolve))))
+
+; endregion
 
 ; region macros
 
@@ -147,6 +158,21 @@
       (p/defresolver tao [{:keys [pi]}] :tau (* 2 pi))
 
   Note that the required input was inferred from the param destructuring.
+
+  Also can add environment argument:
+
+      (p/defresolver tao [env {:keys [pi]}] :tau (* 2 pi))
+
+  Note that the defined function will always have arity 2, the macro will fill the
+  missing arguments when you don't send.
+
+  To clarify this one, when you write:
+
+      (p/defresolver pi [] :pi 3.14)
+
+  The generated fn will be:
+
+      (fn [_ _] 3.14)
 
   The extended version:
 
