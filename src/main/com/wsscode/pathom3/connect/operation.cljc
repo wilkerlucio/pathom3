@@ -75,26 +75,38 @@
 
 ; region macros
 
-(s/def ::ns-keys-binding
-  (s/tuple
-    (s/and keyword? #(= (name %) "keys"))
-    (s/coll-of simple-symbol? :kind vector?)))
+#?@(:clj
+    [(s/def ::ns-keys-binding
+       (s/tuple
+         (s/and keyword? #(= (name %) "keys"))
+         (s/coll-of simple-symbol? :kind vector?)))
 
-(s/def ::as-binding
-  (s/tuple #{:as} simple-symbol?))
+     (s/def ::as-binding
+       (s/tuple #{:as} simple-symbol?))
 
-(s/def ::map-destructure
-  (s/every
-    (s/or :keys-bindings ::ns-keys-binding
-          :as ::as-binding)
-    :kind map?))
+     (s/def ::map-destructure
+       (s/every
+         (s/or :keys-bindings ::ns-keys-binding
+               :as ::as-binding)
+         :kind map?))
 
-(>def ::operation-argument
-  (s/or :sym symbol?
-        :map ::map-destructure))
+     (s/def ::operation-argument
+       (s/or :sym symbol?
+             :map ::map-destructure))
 
-(>def ::operation-args
-  (s/coll-of ::operation-argument :kind vector? :min-count 0 :max-count 2))
+     (s/def ::operation-args
+       (s/coll-of ::operation-argument :kind vector? :min-count 0 :max-count 2))
+
+     (s/def ::defresolver-args
+       (s/and
+         (s/cat :name symbol?
+                :docstring (s/? string?)
+                :arglist ::operation-args
+                :output-attr (s/? keyword?)
+                :options (s/? map?)
+                :body (s/+ any?))
+         (fn must-have-output-prop-or-options [{:keys [output-attr options]}]
+           (or output-attr options))))])
 
 (defn as-entry? [x] (= :as (first x)))
 
@@ -125,17 +137,6 @@
     (if (< (count arglist) 2)
       (recur (into '[[:sym _]] arglist))
       arglist)))
-
-(>def ::defresolver-args
-  (s/and
-    (s/cat :name symbol?
-           :docstring (s/? string?)
-           :arglist ::operation-args
-           :output-attr (s/? keyword?)
-           :options (s/? map?)
-           :body (s/+ any?))
-    (fn must-have-output-prop-or-options [{:keys [output-attr options]}]
-      (or output-attr options))))
 
 (defn full-symbol [sym ns]
   (if (namespace sym)
