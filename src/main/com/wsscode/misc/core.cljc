@@ -67,7 +67,7 @@
 (def vconj (fnil conj []))
 
 (defn queue
-  "Create a queue."
+  "Return an immutable queue or create one from coll."
   ([] #?(:clj  clojure.lang.PersistentQueue/EMPTY
          :cljs cljs.core/PersistentQueue.EMPTY))
   ([coll]
