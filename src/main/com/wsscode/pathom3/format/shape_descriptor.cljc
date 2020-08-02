@@ -1,4 +1,8 @@
 (ns com.wsscode.pathom3.format.shape-descriptor
+  "Shape descriptor is a format to describe data. This format optimizes for fast detection
+  of value present given a shape and a value path.
+
+  For example, "
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
@@ -10,6 +14,7 @@
   (s/map-of any? ::shape-descriptor))
 
 (defn merge-shapes
+  "Deep merge of shapes, it takes in account that values are always maps."
   ([a] a)
   ([a b]
    (cond
@@ -22,7 +27,7 @@
      :else b)))
 
 (>defn ast->shape-descriptor
-  "Convert AST to shape descriptor format."
+  "Convert EQL AST to shape descriptor format."
   [ast]
   [:edn-query-language.ast/node => ::shape-descriptor]
   (reduce
@@ -35,7 +40,7 @@
     (:children ast)))
 
 (>defn query->shape-descriptor
-  "Convert pathom output format into io/provides format."
+  "Convert pathom output format into shape descriptor format."
   [output]
   [:edn-query-language.core/query => ::shape-descriptor]
   (ast->shape-descriptor (eql/query->ast output)))
