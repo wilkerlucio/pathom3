@@ -1,8 +1,14 @@
 (ns com.wsscode.misc.core
   #?(:clj
      (:import
+       (clojure.lang
+         IDeref)
        (java.util
          UUID))))
+
+(defn atom? [x]
+  #?(:clj  (instance? IDeref x)
+     :cljs (satisfies? IDeref x)))
 
 (defn cljc-random-uuid []
   #?(:clj  (UUID/randomUUID)

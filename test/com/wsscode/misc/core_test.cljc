@@ -75,3 +75,7 @@
 (deftest map-vals-test
   (is (= (misc/map-vals inc {:a 1 :b 2})
          {:a 2 :b 3})))
+
+(deftest atom?-test
+  (is (true? (misc/atom? (atom "x"))))
+  (is (false? (misc/atom? "x"))))
