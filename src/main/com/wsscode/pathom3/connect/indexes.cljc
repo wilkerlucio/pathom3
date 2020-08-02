@@ -20,18 +20,21 @@
   [a b]
   (merge-with #(merge-with into % %2) a b))
 
-(defn merge-grow [a b]
-  (cond
-    (and (set? a) (set? b))
-    (set/union a b)
+(defn merge-grow
+  ([] {})
+  ([a] a)
+  ([a b]
+   (cond
+     (and (set? a) (set? b))
+     (set/union a b)
 
-    (and (map? a) (map? b))
-    (merge-with merge-grow a b)
+     (and (map? a) (map? b))
+     (merge-with merge-grow a b)
 
-    (nil? b) a
+     (nil? b) a
 
-    :else
-    b))
+     :else
+     b)))
 
 (defmulti index-merger
   "This is an extensible gateway so you can define different strategies for merging different
@@ -75,9 +78,18 @@
 (>defn resolver-config
   "Given a indexes map and a resolver sym, returns the resolver configuration map."
   [{::keys [index-resolvers]} resolver-sym]
-  [(s/keys :req [::index-resolvers]) ::pco/name
-   => ::pco/operation-config]
-  (pco/operation-config (get index-resolvers resolver-sym)))
+  [(s/keys :opt [::index-resolvers]) ::pco/name
+   => (? ::pco/operation-config)]
+  (some-> (get index-resolvers resolver-sym)
+          (pco/operation-config)))
+
+(>defn resolver-provides
+  "Get the resolver provides from the resolver configuration map"
+  [env resolver-sym]
+  [(s/keys :opt [::index-resolvers]) ::pco/name
+   => (? ::pco/provides)]
+  (-> (resolver-config env resolver-sym)
+      ::pco/provides))
 
 (>defn register
   "Add an operation to the indexes. The operation can be either a Resolver or a Mutation."

@@ -4,6 +4,28 @@
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]))
 
+(deftest merge-oir-test
+  (is (= (pci/merge-oir
+           '{:a {#{} #{r}}}
+           '{:a {#{} #{r2}}})
+         '{:a {#{} #{r r2}}})))
+
+(deftest merge-grow-test
+  (is (= (pci/merge-grow) {}))
+  (is (= (pci/merge-grow {:foo "bar"}) {:foo "bar"}))
+
+  (testing "merge sets by union"
+    (is (= (pci/merge-grow {:foo #{:a}} {:foo #{:b}})
+           {:foo #{:a :b}})))
+
+  (testing "merge maps"
+    (is (= (pci/merge-grow {:foo {:a 1}} {:foo {:b 2}})
+           {:foo {:a 1 :b 2}})))
+
+  (testing "keep left value if right one is nil"
+    (is (= (pci/merge-grow {:foo {:a 1}} {:foo {:a nil}})
+           {:foo {:a 1}}))))
+
 (deftest resolver-config-test
   (let [resolver (pco/resolver 'r {::pco/output [:foo]}
                                (fn [_ _] {:foo 42}))
@@ -13,7 +35,9 @@
            '{::pco/input    []
              ::pco/name     r
              ::pco/output   [:foo]
-             ::pco/provides {:foo {}}}))))
+             ::pco/provides {:foo {}}})))
+
+  (is (= (pci/resolver-config {} 'r) nil)))
 
 (deftest register-test
   (let [resolver (pco/resolver 'r {::pco/output [:foo]}
