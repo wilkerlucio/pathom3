@@ -45,7 +45,8 @@
   (pop/-operation-type operation))
 
 (>defn resolver
-  "Helper to return a resolver map"
+  "Helper to create a resolver. A resolver have at least a name, the output definition
+  and the resolve function."
   [name {::keys [output] :as config} resolve]
   [::name (s/keys :req [::output]) ::resolve => ::resolver]
   (let [config' (merge {::name     name
