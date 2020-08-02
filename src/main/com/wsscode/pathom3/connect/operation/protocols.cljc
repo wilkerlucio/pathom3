@@ -5,8 +5,7 @@
   (-operation-type [this]))
 
 (defprotocol IResolver
-  (-resolve [this env input])
-  (-merge-result [this entity result]))
+  (-resolve [this env input]))
 
 (defprotocol IMutate
   (-mutate [this env params]))

@@ -3,12 +3,11 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.pathom3.connect.operation.protocols :as pop]
-    [com.wsscode.pathom3.entity :as pe]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]))
 
 ; region records
 
-(defrecord SinglePropResolver [config resolve output-attr]
+(defrecord Resolver [config resolve]
   pop/IOperation
   (-operation-config [_] config)
   (-operation-type [_] ::operation-type-resolver)
@@ -16,24 +15,6 @@
   pop/IResolver
   (-resolve [_ env input]
             (resolve env input))
-
-  (-merge-result [_ entity result]
-                 (assoc entity output-attr result))
-
-  clojure.lang.IFn
-  (invoke [_ env input] (resolve env input)))
-
-(defrecord MultiPropResolver [config resolve]
-  pop/IOperation
-  (-operation-config [_] config)
-  (-operation-type [_] ::operation-type-resolver)
-
-  pop/IResolver
-  (-resolve [_ env input]
-            (resolve env input))
-
-  (-merge-result [_ entity result]
-                 (pe/merge-entity-data entity result))
 
   clojure.lang.IFn
   (invoke [this env input] (resolve env input)))
@@ -45,11 +26,10 @@
 (>def ::name symbol?)
 (>def ::input vector?)
 (>def ::output vector?)
-(>def ::output-attribute keyword?)
 (>def ::resolve fn?)
 (>def ::operation-type #{::operation-type-resolver})
-(>def ::operation #(satisfies? pop/IOperation %))
 (>def ::operation-config map?)
+(>def ::operation #(satisfies? pop/IOperation %))
 (>def ::resolver #(satisfies? pop/IResolver %))
 
 ; endregion
@@ -66,15 +46,13 @@
 
 (>defn resolver
   "Helper to return a resolver map"
-  [name {::keys [output output-attribute] :as config} resolve]
+  [name {::keys [output] :as config} resolve]
   [::name (s/keys :req [::output]) ::resolve => ::resolver]
   (let [config' (merge {::name     name
                         ::input    []
                         ::provides (pfsd/query->shape-descriptor output)}
                        config)]
-    (if output-attribute
-      (->SinglePropResolver config' resolve output-attribute)
-      (->MultiPropResolver config' resolve))))
+    (->Resolver config' resolve)))
 
 ; endregion
 
@@ -130,7 +108,7 @@
   (let [[input-type input-arg] (last arglist)]
     (cond-> options
       output-attr
-      (assoc ::output [output-attr] ::output-attribute output-attr)
+      (assoc ::output [output-attr])
 
       (and (= :map input-type)
            (not (::input options)))
@@ -169,6 +147,23 @@
       (p/defresolver tao [{:keys [pi]}] :tau (* 2 pi))
 
   Note that the required input was inferred from the param destructuring.
+
+  To provide multiple attributes:
+
+      (p/defresolver user-by-id [env {:keys [user/id]}]
+        {::p/output [:user/name :user/email]}
+        (fetch-user-from-db env id))
+
+  Note when we request 2 arguments in params, the first will be the environment.
+
+  So far we seen examples using implicit input (inferred from input destructuring).
+
+  If you want to control the input, you can add it to the resolver config:
+
+      (p/defresolver user-by-id [env {:keys [user/id]}]
+        {::p/input  [:user/id]
+         ::p/output [:user/name :user/email]}
+        (fetch-user-from-db env id))
 
   Also can add environment argument:
 

@@ -17,18 +17,16 @@
               ::pco/output   [:foo]}))))
 
   (testing "creating single attribute resolver"
-    (let [resolver (pco/resolver 'foo {::pco/output           [:foo]
-                                       ::pco/output-attribute :foo}
+    (let [resolver (pco/resolver 'foo {::pco/output [:foo]}
                                  (fn [_ _] "bar"))]
       (is (= (resolver nil nil)
              "bar"))
 
       (is (= (pco/operation-config resolver)
-             {::pco/name             'foo
-              ::pco/output           [:foo]
-              ::pco/input            []
-              ::pco/provides         {:foo {}}
-              ::pco/output-attribute :foo})))))
+             {::pco/name     'foo
+              ::pco/output   [:foo]
+              ::pco/input    []
+              ::pco/provides {:foo {}}})))))
 
 (deftest defresolver-syntax-test
   (testing "classic form"
@@ -109,8 +107,7 @@
                :arglist     [[:sym env] [:sym input]]
                :output-attr :foo
                :body        ["bar"]})
-           {::pco/output           [:foo]
-            ::pco/output-attribute :foo})))
+           {::pco/output [:foo]})))
 
   (testing "output attr + options"
     (is (= (pco/params->resolver-options
@@ -119,9 +116,8 @@
                :output-attr :foo
                :options     {::pco/input [:x]}
                :body        ["bar"]})
-           {::pco/input            [:x]
-            ::pco/output           [:foo]
-            ::pco/output-attribute :foo})))
+           {::pco/input  [:x]
+            ::pco/output [:foo]})))
 
   (testing "inferred input"
     (is (= (pco/params->resolver-options
@@ -129,9 +125,8 @@
                :arglist     [[:sym env] [:map {:keys [dep]}]]
                :output-attr :foo
                :body        ["bar"]})
-           {::pco/input            [:dep]
-            ::pco/output           [:foo]
-            ::pco/output-attribute :foo}))
+           {::pco/input  [:dep]
+            ::pco/output [:foo]}))
 
     (testing "preserve user input when defined"
       (is (= (pco/params->resolver-options
@@ -140,9 +135,8 @@
                  :options     {::pco/input [:dep :other]}
                  :output-attr :foo
                  :body        ["bar"]})
-             {::pco/input            [:dep :other]
-              ::pco/output           [:foo]
-              ::pco/output-attribute :foo})))))
+             {::pco/input  [:dep :other]
+              ::pco/output [:foo]})))))
 
 (deftest normalize-arglist-test
   (is (= (pco/normalize-arglist [])
@@ -161,8 +155,7 @@
            '(def foo
               (com.wsscode.pathom3.connect.operation/resolver
                 user/foo
-                #:com.wsscode.pathom3.connect.operation{:output           [:sample]
-                                                        :output-attribute :sample}
+                #:com.wsscode.pathom3.connect.operation{:output [:sample]}
                 (clojure.core/fn [_ _] "bar"))))))
 
   (testing "explicit output, no args"
@@ -180,7 +173,6 @@
            '(def foo
               (com.wsscode.pathom3.connect.operation/resolver
                 user/foo
-                #:com.wsscode.pathom3.connect.operation{:output           [:sample],
-                                                        :output-attribute :sample,
-                                                        :input            [:dep]}
+                #:com.wsscode.pathom3.connect.operation{:output [:sample],
+                                                        :input  [:dep]}
                 (clojure.core/fn [_ {:keys [dep]}] "bar")))))))
