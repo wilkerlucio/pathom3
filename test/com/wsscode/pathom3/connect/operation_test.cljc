@@ -1,7 +1,8 @@
 (ns com.wsscode.pathom3.connect.operation-test
-  (:require [clojure.test :refer [deftest is are run-tests testing]]
-            [com.wsscode.pathom3.connect.operation :as pco]
-            [clojure.spec.alpha :as s]))
+  (:require
+    [clojure.spec.alpha :as s]
+    [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.pathom3.connect.operation :as pco]))
 
 (deftest resolver-test
   (testing "creating resolvers"
@@ -9,20 +10,24 @@
       (is (= (resolver nil nil)
              {:foo "bar"}))
 
-      (is (= (pco/-operation-config resolver)
-             {::pco/name   'foo
-              ::pco/output [:foo]}))))
+      (is (= (pco/operation-config resolver)
+             {::pco/name     'foo
+              ::pco/input    []
+              ::pco/provides {:foo {}}
+              ::pco/output   [:foo]}))))
 
   (testing "creating single attribute resolver"
     (let [resolver (pco/resolver 'foo {::pco/output           [:foo]
                                        ::pco/output-attribute :foo}
-                     (fn [_ _] "bar"))]
+                                 (fn [_ _] "bar"))]
       (is (= (resolver nil nil)
              "bar"))
 
-      (is (= (pco/-operation-config resolver)
+      (is (= (pco/operation-config resolver)
              {::pco/name             'foo
               ::pco/output           [:foo]
+              ::pco/input            []
+              ::pco/provides         {:foo {}}
               ::pco/output-attribute :foo})))))
 
 (deftest defresolver-syntax-test
@@ -150,32 +155,32 @@
          '[[:sym env] [:sym input]])))
 
 (deftest defresolver-test
-  (is (= (macroexpand-1
-           `(pco/defresolver ~'foo ~'[] :sample "bar"))
-         '(def
-            foo
-            (com.wsscode.pathom3.connect.operation/resolver
-              user/foo
-              #:com.wsscode.pathom3.connect.operation{:output           [:sample]
-                                                      :output-attribute :sample}
-              (clojure.core/fn [_ _] "bar")))))
+  (testing "single attribute resolver, no args capture"
+    (is (= (macroexpand-1
+             `(pco/defresolver ~'foo ~'[] :sample "bar"))
+           '(def foo
+              (com.wsscode.pathom3.connect.operation/resolver
+                user/foo
+                #:com.wsscode.pathom3.connect.operation{:output           [:sample]
+                                                        :output-attribute :sample}
+                (clojure.core/fn [_ _] "bar"))))))
 
-  (is (= (macroexpand-1
-           `(pco/defresolver ~'foo ~'[] {::pco/output [:foo]} {:foo "bar"}))
-         '(def
-            foo
-            (com.wsscode.pathom3.connect.operation/resolver
-              user/foo
-              #:com.wsscode.pathom3.connect.operation{:output [:foo]}
-              (clojure.core/fn [_ _] {:foo "bar"})))))
+  (testing "explicit output, no args"
+    (is (= (macroexpand-1
+             `(pco/defresolver ~'foo ~'[] {::pco/output [:foo]} {:foo "bar"}))
+           '(def foo
+              (com.wsscode.pathom3.connect.operation/resolver
+                user/foo
+                #:com.wsscode.pathom3.connect.operation{:output [:foo]}
+                (clojure.core/fn [_ _] {:foo "bar"}))))))
 
-  (is (= (macroexpand-1
-           `(pco/defresolver ~'foo ~'[{:keys [dep]}] :sample "bar"))
-         '(def
-            foo
-            (com.wsscode.pathom3.connect.operation/resolver
-              user/foo
-              #:com.wsscode.pathom3.connect.operation{:output           [:sample],
-                                                      :output-attribute :sample,
-                                                      :input            [:dep]}
-              (clojure.core/fn [_ {:keys [dep]}] "bar"))))))
+  (testing "single attribute, including implicit import via destructuring"
+    (is (= (macroexpand-1
+             `(pco/defresolver ~'foo ~'[{:keys [dep]}] :sample "bar"))
+           '(def foo
+              (com.wsscode.pathom3.connect.operation/resolver
+                user/foo
+                #:com.wsscode.pathom3.connect.operation{:output           [:sample],
+                                                        :output-attribute :sample,
+                                                        :input            [:dep]}
+                (clojure.core/fn [_ {:keys [dep]}] "bar")))))))

@@ -1,47 +1,39 @@
 (ns com.wsscode.pathom3.connect.operation
-  (:require [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-            [clojure.spec.alpha :as s]))
-
-; region protocols
-
-(defprotocol IOperation
-  (-operation-config [this]))
-
-(defprotocol IResolver
-  (-resolve [this env input])
-  (-merge-result [this entity result]))
-
-(defprotocol IMutate
-  (-mutate [this env params]))
-
-; endregion
+  (:require
+    [clojure.spec.alpha :as s]
+    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.pathom3.connect.operation.protocols :as pop]
+    [com.wsscode.pathom3.entity :as pe]
+    [com.wsscode.pathom3.format.shape-descriptor :as pfsd]))
 
 ; region records
 
 (defrecord SinglePropResolver [config resolve output-attr]
-  IOperation
+  pop/IOperation
   (-operation-config [_] config)
+  (-operation-type [_] ::operation-type-resolver)
 
-  IResolver
-  (-resolve [this env input]
-    (resolve env input))
+  pop/IResolver
+  (-resolve [_ env input]
+            (resolve env input))
 
   (-merge-result [_ entity result]
-    (assoc entity output-attr result))
+                 (assoc entity output-attr result))
 
   clojure.lang.IFn
-  (invoke [this env input] (resolve env input)))
+  (invoke [_ env input] (resolve env input)))
 
 (defrecord MultiPropResolver [config resolve]
-  IOperation
+  pop/IOperation
   (-operation-config [_] config)
+  (-operation-type [_] ::operation-type-resolver)
 
-  IResolver
-  (-resolve [this env input]
-    (resolve env input))
+  pop/IResolver
+  (-resolve [_ env input]
+            (resolve env input))
 
   (-merge-result [_ entity result]
-    (merge entity result))
+                 (pe/merge-entity-data entity result))
 
   clojure.lang.IFn
   (invoke [this env input] (resolve env input)))
@@ -55,18 +47,31 @@
 (>def ::output vector?)
 (>def ::output-attribute keyword?)
 (>def ::resolve fn?)
-(>def ::resolver #(and (satisfies? IOperation %)
-                       (satisfies? IResolver %)))
+(>def ::operation-type #{::operation-type-resolver})
+(>def ::operation #(satisfies? pop/IOperation %))
+(>def ::operation-config map?)
+(>def ::resolver #(satisfies? pop/IResolver %))
 
 ; endregion
 
-; region constructors
+; region constructors and helpers
+
+(>defn operation-config [operation]
+  [::operation => ::operation-config]
+  (pop/-operation-config operation))
+
+(>defn operation-type [operation]
+  [::operation => ::operation-type]
+  (pop/-operation-type operation))
 
 (>defn resolver
   "Helper to return a resolver map"
-  [name {::keys [output-attribute] :as config} resolve]
+  [name {::keys [output output-attribute] :as config} resolve]
   [::name (s/keys :req [::output]) ::resolve => ::resolver]
-  (let [config' (assoc config ::name name)]
+  (let [config' (merge {::name     name
+                        ::input    []
+                        ::provides (pfsd/query->shape-descriptor output)}
+                       config)]
     (if output-attribute
       (->SinglePropResolver config' resolve output-attribute)
       (->MultiPropResolver config' resolve))))
@@ -75,8 +80,9 @@
 
 ; region macros
 
-#?@(:clj
-    [(s/def ::ns-keys-binding
+#?(:clj
+   (do
+     (s/def ::ns-keys-binding
        (s/tuple
          (s/and keyword? #(= (name %) "keys"))
          (s/coll-of simple-symbol? :kind vector?)))
@@ -106,7 +112,7 @@
                 :options (s/? map?)
                 :body (s/+ any?))
          (fn must-have-output-prop-or-options [{:keys [output-attr options]}]
-           (or output-attr options))))])
+           (or output-attr options))))))
 
 (defn as-entry? [x] (= :as (first x)))
 
@@ -146,8 +152,8 @@
 (defmacro defresolver
   "Defines a new Pathom resolver.
 
-  Resolvers are one of the central abstractions around Pathom, a resolver is a function
-  that contains some annotated information, this fn also needs to follow a few rules:
+  Resolvers are the central abstraction around Pathom, a resolver is a function
+  that contains some annotated information and follow a few rules:
 
   1. Every resolver takes two map arguments, the first being the env and the second the resolver input data.
   2. A resolver MUST return a map, so the output information is labelled.
@@ -197,7 +203,7 @@
         fqsym    (full-symbol name *ns*)]
     `(def ~name
        (resolver ~fqsym ~(params->resolver-options params)
-         (fn ~arglist' ~@body)))))
+                 (fn ~arglist' ~@body)))))
 
 (s/fdef defresolver
   :args ::defresolver-args
