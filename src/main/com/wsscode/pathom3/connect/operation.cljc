@@ -58,7 +58,8 @@
 
   (resolver 'foo {::output [:foo]} (fn [env input] ...))
 
-  Returns an instance of the Resolver type."
+  Returns an instance of the Resolver type.
+  "
   ([{::keys [resolve output] :as config}]
    [(s/keys :req [::name ::output ::resolve]) => ::resolver]
    (let [config' (->> (dissoc config ::resolve)
@@ -157,13 +158,13 @@
 
       (p/defresolver pi [] :pi 3.14)
 
-  Define a dependent attribute:
+  Define a resolver with dependent attribute:
 
       (p/defresolver tao [{:keys [pi]}] :tau (* 2 pi))
 
   Note that the required input was inferred from the param destructuring.
 
-  To provide multiple attributes:
+  To require multiple attributes:
 
       (p/defresolver user-by-id [env {:keys [user/id]}]
         {::p/output [:user/name :user/email]}
@@ -179,10 +180,6 @@
         {::p/input  [:user/id]
          ::p/output [:user/name :user/email]}
         (fetch-user-from-db env id))
-
-  Also can add environment argument:
-
-      (p/defresolver tao [env {:keys [pi]}] :tau (* 2 pi))
   "
   {:arglists '([name docstring? arglist output-prop? options? & body])}
   [& args]
