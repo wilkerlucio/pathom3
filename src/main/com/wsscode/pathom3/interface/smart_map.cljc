@@ -3,7 +3,4 @@
   structure will realize the values as the user requests then. Values realized are
   cached, meaning that subsequent lookups are fast.")
 
-(defn smart-map [env context]
-  )
-
-
+(defn smart-map [_env _context])
