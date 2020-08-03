@@ -3,29 +3,28 @@
     #?(:clj [clojure.java.io :as io])
     [clojure.test :refer [deftest is are run-tests testing]]
     [clojure.walk :as walk]
-    [com.wsscode.pathom.connect :as pc]
-    [com.wsscode.pathom.connect.foreign :as pcf]
-    [com.wsscode.pathom.connect.planner :as pcp]
-    [com.wsscode.pathom.core :as p]
-    [com.wsscode.pathom.trace :as pt]
+    [com.wsscode.pathom3.connect.indexes :as pci]
+    [com.wsscode.pathom3.connect.operation :as pco]
+    [com.wsscode.pathom3.connect.planner :as pcp]
+    [com.wsscode.pathom3.specs :as pspec]
     [edn-query-language.core :as eql]
     #?(:clj [tangle.core :as tangle])))
 
 (defn register-index [resolvers]
   (let [resolvers (walk/postwalk
                     (fn [x]
-                      (if (and (map? x) (contains? x ::pc/output))
-                        (assoc x ::pc/resolve (fn [_ _]))
-                        x))
+                      (pco/resolver
+                        (if (and (map? x) (contains? x ::pco/output))
+                          (assoc x ::pco/resolve (fn [_ _]))
+                          x)))
                     resolvers)]
-    (pc/register {} resolvers)))
+    (pci/register {} resolvers)))
 
 (defn oir-index [resolvers]
-  (::pc/index-oir (register-index resolvers)))
+  (::pci/index-oir (register-index resolvers)))
 
 (defn base-graph-env []
-  (assoc (pcp/base-env)
-    ::p/placeholder-prefixes #{">"}))
+  (pcp/base-env))
 
 #?(:clj
    (defn find-next-file-name [prefix]
@@ -51,32 +50,32 @@
                                (conj [node-id run-next])))))
                        (vals nodes))]
        (tangle/graph->dot (mapv ::pcp/node-id (vals nodes)) edges
-         {:graph            {:rankdir :LR}
-          :node             {:shape :circle}
-          :directed?        true
-          :node->id         identity
-          :node->descriptor (fn [node-id]
-                              (let [node (get nodes node-id)]
-                                (cond-> {:id    (str node-id)
-                                         :style "filled"
-                                         :color (if (= node-id root) "blue" "#F3F3F3")
-                                         :label (str
-                                                  (str node-id " | ")
-                                                  #_(if attrs
+                          {:graph            {:rankdir :LR}
+                           :node             {:shape :circle}
+                           :directed?        true
+                           :node->id         identity
+                           :node->descriptor (fn [node-id]
+                                               (let [node (get nodes node-id)]
+                                                 (cond-> {:id    (str node-id)
+                                                          :style "filled"
+                                                          :color (if (= node-id root) "blue" "#F3F3F3")
+                                                          :label (str
+                                                                   (str node-id " | ")
+                                                                   #_(if attrs
                                                       (str (str/join "" attrs) " | "))
-                                                  (pcp/node->label node))}
-                                  (get-in env [::pc/index-resolvers (::pc/sym node) ::pc/dynamic-resolver?])
-                                  (assoc
-                                    :fontcolor "white"
-                                    :fillcolor "black")
+                                                                   (pcp/node->label node))}
+                                                   (pcp/dynamic-resolver? env (::pco/name node))
+                                                   (assoc
+                                                     :fontcolor "white"
+                                                     :fillcolor "black")
 
-                                  (::pcp/run-and node)
-                                  (assoc
-                                    :fillcolor "yellow")
+                                                   (::pcp/run-and node)
+                                                   (assoc
+                                                     :fillcolor "yellow")
 
-                                  (::pcp/run-or node)
-                                  (assoc
-                                    :fillcolor "cyan"))))}))))
+                                                   (::pcp/run-or node)
+                                                   (assoc
+                                                     :fillcolor "cyan"))))}))))
 
 (defn render-graph [_graph _env]
   #?(:clj
@@ -98,7 +97,7 @@
     env))
 
 (defn compute-run-graph
-  [{::keys     [resolvers render-graphviz? time? dynamics]
+  [{::keys     [resolvers render-graphviz? time? _dynamics]
     ::eql/keys [query]
     :or        {render-graphviz? true
                 time?            false}
@@ -107,19 +106,19 @@
                                (-> options
                                    (dissoc ::eql/query)
                                    (assoc :edn-query-language.ast/node
-                                     (eql/query->ast (p/lift-placeholders (base-graph-env) query)))))
+                                     (eql/query->ast query))))
                   resolvers
-                  (pc/merge-indexes (register-index resolvers))
+                  (pci/merge-indexes (register-index resolvers))
 
-                  dynamics
-                  (as-> <>
-                    (reduce
-                      (fn [env' [name resolvers]]
-                        (pc/merge-indexes env'
-                          (pcf/internalize-parser-index*
-                            (assoc (register-index resolvers) ::pc/index-source-id name))))
-                      <>
-                      dynamics)))
+                  #_#_dynamics
+                      (as-> <>
+                        (reduce
+                          (fn [env' [name resolvers]]
+                            (pci/merge-indexes env'
+                              (pcf/internalize-parser-index*
+                                (assoc (register-index resolvers) ::pci/index-source-id name))))
+                          <>
+                          dynamics)))
         options (assoc options ::env env)]
     (cond->
       (if time?
@@ -132,8 +131,8 @@
 (deftest compute-run-graph-test-no-path
   (testing "no path"
     (is (= (compute-run-graph
-             {::pc/index-oir '{}
-              ::eql/query    [:a]})
+             {::pci/index-oir '{}
+              ::eql/query     [:a]})
            {::pcp/nodes             {}
             ::pcp/index-syms        {}
             ::pcp/unreachable-attrs #{:a}
@@ -141,8 +140,8 @@
 
     (testing "ignore mutations"
       (is (= (compute-run-graph
-               {::pc/index-oir '{}
-                ::eql/query    '[(foo {})]})
+               {::pci/index-oir '{}
+                ::eql/query     '[(foo {})]})
              {::pcp/nodes             {}
               ::pcp/index-syms        {}
               ::pcp/unreachable-syms  #{}
@@ -150,27 +149,27 @@
 
     (testing "broken chain"
       (is (= (compute-run-graph
-               {::pc/index-oir '{:b {#{:a} #{b}}}
-                ::eql/query    [:b]})
+               {::pci/index-oir '{:b {#{:a} #{b}}}
+                ::eql/query     [:b]})
              '#::pcp{:nodes             {}
                      :index-syms        {}
                      :unreachable-attrs #{:a :b}
                      :unreachable-syms  #{b}}))
 
       (is (= (compute-run-graph
-               {::pc/index-oir '{:b {#{:a} #{b1 b}}}
-                ::eql/query    [:b]})
+               {::pci/index-oir '{:b {#{:a} #{b1 b}}}
+                ::eql/query     [:b]})
              '#::pcp{:nodes             {}
                      :index-syms        {}
                      :unreachable-attrs #{:a :b}
                      :unreachable-syms  #{b b1}}))
 
       (is (= (compute-run-graph
-               {::resolvers [{::pc/sym    'a
-                              ::pc/output [:a]}
-                             {::pc/sym    'b
-                              ::pc/input  #{:a}
-                              ::pc/output [:b]}]
+               {::resolvers [{::pco/name   'a
+                              ::pco/output [:a]}
+                             {::pco/name   'b
+                              ::pco/input  #{:a}
+                              ::pco/output [:b]}]
                 ::eql/query [:b]
                 ::out       {::pcp/unreachable-attrs #{:a}}})
              '#::pcp{:nodes             {}
@@ -179,12 +178,12 @@
                      :unreachable-syms  #{b}}))
 
       (is (= (compute-run-graph
-               {::resolvers [{::pc/sym    'b
-                              ::pc/input  #{:a}
-                              ::pc/output [:b]}
-                             {::pc/sym    'c
-                              ::pc/input  #{:b}
-                              ::pc/output [:c]}]
+               {::resolvers [{::pco/name   'b
+                              ::pco/input  #{:a}
+                              ::pco/output [:b]}
+                             {::pco/name   'c
+                              ::pco/input  #{:b}
+                              ::pco/output [:c]}]
                 ::eql/query [:c]})
              '#::pcp{:nodes             {}
                      :index-syms        {}
@@ -192,14 +191,14 @@
                      :unreachable-syms  #{b c}}))
 
       (is (= (compute-run-graph
-               {::resolvers [{::pc/sym    'b
-                              ::pc/input  #{:a}
-                              ::pc/output [:b]}
-                             {::pc/sym    'd
-                              ::pc/output [:d]}
-                             {::pc/sym    'c
-                              ::pc/input  #{:b :d}
-                              ::pc/output [:c]}]
+               {::resolvers [{::pco/name   'b
+                              ::pco/input  #{:a}
+                              ::pco/output [:b]}
+                             {::pco/name   'd
+                              ::pco/output [:d]}
+                             {::pco/name   'c
+                              ::pco/input  #{:b :d}
+                              ::pco/output [:c]}]
                 ::eql/query [:c]})
              '#::pcp{:nodes             {}
                      :index-syms        {}
@@ -207,16 +206,16 @@
                      :unreachable-syms  #{b c}}))
 
       (is (= (compute-run-graph
-               {::resolvers [{::pc/sym    'b
-                              ::pc/input  #{:a}
-                              ::pc/output [:b]}
-                             {::pc/sym    'd
-                              ::pc/output [:d]}
-                             {::pc/sym    'c
-                              ::pc/input  #{:b :d}
-                              ::pc/output [:c]}]
+               {::resolvers [{::pco/name   'b
+                              ::pco/input  #{:a}
+                              ::pco/output [:b]}
+                             {::pco/name   'd
+                              ::pco/output [:d]}
+                             {::pco/name   'c
+                              ::pco/input  #{:b :d}
+                              ::pco/output [:c]}]
                 ::eql/query [:c :d]})
-             '{::pcp/nodes             {4 {::pc/sym               d
+             '{::pcp/nodes             {4 {::pco/name             d
                                            ::pcp/node-id          4
                                            ::pcp/requires         {:d {}}
                                            ::pcp/input            {}
@@ -230,10 +229,10 @@
 (deftest compute-run-graph-test
   (testing "simplest path"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}]
               ::eql/query [:a]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {}
@@ -246,10 +245,10 @@
 
   (testing "ignore idents"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}]
               ::eql/query [:a [:foo "bar"]]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {}
@@ -262,12 +261,12 @@
 
   (testing "cycles"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/input  #{:b}
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/input  #{:a}
-                            ::pc/output [:b]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/input  #{:b}
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/input  #{:a}
+                            ::pco/output [:b]}]
               ::eql/query [:a]})
            '#::pcp{:nodes             {}
                    :index-syms        {}
@@ -275,15 +274,15 @@
                    :unreachable-syms  #{a b}}))
 
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/input  #{:c}
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/input  #{:a}
-                            ::pc/output [:b]}
-                           {::pc/sym    'c
-                            ::pc/input  #{:b}
-                            ::pc/output [:c]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/input  #{:c}
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/input  #{:a}
+                            ::pco/output [:b]}
+                           {::pco/name   'c
+                            ::pco/input  #{:b}
+                            ::pco/output [:c]}]
               ::eql/query [:a]})
            '#::pcp{:nodes             {}
                    :index-syms        {}
@@ -292,26 +291,26 @@
 
     (testing "partial cycle"
       (is (= (compute-run-graph
-               {::pc/index-oir '{:a {#{:c} #{a}
-                                     #{}   #{a1}}
-                                 :b {#{:a} #{b}}
-                                 :c {#{:b} #{c}}
-                                 :d {#{} #{d}}}
-                ::eql/query    [:c :a]})
-             '{::pcp/nodes             {1 {::pc/sym               c
+               {::pci/index-oir '{:a {#{:c} #{a}
+                                      #{}   #{a1}}
+                                  :b {#{:a} #{b}}
+                                  :c {#{:b} #{c}}
+                                  :d {#{} #{d}}}
+                ::eql/query     [:c :a]})
+             '{::pcp/nodes             {1 {::pco/name             c
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:c {}}
                                            ::pcp/input            {:b {}}
                                            ::pcp/after-nodes      #{2}
                                            ::pcp/source-for-attrs #{:c}}
-                                        2 {::pc/sym               b
+                                        2 {::pco/name             b
                                            ::pcp/node-id          2
                                            ::pcp/requires         {:b {}}
                                            ::pcp/input            {:a {}}
                                            ::pcp/run-next         1
                                            ::pcp/after-nodes      #{4}
                                            ::pcp/source-for-attrs #{:b}}
-                                        4 {::pc/sym               a1
+                                        4 {::pco/name             a1
                                            ::pcp/node-id          4
                                            ::pcp/requires         {:a {}}
                                            ::pcp/input            {}
@@ -325,11 +324,11 @@
 
   (testing "collapse nodes"
     (is (= (compute-run-graph
-             {::pc/index-oir '{:a {#{} #{a}}
-                               :b {#{} #{a}}
-                               :c {#{} #{a}}}
-              ::eql/query    [:a :b]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+             {::pci/index-oir '{:a {#{} #{a}}
+                                :b {#{} #{a}}
+                                :c {#{} #{a}}}
+              ::eql/query     [:a :b]})
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {} :b {}}
                                          ::pcp/input            {}
@@ -341,18 +340,18 @@
              ::pcp/root              1}))
 
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a :c]}
-                           {::pc/sym    'b
-                            ::pc/output [:b]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a :c]}
+                           {::pco/name   'b
+                            ::pco/output [:b]}]
               ::eql/query [:a :b :c]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {} :c {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:c :a}
                                          ::pcp/after-nodes      #{3}}
-                                      2 {::pc/sym               b
+                                      2 {::pco/name             b
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {}
@@ -369,17 +368,17 @@
 
   (testing "OR on multiple paths"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'a2
-                            ::pc/output [:a]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'a2
+                            ::pco/output [:a]}]
               ::eql/query [:a]})
-           '{::pcp/nodes             {1 {::pc/sym          a
+           '{::pcp/nodes             {1 {::pco/name        a
                                          ::pcp/node-id     1
                                          ::pcp/requires    {:a {}}
                                          ::pcp/input       {}
                                          ::pcp/after-nodes #{3}}
-                                      2 {::pc/sym          a2
+                                      2 {::pco/name        a2
                                          ::pcp/node-id     2
                                          ::pcp/requires    {:a {}}
                                          ::pcp/input       {}
@@ -396,18 +395,18 @@
 
   (testing "AND on multiple attributes"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/output [:b]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/output [:b]}]
               ::eql/query [:a :b]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:a}
                                          ::pcp/after-nodes      #{3}}
-                                      2 {::pc/sym               b
+                                      2 {::pco/name             b
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {}
@@ -423,20 +422,20 @@
              ::pcp/root              3}))
 
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/output [:b]}
-                           {::pc/sym    'c
-                            ::pc/output [:c]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/output [:b]}
+                           {::pco/name   'c
+                            ::pco/output [:c]}]
               ::eql/query [:a :b :c]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:a}
                                          ::pcp/after-nodes      #{3}}
-                                      2 {::pc/sym               b
+                                      2 {::pco/name             b
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {}
@@ -445,7 +444,7 @@
                                       3 {::pcp/node-id  3
                                          ::pcp/requires {:b {} :a {} :c {}}
                                          ::pcp/run-and  #{2 1 4}}
-                                      4 {::pc/sym               c
+                                      4 {::pco/name             c
                                          ::pcp/node-id          4
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {}
@@ -459,30 +458,30 @@
 
   (testing "requires one nested nodes"
     (is (= (compute-run-graph
-             '{::pc/index-oir {:multi    {#{:direct :indirect} #{multi}}
-                               :direct   {#{} #{direct}}
-                               :indirect {#{:dep} #{indirect}}
-                               :dep      {#{} #{dep}}}
-               ::eql/query    [:multi]})
-           '{::pcp/nodes             {1 {::pc/sym               multi
+             '{::pci/index-oir {:multi    {#{:direct :indirect} #{multi}}
+                                :direct   {#{} #{direct}}
+                                :indirect {#{:dep} #{indirect}}
+                                :dep      {#{} #{dep}}}
+               ::eql/query     [:multi]})
+           '{::pcp/nodes             {1 {::pco/name             multi
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:multi {}}
                                          ::pcp/input            {:direct {} :indirect {}}
                                          ::pcp/after-nodes      #{5}
                                          ::pcp/source-for-attrs #{:multi}}
-                                      2 {::pc/sym               direct
+                                      2 {::pco/name             direct
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:direct {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:direct}
                                          ::pcp/after-nodes      #{5}}
-                                      3 {::pc/sym               indirect
+                                      3 {::pco/name             indirect
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:indirect {}}
                                          ::pcp/input            {:dep {}}
                                          ::pcp/after-nodes      #{4}
                                          ::pcp/source-for-attrs #{:indirect}}
-                                      4 {::pc/sym               dep
+                                      4 {::pco/name             dep
                                          ::pcp/node-id          4
                                          ::pcp/requires         {:dep {}}
                                          ::pcp/input            {}
@@ -501,32 +500,32 @@
 
   (testing "and collapsing"
     (is (= (compute-run-graph
-             '{::pc/index-oir {:a {#{:c :b :d} #{a}}
-                               :b {#{} #{b}}
-                               :c {#{:e} #{c}}
-                               :d {#{} #{d}}
-                               :e {#{} #{e}}}
-               ::eql/query    [:a]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+             '{::pci/index-oir {:a {#{:c :b :d} #{a}}
+                                :b {#{} #{b}}
+                                :c {#{:e} #{c}}
+                                :d {#{} #{d}}
+                                :e {#{} #{e}}}
+               ::eql/query     [:a]})
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {:c {} :b {} :d {}}
                                          ::pcp/after-nodes      #{5}
                                          ::pcp/source-for-attrs #{:a}}
-                                      2 {::pc/sym               c
+                                      2 {::pco/name             c
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {:e {}}
                                          ::pcp/after-nodes      #{3}
                                          ::pcp/source-for-attrs #{:c}}
-                                      3 {::pc/sym               e
+                                      3 {::pco/name             e
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:e {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:e}
                                          ::pcp/run-next         2
                                          ::pcp/after-nodes      #{5}}
-                                      4 {::pc/sym               b
+                                      4 {::pco/name             b
                                          ::pcp/node-id          4
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {}
@@ -536,7 +535,7 @@
                                          ::pcp/requires {:b {} :c {} :e {} :d {}}
                                          ::pcp/run-and  #{4 3 6}
                                          ::pcp/run-next 1}
-                                      6 {::pc/sym               d
+                                      6 {::pco/name             d
                                          ::pcp/node-id          6
                                          ::pcp/requires         {:d {}}
                                          ::pcp/input            {}
@@ -550,30 +549,30 @@
 
   (testing "adding multiple ands"
     (is (= (compute-run-graph
-             '{::pc/index-oir {:a {#{:c :b} #{a}}
-                               :b {#{} #{b}}
-                               :c {#{} #{c}}
-                               :d {#{:c :b} #{d}}}
-               ::eql/query    [:a :d]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+             '{::pci/index-oir {:a {#{:c :b} #{a}}
+                                :b {#{} #{b}}
+                                :c {#{} #{c}}
+                                :d {#{:c :b} #{d}}}
+               ::eql/query     [:a :d]})
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {:c {} :b {}}
                                          ::pcp/after-nodes      #{7}
                                          ::pcp/source-for-attrs #{:a}}
-                                      2 {::pc/sym               c
+                                      2 {::pco/name             c
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:c}
                                          ::pcp/after-nodes      #{6}}
-                                      3 {::pc/sym               b
+                                      3 {::pco/name             b
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:b}
                                          ::pcp/after-nodes      #{6}}
-                                      5 {::pc/sym          d
+                                      5 {::pco/name        d
                                          ::pcp/node-id     5
                                          ::pcp/requires    {:d {}}
                                          ::pcp/input       {:c {} :b {}}
@@ -593,23 +592,23 @@
 
     (testing "chain with recursive deps"
       (is (= (compute-run-graph
-               '{::pc/index-oir {:a {#{:b :c} #{a}}
-                                 :b {#{:c} #{b}}
-                                 :c {#{} #{c}}}
-                 ::eql/query    [:a]})
-             '{::pcp/nodes             {1 {::pc/sym               a
+               '{::pci/index-oir {:a {#{:b :c} #{a}}
+                                  :b {#{:c} #{b}}
+                                  :c {#{} #{c}}}
+                 ::eql/query     [:a]})
+             '{::pcp/nodes             {1 {::pco/name             a
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {}}
                                            ::pcp/input            {:c {} :b {}}
                                            ::pcp/after-nodes      #{3}
                                            ::pcp/source-for-attrs #{:a}}
-                                        2 {::pc/sym               c
+                                        2 {::pco/name             c
                                            ::pcp/node-id          2
                                            ::pcp/requires         {:c {}}
                                            ::pcp/input            {}
                                            ::pcp/source-for-attrs #{:c}
                                            ::pcp/run-next         3}
-                                        3 {::pc/sym               b
+                                        3 {::pco/name             b
                                            ::pcp/node-id          3
                                            ::pcp/requires         {:b {}}
                                            ::pcp/input            {:c {}}
@@ -623,31 +622,31 @@
                ::pcp/root              2}))
 
       (is (= (compute-run-graph
-               '{::pc/index-oir {:a {#{:b :c :d} #{a}}
-                                 :b {#{:c :d} #{b}}
-                                 :c {#{:d} #{c}}
-                                 :d {#{} #{d}}}
-                 ::eql/query    [:a]})
-             '{::pcp/nodes             {1 {::pc/sym               a
+               '{::pci/index-oir {:a {#{:b :c :d} #{a}}
+                                  :b {#{:c :d} #{b}}
+                                  :c {#{:d} #{c}}
+                                  :d {#{} #{d}}}
+                 ::eql/query     [:a]})
+             '{::pcp/nodes             {1 {::pco/name             a
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {}}
                                            ::pcp/input            {:c {} :b {} :d {}}
                                            ::pcp/after-nodes      #{4}
                                            ::pcp/source-for-attrs #{:a}}
-                                        2 {::pc/sym               c
+                                        2 {::pco/name             c
                                            ::pcp/node-id          2
                                            ::pcp/requires         {:c {}}
                                            ::pcp/input            {:d {}}
                                            ::pcp/after-nodes      #{3}
                                            ::pcp/source-for-attrs #{:c}
                                            ::pcp/run-next         4}
-                                        3 {::pc/sym               d
+                                        3 {::pco/name             d
                                            ::pcp/node-id          3
                                            ::pcp/requires         {:d {}}
                                            ::pcp/input            {}
                                            ::pcp/source-for-attrs #{:d}
                                            ::pcp/run-next         2}
-                                        4 {::pc/sym               b
+                                        4 {::pco/name             b
                                            ::pcp/node-id          4
                                            ::pcp/requires         {:b {}}
                                            ::pcp/input            {:c {} :d {}}
@@ -661,35 +660,35 @@
                ::pcp/root              3})))
 
     (is (= (compute-run-graph
-             '{::pc/index-oir {:a {#{:c :b} #{a}
-                                   #{:e}    #{a1}}
-                               :b {#{} #{b}}
-                               :c {#{:d} #{c c2 c3}}
-                               :d {#{:c :b} #{d}
-                                   #{:a}    #{d2}}
-                               :e {#{:b :f} #{e}}
-                               :f {#{} #{f}}}
-               ::eql/query    [:a :e]})
-           '{::pcp/nodes             {10 {::pc/sym               a1
+             '{::pci/index-oir {:a {#{:c :b} #{a}
+                                    #{:e}    #{a1}}
+                                :b {#{} #{b}}
+                                :c {#{:d} #{c c2 c3}}
+                                :d {#{:c :b} #{d}
+                                    #{:a}    #{d2}}
+                                :e {#{:b :f} #{e}}
+                                :f {#{} #{f}}}
+               ::eql/query     [:a :e]})
+           '{::pcp/nodes             {10 {::pco/name             a1
                                           ::pcp/node-id          10
                                           ::pcp/requires         {:a {}}
                                           ::pcp/input            {:e {}}
                                           ::pcp/after-nodes      #{11}
                                           ::pcp/source-for-attrs #{:a}}
-                                      11 {::pc/sym               e
+                                      11 {::pco/name             e
                                           ::pcp/node-id          11
                                           ::pcp/requires         {:e {}}
                                           ::pcp/input            {:b {} :f {}}
                                           ::pcp/after-nodes      #{14}
                                           ::pcp/source-for-attrs #{:e}
                                           ::pcp/run-next         10}
-                                      12 {::pc/sym               b
+                                      12 {::pco/name             b
                                           ::pcp/node-id          12
                                           ::pcp/requires         {:b {}}
                                           ::pcp/input            {}
                                           ::pcp/source-for-attrs #{:b}
                                           ::pcp/after-nodes      #{14}}
-                                      13 {::pc/sym               f
+                                      13 {::pco/name             f
                                           ::pcp/node-id          13
                                           ::pcp/requires         {:f {}}
                                           ::pcp/input            {}
@@ -706,17 +705,17 @@
              ::pcp/root              14}))
 
     (is (= (compute-run-graph
-             '{::pc/index-oir {:a {#{:c :b} #{a}}
-                               :b {#{} #{b}}
-                               :c {#{} #{c}}
-                               :d {#{:c :b} #{d}}
-                               :e {#{:c :b :f} #{e}}
-                               :f {#{} #{f}}}
-               ::eql/query    [:a :d :e]})
+             '{::pci/index-oir {:a {#{:c :b} #{a}}
+                                :b {#{} #{b}}
+                                :c {#{} #{c}}
+                                :d {#{:c :b} #{d}}
+                                :e {#{:c :b :f} #{e}}
+                                :f {#{} #{f}}}
+               ::eql/query     [:a :d :e]})
            '{::pcp/nodes             {7  {::pcp/node-id  7
                                           ::pcp/requires {:a {} :d {}}
                                           ::pcp/run-and  #{1 5}}
-                                      1  {::pc/sym               a
+                                      1  {::pco/name             a
                                           ::pcp/node-id          1
                                           ::pcp/requires         {:a {}}
                                           ::pcp/input            {:c {} :b {}}
@@ -727,13 +726,13 @@
                                           ::pcp/run-and     #{3 2}
                                           ::pcp/run-next    7
                                           ::pcp/after-nodes #{11}}
-                                      3  {::pc/sym               b
+                                      3  {::pco/name             b
                                           ::pcp/node-id          3
                                           ::pcp/requires         {:b {}}
                                           ::pcp/input            {}
                                           ::pcp/source-for-attrs #{:b}
                                           ::pcp/after-nodes      #{6 9}}
-                                      2  {::pc/sym               c
+                                      2  {::pco/name             c
                                           ::pcp/node-id          2
                                           ::pcp/requires         {:c {}}
                                           ::pcp/input            {}
@@ -747,18 +746,18 @@
                                           ::pcp/run-and     #{3 2 10}
                                           ::pcp/run-next    8
                                           ::pcp/after-nodes #{11}}
-                                      5  {::pc/sym          d
+                                      5  {::pco/name        d
                                           ::pcp/node-id     5
                                           ::pcp/requires    {:d {}}
                                           ::pcp/input       {:c {} :b {}}
                                           ::pcp/after-nodes #{7}}
-                                      10 {::pc/sym               f
+                                      10 {::pco/name             f
                                           ::pcp/node-id          10
                                           ::pcp/requires         {:f {}}
                                           ::pcp/input            {}
                                           ::pcp/source-for-attrs #{:f}
                                           ::pcp/after-nodes      #{9}}
-                                      8  {::pc/sym               e
+                                      8  {::pco/name             e
                                           ::pcp/node-id          8
                                           ::pcp/requires         {:e {}}
                                           ::pcp/input            {:c {} :b {} :f {}}
@@ -771,26 +770,26 @@
              ::pcp/root              11}))
 
     (is (= (compute-run-graph
-             '{::pc/index-oir {:a {#{:c :b} #{a}}
-                               :b {#{} #{b}}
-                               :c {#{} #{c}}
-                               :d {#{:e :b} #{d}}
-                               :e {#{} #{e}}
-                               :f {#{} #{f}}}
-               ::eql/query    [:a :d]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+             '{::pci/index-oir {:a {#{:c :b} #{a}}
+                                :b {#{} #{b}}
+                                :c {#{} #{c}}
+                                :d {#{:e :b} #{d}}
+                                :e {#{} #{e}}
+                                :f {#{} #{f}}}
+               ::eql/query     [:a :d]})
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {:c {} :b {}}
                                          ::pcp/after-nodes      #{4}
                                          ::pcp/source-for-attrs #{:a}}
-                                      2 {::pc/sym               c
+                                      2 {::pco/name             c
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:c}
                                          ::pcp/after-nodes      #{4}}
-                                      3 {::pc/sym               b
+                                      3 {::pco/name             b
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {}
@@ -801,13 +800,13 @@
                                          ::pcp/run-and     #{3 2}
                                          ::pcp/run-next    1
                                          ::pcp/after-nodes #{8}}
-                                      5 {::pc/sym               d
+                                      5 {::pco/name             d
                                          ::pcp/node-id          5
                                          ::pcp/requires         {:d {}}
                                          ::pcp/input            {:e {} :b {}}
                                          ::pcp/after-nodes      #{7}
                                          ::pcp/source-for-attrs #{:d}}
-                                      6 {::pc/sym               e
+                                      6 {::pco/name             e
                                          ::pcp/node-id          6
                                          ::pcp/requires         {:e {}}
                                          ::pcp/input            {}
@@ -828,24 +827,24 @@
              ::pcp/root              8}))
 
     #_(is (= (compute-run-graph
-               '{::pc/index-oir {:a {#{:b} #{a}
-                                     #{:e} #{a1}}
-                                 :b {#{} #{b}}
-                                 :c {#{} #{c}}
-                                 :d {#{:b}    #{d}
-                                     #{:a :e} #{d1}}
-                                 :e {#{:b :c} #{e}}
-                                 :f {#{} #{f}}}
-                 ::eql/query    [:d]})
+               '{::pci/index-oir {:a {#{:b} #{a}
+                                      #{:e} #{a1}}
+                                  :b {#{} #{b}}
+                                  :c {#{} #{c}}
+                                  :d {#{:b}    #{d}
+                                      #{:a :e} #{d1}}
+                                  :e {#{:b :c} #{e}}
+                                  :f {#{} #{f}}}
+                 ::eql/query     [:d]})
              {})))
 
   (testing "multiple attribute request on a single resolver"
     (testing "missing provides"
       (is (= (compute-run-graph
-               {::pc/index-oir {:a {#{} #{'a}}
-                                :b {#{} #{'a}}}
-                ::eql/query    [:a :b]})
-             '{::pcp/nodes             {1 {::pc/sym               a
+               {::pci/index-oir {:a {#{} #{'a}}
+                                 :b {#{} #{'a}}}
+                ::eql/query     [:a :b]})
+             '{::pcp/nodes             {1 {::pco/name             a
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {} :b {}}
                                            ::pcp/input            {}
@@ -858,19 +857,19 @@
 
   (testing "add requires to appropriated node"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'z
-                            ::pc/output [:z]}
-                           {::pc/sym    'a
-                            ::pc/input  #{:z}
-                            ::pc/output [:a :b]}]
+             {::resolvers [{::pco/name   'z
+                            ::pco/output [:z]}
+                           {::pco/name   'a
+                            ::pco/input  #{:z}
+                            ::pco/output [:a :b]}]
               ::eql/query [:a :b]})
-           '{::pcp/nodes             {2 {::pc/sym               z
+           '{::pcp/nodes             {2 {::pco/name             z
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:z {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:z}
                                          ::pcp/run-next         3}
-                                      3 {::pc/sym               a
+                                      3 {::pco/name             a
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:b {} :a {}}
                                          ::pcp/input            {:z {}}
@@ -883,28 +882,28 @@
              ::pcp/root              2}))
 
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'z
-                            ::pc/output [:z]}
-                           {::pc/sym    'a
-                            ::pc/input  #{:z}
-                            ::pc/output [:a :b]}
-                           {::pc/sym    'c
-                            ::pc/input  #{:b}
-                            ::pc/output [:c]}]
+             {::resolvers [{::pco/name   'z
+                            ::pco/output [:z]}
+                           {::pco/name   'a
+                            ::pco/input  #{:z}
+                            ::pco/output [:a :b]}
+                           {::pco/name   'c
+                            ::pco/input  #{:b}
+                            ::pco/output [:c]}]
               ::eql/query [:c :a]})
-           '{::pcp/nodes             {1 {::pc/sym               c
+           '{::pcp/nodes             {1 {::pco/name             c
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {:b {}}
                                          ::pcp/after-nodes      #{4}
                                          ::pcp/source-for-attrs #{:c}}
-                                      3 {::pc/sym               z
+                                      3 {::pco/name             z
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:z {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:z}
                                          ::pcp/run-next         4}
-                                      4 {::pc/sym               a
+                                      4 {::pco/name             a
                                          ::pcp/node-id          4
                                          ::pcp/requires         {:a {} :b {}}
                                          ::pcp/input            {:z {}}
@@ -919,19 +918,19 @@
 
   (testing "single dependency"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/input  #{:a}
-                            ::pc/output [:b]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/input  #{:a}
+                            ::pco/output [:b]}]
               ::eql/query [:b]})
-           '{::pcp/nodes             {1 {::pc/sym               b
+           '{::pcp/nodes             {1 {::pco/name             b
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {:a {}}
                                          ::pcp/after-nodes      #{2}
                                          ::pcp/source-for-attrs #{:b}}
-                                      2 {::pc/sym               a
+                                      2 {::pco/name             a
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {}
@@ -945,25 +944,25 @@
 
   (testing "optimize multiple resolver calls"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'a2
-                            ::pc/input  #{:b}
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/output [:b]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'a2
+                            ::pco/input  #{:b}
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/output [:b]}]
               ::eql/query [:a]})
-           '{::pcp/nodes             {1 {::pc/sym          a
+           '{::pcp/nodes             {1 {::pco/name        a
                                          ::pcp/node-id     1
                                          ::pcp/requires    {:a {}}
                                          ::pcp/input       {}
                                          ::pcp/after-nodes #{4}}
-                                      2 {::pc/sym          a2
+                                      2 {::pco/name        a2
                                          ::pcp/node-id     2
                                          ::pcp/requires    {:a {}}
                                          ::pcp/input       {:b {}}
                                          ::pcp/after-nodes #{3}}
-                                      3 {::pc/sym               b
+                                      3 {::pco/name             b
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {}
@@ -982,25 +981,25 @@
 
     (testing "create and root path for quicker dependency dispatch"
       (is (= (compute-run-graph
-               {::resolvers [{::pc/sym    'a
-                              ::pc/output [:a]}
-                             {::pc/sym    'a2
-                              ::pc/input  #{:b}
-                              ::pc/output [:a]}
-                             {::pc/sym    'b
-                              ::pc/output [:b]}]
+               {::resolvers [{::pco/name   'a
+                              ::pco/output [:a]}
+                             {::pco/name   'a2
+                              ::pco/input  #{:b}
+                              ::pco/output [:a]}
+                             {::pco/name   'b
+                              ::pco/output [:b]}]
                 ::eql/query [:a :b]})
-             '{::pcp/nodes             {1 {::pc/sym          a
+             '{::pcp/nodes             {1 {::pco/name        a
                                            ::pcp/node-id     1
                                            ::pcp/requires    {:a {}}
                                            ::pcp/input       {}
                                            ::pcp/after-nodes #{4}}
-                                        2 {::pc/sym          a2
+                                        2 {::pco/name        a2
                                            ::pcp/node-id     2
                                            ::pcp/requires    {:a {}}
                                            ::pcp/input       {:b {}}
                                            ::pcp/after-nodes #{3}}
-                                        3 {::pc/sym               b
+                                        3 {::pco/name             b
                                            ::pcp/node-id          3
                                            ::pcp/requires         {:b {}}
                                            ::pcp/input            {}
@@ -1023,19 +1022,19 @@
 
   (testing "single dependency with extra provides"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/input  #{:a}
-                            ::pc/output [:b :b2 :b3]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/input  #{:a}
+                            ::pco/output [:b :b2 :b3]}]
               ::eql/query [:b]})
-           '{::pcp/nodes             {1 {::pc/sym               b
+           '{::pcp/nodes             {1 {::pco/name             b
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {:a {}}
                                          ::pcp/after-nodes      #{2}
                                          ::pcp/source-for-attrs #{:b}}
-                                      2 {::pc/sym               a
+                                      2 {::pco/name             a
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {}
@@ -1049,29 +1048,29 @@
 
   (testing "dependency chain"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/input  #{:a}
-                            ::pc/output [:b]}
-                           {::pc/sym    'c
-                            ::pc/input  #{:b}
-                            ::pc/output [:c]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/input  #{:a}
+                            ::pco/output [:b]}
+                           {::pco/name   'c
+                            ::pco/input  #{:b}
+                            ::pco/output [:c]}]
               ::eql/query [:c]})
-           '{::pcp/nodes             {1 {::pc/sym               c
+           '{::pcp/nodes             {1 {::pco/name             c
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {:b {}}
                                          ::pcp/after-nodes      #{2}
                                          ::pcp/source-for-attrs #{:c}}
-                                      2 {::pc/sym               b
+                                      2 {::pco/name             b
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {:a {}}
                                          ::pcp/run-next         1
                                          ::pcp/after-nodes      #{3}
                                          ::pcp/source-for-attrs #{:b}}
-                                      3 {::pc/sym               a
+                                      3 {::pco/name             a
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {}
@@ -1085,21 +1084,21 @@
 
   (testing "dependency chain with available data"
     (is (= (compute-run-graph
-             {::resolvers          [{::pc/sym    'b
-                                     ::pc/input  #{:a}
-                                     ::pc/output [:b]}
-                                    {::pc/sym    'c
-                                     ::pc/input  #{:b}
-                                     ::pc/output [:c]}]
+             {::resolvers          [{::pco/name   'b
+                                     ::pco/input  #{:a}
+                                     ::pco/output [:b]}
+                                    {::pco/name   'c
+                                     ::pco/input  #{:b}
+                                     ::pco/output [:c]}]
               ::eql/query          [:c]
               ::pcp/available-data {:a {}}})
-           '{::pcp/nodes             {1 {::pc/sym               c
+           '{::pcp/nodes             {1 {::pco/name             c
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {:b {}}
                                          ::pcp/after-nodes      #{2}
                                          ::pcp/source-for-attrs #{:c}}
-                                      2 {::pc/sym               b
+                                      2 {::pco/name             b
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {:a {}}
@@ -1113,26 +1112,26 @@
 
   (testing "multiple paths chain at root"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'a2
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/input  #{:a}
-                            ::pc/output [:b]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'a2
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/input  #{:a}
+                            ::pco/output [:b]}]
               ::eql/query [:b]})
-           '{::pcp/nodes             {1 {::pc/sym               b
+           '{::pcp/nodes             {1 {::pco/name             b
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {:a {}}
                                          ::pcp/after-nodes      #{4}
                                          ::pcp/source-for-attrs #{:b}}
-                                      2 {::pc/sym          a
+                                      2 {::pco/name        a
                                          ::pcp/node-id     2
                                          ::pcp/requires    {:a {}}
                                          ::pcp/input       {}
                                          ::pcp/after-nodes #{4}}
-                                      3 {::pc/sym          a2
+                                      3 {::pco/name        a2
                                          ::pcp/node-id     3
                                          ::pcp/requires    {:a {}}
                                          ::pcp/input       {}
@@ -1150,22 +1149,22 @@
 
   (testing "multiple paths chain at edge"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/input  #{:a}
-                            ::pc/output [:b]}
-                           {::pc/sym    'b2
-                            ::pc/input  #{:a}
-                            ::pc/output [:b]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/input  #{:a}
+                            ::pco/output [:b]}
+                           {::pco/name   'b2
+                            ::pco/input  #{:a}
+                            ::pco/output [:b]}]
               ::eql/query [:b]})
            #?(:clj
-              '{::pcp/nodes             {1 {::pc/sym          b2
+              '{::pcp/nodes             {1 {::pco/name        b2
                                             ::pcp/node-id     1
                                             ::pcp/requires    {:b {}}
                                             ::pcp/input       {:a {}}
                                             ::pcp/after-nodes #{3}}
-                                         2 {::pc/sym          b
+                                         2 {::pco/name        b
                                             ::pcp/node-id     2
                                             ::pcp/requires    {:b {}}
                                             ::pcp/input       {:a {}}
@@ -1175,7 +1174,7 @@
                                             ::pcp/run-or           #{1 2}
                                             ::pcp/after-nodes      #{4}
                                             ::pcp/source-for-attrs #{:b}}
-                                         4 {::pc/sym               a
+                                         4 {::pco/name             a
                                             ::pcp/node-id          4
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {}
@@ -1187,12 +1186,12 @@
                 ::pcp/root              4
                 ::pcp/index-attrs       {:a 4 :b 3}}
               :cljs
-              '{::pcp/nodes             {1 {::pc/sym          b
+              '{::pcp/nodes             {1 {::pco/name        b
                                             ::pcp/node-id     1
                                             ::pcp/requires    {:b {}}
                                             ::pcp/input       {:a {}}
                                             ::pcp/after-nodes #{3}}
-                                         2 {::pc/sym          b2
+                                         2 {::pco/name        b2
                                             ::pcp/node-id     2
                                             ::pcp/requires    {:b {}}
                                             ::pcp/input       {:a {}}
@@ -1202,7 +1201,7 @@
                                             ::pcp/run-or           #{1 2}
                                             ::pcp/after-nodes      #{4}
                                             ::pcp/source-for-attrs #{:b}}
-                                         4 {::pc/sym               a
+                                         4 {::pco/name             a
                                             ::pcp/node-id          4
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {}
@@ -1216,27 +1215,27 @@
 
   (testing "multiple inputs"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/output [:b]}
-                           {::pc/sym    'c
-                            ::pc/input  #{:a :b}
-                            ::pc/output [:c]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/output [:b]}
+                           {::pco/name   'c
+                            ::pco/input  #{:a :b}
+                            ::pco/output [:c]}]
               ::eql/query [:c]})
-           '{::pcp/nodes             {1 {::pc/sym               c
+           '{::pcp/nodes             {1 {::pco/name             c
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {:b {} :a {}}
                                          ::pcp/after-nodes      #{4}
                                          ::pcp/source-for-attrs #{:c}}
-                                      2 {::pc/sym               b
+                                      2 {::pco/name             b
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:b}
                                          ::pcp/after-nodes      #{4}}
-                                      3 {::pc/sym               a
+                                      3 {::pco/name             a
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {}
@@ -1254,22 +1253,22 @@
 
   (testing "skip resolves that have self dependency"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'c
-                            ::pc/input  #{:a :c}
-                            ::pc/output [:c]}
-                           {::pc/sym    'c2
-                            ::pc/input  #{:a}
-                            ::pc/output [:c]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'c
+                            ::pco/input  #{:a :c}
+                            ::pco/output [:c]}
+                           {::pco/name   'c2
+                            ::pco/input  #{:a}
+                            ::pco/output [:c]}]
               ::eql/query [:c]})
-           '{::pcp/nodes             {1 {::pc/sym               c2
+           '{::pcp/nodes             {1 {::pco/name             c2
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {:a {}}
                                          ::pcp/after-nodes      #{2}
                                          ::pcp/source-for-attrs #{:c}}
-                                      2 {::pc/sym               a
+                                      2 {::pco/name             a
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {}
@@ -1283,34 +1282,34 @@
 
   (testing "multiple inputs with different tail sizes"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}
-                           {::pc/sym    'a1
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/output [:b]}
-                           {::pc/sym    'c
-                            ::pc/input  #{:a :b}
-                            ::pc/output [:c]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}
+                           {::pco/name   'a1
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/output [:b]}
+                           {::pco/name   'c
+                            ::pco/input  #{:a :b}
+                            ::pco/output [:c]}]
               ::eql/query [:c]})
-           '{::pcp/nodes             {1 {::pc/sym               c
+           '{::pcp/nodes             {1 {::pco/name             c
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {:b {} :a {}}
                                          ::pcp/after-nodes      #{6}
                                          ::pcp/source-for-attrs #{:c}}
-                                      2 {::pc/sym               b
+                                      2 {::pco/name             b
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:b}
                                          ::pcp/after-nodes      #{6}}
-                                      3 {::pc/sym          a
+                                      3 {::pco/name        a
                                          ::pcp/node-id     3
                                          ::pcp/requires    {:a {}}
                                          ::pcp/input       {}
                                          ::pcp/after-nodes #{5}}
-                                      4 {::pc/sym          a1
+                                      4 {::pco/name        a1
                                          ::pcp/node-id     4
                                          ::pcp/requires    {:a {}}
                                          ::pcp/input       {}
@@ -1332,42 +1331,42 @@
 
   (testing "multiple calls to same resolver"
     (is (= (compute-run-graph
-             {::resolvers '[{::pc/sym    a
-                             ::pc/input  #{:c}
-                             ::pc/output [:a]}
-                            {::pc/sym    b
-                             ::pc/input  #{:d}
-                             ::pc/output [:b]}
-                            {::pc/sym    cd
-                             ::pc/output [:c :d]}
-                            {::pc/sym    d
-                             ::pc/output [:d]}]
+             {::resolvers '[{::pco/name   a
+                             ::pco/input  #{:c}
+                             ::pco/output [:a]}
+                            {::pco/name   b
+                             ::pco/input  #{:d}
+                             ::pco/output [:b]}
+                            {::pco/name   cd
+                             ::pco/output [:c :d]}
+                            {::pco/name   d
+                             ::pco/output [:d]}]
               ::eql/query [:a :b]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {:c {}}
                                          ::pcp/after-nodes      #{2}
                                          ::pcp/source-for-attrs #{:a}}
-                                      2 {::pc/sym               cd
+                                      2 {::pco/name             cd
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {}
                                          ::pcp/run-next         1
                                          ::pcp/source-for-attrs #{:c}
                                          ::pcp/after-nodes      #{7}}
-                                      3 {::pc/sym               b
+                                      3 {::pco/name             b
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {:d {}}
                                          ::pcp/after-nodes      #{6}
                                          ::pcp/source-for-attrs #{:b}}
-                                      4 {::pc/sym          cd
+                                      4 {::pco/name        cd
                                          ::pcp/node-id     4
                                          ::pcp/requires    {:d {}}
                                          ::pcp/input       {}
                                          ::pcp/after-nodes #{6}}
-                                      5 {::pc/sym          d
+                                      5 {::pco/name        d
                                          ::pcp/node-id     5
                                          ::pcp/requires    {:d {}}
                                          ::pcp/input       {}
@@ -1389,30 +1388,30 @@
 
   (testing "diamond shape deps"
     (is (= (compute-run-graph
-             '{::pc/index-oir {:a {#{} #{a}}
-                               :b {#{:a} #{b}}
-                               :c {#{:a} #{c}}
-                               :d {#{:c :b} #{d}}}
-               ::eql/query    [:d]})
-           '{::pcp/nodes             {1 {::pc/sym               d
+             '{::pci/index-oir {:a {#{} #{a}}
+                                :b {#{:a} #{b}}
+                                :c {#{:a} #{c}}
+                                :d {#{:c :b} #{d}}}
+               ::eql/query     [:d]})
+           '{::pcp/nodes             {1 {::pco/name             d
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:d {}}
                                          ::pcp/input            {:c {} :b {}}
                                          ::pcp/after-nodes      #{5}
                                          ::pcp/source-for-attrs #{:d}}
-                                      2 {::pc/sym               c
+                                      2 {::pco/name             c
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {:a {}}
                                          ::pcp/after-nodes      #{5}
                                          ::pcp/source-for-attrs #{:c}}
-                                      3 {::pc/sym               a
+                                      3 {::pco/name             a
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:a}
                                          ::pcp/run-next         5}
-                                      4 {::pc/sym               b
+                                      4 {::pco/name             b
                                          ::pcp/node-id          4
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {:a {}}
@@ -1431,47 +1430,47 @@
 
   (testing "diamond shape deps with tail"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'z
-                            ::pc/output [:z]}
-                           {::pc/sym    'a
-                            ::pc/input  #{:z}
-                            ::pc/output [:a]}
-                           {::pc/sym    'b
-                            ::pc/input  #{:a}
-                            ::pc/output [:b]}
-                           {::pc/sym    'c
-                            ::pc/input  #{:a}
-                            ::pc/output [:c]}
-                           {::pc/sym    'd
-                            ::pc/input  #{:b :c}
-                            ::pc/output [:d]}]
+             {::resolvers [{::pco/name   'z
+                            ::pco/output [:z]}
+                           {::pco/name   'a
+                            ::pco/input  #{:z}
+                            ::pco/output [:a]}
+                           {::pco/name   'b
+                            ::pco/input  #{:a}
+                            ::pco/output [:b]}
+                           {::pco/name   'c
+                            ::pco/input  #{:a}
+                            ::pco/output [:c]}
+                           {::pco/name   'd
+                            ::pco/input  #{:b :c}
+                            ::pco/output [:d]}]
               ::eql/query [:d]})
-           '{::pcp/nodes             {1 {::pc/sym               d
+           '{::pcp/nodes             {1 {::pco/name             d
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:d {}}
                                          ::pcp/input            {:c {} :b {}}
                                          ::pcp/after-nodes      #{6}
                                          ::pcp/source-for-attrs #{:d}}
-                                      2 {::pc/sym               c
+                                      2 {::pco/name             c
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:c {}}
                                          ::pcp/input            {:a {}}
                                          ::pcp/after-nodes      #{6}
                                          ::pcp/source-for-attrs #{:c}}
-                                      3 {::pc/sym               a
+                                      3 {::pco/name             a
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:a {}}
                                          ::pcp/input            {:z {}}
                                          ::pcp/after-nodes      #{4}
                                          ::pcp/source-for-attrs #{:a}
                                          ::pcp/run-next         6}
-                                      4 {::pc/sym               z
+                                      4 {::pco/name             z
                                          ::pcp/node-id          4
                                          ::pcp/requires         {:z {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:z}
                                          ::pcp/run-next         3}
-                                      5 {::pc/sym               b
+                                      5 {::pco/name             b
                                          ::pcp/node-id          5
                                          ::pcp/requires         {:b {}}
                                          ::pcp/input            {:a {}}
@@ -1491,36 +1490,36 @@
   (testing "deep recurring dependency"
     (is (= (compute-run-graph
              (-> {::eql/query [:release/script :recur-dep]
-                  ::resolvers [{::pc/sym    'id
-                                ::pc/output [:db/id]}
-                               {::pc/sym    'label-type
-                                ::pc/input  #{:db/id}
-                                ::pc/output [:label/type]}
-                               {::pc/sym    'release-script
-                                ::pc/input  #{:db/id}
-                                ::pc/output [:release/script]}
-                               {::pc/sym    'recur-dep
-                                ::pc/input  #{:label/type}
-                                ::pc/output [:recur-dep]}]}))
-           '{::pcp/nodes             {1 {::pc/sym               release-script
+                  ::resolvers [{::pco/name   'id
+                                ::pco/output [:db/id]}
+                               {::pco/name   'label-type
+                                ::pco/input  #{:db/id}
+                                ::pco/output [:label/type]}
+                               {::pco/name   'release-script
+                                ::pco/input  #{:db/id}
+                                ::pco/output [:release/script]}
+                               {::pco/name   'recur-dep
+                                ::pco/input  #{:label/type}
+                                ::pco/output [:recur-dep]}]}))
+           '{::pcp/nodes             {1 {::pco/name             release-script
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:release/script {}}
                                          ::pcp/input            {:db/id {}}
                                          ::pcp/after-nodes      #{5}
                                          ::pcp/source-for-attrs #{:release/script}}
-                                      2 {::pc/sym               id
+                                      2 {::pco/name             id
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:db/id {}}
                                          ::pcp/input            {}
                                          ::pcp/source-for-attrs #{:db/id}
                                          ::pcp/run-next         5}
-                                      3 {::pc/sym               recur-dep
+                                      3 {::pco/name             recur-dep
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:recur-dep {}}
                                          ::pcp/input            {:label/type {}}
                                          ::pcp/after-nodes      #{4}
                                          ::pcp/source-for-attrs #{:recur-dep}}
-                                      4 {::pc/sym               label-type
+                                      4 {::pco/name             label-type
                                          ::pcp/node-id          4
                                          ::pcp/requires         {:label/type {}}
                                          ::pcp/input            {:db/id {}}
@@ -1547,18 +1546,18 @@
     (is (= (compute-run-graph
              (-> {::eql/query          [:name]
                   ::pcp/available-data {:id {}}
-                  ::resolvers          [{::pc/sym    'from-other-id
-                                         ::pc/input  #{:other-id}
-                                         ::pc/output [:id :name :other-id]}
-                                        {::pc/sym    'from-id
-                                         ::pc/input  #{:id}
-                                         ::pc/output [:id :name :other-id]}]}))
-           '{::pcp/nodes             {1 {::pc/sym          from-other-id
+                  ::resolvers          [{::pco/name   'from-other-id
+                                         ::pco/input  #{:other-id}
+                                         ::pco/output [:id :name :other-id]}
+                                        {::pco/name   'from-id
+                                         ::pco/input  #{:id}
+                                         ::pco/output [:id :name :other-id]}]}))
+           '{::pcp/nodes             {1 {::pco/name        from-other-id
                                          ::pcp/node-id     1
                                          ::pcp/requires    {:name {}}
                                          ::pcp/input       {:other-id {}}
                                          ::pcp/after-nodes #{2}}
-                                      2 {::pc/sym               from-id
+                                      2 {::pco/name             from-id
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:other-id {} :name {}}
                                          ::pcp/input            {:id {}}
@@ -1573,27 +1572,27 @@
     (is (= (compute-run-graph
              (-> {::eql/query          [:name]
                   ::pcp/available-data {:id {}}
-                  ::resolvers          [{::pc/sym    'from-id
-                                         ::pc/input  #{:id}
-                                         ::pc/output [:id :name :other-id]}
-                                        {::pc/sym    'from-other-id
-                                         ::pc/input  #{:other-id}
-                                         ::pc/output [:other-id2]}
-                                        {::pc/sym    'from-other-id2
-                                         ::pc/input  #{:other-id2}
-                                         ::pc/output [:id :name :other]}]}))
-           '{::pcp/nodes             {1 {::pc/sym               from-id
+                  ::resolvers          [{::pco/name   'from-id
+                                         ::pco/input  #{:id}
+                                         ::pco/output [:id :name :other-id]}
+                                        {::pco/name   'from-other-id
+                                         ::pco/input  #{:other-id}
+                                         ::pco/output [:other-id2]}
+                                        {::pco/name   'from-other-id2
+                                         ::pco/input  #{:other-id2}
+                                         ::pco/output [:id :name :other]}]}))
+           '{::pcp/nodes             {1 {::pco/name             from-id
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:name {} :other-id {}}
                                          ::pcp/input            {:id {}}
                                          ::pcp/run-next         3
                                          ::pcp/source-for-attrs #{:name :other-id}}
-                                      2 {::pc/sym          from-other-id2
+                                      2 {::pco/name        from-other-id2
                                          ::pcp/node-id     2
                                          ::pcp/requires    {:name {}}
                                          ::pcp/input       {:other-id2 {}}
                                          ::pcp/after-nodes #{3}}
-                                      3 {::pc/sym               from-other-id
+                                      3 {::pco/name             from-other-id
                                          ::pcp/node-id          3
                                          ::pcp/requires         {:other-id2 {}}
                                          ::pcp/input            {:other-id {}}
@@ -1612,29 +1611,29 @@
       (is (= (compute-run-graph
                (-> {::eql/query          [:name :other]
                     ::pcp/available-data {:id {}}
-                    ::resolvers          [{::pc/sym    'from-id
-                                           ::pc/input  #{:id}
-                                           ::pc/output [:id :name :other-id]}
-                                          {::pc/sym    'from-other-id
-                                           ::pc/input  #{:other-id}
-                                           ::pc/output [:other-id2]}
-                                          {::pc/sym    'from-other-id2
-                                           ::pc/input  #{:other-id2}
-                                           ::pc/output [:id :name :other]}]}))
-             '{::pcp/nodes             {1 {::pc/sym               from-id
+                    ::resolvers          [{::pco/name   'from-id
+                                           ::pco/input  #{:id}
+                                           ::pco/output [:id :name :other-id]}
+                                          {::pco/name   'from-other-id
+                                           ::pco/input  #{:other-id}
+                                           ::pco/output [:other-id2]}
+                                          {::pco/name   'from-other-id2
+                                           ::pco/input  #{:other-id2}
+                                           ::pco/output [:id :name :other]}]}))
+             '{::pcp/nodes             {1 {::pco/name             from-id
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:name {} :other-id {}}
                                            ::pcp/input            {:id {}}
                                            ::pcp/run-next         3
                                            ::pcp/source-for-attrs #{:name :other-id}}
-                                        3 {::pc/sym               from-other-id
+                                        3 {::pco/name             from-other-id
                                            ::pcp/node-id          3
                                            ::pcp/requires         {:other-id2 {}}
                                            ::pcp/input            {:other-id {}}
                                            ::pcp/after-nodes      #{1}
                                            ::pcp/source-for-attrs #{:other-id2}
                                            ::pcp/run-next         5}
-                                        5 {::pc/sym               from-other-id2
+                                        5 {::pco/name             from-other-id2
                                            ::pcp/node-id          5
                                            ::pcp/requires         {:other {} :name {}}
                                            ::pcp/input            {:other-id2 {}}
@@ -1656,10 +1655,10 @@
 
   (testing "plan works"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}]
               ::eql/query '[(:a {:x "y"})]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/params           {:x "y"}
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {}}
@@ -1674,10 +1673,10 @@
 (deftest compute-run-graph-params-test
   (testing "add params to resolver call"
     (is (= (compute-run-graph
-             {::resolvers [{::pc/sym    'a
-                            ::pc/output [:a]}]
+             {::resolvers [{::pco/name   'a
+                            ::pco/output [:a]}]
               ::eql/query '[(:a {:x "y"})]})
-           '{::pcp/nodes             {1 {::pc/sym               a
+           '{::pcp/nodes             {1 {::pco/name             a
                                          ::pcp/params           {:x "y"}
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:a {}}
@@ -1692,10 +1691,10 @@
   (testing "params while collapsing"
     (testing "params come from first node"
       (is (= (compute-run-graph
-               {::pc/index-oir '{:a {#{} #{a}}
-                                 :b {#{} #{a}}}
-                ::eql/query    '[(:a {:x 1}) :b]})
-             '{::pcp/nodes             {1 {::pc/sym               a
+               {::pci/index-oir '{:a {#{} #{a}}
+                                  :b {#{} #{a}}}
+                ::eql/query     '[(:a {:x 1}) :b]})
+             '{::pcp/nodes             {1 {::pco/name             a
                                            ::pcp/params           {:x 1}
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {} :b {}}
@@ -1709,10 +1708,10 @@
 
     (testing "getting params from the later node"
       (is (= (compute-run-graph
-               {::pc/index-oir '{:a {#{} #{a}}
-                                 :b {#{} #{a}}}
-                ::eql/query    '[:a (:b {:x 1})]})
-             '{::pcp/nodes             {1 {::pc/sym               a
+               {::pci/index-oir '{:a {#{} #{a}}
+                                  :b {#{} #{a}}}
+                ::eql/query     '[:a (:b {:x 1})]})
+             '{::pcp/nodes             {1 {::pco/name             a
                                            ::pcp/params           {:x 1}
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {} :b {}}
@@ -1726,10 +1725,10 @@
 
     (testing "merging params"
       (is (= (compute-run-graph
-               {::pc/index-oir '{:a {#{} #{a}}
-                                 :b {#{} #{a}}}
-                ::eql/query    '[(:a {:x 1}) (:b {:y 2})]})
-             '{::pcp/nodes             {1 {::pc/sym               a
+               {::pci/index-oir '{:a {#{} #{a}}
+                                  :b {#{} #{a}}}
+                ::eql/query     '[(:a {:x 1}) (:b {:y 2})]})
+             '{::pcp/nodes             {1 {::pco/name             a
                                            ::pcp/params           {:x 1
                                                                    :y 2}
                                            ::pcp/node-id          1
@@ -1744,10 +1743,10 @@
 
     (testing "conflicting params"
       (is (= (compute-run-graph
-               {::pc/index-oir '{:a {#{} #{a}}
-                                 :b {#{} #{a}}}
-                ::eql/query    '[(:a {:x 1}) (:b {:x 2})]})
-             '{::pcp/nodes             {1 {::pc/sym               a
+               {::pci/index-oir '{:a {#{} #{a}}
+                                  :b {#{} #{a}}}
+                ::eql/query     '[(:a {:x 1}) (:b {:x 2})]})
+             '{::pcp/nodes             {1 {::pco/name             a
                                            ::pcp/params           {:x 2}
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {} :b {}}
@@ -1764,10 +1763,10 @@
 
     (testing "its not a conflict when the values are the same."
       (is (= (compute-run-graph
-               {::pc/index-oir '{:a {#{} #{a}}
-                                 :b {#{} #{a}}}
-                ::eql/query    '[(:a {:x 1}) (:b {:x 1})]})
-             '{::pcp/nodes             {1 {::pc/sym               a
+               {::pci/index-oir '{:a {#{} #{a}}
+                                  :b {#{} #{a}}}
+                ::eql/query     '[(:a {:x 1}) (:b {:x 1})]})
+             '{::pcp/nodes             {1 {::pco/name             a
                                            ::pcp/params           {:x 1}
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {} :b {}}
@@ -1782,12 +1781,12 @@
 (deftest compute-run-graph-dynamic-resolvers-test
   (testing "unreachable"
     (is (= (compute-run-graph
-             {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                       ::pc/cache?            false
-                                                       ::pc/dynamic-resolver? true
-                                                       ::pc/resolve           (fn [_ _])}}
-              ::pc/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
-              ::eql/query          [:release/script]})
+             {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                        ::pco/cache?           false
+                                                        ::pco/dynamic-resolver? true
+                                                        ::pco/resolve          (fn [_ _])}}
+              ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
+              ::eql/query           [:release/script]})
            {::pcp/nodes             {}
             ::pcp/index-syms        {}
             ::pcp/unreachable-syms  #{}
@@ -1795,15 +1794,15 @@
 
   (testing "simple dynamic call"
     (is (= (compute-run-graph
-             {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                       ::pc/cache?            false
-                                                       ::pc/dynamic-resolver? true
-                                                       ::pc/resolve           (fn [_ _])}}
-              ::pc/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
-              ::pcp/available-data {:db/id {}}
-              ::eql/query          [:release/script]})
+             {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                        ::pco/cache?           false
+                                                        ::pco/dynamic-resolver? true
+                                                        ::pco/resolve          (fn [_ _])}}
+              ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
+              ::pcp/available-data  {:db/id {}}
+              ::eql/query           [:release/script]})
 
-           {::pcp/nodes             {1 {::pc/sym               'dynamic-resolver
+           {::pcp/nodes             {1 {::pco/name             'dynamic-resolver
                                         ::pcp/node-id          1
                                         ::pcp/requires         {:release/script {}}
                                         ::pcp/input            {:db/id {}}
@@ -1817,15 +1816,15 @@
 
     (testing "retain params"
       (is (= (compute-run-graph
-               {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                         ::pc/cache?            false
-                                                         ::pc/dynamic-resolver? true
-                                                         ::pc/resolve           (fn [_ _])}}
-                ::pc/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
-                ::pcp/available-data {:db/id {}}
-                ::eql/query          '[(:release/script {:foo "bar"})]})
+               {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                          ::pco/cache?           false
+                                                          ::pco/dynamic-resolver? true
+                                                          ::pco/resolve          (fn [_ _])}}
+                ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
+                ::pcp/available-data  {:db/id {}}
+                ::eql/query           '[(:release/script {:foo "bar"})]})
 
-             {::pcp/nodes             {1 {::pc/sym               'dynamic-resolver
+             {::pcp/nodes             {1 {::pco/name             'dynamic-resolver
                                           ::pcp/node-id          1
                                           ::pcp/requires         {:release/script {}}
                                           ::pcp/input            {:db/id {}}
@@ -1844,16 +1843,16 @@
 
   (testing "optimize multiple calls"
     (is (= (compute-run-graph
-             (-> {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                           ::pc/cache?            false
-                                                           ::pc/dynamic-resolver? true
-                                                           ::pc/resolve           (fn [_ _])}}
-                  ::pc/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
-                                        :label/type     {#{:db/id} #{'dynamic-resolver}}}
-                  ::eql/query          [:release/script :label/type]
-                  ::pcp/available-data {:db/id {}}}))
+             (-> {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                            ::pco/cache?           false
+                                                            ::pco/dynamic-resolver? true
+                                                            ::pco/resolve          (fn [_ _])}}
+                  ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
+                                         :label/type     {#{:db/id} #{'dynamic-resolver}}}
+                  ::eql/query           [:release/script :label/type]
+                  ::pcp/available-data  {:db/id {}}}))
 
-           {::pcp/nodes             {1 {::pc/sym               'dynamic-resolver
+           {::pcp/nodes             {1 {::pco/name             'dynamic-resolver
                                         ::pcp/node-id          1
                                         ::pcp/requires         {:release/script {} :label/type {}}
                                         ::pcp/input            {:db/id {}}
@@ -1867,23 +1866,23 @@
 
   (testing "optimized with dependencies"
     (is (= (compute-run-graph
-             (-> {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                           ::pc/cache?            false
-                                                           ::pc/dynamic-resolver? true
-                                                           ::pc/resolve           (fn [_ _])}}
-                  ::pc/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
-                                        :label/type     {#{:db/id} #{'dynamic-resolver}}}
-                  ::eql/query          [:release/script :label/type]
-                  ::resolvers          [{::pc/sym    'id
-                                         ::pc/output [:db/id]}]}))
+             (-> {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                            ::pco/cache?           false
+                                                            ::pco/dynamic-resolver? true
+                                                            ::pco/resolve          (fn [_ _])}}
+                  ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
+                                         :label/type     {#{:db/id} #{'dynamic-resolver}}}
+                  ::eql/query           [:release/script :label/type]
+                  ::resolvers           [{::pco/name   'id
+                                          ::pco/output [:db/id]}]}))
 
-           {::pcp/nodes             {2 {::pc/sym               'id
+           {::pcp/nodes             {2 {::pco/name             'id
                                         ::pcp/node-id          2
                                         ::pcp/requires         {:db/id {}}
                                         ::pcp/input            {}
                                         ::pcp/source-for-attrs #{:db/id}
                                         ::pcp/run-next         3}
-                                     3 {::pc/sym               'dynamic-resolver
+                                     3 {::pco/name             'dynamic-resolver
                                         ::pcp/node-id          3
                                         ::pcp/requires         {:label/type {} :release/script {}}
                                         ::pcp/input            {:db/id {}}
@@ -1898,15 +1897,15 @@
 
   (testing "chained calls"
     (is (= (compute-run-graph
-             (-> {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                           ::pc/cache?            false
-                                                           ::pc/dynamic-resolver? true
-                                                           ::pc/resolve           (fn [_ _])}}
-                  ::pc/index-oir       {:a {#{} #{'dynamic-resolver}}
-                                        :b {#{:a} #{'dynamic-resolver}}}
-                  ::eql/query          [:b]}))
+             (-> {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                            ::pco/cache?           false
+                                                            ::pco/dynamic-resolver? true
+                                                            ::pco/resolve          (fn [_ _])}}
+                  ::pci/index-oir       {:a {#{} #{'dynamic-resolver}}
+                                         :b {#{:a} #{'dynamic-resolver}}}
+                  ::eql/query           [:b]}))
 
-           {::pcp/nodes             {2 {::pc/sym               'dynamic-resolver
+           {::pcp/nodes             {2 {::pco/name             'dynamic-resolver
                                         ::pcp/node-id          2
                                         ::pcp/requires         {:a {} :b {}}
                                         ::pcp/input            {}
@@ -1919,16 +1918,16 @@
             ::pcp/index-attrs       {:a 2 :b 2}}))
 
     (is (= (compute-run-graph
-             (-> {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                           ::pc/cache?            false
-                                                           ::pc/dynamic-resolver? true
-                                                           ::pc/resolve           (fn [_ _])}}
-                  ::pc/index-oir       {:a {#{} #{'dynamic-resolver}}
-                                        :b {#{:a} #{'dynamic-resolver}}
-                                        :c {#{:b} #{'dynamic-resolver}}}
-                  ::eql/query          [:c]}))
+             (-> {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                            ::pco/cache?           false
+                                                            ::pco/dynamic-resolver? true
+                                                            ::pco/resolve          (fn [_ _])}}
+                  ::pci/index-oir       {:a {#{} #{'dynamic-resolver}}
+                                         :b {#{:a} #{'dynamic-resolver}}
+                                         :c {#{:b} #{'dynamic-resolver}}}
+                  ::eql/query           [:c]}))
 
-           {::pcp/nodes             {3 {::pc/sym               'dynamic-resolver
+           {::pcp/nodes             {3 {::pco/name             'dynamic-resolver
                                         ::pcp/node-id          3
                                         ::pcp/requires         {:a {} :b {} :c {}}
                                         ::pcp/input            {}
@@ -1941,24 +1940,24 @@
             ::pcp/index-attrs       {:a 3 :b 3 :c 3}}))
 
     (is (= (compute-run-graph
-             (-> {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                           ::pc/cache?            false
-                                                           ::pc/dynamic-resolver? true
-                                                           ::pc/resolve           (fn [_ _])}}
-                  ::resolvers          [{::pc/sym    'z
-                                         ::pc/output [:z]}]
-                  ::pc/index-oir       {:a {#{:z} #{'dynamic-resolver}}
-                                        :b {#{:a} #{'dynamic-resolver}}}
-                  ::eql/query          [:b]}))
+             (-> {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                            ::pco/cache?           false
+                                                            ::pco/dynamic-resolver? true
+                                                            ::pco/resolve          (fn [_ _])}}
+                  ::resolvers           [{::pco/name   'z
+                                          ::pco/output [:z]}]
+                  ::pci/index-oir       {:a {#{:z} #{'dynamic-resolver}}
+                                         :b {#{:a} #{'dynamic-resolver}}}
+                  ::eql/query           [:b]}))
 
-           {::pcp/nodes             {2 {::pc/sym               'dynamic-resolver
+           {::pcp/nodes             {2 {::pco/name             'dynamic-resolver
                                         ::pcp/node-id          2
                                         ::pcp/requires         {:a {} :b {}}
                                         ::pcp/input            {:z {}}
                                         ::pcp/after-nodes      #{3}
                                         ::pcp/source-for-attrs #{:b :a}
                                         ::pcp/foreign-ast      (eql/query->ast [:a :b])}
-                                     3 {::pc/sym               'z
+                                     3 {::pco/name             'z
                                         ::pcp/node-id          3
                                         ::pcp/requires         {:z {}}
                                         ::pcp/input            {}
@@ -1972,24 +1971,24 @@
 
     (testing "chain with dynamic at start"
       (is (= (compute-run-graph
-               (-> {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                             ::pc/cache?            false
-                                                             ::pc/dynamic-resolver? true
-                                                             ::pc/resolve           (fn [_ _])}}
-                    ::resolvers          [{::pc/sym    'z
-                                           ::pc/input  #{:b}
-                                           ::pc/output [:z]}]
-                    ::pc/index-oir       {:a {#{} #{'dynamic-resolver}}
-                                          :b {#{:a} #{'dynamic-resolver}}}
-                    ::eql/query          [:z]}))
+               (-> {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                              ::pco/cache?           false
+                                                              ::pco/dynamic-resolver? true
+                                                              ::pco/resolve          (fn [_ _])}}
+                    ::resolvers           [{::pco/name   'z
+                                            ::pco/input  #{:b}
+                                            ::pco/output [:z]}]
+                    ::pci/index-oir       {:a {#{} #{'dynamic-resolver}}
+                                           :b {#{:a} #{'dynamic-resolver}}}
+                    ::eql/query           [:z]}))
 
-             {::pcp/nodes             {1 {::pc/sym               'z
+             {::pcp/nodes             {1 {::pco/name             'z
                                           ::pcp/node-id          1
                                           ::pcp/requires         {:z {}}
                                           ::pcp/input            {:b {}}
                                           ::pcp/after-nodes      #{3}
                                           ::pcp/source-for-attrs #{:z}}
-                                       3 {::pc/sym               'dynamic-resolver
+                                       3 {::pco/name             'dynamic-resolver
                                           ::pcp/node-id          3
                                           ::pcp/requires         {:a {} :b {}}
                                           ::pcp/input            {}
@@ -2004,16 +2003,16 @@
 
   (testing "multiple dependencies on dynamic resolver"
     (is (= (compute-run-graph
-             (-> {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                           ::pc/cache?            false
-                                                           ::pc/dynamic-resolver? true
-                                                           ::pc/resolve           (fn [_ _])}}
-                  ::pc/index-oir       {:a {#{:b :c} #{'dynamic-resolver}}
-                                        :b {#{} #{'dynamic-resolver}}
-                                        :c {#{} #{'dynamic-resolver}}}
-                  ::eql/query          [:a]}))
+             (-> {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                            ::pco/cache?           false
+                                                            ::pco/dynamic-resolver? true
+                                                            ::pco/resolve          (fn [_ _])}}
+                  ::pci/index-oir       {:a {#{:b :c} #{'dynamic-resolver}}
+                                         :b {#{} #{'dynamic-resolver}}
+                                         :c {#{} #{'dynamic-resolver}}}
+                  ::eql/query           [:a]}))
 
-           {::pcp/nodes             {2 {::pc/sym               'dynamic-resolver
+           {::pcp/nodes             {2 {::pco/name             'dynamic-resolver
                                         ::pcp/node-id          2
                                         ::pcp/requires         {:c {} :b {} :a {}}
                                         ::pcp/input            {}
@@ -2027,32 +2026,32 @@
 
   (testing "multiple calls to dynamic resolver"
     (is (= (compute-run-graph
-             (-> {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                           ::pc/cache?            false
-                                                           ::pc/dynamic-resolver? true
-                                                           ::pc/resolve           (fn [_ _])}}
-                  ::resolvers          [{::pc/sym    'b
-                                         ::pc/input  #{:a}
-                                         ::pc/output [:b]}]
-                  ::pc/index-oir       {:a {#{} #{'dynamic-resolver}}
-                                        :c {#{:b} #{'dynamic-resolver}}}
-                  ::eql/query          [:c]}))
+             (-> {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                            ::pco/cache?           false
+                                                            ::pco/dynamic-resolver? true
+                                                            ::pco/resolve          (fn [_ _])}}
+                  ::resolvers           [{::pco/name   'b
+                                          ::pco/input  #{:a}
+                                          ::pco/output [:b]}]
+                  ::pci/index-oir       {:a {#{} #{'dynamic-resolver}}
+                                         :c {#{:b} #{'dynamic-resolver}}}
+                  ::eql/query           [:c]}))
 
-           {::pcp/nodes             {1 {::pc/sym               'dynamic-resolver
+           {::pcp/nodes             {1 {::pco/name             'dynamic-resolver
                                         ::pcp/node-id          1
                                         ::pcp/requires         {:c {}}
                                         ::pcp/input            {:b {}}
                                         ::pcp/after-nodes      #{2}
                                         ::pcp/source-for-attrs #{:c}
                                         ::pcp/foreign-ast      (eql/query->ast [:c])}
-                                     2 {::pc/sym               'b
+                                     2 {::pco/name             'b
                                         ::pcp/node-id          2
                                         ::pcp/requires         {:b {}}
                                         ::pcp/input            {:a {}}
                                         ::pcp/run-next         1
                                         ::pcp/after-nodes      #{3}
                                         ::pcp/source-for-attrs #{:b}}
-                                     3 {::pc/sym               'dynamic-resolver
+                                     3 {::pco/name             'dynamic-resolver
                                         ::pcp/node-id          3
                                         ::pcp/requires         {:a {}}
                                         ::pcp/input            {}
@@ -2067,32 +2066,32 @@
 
   (testing "inner repeated dependencies"
     (is (= (compute-run-graph
-             (-> {::pc/index-resolvers {'dynamic-resolver {::pc/sym               'dynamic-resolver
-                                                           ::pc/cache?            false
-                                                           ::pc/dynamic-resolver? true
-                                                           ::pc/resolve           (fn [_ _])}}
-                  ::pc/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
-                                        :label/type     {#{:db/id} #{'dynamic-resolver}}}
-                  ::eql/query          [:release/script :complex]
-                  ::resolvers          [{::pc/sym    'id
-                                         ::pc/output [:db/id]}
-                                        {::pc/sym    'complex
-                                         ::pc/input  #{:db/id :label/type}
-                                         ::pc/output [:complex]}]}))
+             (-> {::pci/index-resolvers {'dynamic-resolver {::pco/name             'dynamic-resolver
+                                                            ::pco/cache?           false
+                                                            ::pco/dynamic-resolver? true
+                                                            ::pco/resolve          (fn [_ _])}}
+                  ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
+                                         :label/type     {#{:db/id} #{'dynamic-resolver}}}
+                  ::eql/query           [:release/script :complex]
+                  ::resolvers           [{::pco/name   'id
+                                          ::pco/output [:db/id]}
+                                         {::pco/name   'complex
+                                          ::pco/input  #{:db/id :label/type}
+                                          ::pco/output [:complex]}]}))
 
-           {::pcp/nodes             {2 {::pc/sym               'id
+           {::pcp/nodes             {2 {::pco/name             'id
                                         ::pcp/node-id          2
                                         ::pcp/requires         {:db/id {}}
                                         ::pcp/input            {}
                                         ::pcp/source-for-attrs #{:db/id}
                                         ::pcp/run-next         4}
-                                     3 {::pc/sym               'complex
+                                     3 {::pco/name             'complex
                                         ::pcp/node-id          3
                                         ::pcp/requires         {:complex {}}
                                         ::pcp/input            {:label/type {} :db/id {}}
                                         ::pcp/after-nodes      #{4}
                                         ::pcp/source-for-attrs #{:complex}}
-                                     4 {::pc/sym               'dynamic-resolver
+                                     4 {::pco/name             'dynamic-resolver
                                         ::pcp/node-id          4
                                         ::pcp/requires         {:label/type {} :release/script {}}
                                         ::pcp/input            {:db/id {}}
@@ -2111,23 +2110,23 @@
 
   (testing "merging long chains"
     (is (= (compute-run-graph
-             (-> {::dynamics  {'dyn [{::pc/sym    'a
-                                      ::pc/output [:a]}
-                                     {::pc/sym    'a1
-                                      ::pc/input  #{:c}
-                                      ::pc/output [:a]}
-                                     {::pc/sym    'a2
-                                      ::pc/input  #{:d}
-                                      ::pc/output [:a]}
-                                     {::pc/sym    'b
-                                      ::pc/output [:b]}
-                                     {::pc/sym    'b1
-                                      ::pc/input  #{:c}
-                                      ::pc/output [:b]}
-                                     {::pc/sym    'c
-                                      ::pc/output [:c :d]}]}
+             (-> {::dynamics  {'dyn [{::pco/name   'a
+                                      ::pco/output [:a]}
+                                     {::pco/name   'a1
+                                      ::pco/input  #{:c}
+                                      ::pco/output [:a]}
+                                     {::pco/name   'a2
+                                      ::pco/input  #{:d}
+                                      ::pco/output [:a]}
+                                     {::pco/name   'b
+                                      ::pco/output [:b]}
+                                     {::pco/name   'b1
+                                      ::pco/input  #{:c}
+                                      ::pco/output [:b]}
+                                     {::pco/name   'c
+                                      ::pco/output [:c :d]}]}
                   ::eql/query [:a :b]}))
-           {::pcp/nodes             {6 {::pc/sym               'dyn
+           {::pcp/nodes             {6 {::pco/name             'dyn
                                         ::pcp/node-id          6
                                         ::pcp/requires         {:b {} :a {} :c {} :d {}}
                                         ::pcp/input            {}
@@ -2142,31 +2141,31 @@
 
   (testing "dynamic dependency input on local dependency and dynamic dependency"
     (is (= (compute-run-graph
-             (-> {::pc/index-resolvers {'dyn {::pc/sym               'dyn
-                                              ::pc/cache?            false
-                                              ::pc/dynamic-resolver? true
-                                              ::pc/resolve           (fn [_ _])}}
-                  ::pc/index-oir       {:d1 {#{:d2 :l1} #{'dyn}}
-                                        :d2 {#{} #{'dyn}}}
-                  ::resolvers          [{::pc/sym    'l1
-                                         ::pc/output [:l1]}]
-                  ::eql/query          [:d1]}))
+             (-> {::pci/index-resolvers {'dyn {::pco/name             'dyn
+                                               ::pco/cache?           false
+                                               ::pco/dynamic-resolver? true
+                                               ::pco/resolve          (fn [_ _])}}
+                  ::pci/index-oir       {:d1 {#{:d2 :l1} #{'dyn}}
+                                         :d2 {#{} #{'dyn}}}
+                  ::resolvers           [{::pco/name   'l1
+                                          ::pco/output [:l1]}]
+                  ::eql/query           [:d1]}))
 
-           {::pcp/nodes             {1 {::pc/sym               'dyn
+           {::pcp/nodes             {1 {::pco/name             'dyn
                                         ::pcp/node-id          1
                                         ::pcp/requires         {:d1 {}}
                                         ::pcp/input            {:d2 {} :l1 {}}
                                         ::pcp/after-nodes      #{4}
                                         ::pcp/source-for-attrs #{:d1}
                                         ::pcp/foreign-ast      (eql/query->ast [:d1])}
-                                     2 {::pc/sym               'dyn
+                                     2 {::pco/name             'dyn
                                         ::pcp/node-id          2
                                         ::pcp/requires         {:d2 {}}
                                         ::pcp/input            {}
                                         ::pcp/source-for-attrs #{:d2}
                                         ::pcp/after-nodes      #{4}
                                         ::pcp/foreign-ast      (eql/query->ast [:d2])}
-                                     3 {::pc/sym               'l1
+                                     3 {::pco/name             'l1
                                         ::pcp/node-id          3
                                         ::pcp/requires         {:l1 {}}
                                         ::pcp/input            {}
@@ -2185,19 +2184,19 @@
 (deftest compute-run-graph-dynamic-nested-queries-test
   (testing "simple nested query"
     (is (= (compute-run-graph
-             {::pc/index-resolvers {'dyn {::pc/sym               'dyn
-                                          ::pc/cache?            false
-                                          ::pc/dynamic-resolver? true
-                                          ::pc/resolve           (fn [_ _])}
-                                    'a   {::pc/sym         'a
-                                          ::pc/dynamic-sym 'dyn
-                                          ::pc/output      [{:a [:b :c]}]
-                                          ::pc/provides    {:a {:b {}
-                                                                :c {}}}
-                                          ::pc/resolve     (fn [_ _])}}
-              ::pc/index-oir       {:a {#{} #{'a}}}
-              ::eql/query          [{:a [:b]}]})
-           {::pcp/nodes             {1 {::pc/sym               'dyn
+             {::pci/index-resolvers {'dyn {::pco/name             'dyn
+                                           ::pco/cache?           false
+                                           ::pco/dynamic-resolver? true
+                                           ::pco/resolve          (fn [_ _])}
+                                     'a   {::pco/name       'a
+                                           ::pco/dynamic-name 'dyn
+                                           ::pco/output     [{:a [:b :c]}]
+                                           ::pco/provides    {:a {:b {}
+                                                                 :c {}}}
+                                           ::pco/resolve    (fn [_ _])}}
+              ::pci/index-oir       {:a {#{} #{'a}}}
+              ::eql/query           [{:a [:b]}]})
+           {::pcp/nodes             {1 {::pco/name             'dyn
                                         ::pcp/node-id          1
                                         ::pcp/requires         {:a {:b {}}}
                                         ::pcp/input            {}
@@ -2212,20 +2211,20 @@
 
   (testing "nested dependency"
     (is (= (compute-run-graph
-             {::pc/index-resolvers {'dyn {::pc/sym               'dyn
-                                          ::pc/cache?            false
-                                          ::pc/dynamic-resolver? true
-                                          ::pc/resolve           (fn [_ _])}
-                                    'a   {::pc/sym         'a
-                                          ::pc/dynamic-sym 'dyn
-                                          ::pc/output      [{:a [:b]}]
-                                          ::pc/resolve     (fn [_ _])}}
-              ::pc/index-oir       {:a {#{} #{'a}}}
-              ::resolvers          [{::pc/sym    'c
-                                     ::pc/input  #{:b}
-                                     ::pc/output [:c]}]
-              ::eql/query          [{:a [:c]}]})
-           {::pcp/nodes             {1 {::pc/sym               'dyn
+             {::pci/index-resolvers {'dyn {::pco/name             'dyn
+                                           ::pco/cache?           false
+                                           ::pco/dynamic-resolver? true
+                                           ::pco/resolve          (fn [_ _])}
+                                     'a   {::pco/name       'a
+                                           ::pco/dynamic-name 'dyn
+                                           ::pco/output     [{:a [:b]}]
+                                           ::pco/resolve    (fn [_ _])}}
+              ::pci/index-oir       {:a {#{} #{'a}}}
+              ::resolvers           [{::pco/name   'c
+                                      ::pco/input  #{:b}
+                                      ::pco/output [:c]}]
+              ::eql/query           [{:a [:c]}]})
+           {::pcp/nodes             {1 {::pco/name             'dyn
                                         ::pcp/node-id          1
                                         ::pcp/requires         {:a {:b {}}}
                                         ::pcp/input            {}
@@ -2240,36 +2239,34 @@
 
   (testing "collapse dynamic dependencies when they are from the same dynamic resolver"
     (is (= (compute-run-graph
-             {::pc/index-oir       '{:local     {#{:dynamic-1} #{dynamic-1->local}}
-                                     :dynamic-1 {#{} #{dynamic-constant}}
-                                     :dynamic-2 {#{:dynamic-1} #{dynamic-1->dynamic-2}}}
-              ::pc/index-resolvers '{dynamic-constant     {::pc/sym         dynamic-constant
-                                                           ::pc/input       #{}
-                                                           ::pc/output      [:dynamic-1]
-                                                           ::pc/provides    {:dynamic-1 {}}
-                                                           ::pc/dynamic-sym dynamic-parser-42276}
-                                     dynamic-1->local     {::pc/sym      dynamic-1->local
-                                                           ::pc/input    #{:dynamic-1}
-                                                           ::pc/provides {:local {}}
-                                                           ::pc/alias?   true
-                                                           ::pc/output   [:local]}
-                                     dynamic-1->dynamic-2 {::pc/sym         dynamic-1->dynamic-2
-                                                           ::pc/input       #{:dynamic-1}
-                                                           ::pc/provides    {:dynamic-2 {}}
-                                                           ::pc/alias?      true
-                                                           ::pc/output      [:dynamic-2]
-                                                           ::pc/dynamic-sym dynamic-parser-42276}
-                                     dynamic-parser-42276 {::pc/sym               dynamic-parser-42276
-                                                           ::pc/cache?            false
-                                                           ::pc/dynamic-resolver? true}}
-              ::eql/query          [:local :dynamic-2]})
-           '{::pcp/nodes             {1 {::pc/sym               dynamic-1->local
+             {::pci/index-oir       '{:local     {#{:dynamic-1} #{dynamic-1->local}}
+                                      :dynamic-1 {#{} #{dynamic-constant}}
+                                      :dynamic-2 {#{:dynamic-1} #{dynamic-1->dynamic-2}}}
+              ::pci/index-resolvers '{dynamic-constant     {::pco/name       dynamic-constant
+                                                            ::pco/input      #{}
+                                                            ::pco/output     [:dynamic-1]
+                                                            ::pco/provides    {:dynamic-1 {}}
+                                                            ::pco/dynamic-name dynamic-parser-42276}
+                                      dynamic-1->local     {::pco/name    dynamic-1->local
+                                                            ::pco/input   #{:dynamic-1}
+                                                            ::pco/provides {:local {}}
+                                                            ::pco/output  [:local]}
+                                      dynamic-1->dynamic-2 {::pco/name       dynamic-1->dynamic-2
+                                                            ::pco/input      #{:dynamic-1}
+                                                            ::pco/provides    {:dynamic-2 {}}
+                                                            ::pco/output     [:dynamic-2]
+                                                            ::pco/dynamic-name dynamic-parser-42276}
+                                      dynamic-parser-42276 {::pco/name             dynamic-parser-42276
+                                                            ::pco/cache?           false
+                                                            ::pco/dynamic-resolver? true}}
+              ::eql/query           [:local :dynamic-2]})
+           '{::pcp/nodes             {1 {::pco/name             dynamic-1->local
                                          ::pcp/node-id          1
                                          ::pcp/requires         {:local {}}
                                          ::pcp/input            {:dynamic-1 {}}
                                          ::pcp/source-for-attrs #{:local}
                                          ::pcp/after-nodes      #{2}}
-                                      2 {::pc/sym               dynamic-parser-42276
+                                      2 {::pco/name             dynamic-parser-42276
                                          ::pcp/node-id          2
                                          ::pcp/requires         {:dynamic-1 {}
                                                                  :dynamic-2 {}}
@@ -2297,20 +2294,20 @@
   (testing "union queries"
     (testing "resolver has simple output"
       (is (= (compute-run-graph
-               {::pc/index-resolvers {'dyn {::pc/sym               'dyn
-                                            ::pc/cache?            false
-                                            ::pc/dynamic-resolver? true
-                                            ::pc/resolve           (fn [_ _])}
-                                      'a   {::pc/sym         'a
-                                            ::pc/dynamic-sym 'dyn
-                                            ::pc/output      [{:a [:b :c]}]
-                                            ::pc/provides    {:a {:b {}
-                                                                  :c {}}}
-                                            ::pc/resolve     (fn [_ _])}}
-                ::pc/index-oir       {:a {#{} #{'a}}}
-                ::eql/query          [{:a {:b [:b]
-                                           :c [:c]}}]})
-             {::pcp/nodes             {1 {::pc/sym               'dyn
+               {::pci/index-resolvers {'dyn {::pco/name             'dyn
+                                             ::pco/cache?           false
+                                             ::pco/dynamic-resolver? true
+                                             ::pco/resolve          (fn [_ _])}
+                                       'a   {::pco/name       'a
+                                             ::pco/dynamic-name 'dyn
+                                             ::pco/output     [{:a [:b :c]}]
+                                             ::pco/provides    {:a {:b {}
+                                                                   :c {}}}
+                                             ::pco/resolve    (fn [_ _])}}
+                ::pci/index-oir       {:a {#{} #{'a}}}
+                ::eql/query           [{:a {:b [:b]
+                                            :c [:c]}}]})
+             {::pcp/nodes             {1 {::pco/name             'dyn
                                           ::pcp/node-id          1
                                           ::pcp/requires         {:a {:b {}
                                                                       :c {}}}
@@ -2324,52 +2321,51 @@
               ::pcp/root              1
               ::pcp/index-attrs       {:a 1}})))
 
-    #_
-        (testing "resolver has union output"
-          (is (= (compute-run-graph
-                   {::pc/index-resolvers {'dyn {::pc/sym               'dyn
-                                                ::pc/cache?            false
-                                                ::pc/dynamic-resolver? true
-                                                ::pc/resolve           (fn [_ _])}
-                                          'a   {::pc/sym         'a
-                                                ::pc/dynamic-sym 'dyn
-                                                ::pc/output      [{:a {:b [:b]
-                                                                       :c [:c]}}]
-                                                ::pc/provides    {:a {:b          {}
-                                                                      :c          {}
-                                                                      ::pc/unions {:b {:b {}}
-                                                                                   :c {:c {}}}}}
-                                                ::pc/resolve     (fn [_ _])}}
-                    ::pc/index-oir       {:a {#{} #{'a}}}
-                    ::eql/query          [{:a {:b [:b]
-                                               :c [:c]}}]})
-                 {::pcp/nodes             {1 {::pc/sym               'dyn
-                                              ::pcp/node-id          1
-                                              ::pcp/requires         {:a {:b {}}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-sym       'a
-                                              ::pcp/source-for-attrs #{:a}
-                                              ::pcp/foreign-ast      (eql/query->ast [{:a {:b [:b]
-                                                                                           :c [:c]}}])}}
-                  ::pcp/index-syms        '{dyn #{1}}
-                  ::pcp/unreachable-syms  #{}
-                  ::pcp/unreachable-attrs #{}
-                  ::pcp/root              1
-                  ::pcp/index-attrs       {:a 1}}))))
+    #_(testing "resolver has union output"
+        (is (= (compute-run-graph
+                 {::pci/index-resolvers {'dyn {::pco/name             'dyn
+                                               ::pco/cache?           false
+                                               ::pco/dynamic-resolver? true
+                                               ::pco/resolve          (fn [_ _])}
+                                         'a   {::pco/name       'a
+                                               ::pco/dynamic-name 'dyn
+                                               ::pco/output     [{:a {:b [:b]
+                                                                      :c [:c]}}]
+                                               ::pco/provides    {:a {:b          {}
+                                                                     :c          {}
+                                                                     ::pco/unions {:b {:b {}}
+                                                                                  :c {:c {}}}}}
+                                               ::pco/resolve    (fn [_ _])}}
+                  ::pci/index-oir       {:a {#{} #{'a}}}
+                  ::eql/query           [{:a {:b [:b]
+                                              :c [:c]}}]})
+               {::pcp/nodes             {1 {::pco/name             'dyn
+                                            ::pcp/node-id          1
+                                            ::pcp/requires         {:a {:b {}}}
+                                            ::pcp/input            {}
+                                            ::pcp/source-sym       'a
+                                            ::pcp/source-for-attrs #{:a}
+                                            ::pcp/foreign-ast      (eql/query->ast [{:a {:b [:b]
+                                                                                         :c [:c]}}])}}
+                ::pcp/index-syms        '{dyn #{1}}
+                ::pcp/unreachable-syms  #{}
+                ::pcp/unreachable-attrs #{}
+                ::pcp/root              1
+                ::pcp/index-attrs       {:a 1}}))))
 
   (testing "deep nesting"
     (is (= (compute-run-graph
-             {::pc/index-resolvers {'dyn {::pc/sym               'dyn
-                                          ::pc/cache?            false
-                                          ::pc/dynamic-resolver? true
-                                          ::pc/resolve           (fn [_ _])}
-                                    'a   {::pc/sym         'a
-                                          ::pc/dynamic-sym 'dyn
-                                          ::pc/output      [{:a [{:b [:c]}]}]
-                                          ::pc/resolve     (fn [_ _])}}
-              ::pc/index-oir       {:a {#{} #{'a}}}
-              ::eql/query          [{:a [{:b [:c :d]}]}]})
-           {::pcp/nodes             {1 {::pc/sym               'dyn
+             {::pci/index-resolvers {'dyn {::pco/name             'dyn
+                                           ::pco/cache?           false
+                                           ::pco/dynamic-resolver? true
+                                           ::pco/resolve          (fn [_ _])}
+                                     'a   {::pco/name       'a
+                                           ::pco/dynamic-name 'dyn
+                                           ::pco/output     [{:a [{:b [:c]}]}]
+                                           ::pco/resolve    (fn [_ _])}}
+              ::pci/index-oir       {:a {#{} #{'a}}}
+              ::eql/query           [{:a [{:b [:c :d]}]}]})
+           {::pcp/nodes             {1 {::pco/name             'dyn
                                         ::pcp/node-id          1
                                         ::pcp/requires         {:a {:b {:c {}}}}
                                         ::pcp/input            {}
@@ -2384,18 +2380,18 @@
 
     (testing "with dependency"
       (is (= (compute-run-graph
-               {::pc/index-resolvers {'dyn {::pc/sym               'dyn
-                                            ::pc/cache?            false
-                                            ::pc/dynamic-resolver? true
-                                            ::pc/resolve           (fn [_ _])}
-                                      'a   {::pc/sym         'a
-                                            ::pc/dynamic-sym 'dyn
-                                            ::pc/output      [{:a [{:b [:c]}]}]
-                                            ::pc/resolve     (fn [_ _])}}
-                ::pc/index-oir       {:a {#{} #{'a}}
-                                      :d {#{:c} #{'d}}}
-                ::eql/query          [{:a [{:b [:d]}]}]})
-             {::pcp/nodes             {1 {::pc/sym               'dyn
+               {::pci/index-resolvers {'dyn {::pco/name             'dyn
+                                             ::pco/cache?           false
+                                             ::pco/dynamic-resolver? true
+                                             ::pco/resolve          (fn [_ _])}
+                                       'a   {::pco/name       'a
+                                             ::pco/dynamic-name 'dyn
+                                             ::pco/output     [{:a [{:b [:c]}]}]
+                                             ::pco/resolve    (fn [_ _])}}
+                ::pci/index-oir       {:a {#{} #{'a}}
+                                       :d {#{:c} #{'d}}}
+                ::eql/query           [{:a [{:b [:d]}]}]})
+             {::pcp/nodes             {1 {::pco/name             'dyn
                                           ::pcp/node-id          1
                                           ::pcp/requires         {:a {:b {:c {}}}}
                                           ::pcp/input            {}
@@ -2410,23 +2406,23 @@
 
   (testing "only returns the deps from the dynamic resolver in the child requirements"
     (is (= (compute-run-graph
-             {::pc/index-resolvers {'dyn {::pc/sym               'dyn
-                                          ::pc/cache?            false
-                                          ::pc/dynamic-resolver? true
-                                          ::pc/resolve           (fn [_ _])}
-                                    'a   {::pc/sym         'a
-                                          ::pc/dynamic-sym 'dyn
-                                          ::pc/output      [{:a [:b]}]
-                                          ::pc/resolve     (fn [_ _])}
-                                    'c   {::pc/sym         'c
-                                          ::pc/dynamic-sym 'dyn
-                                          ::pc/input       #{:b}
-                                          ::pc/output      [:c]
-                                          ::pc/resolve     (fn [_ _])}}
-              ::pc/index-oir       {:a {#{} #{'a}}
-                                    :c {#{:b} #{'c}}}
-              ::eql/query          [{:a [:c]}]})
-           {::pcp/nodes             {1 {::pc/sym               'dyn
+             {::pci/index-resolvers {'dyn {::pco/name             'dyn
+                                           ::pco/cache?           false
+                                           ::pco/dynamic-resolver? true
+                                           ::pco/resolve          (fn [_ _])}
+                                     'a   {::pco/name       'a
+                                           ::pco/dynamic-name 'dyn
+                                           ::pco/output     [{:a [:b]}]
+                                           ::pco/resolve    (fn [_ _])}
+                                     'c   {::pco/name       'c
+                                           ::pco/dynamic-name 'dyn
+                                           ::pco/input      #{:b}
+                                           ::pco/output     [:c]
+                                           ::pco/resolve    (fn [_ _])}}
+              ::pci/index-oir       {:a {#{} #{'a}}
+                                     :c {#{:b} #{'c}}}
+              ::eql/query           [{:a [:c]}]})
+           {::pcp/nodes             {1 {::pco/name             'dyn
                                         ::pcp/node-id          1
                                         ::pcp/requires         {:a {:c {}}}
                                         ::pcp/input            {}
@@ -2440,19 +2436,19 @@
             ::pcp/index-attrs       {:a 1}}))
 
     (is (= (compute-run-graph
-             {::pc/index-resolvers {'dyn {::pc/sym               'dyn
-                                          ::pc/cache?            false
-                                          ::pc/dynamic-resolver? true
-                                          ::pc/resolve           (fn [_ _])}
-                                    'a   {::pc/sym         'a
-                                          ::pc/dynamic-sym 'dyn
-                                          ::pc/output      [{:a [:b]}]
-                                          ::pc/resolve     (fn [_ _])}}
-              ::pc/index-oir       '{:a {#{} #{a}}
-                                     :c {#{:b} #{c}}
-                                     :d {#{} #{c}}}
-              ::eql/query          [{:a [:c :d]}]})
-           {::pcp/nodes             {1 {::pc/sym               'dyn
+             {::pci/index-resolvers {'dyn {::pco/name             'dyn
+                                           ::pco/cache?           false
+                                           ::pco/dynamic-resolver? true
+                                           ::pco/resolve          (fn [_ _])}
+                                     'a   {::pco/name       'a
+                                           ::pco/dynamic-name 'dyn
+                                           ::pco/output     [{:a [:b]}]
+                                           ::pco/resolve    (fn [_ _])}}
+              ::pci/index-oir       '{:a {#{} #{a}}
+                                      :c {#{:b} #{c}}
+                                      :d {#{} #{c}}}
+              ::eql/query           [{:a [:c :d]}]})
+           {::pcp/nodes             {1 {::pco/name             'dyn
                                         ::pcp/node-id          1
                                         ::pcp/requires         {:a {:b {}}}
                                         ::pcp/input            {}
@@ -2467,20 +2463,20 @@
 
   (testing "indirect dependencies don't need to be in the query"
     (is (= (compute-run-graph
-             {::pc/index-resolvers {'dyn {::pc/sym               'dyn
-                                          ::pc/cache?            false
-                                          ::pc/dynamic-resolver? true
-                                          ::pc/resolve           (fn [_ _])}
-                                    'a   {::pc/sym         'a
-                                          ::pc/dynamic-sym 'dyn
-                                          ::pc/output      [{:a [:b]}]
-                                          ::pc/resolve     (fn [_ _])}}
-              ::pc/index-oir       '{:a {#{} #{a}}
-                                     :c {#{:b} #{c}}
-                                     :d {#{} #{d}}
-                                     :e {#{:d} #{a}}}
-              ::eql/query          [{:a [:c :e]}]})
-           {::pcp/nodes             {1 {::pc/sym               'dyn
+             {::pci/index-resolvers {'dyn {::pco/name             'dyn
+                                           ::pco/cache?           false
+                                           ::pco/dynamic-resolver? true
+                                           ::pco/resolve          (fn [_ _])}
+                                     'a   {::pco/name       'a
+                                           ::pco/dynamic-name 'dyn
+                                           ::pco/output     [{:a [:b]}]
+                                           ::pco/resolve    (fn [_ _])}}
+              ::pci/index-oir       '{:a {#{} #{a}}
+                                      :c {#{:b} #{c}}
+                                      :d {#{} #{d}}
+                                      :e {#{:d} #{a}}}
+              ::eql/query           [{:a [:c :e]}]})
+           {::pcp/nodes             {1 {::pco/name             'dyn
                                         ::pcp/node-id          1
                                         ::pcp/requires         {:a {:b {}}}
                                         ::pcp/input            {}
@@ -2512,19 +2508,19 @@
   (testing "set root when no root is the current"
     (is (= (pcp/compute-root-or
              {::pcp/nodes {1 {::pcp/node-id  1
-                              ::pc/sym       'a
+                              ::pco/name     'a
                               ::pcp/requires {:a {}}}}}
              (base-graph-env)
              {::pcp/node-id 1})
            {::pcp/root  1
             ::pcp/nodes {1 {::pcp/node-id  1
-                            ::pc/sym       'a
+                            ::pco/name     'a
                             ::pcp/requires {:a {}}}}})))
 
   (testing "do nothing if there is no next node"
     (is (= (pcp/compute-root-or
              {::pcp/nodes {1 {::pcp/node-id  1
-                              ::pc/sym       'a
+                              ::pco/name     'a
                               ::pcp/requires {:a {}}}}
               ::pcp/root  1}
              (base-graph-env)
@@ -2532,7 +2528,7 @@
 
            (pcp/compute-root-or
              {::pcp/nodes {1 {::pcp/node-id  1
-                              ::pc/sym       'a
+                              ::pco/name     'a
                               ::pcp/requires {:a {}}}}
               ::pcp/root  1}
              (base-graph-env)
@@ -2540,16 +2536,16 @@
 
            {::pcp/root  1
             ::pcp/nodes {1 {::pcp/node-id  1
-                            ::pc/sym       'a
+                            ::pco/name     'a
                             ::pcp/requires {:a {}}}}})))
 
   (testing "merge nodes with same sym"
     (is (= (pcp/compute-root-or
              {::pcp/nodes      {1 {::pcp/node-id  1
-                                   ::pc/sym       'a
+                                   ::pco/name     'a
                                    ::pcp/requires {:a {}}}
                                 2 {::pcp/node-id  2
-                                   ::pc/sym       'a
+                                   ::pco/name     'a
                                    ::pcp/requires {:b {}}}}
               ::pcp/index-syms '{a #{1 2}}
               ::pcp/root       2}
@@ -2559,7 +2555,7 @@
            '{::pcp/root       1
              ::pcp/index-syms {a #{1}}
              ::pcp/nodes      {1 {::pcp/node-id  1
-                                  ::pc/sym       a
+                                  ::pco/name     a
                                   ::pcp/requires {:a {}
                                                   :b {}}}}})))
 
@@ -2567,22 +2563,22 @@
     (is (= (pcp/compute-root-or
              {::pcp/root  1
               ::pcp/nodes {1 {::pcp/node-id  1
-                              ::pc/sym       'a
+                              ::pco/name     'a
                               ::pcp/requires {:a {}}}
                            2 {::pcp/node-id  2
-                              ::pc/sym       'a2
+                              ::pco/name     'a2
                               ::pcp/requires {:a {}}}}}
              (assoc (base-graph-env) ::pcp/id-counter (atom 2)
-               ::pc/attribute :a)
+               ::pspec/attribute :a)
              {::pcp/node-id 2})
            {::pcp/root  3
             ::pcp/nodes {1 {::pcp/node-id     1
                             ::pcp/after-nodes #{3}
-                            ::pc/sym          'a
+                            ::pco/name        'a
                             ::pcp/requires    {:a {}}}
                          2 {::pcp/node-id     2
                             ::pcp/after-nodes #{3}
-                            ::pc/sym          'a2
+                            ::pco/name        'a2
                             ::pcp/requires    {:a {}}}
                          3 {::pcp/node-id  3
                             ::pcp/run-or   #{1 2}
@@ -2591,26 +2587,26 @@
     (testing "with run-next"
       (is (= (pcp/compute-root-or
                {::pcp/root  2
-                ::pcp/nodes {2    {::pcp/node-id  2
-                                   ::pc/sym       'a
-                                   ::pcp/requires {:a {}}
-                                   ::pcp/run-next 1}
+                ::pcp/nodes {2 {::pcp/node-id  2
+                                ::pco/name     'a
+                                ::pcp/requires {:a {}}
+                                ::pcp/run-next 1}
                              3 {::pcp/node-id  3
-                                ::pc/sym       'a2
+                                ::pco/name     'a2
                                 ::pcp/requires {:a {}}
                                 ::pcp/run-next 1}}}
                (assoc (base-graph-env) ::pcp/id-counter (atom 3)
-                 ::pc/attribute :a
-                 ::pc/index-resolvers {'a  {::pc/provides {:a {}}}
-                                       'a2 {::pc/provides {:a {}}}})
+                 ::pspec/attribute :a
+                 ::pci/index-resolvers {'a  {::pco/provides {:a {}}}
+                                        'a2 {::pco/provides {:a {}}}})
                {::pcp/node-id 3})
              '{::pcp/root  4
                ::pcp/nodes {2 {::pcp/node-id     2
-                               ::pc/sym          a
+                               ::pco/name        a
                                ::pcp/requires    {:a {}}
                                ::pcp/after-nodes #{4}}
                             3 {::pcp/node-id     3
-                               ::pc/sym          a2
+                               ::pco/name        a2
                                ::pcp/requires    {:a {}}
                                ::pcp/after-nodes #{4}}
                             4 {::pcp/node-id  4
@@ -2621,26 +2617,26 @@
       (testing "don't optimize when run next is different"
         (is (= (pcp/compute-root-or
                  {::pcp/root  2
-                  ::pcp/nodes {2    {::pcp/node-id  2
-                                     ::pc/sym       'a
-                                     ::pcp/requires {:a {}}
-                                     ::pcp/run-next 1}
+                  ::pcp/nodes {2 {::pcp/node-id  2
+                                  ::pco/name     'a
+                                  ::pcp/requires {:a {}}
+                                  ::pcp/run-next 1}
                                3 {::pcp/node-id  3
-                                  ::pc/sym       'a2
+                                  ::pco/name     'a2
                                   ::pcp/requires {:a {}}
                                   ::pcp/run-next 10}}}
                  (assoc (base-graph-env) ::pcp/id-counter (atom 3)
-                   ::pc/attribute :a)
+                   ::pspec/attribute :a)
                  {::pcp/node-id 3})
                {::pcp/root  4
                 ::pcp/nodes {2 {::pcp/node-id     2
                                 ::pcp/after-nodes #{4}
-                                ::pc/sym          'a
+                                ::pco/name        'a
                                 ::pcp/requires    {:a {}}
                                 ::pcp/run-next    1}
                              3 {::pcp/node-id     3
                                 ::pcp/after-nodes #{4}
-                                ::pc/sym          'a2
+                                ::pco/name        'a2
                                 ::pcp/requires    {:a {}}
                                 ::pcp/run-next    10}
                              4 {::pcp/node-id  4
@@ -2651,32 +2647,32 @@
     (is (= (pcp/compute-root-or
              {::pcp/root  3
               ::pcp/nodes {1 {::pcp/node-id  1
-                              ::pc/sym       'a
+                              ::pco/name     'a
                               ::pcp/requires {:a {}}}
                            2 {::pcp/node-id  2
-                              ::pc/sym       'a2
+                              ::pco/name     'a2
                               ::pcp/requires {:a {}}}
                            3 {::pcp/node-id  3
                               ::pcp/run-or   #{1 2}
                               ::pcp/requires {:a {}}}
                            4 {::pcp/node-id  4
-                              ::pc/sym       'a3
+                              ::pco/name     'a3
                               ::pcp/requires {:a {}}}}}
              (base-graph-env)
              {::pcp/node-id 4})
            {::pcp/root  3
             ::pcp/nodes {1 {::pcp/node-id  1
-                            ::pc/sym       'a
+                            ::pco/name     'a
                             ::pcp/requires {:a {}}}
                          2 {::pcp/node-id  2
-                            ::pc/sym       'a2
+                            ::pco/name     'a2
                             ::pcp/requires {:a {}}}
                          3 {::pcp/node-id  3
                             ::pcp/run-or   #{1 2 4}
                             ::pcp/requires {:a {}}}
                          4 {::pcp/node-id     4
                             ::pcp/after-nodes #{3}
-                            ::pc/sym          'a3
+                            ::pco/name        'a3
                             ::pcp/requires    {:a {}}}}}))
 
     (testing "collapse when symbol is already there"
@@ -2684,17 +2680,17 @@
                {::pcp/root       3
                 ::pcp/index-syms {'a #{1 2 4}}
                 ::pcp/nodes      {1 {::pcp/node-id  1
-                                     ::pc/sym       'a
+                                     ::pco/name     'a
                                      ::pcp/requires {:a {}}
                                      }
                                   2 {::pcp/node-id  2
-                                     ::pc/sym       'a2
+                                     ::pco/name     'a2
                                      ::pcp/requires {:a {}}}
                                   3 {::pcp/node-id  3
                                      ::pcp/run-or   #{1 2}
                                      ::pcp/requires {:a {}}}
                                   4 {::pcp/node-id  4
-                                     ::pc/sym       'a
+                                     ::pco/name     'a
                                      ::pcp/requires {:b {}}}}}
 
                (base-graph-env)
@@ -2718,28 +2714,28 @@
       (is (= (pcp/compute-root-or
                {::pcp/root  3
                 ::pcp/nodes {1 {::pcp/node-id  1
-                                ::pc/sym       'a
+                                ::pco/name     'a
                                 ::pcp/requires {:a {}}}
                              2 {::pcp/node-id  2
-                                ::pc/sym       'a2
+                                ::pco/name     'a2
                                 ::pcp/requires {:a {}}}
                              3 {::pcp/node-id  3
                                 ::pcp/run-or   #{1 2}
                                 ::pcp/requires {:a {}}
                                 ::pcp/run-next 10}
                              4 {::pcp/node-id  4
-                                ::pc/sym       'a3
+                                ::pco/name     'a3
                                 ::pcp/requires {:a {}}
                                 ::pcp/run-next 10}}}
                (assoc (base-graph-env)
-                 ::pc/index-resolvers {'a3 {::pc/provides {:a {}}}})
+                 ::pci/index-resolvers {'a3 {::pco/provides {:a {}}}})
                {::pcp/node-id 4})
              {::pcp/root  3
               ::pcp/nodes {1 {::pcp/node-id  1
-                              ::pc/sym       'a
+                              ::pco/name     'a
                               ::pcp/requires {:a {}}}
                            2 {::pcp/node-id  2
-                              ::pc/sym       'a2
+                              ::pco/name     'a2
                               ::pcp/requires {:a {}}}
                            3 {::pcp/node-id  3
                               ::pcp/run-or   #{1 2 4}
@@ -2747,7 +2743,7 @@
                               ::pcp/run-next 10}
                            4 {::pcp/node-id     4
                               ::pcp/after-nodes #{3}
-                              ::pc/sym          'a3
+                              ::pco/name        'a3
                               ::pcp/requires    {:a {}}}}})))))
 
 (deftest collapse-and-nodes-test
@@ -2909,13 +2905,13 @@
 
 (deftest same-resolver-test
   (is (= (pcp/same-resolver?
-           {::pc/sym 'a}
-           {::pc/sym 'a})
+           {::pco/name 'a}
+           {::pco/name 'a})
          true))
 
   (is (= (pcp/same-resolver?
-           {::pc/sym 'b}
-           {::pc/sym 'a})
+           {::pco/name 'b}
+           {::pco/name 'a})
          false))
 
   (is (= (pcp/same-resolver?
@@ -3056,7 +3052,7 @@
   (testing "remove node and references"
     (is (= (pcp/remove-node
              '{::pcp/nodes      {1 {::pcp/node-id 1
-                                    ::pc/sym      a}}
+                                    ::pco/name    a}}
                ::pcp/index-syms {a #{1}}}
              1)
            '{::pcp/nodes      {}
@@ -3065,35 +3061,35 @@
   (testing "remove after node reference from run-next"
     (is (= (pcp/remove-node
              '{::pcp/nodes      {1 {::pcp/node-id  1
-                                    ::pc/sym       a
+                                    ::pco/name     a
                                     ::pcp/run-next 2}
                                  2 {::pcp/node-id     2
-                                    ::pc/sym          b
+                                    ::pco/name        b
                                     ::pcp/after-nodes #{1}}}
                ::pcp/index-syms {a #{1}
                                  b #{2}}}
              1)
            '{::pcp/nodes      {2 {::pcp/node-id 2
-                                  ::pc/sym      b}}
+                                  ::pco/name    b}}
              ::pcp/index-syms {a #{}
                                b #{2}}})))
 
   (testing "remove after node of branch nodes"
     (is (= (pcp/remove-node
              '{::pcp/nodes      {1 {::pcp/node-id     1
-                                    ::pc/sym          a
+                                    ::pco/name        a
                                     ::pcp/after-nodes #{3}}
                                  2 {::pcp/node-id     2
-                                    ::pc/sym          b
+                                    ::pco/name        b
                                     ::pcp/after-nodes #{3}}
                                  3 {::pcp/run-and #{1 2}}}
                ::pcp/index-syms {a #{1}
                                  b #{2}}}
              3)
            '{::pcp/nodes      {1 {::pcp/node-id 1
-                                  ::pc/sym      a}
+                                  ::pco/name    a}
                                2 {::pcp/node-id 2
-                                  ::pc/sym      b}}
+                                  ::pco/name    b}}
              ::pcp/index-syms {a #{1} b #{2}}})))
 
   (testing "trigger error when after node references are still pointing to it"
@@ -3101,10 +3097,10 @@
           #?(:clj AssertionError :cljs js/Error)
           (pcp/remove-node
             '{::pcp/nodes      {1 {::pcp/node-id     1
-                                   ::pc/sym          a
+                                   ::pco/name        a
                                    ::pcp/after-nodes #{2}}
                                 2 {::pcp/node-id  2
-                                   ::pc/sym       b
+                                   ::pco/name     b
                                    ::pcp/run-next 1}}
               ::pcp/index-syms {a #{1}
                                 b #{2}}}
@@ -3114,18 +3110,18 @@
   (testing "merge requires and attr sources"
     (is (= (pcp/collapse-nodes-chain
              '{::pcp/nodes       {1 {::pcp/node-id          1
-                                     ::pc/sym               a
+                                     ::pco/name             a
                                      ::pcp/requires         {:a {}}
                                      ::pcp/source-for-attrs #{:a}}
                                   2 {::pcp/node-id          2
-                                     ::pc/sym               a
+                                     ::pco/name             a
                                      ::pcp/requires         {:b {}}
                                      ::pcp/source-for-attrs #{:b}}}
                ::pcp/index-syms  {a #{1 2}}
                ::pcp/index-attrs {:a 1 :b 2}}
              1 2)
            '{::pcp/nodes       {1 {::pcp/node-id          1
-                                   ::pc/sym               a
+                                   ::pco/name             a
                                    ::pcp/source-for-attrs #{:a :b}
                                    ::pcp/requires         {:a {}
                                                            :b {}}}}
@@ -3135,12 +3131,12 @@
   (testing "keep input from outer most"
     (is (= (pcp/collapse-nodes-chain
              '{::pcp/nodes       {1 {::pcp/node-id          1
-                                     ::pc/sym               a
+                                     ::pco/name             a
                                      ::pcp/input            {:x {}}
                                      ::pcp/requires         {:a {}}
                                      ::pcp/source-for-attrs #{:a}}
                                   2 {::pcp/node-id          2
-                                     ::pc/sym               a
+                                     ::pco/name             a
                                      ::pcp/input            {:y {}}
                                      ::pcp/requires         {:b {}}
                                      ::pcp/source-for-attrs #{:b}}}
@@ -3148,7 +3144,7 @@
                ::pcp/index-attrs {:a 1 :b 2}}
              1 2)
            '{::pcp/nodes       {1 {::pcp/node-id          1
-                                   ::pc/sym               a
+                                   ::pco/name             a
                                    ::pcp/input            {:x {}}
                                    ::pcp/source-for-attrs #{:a :b}
                                    ::pcp/requires         {:a {}
@@ -3159,21 +3155,21 @@
   (testing "pull run next"
     (is (= (pcp/collapse-nodes-chain
              '{::pcp/nodes      {1 {::pcp/node-id 1
-                                    ::pc/sym      a}
+                                    ::pco/name    a}
                                  2 {::pcp/node-id  2
-                                    ::pc/sym       a
+                                    ::pco/name     a
                                     ::pcp/run-next 3}
                                  3 {::pcp/node-id     3
-                                    ::pc/sym          b
+                                    ::pco/name        b
                                     ::pcp/after-nodes #{2}}}
                ::pcp/index-syms {a #{1 2}
                                  b #{3}}}
              1 2)
            '{::pcp/nodes      {1 {::pcp/node-id  1
-                                  ::pc/sym       a
+                                  ::pco/name     a
                                   ::pcp/run-next 3}
                                3 {::pcp/node-id     3
-                                  ::pc/sym          b
+                                  ::pco/name        b
                                   ::pcp/after-nodes #{1}}}
              ::pcp/index-syms {a #{1}
                                b #{3}}})))
@@ -3181,28 +3177,28 @@
   (testing "move after nodes"
     (is (= (pcp/collapse-nodes-chain
              '{::pcp/nodes      {1 {::pcp/node-id 1
-                                    ::pc/sym      a}
+                                    ::pco/name    a}
                                  2 {::pcp/node-id     2
-                                    ::pc/sym          a
+                                    ::pco/name        a
                                     ::pcp/after-nodes #{3 4}}
                                  3 {::pcp/node-id  3
-                                    ::pc/sym       b
+                                    ::pco/name     b
                                     ::pcp/run-next 2}
                                  4 {::pcp/node-id  4
-                                    ::pc/sym       c
+                                    ::pco/name     c
                                     ::pcp/run-next 2}}
                ::pcp/index-syms {a #{1 2}
                                  b #{3}
                                  c #{4}}}
              1 2)
            '{::pcp/nodes      {1 {::pcp/node-id     1
-                                  ::pc/sym          a
+                                  ::pco/name        a
                                   ::pcp/after-nodes #{3 4}}
                                3 {::pcp/node-id  3
-                                  ::pc/sym       b
+                                  ::pco/name     b
                                   ::pcp/run-next 1}
                                4 {::pcp/node-id  4
-                                  ::pc/sym       c
+                                  ::pco/name     c
                                   ::pcp/run-next 1}}
              ::pcp/index-syms {a #{1}
                                b #{3}
@@ -3372,28 +3368,6 @@
          {::pcp/nodes {1 {}
                        2 {}}})))
 
-(deftest prepare-ast-test
-  (testing "returns parent query ast"
-    (is (= (pcp/prepare-ast {::p/entity {}}
-             (p/query->ast [:foo]))
-           {:type     :root
-            :children [{:type :prop :dispatch-key :foo :key :foo}]})))
-
-  (testing "lift placeholders"
-    (is (= (pcp/prepare-ast {::p/entity {}}
-             (p/query->ast [:foo
-                            {:>/placeholder [:bar]}]))
-           {:type     :root
-            :children [{:type :prop :dispatch-key :foo :key :foo}
-                       {:type :prop :dispatch-key :bar :key :bar}]})))
-
-  (testing "remove keys already present in entity"
-    (is (= (pcp/prepare-ast {::p/entity {:foo 123}}
-             (p/query->ast [:foo
-                            {:>/placeholder [:bar]}]))
-           {:type     :root
-            :children [{:type :prop :dispatch-key :bar :key :bar}]}))))
-
 (deftest params-conflicting-keys-test
   (is (= (pcp/params-conflicting-keys {} {})
          #{}))
@@ -3411,23 +3385,3 @@
   (is (= (pcp/graph-provides
            {::pcp/index-attrs {:a 1 :b 2}})
          #{:a :b})))
-
-(deftest add-node-log-test
-  (with-redefs [pt/now (constantly 1)]
-    (is (= (pcp/add-node-log {::pcp/nodes {1 {}}} 1 {::pt/event ::test})
-           {::pcp/nodes {1 {::pcp/node-trace [{::pt/event ::test ::pt/timestamp 1}]}}}))))
-
-(deftest integrate-node-log-test
-  (is (= (pcp/integrate-node-log {})
-         {}))
-  (is (= (pcp/integrate-node-log {::pcp/node-trace []})
-         {::pcp/node-trace []}))
-  (is (= (pcp/integrate-node-log {::pcp/node-trace [{::pt/event ::a ::pt/timestamp 0}]})
-         {::pcp/node-trace [{::pt/event ::a ::pt/timestamp 0}]
-          ::a              {::pt/event ::a ::pt/timestamp 0}}))
-  (is (= (pcp/integrate-node-log {::pcp/node-trace [{::pt/event ::a ::pt/timestamp 0}
-                                                    {::pt/event ::b ::pt/timestamp 0 :more "data"}]})
-         {::pcp/node-trace [{::pt/event ::a ::pt/timestamp 0}
-                            {::pt/event ::b ::pt/timestamp 0 :more "data"}]
-          ::a              {::pt/event ::a ::pt/timestamp 0}
-          ::b              {::pt/event ::b ::pt/timestamp 0 :more "data"}})))

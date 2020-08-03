@@ -3,10 +3,12 @@
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>def >defn >fdef => | <- ?]]
-    [com.wsscode.pathom.connect.indexes :as pci]
-    [com.wsscode.pathom.core :as p]
-    [com.wsscode.pathom.misc :as p.misc]
-    [com.wsscode.pathom.trace :as pt]
+    [com.wsscode.misc.core :as misc]
+    [com.wsscode.pathom3.connect.indexes :as pci]
+    [com.wsscode.pathom3.connect.operation :as pco]
+    [com.wsscode.pathom3.format.eql :as feql]
+    [com.wsscode.pathom3.format.shape-descriptor :as fsd]
+    [com.wsscode.pathom3.specs :as ps]
     [edn-query-language.core :as eql]))
 
 (>def ::node-id
@@ -23,7 +25,7 @@
 
 (>def ::available-data
   "An shape descriptor declaring which data is already available when the planner starts."
-  ::p/shape-descriptor)
+  ::fsd/shape-descriptor)
 
 (>def ::after-nodes
   "A set of node-ids that points to the nodes before the current node.
@@ -33,7 +35,7 @@
 
 (>def ::attr-deps-trail
   "A set containing attributes already in consideration when computing missing dependencies."
-  :com.wsscode.pathom.connect/attributes-set)
+  ::ps/attributes-set)
 
 (>def ::branch-type
   "The branch type for a branch node, can be AND or OR"
@@ -53,15 +55,15 @@
 
 (>def ::input
   "An IO-MAP description of required inputs to run the node."
-  :com.wsscode.pathom.connect/io-map)
+  ::fsd/shape-descriptor)
 
 (>def ::index-attrs
   "A index pointing from attribute to the node that provides its value."
-  (s/map-of :com.wsscode.pathom.connect/attribute ::node-id))
+  (s/map-of ::ps/attribute ::node-id))
 
 (>def ::index-syms
   "An index from resolver symbol to a set of execution nodes where its used."
-  (s/map-of :com.wsscode.pathom.connect/sym ::node-id-set))
+  (s/map-of ::pco/name ::node-id-set))
 
 (>def ::node-depth
   "The node depth on the graph, starts on zero."
@@ -83,10 +85,6 @@
   "The nodes index."
   (s/map-of ::node-id ::node))
 
-(>def ::node-trace
-  "Contains a vector of trace events related to a specific node."
-  (s/coll-of (s/keys :req [::pt/event] :opt [::pt/timestamp]) :kind vector?))
-
 (>def ::params
   "Params to be used when executing the resolver node"
   map?)
@@ -97,7 +95,7 @@
 
 (>def ::requires
   "An data shape description of what is required from this execution node to return."
-  :com.wsscode.pathom.connect/io-map)
+  ::fsd/shape-descriptor)
 
 (>def ::root
   "A node-id that defines the root in the planner graph."
@@ -121,15 +119,15 @@
 
 (>def ::source-for-attrs
   "Set of attributes that are provided by this node."
-  :com.wsscode.pathom.connect/attributes-set)
+  ::ps/attributes-set)
 
 (>def ::source-sym
   "On dynamic resolvers, this points to the original source resolver in the foreign parser."
-  :com.wsscode.pathom.connect/sym)
+  ::pco/name)
 
 (>def ::unreachable-attrs
   "A set containing the attributes that can't be reached considering current graph and available data."
-  :com.wsscode.pathom.connect/attributes-set)
+  ::ps/attributes-set)
 
 (>def ::unreachable-syms
   "A set containing the resolvers that can't be reached considering current graph and available data."
@@ -145,19 +143,19 @@
 
 (>def ::conflict-params
   "Set of params that were conflicting during merge."
-  :com.wsscode.pathom.connect/attributes-set)
+  ::ps/attributes-set)
 
-(def pc-sym :com.wsscode.pathom.connect/sym)
-(def pc-dyn-sym :com.wsscode.pathom.connect/dynamic-sym)
-(def pc-output :com.wsscode.pathom.connect/output)
-(def pc-provides :com.wsscode.pathom.connect/provides)
-(def pc-attr :com.wsscode.pathom.connect/attribute)
-(def pc-input :com.wsscode.pathom.connect/input)
+(def pc-sym ::pco/name)
+(def pc-dyn-sym ::pco/dynamic-name)
+(def pc-output ::pco/output)
+(def pc-provides ::pco/provides)
+(def pc-attr ::ps/attribute)
+(def pc-input ::pco/input)
 
 (def ast-node :edn-query-language.ast/node)
 
 (declare compute-run-graph* compute-root-and collapse-nodes-chain node-ancestors
-  compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes)
+         compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes)
 
 (defn base-graph []
   {::nodes             {}
@@ -191,7 +189,7 @@
    (get-in graph [::nodes node-id k])))
 
 (defn assoc-node
-  "Set property k about node-id. Only assoc when node exists, otherwise its a noop."
+  "Set attribute k about node-id. Only assoc when node exists, otherwise its a noop."
   [graph node-id k v]
   (if (get-node graph node-id)
     (assoc-in graph [::nodes node-id k] v)
@@ -220,27 +218,8 @@
      (apply update-in graph [::nodes node-id k] f v v2 v3 args)
      graph)))
 
-(>defn add-node-log
-  "Add a new log entry to the node, this is similar to how tracing works, but these are
-  internal logs about events for that specific node."
-  [graph node-id event]
-  [::graph ::node-id (s/keys :req [::pt/event])
-   => ::graph]
-  (update-node graph node-id ::node-trace #(p.misc/vconj % (assoc event ::pt/timestamp (pt/now)))))
-
-(>defn integrate-node-log
-  "Pulls the events from ::node-trace to the node itself, this will use the name from
-  ::pt/event on each trace event and make it part of the node itself.
-
-  Note that in case of repeated events, only the last one will be kept."
-  [{::keys [node-trace] :as node}]
-  [(s/keys :opt [::node-trace]) => ::node]
-  (into
-    node
-    (map (juxt ::pt/event identity))
-    node-trace))
-
 (defn get-root-node
+  "Returns the root node of the graph."
   [{::keys [root] :as graph}]
   (get-node graph root))
 
@@ -253,6 +232,7 @@
     (dissoc graph ::root)))
 
 (>defn node-branches
+  "Return node branches, which can be the ::run-and or the ::run-or part of the node."
   [node]
   [(? ::node)
    => (? (s/or :and ::run-and :or ::run-or))]
@@ -266,6 +246,7 @@
   (get-in graph [::index-attrs attribute]))
 
 (>defn branch-node?
+  "Returns true when the node is a branch node type."
   [node]
   [(? ::node) => boolean?]
   (boolean (node-branches node)))
@@ -348,7 +329,7 @@
     (if (and (branch-node? previous-node)
              (= current-node-id (::run-next previous-node)))
       (+ (get-node graph previous-node-id ::node-depth)
-        (get-node graph previous-node-id ::node-branch-depth))
+         (get-node graph previous-node-id ::node-branch-depth))
       (get-node graph previous-node-id ::node-depth))))
 
 (defn compute-node-depth
@@ -407,9 +388,9 @@
 
 (defn resolver-provides
   "Get resolver provides from environment source symbol."
-  [{:com.wsscode.pathom.connect/keys [index-resolvers]
-    ::keys                           [source-sym]}]
-  (pci/resolver-provides (get index-resolvers source-sym)))
+  [{::keys [source-sym]
+    :as    env}]
+  (pci/resolver-provides env source-sym))
 
 (defn find-branch-node-to-merge
   "Given some branch node, tries to find a node with a dynamic resolver that's the
@@ -425,7 +406,7 @@
 
 (defn add-after-node [graph node-id after-node-id]
   (assert after-node-id "Tried to add after node with nil value")
-  (update-node graph node-id ::after-nodes p.misc/sconj after-node-id))
+  (update-node graph node-id ::after-nodes misc/sconj after-node-id))
 
 (defn set-after-node [graph node-id after-node-id]
   (assert after-node-id "Tried to set after node with nil value")
@@ -449,7 +430,7 @@
          (= (pc-sym node1) (pc-sym node2)))))
 
 (defn set-node-run-next*
-  "Update the node-id run-next value, if run-next is nil the property
+  "Update the node-id run-next value, if run-next is nil the attribute
   will be removed from the map."
   [graph node-id run-next]
   (if run-next
@@ -523,18 +504,18 @@
   "Merge requires from node into target-node-id."
   [graph target-node-id {::keys [requires]}]
   (if requires
-    (update-in graph [::nodes target-node-id ::requires] pci/merge-io requires)
+    (update-in graph [::nodes target-node-id ::requires] misc/merge-grow requires)
     graph))
 
 (defn merge-node-input
   "Merge input from node into target-node-id."
   [graph target-node-id {::keys [input]}]
   (if input
-    (update-in graph [::nodes target-node-id ::input] pci/merge-io input)
+    (update-in graph [::nodes target-node-id ::input] misc/merge-grow input)
     graph))
 
 (defn add-warning [graph warn]
-  (update graph ::warnings p.misc/vconj warn))
+  (update graph ::warnings misc/vconj warn))
 
 (defn params-conflicting-keys
   "Find conflicting keys between maps m1 and m2, same keys with same values are not
@@ -562,7 +543,7 @@
 (defn merge-nodes-foreign-ast
   "Merge the foreign-ast from two dynamic nodes, the operations adds each children from
   node into foreign-ast of the target node. This uses the requires to detect if some
-  property is already on the query, so this must be called before merging requires to
+  attribute is already on the query, so this must be called before merging requires to
   get the correct behavior."
   [graph target-node-id {::keys [foreign-ast]}]
   (let [requires (get-node graph target-node-id ::requires)]
@@ -689,7 +670,7 @@
               (::run-and node))
             (remove-node node-id))
         (-> graph
-            (update-in [::nodes root branch-type] p.misc/sconj node-id)
+            (update-in [::nodes root branch-type] misc/sconj node-id)
             (add-after-node node-id root)
             (cond->
               (= branch-type ::run-and)
@@ -716,7 +697,7 @@
         (add-branch-node env node))))
 
 (defn branch-add-and-node [graph branch-node-id node-id]
-  (-> (update-in graph [::nodes branch-node-id ::run-and] p.misc/sconj node-id)
+  (-> (update-in graph [::nodes branch-node-id ::run-and] misc/sconj node-id)
       (add-after-node node-id branch-node-id)))
 
 (defn can-merge-and-nodes? [n1 n2]
@@ -794,21 +775,21 @@
   (if (= root node-id)
     graph
     (compute-root-branch graph (assoc env ::branch-type ::run-or) node
-      (fn []
-        {::node-id  (next-node-id env)
-         ::requires {attribute {}}
-         ::run-or   #{(::root graph)}}))))
+                         (fn []
+                           {::node-id  (next-node-id env)
+                            ::requires {attribute {}}
+                            ::run-or   #{(::root graph)}}))))
 
 (defn compute-root-and
   [{::keys [root] :as graph} env {::keys [node-id] :as node}]
   (if (= root node-id)
     graph
     (compute-root-branch graph (assoc env ::branch-type ::run-and) node
-      (fn []
-        (let [{::keys [requires]} (get-root-node graph)]
-          {::node-id  (next-node-id env)
-           ::requires requires
-           ::run-and  #{(::root graph)}})))))
+                         (fn []
+                           (let [{::keys [requires]} (get-root-node graph)]
+                             {::node-id  (next-node-id env)
+                              ::requires requires
+                              ::run-and  #{(::root graph)}})))))
 
 (def dynamic-base-provider-sym `run-graph-base-provider)
 
@@ -828,7 +809,7 @@
           (fn [oir]
             (reduce
               (fn [oir attr]
-                (update-in oir [attr #{}] p.misc/sconj dynamic-base-provider-sym))
+                (update-in oir [attr #{}] misc/sconj dynamic-base-provider-sym))
               oir
               (keys nested-provides)))))))
 
@@ -847,7 +828,7 @@
   for dynamic nodes."
   [{ast :edn-query-language.ast/node
     :as env}]
-  (let [ast            (p/maybe-merge-union-ast ast)
+  (let [ast            (feql/maybe-merge-union-ast ast)
         nested-graph   (compute-run-graph*
                          (base-graph)
                          (-> (base-env)
@@ -865,8 +846,8 @@
                                    (map #(get-node nested-graph %))
                                    (keep ::input))
                              root-dyn-nodes)
-        dyn-requires   (reduce pci/merge-io (keep ::requires root-dyn-nodes))
-        final-deps     (reduce pci/merge-io (p/ast->shape-descriptor ast) nodes-inputs)
+        dyn-requires   (reduce misc/merge-grow (keep ::requires root-dyn-nodes))
+        final-deps     (reduce misc/merge-grow (fsd/ast->shape-descriptor ast) nodes-inputs)
         children-ast   (-> (first root-dyn-nodes) ::foreign-ast
                            (update :children #(filterv (comp final-deps :key) %))) ; TODO: fix me, consider all root dyn nodes
         ast'           {:type     :root
@@ -893,7 +874,7 @@
         ast-params (:params ast)]
     (if (= sym (pc-sym next-node))
       (-> next-node
-          (update ::requires pci/merge-io requires)
+          (update ::requires misc/merge-grow requires)
           (assoc ::input input))
       (cond->
         {pc-sym     sym
@@ -913,13 +894,15 @@
         (not= sym source-sym)
         (assoc ::source-sym source-sym)))))
 
-(defn include-node [graph _env {::keys [node-id] :as node}]
+(defn include-node
+  "Add new node to the graph, this add the node and the index of in ::index-syms."
+  [graph _env {::keys [node-id] :as node}]
   (let [sym (pc-sym node)]
     (-> graph
         (assoc-in [::nodes node-id] node)
         (cond->
           sym
-          (update-in [::index-syms sym] p.misc/sconj node-id)))))
+          (update-in [::index-syms sym] misc/sconj node-id)))))
 
 (>defn direct-node-successors
   "Direct successors of node, branch nodes and run-next, in case of branch nodes the
@@ -974,7 +957,7 @@
   [graph node-id]
   [::graph ::node-id
    => (s/coll-of ::node-id :kind vector?)]
-  (loop [node-queue (p.misc/queue [node-id])
+  (loop [node-queue (misc/queue [node-id])
          ancestors  []]
     (if-let [node-id' (peek node-queue)]
       (let [{::keys [after-nodes]} (get-node graph node-id')]
@@ -1037,7 +1020,7 @@
   (if (= 1 (count missing))
     (get-attribute-node graph (first missing))
     (first-common-ancestor graph
-      (into #{} (map (partial get-attribute-node graph)) missing))))
+                           (into #{} (map (partial get-attribute-node graph)) missing))))
 
 (defn compute-missing-chain
   "Start a recursive call to process the dependencies required by the resolver. It
@@ -1053,8 +1036,8 @@
             (dissoc graph ::root)
             (-> env
                 (dissoc pc-attr)
-                (update ::run-next-trail p.misc/sconj (::root graph))
-                (update ::attr-deps-trail p.misc/sconj (pc-attr env))
+                (update ::run-next-trail misc/sconj (::root graph))
+                (update ::attr-deps-trail misc/sconj (pc-attr env))
                 (assoc ast-node (eql/query->ast (vec missing)))))
           still-missing (remove (or index-attrs {}) missing)
           all-provided? (not (seq still-missing))]
@@ -1142,7 +1125,7 @@
   [graph {:com.wsscode.pathom.connect/keys [attribute] :as env}]
   (if-let [node-id (node-for-attribute-in-chain graph env (::root graph))]
     (-> graph
-        (update-in [::nodes node-id ::source-for-attrs] p.misc/sconj attribute)
+        (update-in [::nodes node-id ::source-for-attrs] misc/sconj attribute)
         (update ::index-attrs assoc attribute (get-in graph [::index-attrs attribute] node-id)))
     graph))
 
@@ -1230,7 +1213,7 @@
     (fn [graph ast]
       (if (contains? #{:prop :join} (:type ast))
         (compute-attribute-graph graph
-          (assoc env :edn-query-language.ast/node ast))
+                                 (assoc env :edn-query-language.ast/node ast))
         graph))
     graph
     (remove (comp eql/ident? :key) (:children (ast-node env)))))
@@ -1264,25 +1247,9 @@
             :com.wsscode.pathom.connect/index-resolvers])
     => ::graph]
    (compute-run-graph* (base-graph)
-     (merge
-       (base-env)
-       env))))
-
-(>defn prepare-ast
-  "Prepare AST from query. This will lift placeholder nodes, convert
-  query to AST and remove children keys that are already present in the current
-  entity."
-  [env ast]
-  [(s/keys :opt [::p/entity ::p/placeholder-prefixes])
-   :edn-query-language.ast/node
-   => :edn-query-language.ast/node]
-  (let [entity (p/entity env)]
-    (-> (p/lift-placeholders-ast env ast)
-        (update :children
-          (fn [children]
-            (into []
-                  (remove #(contains? entity (:key %)))
-                  children))))))
+                       (merge
+                         (base-env)
+                         env))))
 
 (>defn graph-provides
   "Get a set with all provided attributes from the graph."
