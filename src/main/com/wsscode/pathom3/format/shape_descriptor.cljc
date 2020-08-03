@@ -2,7 +2,7 @@
   "Shape descriptor is a format to describe data. This format optimizes for fast detection
   of value present given a shape and a value path.
 
-  For example, "
+  This namespace contains functions to operate on maps in the shape descriptor format."
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
