@@ -7,5 +7,5 @@
 (defprotocol IResolver
   (-resolve [this env input]))
 
-(defprotocol IMutate
+(defprotocol IMutation
   (-mutate [this env params]))
