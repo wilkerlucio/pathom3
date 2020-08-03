@@ -1,4 +1,5 @@
 (ns com.wsscode.pathom3.format.eql
+  "Helpers to manipulate EQL."
   (:require
     [edn-query-language.core :as eql]))
 
@@ -19,3 +20,19 @@
   (if (map? query)
     (into [] (distinct) (apply concat (map query-root-properties (vals query))))
     (->> query eql/query->ast :children (mapv :key))))
+
+(defn union-children?
+  "Given an AST point, check if the children is a union query type."
+  [ast]
+  (= :union (some-> ast :children first :type)))
+
+(defn maybe-merge-union-ast
+  "Check if AST entry is a union, if so it computes a new AST entry by combining
+  all union paths as a single entry."
+  [ast]
+  (if (union-children? ast)
+    (let [merged-children (into [] (mapcat :children) (some-> ast :children first :children))]
+      (assoc ast
+        :children merged-children
+        :query (eql/ast->query {:type :root :children merged-children})))
+    ast))
