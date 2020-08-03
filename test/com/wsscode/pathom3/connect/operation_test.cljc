@@ -16,9 +16,10 @@
               ::pco/provides {:foo {}}
               ::pco/output   [:foo]}))))
 
-  (testing "creating single attribute resolver"
-    (let [resolver (pco/resolver 'foo {::pco/output [:foo]}
-                                 (fn [_ _] "bar"))]
+  (testing "creating resolver from pure maps"
+    (let [resolver (pco/resolver {::pco/name    'foo
+                                  ::pco/output  [:foo]
+                                  ::pco/resolve (fn [_ _] "bar")})]
       (is (= (resolver nil nil)
              "bar"))
 

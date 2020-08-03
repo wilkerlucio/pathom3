@@ -5,22 +5,6 @@
     [com.wsscode.pathom3.connect.operation.protocols :as pop]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]))
 
-; region records
-
-(defrecord Resolver [config resolve]
-  pop/IOperation
-  (-operation-config [_] config)
-  (-operation-type [_] ::operation-type-resolver)
-
-  pop/IResolver
-  (-resolve [_ env input]
-            (resolve env input))
-
-  clojure.lang.IFn
-  (invoke [this env input] (resolve env input)))
-
-; endregion
-
 ; region specs
 
 (>def ::name symbol?)
@@ -31,6 +15,21 @@
 (>def ::operation-config map?)
 (>def ::operation #(satisfies? pop/IOperation %))
 (>def ::resolver #(satisfies? pop/IResolver %))
+
+; endregion
+
+; region records
+
+(defrecord Resolver [config resolve]
+  pop/IOperation
+  (-operation-config [_] config)
+  (-operation-type [_] ::operation-type-resolver)
+
+  pop/IResolver
+  (-resolve [_ env input] (resolve env input))
+
+  clojure.lang.IFn
+  (invoke [this env input] (resolve env input)))
 
 ; endregion
 
@@ -46,14 +45,29 @@
 
 (>defn resolver
   "Helper to create a resolver. A resolver have at least a name, the output definition
-  and the resolve function."
-  [name {::keys [output] :as config} resolve]
-  [::name (s/keys :req [::output]) ::resolve => ::resolver]
-  (let [config' (merge {::name     name
-                        ::input    []
-                        ::provides (pfsd/query->shape-descriptor output)}
-                       config)]
-    (->Resolver config' resolve)))
+  and the resolve function.
+
+  You can create a resolver using a map:
+
+  (resolver
+    {::name    'foo
+     ::output  [:foo]
+     ::resolve (fn [env input] ...)})
+
+  Or with the helper syntax:
+
+  (resolver 'foo {::output [:foo]} (fn [env input] ...))
+
+  Returns an instance of the Resolver type."
+  ([{::keys [resolve output] :as config}]
+   [(s/keys :req [::name ::output ::resolve]) => ::resolver]
+   (let [config' (->> (dissoc config ::resolve)
+                      (merge {::input    []
+                              ::provides (pfsd/query->shape-descriptor output)}))]
+     (->Resolver config' resolve)))
+  ([name config resolve]
+   [::name (s/keys :req [::output]) ::resolve => ::resolver]
+   (resolver (assoc config ::name name ::resolve resolve))))
 
 ; endregion
 
@@ -169,25 +183,6 @@
   Also can add environment argument:
 
       (p/defresolver tao [env {:keys [pi]}] :tau (* 2 pi))
-
-  Note that the defined function will always have arity 2, the macro will fill the
-  missing arguments when you don't send.
-
-  To clarify this one, when you write:
-
-      (p/defresolver pi [] :pi 3.14)
-
-  The generated fn will be:
-
-      (fn [_ _] 3.14)
-
-  The extended version:
-
-      (p/defresolver tao [env {:keys [pi]}]
-        {::p/input            [:pi]
-         ::p/output           [:tao]
-         ::p/output-attribute :tao}
-
   "
   {:arglists '([name docstring? arglist output-prop? options? & body])}
   [& args]
