@@ -10,4 +10,7 @@
  :aliases
  {:provided
   {:extra-deps {org.clojure/clojure       {:mvn/version "1.10.0"}
-                org.clojure/clojurescript {:mvn/version "1.10.520"}}}}}
+                org.clojure/clojurescript {:mvn/version "1.10.520"}}}
+
+  :graph-render
+  {:extra-deps {macroz/tangle {:mvn/version "0.2.1"}}}}}
