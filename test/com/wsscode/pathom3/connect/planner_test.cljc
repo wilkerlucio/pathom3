@@ -13,12 +13,19 @@
 (defn register-index [resolvers]
   (let [resolvers (walk/postwalk
                     (fn [x]
-                      (pco/resolver
-                        (if (and (map? x) (contains? x ::pco/output))
-                          (assoc x ::pco/resolve (fn [_ _]))
-                          x)))
+                      (if (and (map? x) (contains? x ::pco/output))
+                        (pco/resolver (assoc x ::pco/resolve (fn [_ _])))
+                        x))
                     resolvers)]
     (pci/register {} resolvers)))
+
+(comment
+  (register-index
+    [{::pco/name   'a
+      ::pco/output [:a]}
+     {::pco/name   'b
+      ::pco/input  [:a]
+      ::pco/output [:b]}]))
 
 (defn oir-index [resolvers]
   (::pci/index-oir (register-index resolvers)))
@@ -99,7 +106,7 @@
 (defn compute-run-graph
   [{::keys     [resolvers render-graphviz? time? _dynamics]
     ::eql/keys [query]
-    :or        {render-graphviz? true
+    :or        {render-graphviz? false
                 time?            false}
     :as        options}]
   (let [env     (cond-> (merge (base-graph-env)
@@ -168,7 +175,7 @@
                {::resolvers [{::pco/name   'a
                               ::pco/output [:a]}
                              {::pco/name   'b
-                              ::pco/input  #{:a}
+                              ::pco/input  [:a]
                               ::pco/output [:b]}]
                 ::eql/query [:b]
                 ::out       {::pcp/unreachable-attrs #{:a}}})
@@ -179,10 +186,10 @@
 
       (is (= (compute-run-graph
                {::resolvers [{::pco/name   'b
-                              ::pco/input  #{:a}
+                              ::pco/input  [:a]
                               ::pco/output [:b]}
                              {::pco/name   'c
-                              ::pco/input  #{:b}
+                              ::pco/input  [:b]
                               ::pco/output [:c]}]
                 ::eql/query [:c]})
              '#::pcp{:nodes             {}
@@ -192,12 +199,12 @@
 
       (is (= (compute-run-graph
                {::resolvers [{::pco/name   'b
-                              ::pco/input  #{:a}
+                              ::pco/input  [:a]
                               ::pco/output [:b]}
                              {::pco/name   'd
                               ::pco/output [:d]}
                              {::pco/name   'c
-                              ::pco/input  #{:b :d}
+                              ::pco/input  [:b :d]
                               ::pco/output [:c]}]
                 ::eql/query [:c]})
              '#::pcp{:nodes             {}
@@ -207,12 +214,12 @@
 
       (is (= (compute-run-graph
                {::resolvers [{::pco/name   'b
-                              ::pco/input  #{:a}
+                              ::pco/input  [:a]
                               ::pco/output [:b]}
                              {::pco/name   'd
                               ::pco/output [:d]}
                              {::pco/name   'c
-                              ::pco/input  #{:b :d}
+                              ::pco/input  [:b :d]
                               ::pco/output [:c]}]
                 ::eql/query [:c :d]})
              '{::pcp/nodes             {4 {::pco/name             d
@@ -2698,13 +2705,13 @@
              '{::pcp/root       3
                ::pcp/index-syms {a #{1 2}}
                ::pcp/nodes      {1
-                                 {::pcp/node-id                   1
-                                  :com.wsscode.pathom.connect/sym a
-                                  ::pcp/requires                  {:a {} :b {}}}
+                                 {::pcp/node-id  1
+                                  ::pco/name     a
+                                  ::pcp/requires {:a {} :b {}}}
                                  2
-                                 {::pcp/node-id                   2
-                                  :com.wsscode.pathom.connect/sym a2
-                                  ::pcp/requires                  {:a {}}}
+                                 {::pcp/node-id  2
+                                  ::pco/name     a2
+                                  ::pcp/requires {:a {}}}
                                  3
                                  {::pcp/node-id  3
                                   ::pcp/run-or   #{1 2}

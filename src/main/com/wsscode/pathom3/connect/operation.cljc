@@ -15,6 +15,9 @@
 (>def ::operation-config map?)
 (>def ::operation #(satisfies? pop/IOperation %))
 (>def ::resolver #(satisfies? pop/IResolver %))
+(>def ::provides ::pfsd/shape-descriptor)
+(>def ::dynamic-name ::name)
+(>def ::dynamic-resolver? boolean?)
 
 ; endregion
 
@@ -60,15 +63,15 @@
 
   Returns an instance of the Resolver type.
   "
+  ([name config resolve]
+   [::name (s/keys :req [::output]) ::resolve => ::resolver]
+   (resolver (assoc config ::name name ::resolve resolve)))
   ([{::keys [resolve output] :as config}]
    [(s/keys :req [::name ::output ::resolve]) => ::resolver]
    (let [config' (->> (dissoc config ::resolve)
                       (merge {::input    []
                               ::provides (pfsd/query->shape-descriptor output)}))]
-     (->Resolver config' resolve)))
-  ([name config resolve]
-   [::name (s/keys :req [::output]) ::resolve => ::resolver]
-   (resolver (assoc config ::name name ::resolve resolve))))
+     (->Resolver config' resolve))))
 
 ; endregion
 

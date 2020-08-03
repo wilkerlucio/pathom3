@@ -8,7 +8,7 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as feql]
     [com.wsscode.pathom3.format.shape-descriptor :as fsd]
-    [com.wsscode.pathom3.specs :as ps]
+    [com.wsscode.pathom3.specs :as pspec]
     [edn-query-language.core :as eql]))
 
 (>def ::node-id
@@ -35,7 +35,7 @@
 
 (>def ::attr-deps-trail
   "A set containing attributes already in consideration when computing missing dependencies."
-  ::ps/attributes-set)
+  ::pspec/attributes-set)
 
 (>def ::branch-type
   "The branch type for a branch node, can be AND or OR"
@@ -59,7 +59,7 @@
 
 (>def ::index-attrs
   "A index pointing from attribute to the node that provides its value."
-  (s/map-of ::ps/attribute ::node-id))
+  (s/map-of ::pspec/attribute ::node-id))
 
 (>def ::index-syms
   "An index from resolver symbol to a set of execution nodes where its used."
@@ -119,7 +119,7 @@
 
 (>def ::source-for-attrs
   "Set of attributes that are provided by this node."
-  ::ps/attributes-set)
+  ::pspec/attributes-set)
 
 (>def ::source-sym
   "On dynamic resolvers, this points to the original source resolver in the foreign parser."
@@ -127,11 +127,11 @@
 
 (>def ::unreachable-attrs
   "A set containing the attributes that can't be reached considering current graph and available data."
-  ::ps/attributes-set)
+  ::pspec/attributes-set)
 
 (>def ::unreachable-syms
   "A set containing the resolvers that can't be reached considering current graph and available data."
-  (s/coll-of :com.wsscode.pathom.connect/sym :kind set?))
+  (s/coll-of ::pco/name :kind set?))
 
 (>def ::warn
   "Warn message"
@@ -143,13 +143,13 @@
 
 (>def ::conflict-params
   "Set of params that were conflicting during merge."
-  ::ps/attributes-set)
+  ::pspec/attributes-set)
 
 (def pc-sym ::pco/name)
 (def pc-dyn-sym ::pco/dynamic-name)
 (def pc-output ::pco/output)
 (def pc-provides ::pco/provides)
-(def pc-attr ::ps/attribute)
+(def pc-attr ::pspec/attribute)
 (def pc-input ::pco/input)
 
 (def ast-node :edn-query-language.ast/node)
@@ -242,7 +242,7 @@
 (>defn get-attribute-node
   "Find the node for attribute in attribute index."
   [graph attribute]
-  [::graph :com.wsscode.pathom.connect/attribute => (? ::node-id)]
+  [::graph ::pspec/attribute => (? ::node-id)]
   (get-in graph [::index-attrs attribute]))
 
 (>defn branch-node?
@@ -371,8 +371,8 @@
       node-ids)))
 
 (defn dynamic-resolver?
-  [{:com.wsscode.pathom.connect/keys [index-resolvers]} sym]
-  (get-in index-resolvers [sym :com.wsscode.pathom.connect/dynamic-resolver?]))
+  [{::pci/keys [index-resolvers]} sym]
+  (get-in index-resolvers [sym ::pco/dynamic-resolver?]))
 
 (defn add-unreachable-attr
   "Add attribute to unreachable list"
@@ -770,7 +770,7 @@
 
 (defn compute-root-or
   [{::keys [root] :as graph}
-   {:com.wsscode.pathom.connect/keys [attribute] :as env}
+   {::pspec/keys [attribute] :as env}
    {::keys [node-id] :as node}]
   (if (= root node-id)
     graph
@@ -795,17 +795,18 @@
 
 (defn inject-index-nested-provides
   [indexes
-   {:com.wsscode.pathom.connect/keys [attribute sym]
-    :as                              env}]
+   {::pspec/keys [attribute]
+    ::pco/keys   [name]
+    :as          env}]
   (let [sym-provides    (or (resolver-provides env) {attribute {}})
         nested-provides (get sym-provides attribute)]
     (-> indexes
-        (assoc-in [:com.wsscode.pathom.connect/index-resolvers
+        (assoc-in [::pci/index-resolvers
                    dynamic-base-provider-sym]
           {pc-sym      dynamic-base-provider-sym
-           pc-dyn-sym  sym
+           pc-dyn-sym  name
            pc-provides nested-provides})
-        (update :com.wsscode.pathom.connect/index-oir
+        (update ::pci/index-oir
           (fn [oir]
             (reduce
               (fn [oir attr]
@@ -832,8 +833,8 @@
         nested-graph   (compute-run-graph*
                          (base-graph)
                          (-> (base-env)
-                             (merge (select-keys env [:com.wsscode.pathom.connect/index-resolvers
-                                                      :com.wsscode.pathom.connect/index-oir]))
+                             (merge (select-keys env [::pci/index-resolvers
+                                                      ::pci/index-oir]))
                              (inject-index-nested-provides env)
                              (assoc ast-node ast)))
         sym            (pc-sym env)
@@ -860,24 +861,25 @@
 (defn create-resolver-node
   "Create a new node representative to run a given resolver."
   [graph
-   {::keys                           [run-next input source-sym]
-    :com.wsscode.pathom.connect/keys [attribute sym]
-    ast                              :edn-query-language.ast/node
-    :as                              env}]
+   {::keys       [run-next input source-sym]
+    ::pspec/keys [attribute]
+    ::pco/keys   [name]
+    ast          :edn-query-language.ast/node
+    :as          env}]
   (let [nested     (if (and (seq (:children ast))
-                            (dynamic-resolver? env sym))
+                            (dynamic-resolver? env name))
                      (compute-nested-node-details env))
         requires   (if nested
                      {attribute (::requires nested)}
                      {attribute {}})
         next-node  (get-node graph run-next)
         ast-params (:params ast)]
-    (if (= sym (pc-sym next-node))
+    (if (= name (pc-sym next-node))
       (-> next-node
           (update ::requires misc/merge-grow requires)
           (assoc ::input input))
       (cond->
-        {pc-sym     sym
+        {pc-sym     name
          ::node-id  (next-node-id env)
          ::requires requires
          ::input    input}
@@ -885,13 +887,13 @@
         (seq ast-params)
         (assoc ::params ast-params)
 
-        (dynamic-resolver? env sym)
+        (dynamic-resolver? env name)
         (assoc ::foreign-ast
           (if nested
             (::foreign-ast nested)
             {:type :root :children [ast]}))
 
-        (not= sym source-sym)
+        (not= name source-sym)
         (assoc ::source-sym source-sym)))))
 
 (defn include-node
@@ -930,7 +932,7 @@
        (into syms (mapcat #(collect-syms graph env {::node-id %}) (direct-node-successors node)))))))
 
 (defn all-attribute-resolvers
-  [{:com.wsscode.pathom.connect/keys [index-oir]}
+  [{::pci/keys [index-oir]}
    attr]
   (if-let [ir (get index-oir attr)]
     (into #{} cat (vals ir))
@@ -982,13 +984,13 @@
 
 (>defn resolver-node-requires-attribute?
   [{::keys [requires sym]} attribute]
-  [::node :com.wsscode.pathom.connect/attribute => boolean?]
+  [::node ::pspec/attribute => boolean?]
   (boolean (and sym (contains? requires attribute))))
 
 (>defn find-attribute-resolver-in-successors
   "Find the nodes that get the data required for the require in the OR node."
   [graph node-id attribute]
-  [::graph ::node-id :com.wsscode.pathom.connect/attribute => ::node-id]
+  [::graph ::node-id ::pspec/attribute => ::node-id]
   (->> (node-successors graph node-id)
        (filter #(resolver-node-requires-attribute? (get-node graph %) attribute))
        first))
@@ -1015,7 +1017,7 @@
   "Find the first common AND node ancestors from missing list, missing is a list
   of attributes"
   [graph missing]
-  [::graph :com.wsscode.pathom.connect/attributes-set
+  [::graph ::pspec/attributes-set
    => ::node-id]
   (if (= 1 (count missing))
     (get-attribute-node graph (first missing))
@@ -1055,7 +1057,7 @@
 (defn runner-node-sym
   "Find the runner symbol for a resolver, on normal resolvers that is the resolver symbol,
   but for foreign resolvers it uses its ::pc/dynamic-sym."
-  [{:com.wsscode.pathom.connect/keys [index-resolvers]}
+  [{::pci/keys [index-resolvers]}
    sym]
   (let [resolver (get index-resolvers sym)]
     (or (pc-dyn-sym resolver)
@@ -1104,7 +1106,7 @@
   "Walks the graph run next chain until it finds the node that's providing the
   attribute."
   [graph
-   {:com.wsscode.pathom.connect/keys [attribute] :as env}
+   {::pspec/keys [attribute] :as env}
    root]
   (loop [node-id root]
     (let [{::keys [run-next requires run-and]} (get-node graph node-id)]
@@ -1122,7 +1124,7 @@
         (recur run-next)))))
 
 (defn set-node-source-for-attrs
-  [graph {:com.wsscode.pathom.connect/keys [attribute] :as env}]
+  [graph {::pspec/keys [attribute] :as env}]
   (if-let [node-id (node-for-attribute-in-chain graph env (::root graph))]
     (-> graph
         (update-in [::nodes node-id ::source-for-attrs] misc/sconj attribute)
@@ -1163,8 +1165,9 @@
 
 (defn compute-attribute-graph*
   [{::keys [root] :as graph}
-   {:com.wsscode.pathom.connect/keys [index-oir attribute]
-    :as                              env}]
+   {::pci/keys   [index-oir]
+    ::pspec/keys [attribute]
+    :as          env}]
   (cond
     (get-attribute-node graph attribute)
     (let [node-id (get-attribute-node graph attribute)]
@@ -1190,10 +1193,10 @@
 (defn compute-attribute-graph
   "Compute the run graph for a given attribute."
   [{::keys [unreachable-attrs] :as graph}
-   {::keys                           [available-data attr-deps-trail]
-    :com.wsscode.pathom.connect/keys [index-oir]
-    {attr :key}                      :edn-query-language.ast/node
-    :as                              env}]
+   {::keys      [available-data attr-deps-trail]
+    ::pci/keys  [index-oir]
+    {attr :key} :edn-query-language.ast/node
+    :as         env}]
   (let [env (assoc env pc-attr attr)]
     (cond
       (or (contains? available-data attr)
@@ -1233,18 +1236,18 @@
    [(? (s/keys))
     (s/keys
       :req [:edn-query-language.ast/node
-            :com.wsscode.pathom.connect/index-oir]
+            ::pci/index-oir]
       :opt [::available-data
-            :com.wsscode.pathom.connect/index-resolvers])
+            ::pci/index-resolvers])
     => ::graph]
    (-> (compute-run-graph* (merge (base-graph) graph) (merge (base-env) env))))
 
   ([env]
    [(s/keys
       :req [:edn-query-language.ast/node
-            :com.wsscode.pathom.connect/index-oir]
+            ::pci/index-oir]
       :opt [::available-data
-            :com.wsscode.pathom.connect/index-resolvers])
+            ::pci/index-resolvers])
     => ::graph]
    (compute-run-graph* (base-graph)
                        (merge
@@ -1255,5 +1258,5 @@
   "Get a set with all provided attributes from the graph."
   [{::keys [index-attrs]}]
   [(s/keys :req [::index-attrs])
-   => :com.wsscode.pathom.parser/provides]
+   => ::pspec/attributes-set]
   (-> index-attrs keys set))
