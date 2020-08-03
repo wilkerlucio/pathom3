@@ -79,3 +79,19 @@
 (deftest atom?-test
   (is (true? (misc/atom? (atom "x"))))
   (is (false? (misc/atom? "x"))))
+
+(deftest merge-grow-test
+  (is (= (misc/merge-grow) {}))
+  (is (= (misc/merge-grow {:foo "bar"}) {:foo "bar"}))
+
+  (testing "merge sets by union"
+    (is (= (misc/merge-grow {:foo #{:a}} {:foo #{:b}})
+           {:foo #{:a :b}})))
+
+  (testing "merge maps"
+    (is (= (misc/merge-grow {:foo {:a 1}} {:foo {:b 2}})
+           {:foo {:a 1 :b 2}})))
+
+  (testing "keep left value if right one is nil"
+    (is (= (misc/merge-grow {:foo {:a 1}} {:foo {:a nil}})
+           {:foo {:a 1}}))))

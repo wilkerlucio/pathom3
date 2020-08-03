@@ -1,6 +1,5 @@
 (ns com.wsscode.pathom3.connect.indexes
   (:require
-    [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.core :as misc]
@@ -20,22 +19,6 @@
   [a b]
   (merge-with #(merge-with into % %2) a b))
 
-(defn merge-grow
-  ([] {})
-  ([a] a)
-  ([a b]
-   (cond
-     (and (set? a) (set? b))
-     (set/union a b)
-
-     (and (map? a) (map? b))
-     (merge-with merge-grow a b)
-
-     (nil? b) a
-
-     :else
-     b)))
-
 (defmulti index-merger
   "This is an extensible gateway so you can define different strategies for merging different
   kinds of indexes."
@@ -45,7 +28,7 @@
   (merge-oir a b))
 
 (defmethod index-merger :default [_ a b]
-  (merge-grow a b))
+  (misc/merge-grow a b))
 
 (>defn merge-indexes
   "Merge index ib in index ia."

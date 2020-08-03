@@ -1,4 +1,6 @@
 (ns com.wsscode.misc.core
+  (:require
+    [clojure.set :as set])
   #?(:clj
      (:import
        (clojure.lang
@@ -96,3 +98,27 @@
   "
   [f m]
   (into {} (for [[k v] m] [k (f v)])))
+
+(defn merge-grow
+  "Additive merging.
+
+  When merging maps, it does a deep merge.
+  When merging sets, makes a union of them.
+
+  When value of the right side is nil, the left side will be kept.
+
+  For the rest works as standard merge."
+  ([] {})
+  ([a] a)
+  ([a b]
+   (cond
+     (and (set? a) (set? b))
+     (set/union a b)
+
+     (and (map? a) (map? b))
+     (merge-with merge-grow a b)
+
+     (nil? b) a
+
+     :else
+     b)))
