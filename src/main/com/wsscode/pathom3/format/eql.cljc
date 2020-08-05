@@ -1,6 +1,8 @@
 (ns com.wsscode.pathom3.format.eql
   "Helpers to manipulate EQL."
   (:require
+    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.pathom3.specs :as p.spec]
     [edn-query-language.core :as eql]))
 
 (defn query-root-properties
@@ -36,3 +38,9 @@
         :children merged-children
         :query (eql/ast->query {:type :root :children merged-children})))
     ast))
+
+(>defn ident-key
+  "When key is an ident, return the first part of it. Otherwise returns nil."
+  [key]
+  [any? => (? ::p.spec/attribute)]
+  (if (vector? key) (first key)))
