@@ -2132,6 +2132,7 @@
                                         :complex        3}
             ::pcp/root                 2})))
 
+  #_
   (testing "merging long chains"
     (is (= (compute-run-graph
              (-> {::dynamics  {'dyn [{::pco/name   'a
