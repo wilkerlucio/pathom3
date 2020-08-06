@@ -36,7 +36,23 @@
 
       (is (= (pco/operation-config resolver)
              {::pco/name              'foo
-              ::pco/dynamic-resolver? true})))))
+              ::pco/dynamic-resolver? true}))))
+
+  (testing "noop when called with a resolver"
+    (let [resolver (-> {::pco/name    'foo
+                        ::pco/output  [:foo]
+                        ::pco/resolve (fn [_ _] "bar")}
+                       (pco/resolver)
+                       (pco/resolver)
+                       (pco/resolver))]
+      (is (= (resolver nil nil)
+             "bar"))
+
+      (is (= (pco/operation-config resolver)
+             {::pco/name     'foo
+              ::pco/output   [:foo]
+              ::pco/input    []
+              ::pco/provides {:foo {}}})))))
 
 (deftest defresolver-syntax-test
   (testing "classic form"
