@@ -803,9 +803,11 @@
     (-> indexes
         (assoc-in [::pci/index-resolvers
                    dynamic-base-provider-sym]
-          {pc-sym      dynamic-base-provider-sym
-           pc-dyn-sym  name
-           pc-provides nested-provides})
+          (pco/resolver
+            {pc-sym        dynamic-base-provider-sym
+             pc-dyn-sym    name
+             pc-provides   nested-provides
+             ::pco/resolve (fn [_ _])}))
         (update ::pci/index-oir
           (fn [oir]
             (reduce
@@ -1056,12 +1058,11 @@
 
 (defn runner-node-sym
   "Find the runner symbol for a resolver, on normal resolvers that is the resolver symbol,
-  but for foreign resolvers it uses its ::pc/dynamic-sym."
-  [{::pci/keys [index-resolvers]}
-   sym]
-  (let [resolver (get index-resolvers sym)]
+  but for foreign resolvers it uses its ::p.c.o/dynamic-name."
+  [env rname]
+  (let [resolver (pci/resolver-config env rname)]
     (or (pc-dyn-sym resolver)
-        sym)))
+        rname)))
 
 (defn compute-resolver-graph
   [{::keys [unreachable-syms] :as graph}

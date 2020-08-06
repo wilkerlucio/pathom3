@@ -67,7 +67,7 @@
    [::name (s/keys :opt [::output]) ::resolve => ::resolver]
    (resolver (assoc config ::name name ::resolve resolve)))
   ([{::keys [resolve output] :as config}]
-   [(s/or :map (s/keys :req [::name ::resolve] :opt [::output])
+   [(s/or :map (s/keys :req [::name] :opt [::output ::resolve])
           :resolver ::resolver) => ::resolver]
    (if (satisfies? pop/IResolver config)
      config
@@ -76,7 +76,7 @@
                                  {::input    []
                                   ::provides (pfsd/query->shape-descriptor output)}
                                  {})))]
-       (->Resolver config' resolve)))))
+       (->Resolver config' (or resolve (fn [_ _])))))))
 
 ; endregion
 
