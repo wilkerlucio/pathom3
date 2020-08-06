@@ -12,19 +12,23 @@
 
 (deftest entity-test
   (is (= (p.e/entity {::p.e/cache-tree* (atom {})
-                      ::p.spec/path      []})
+                      ::p.spec/path     []})
          {}))
 
+  (testing "get root when path isn't provided"
+    (is (= (p.e/entity {::p.e/cache-tree* (atom {:foo "bar"})})
+           {:foo "bar"})))
+
   (is (= (p.e/entity {::p.e/cache-tree* (atom {:foo "bar"})
-                      ::p.spec/path      []})
+                      ::p.spec/path     []})
          {:foo "bar"}))
 
   (is (= (p.e/entity {::p.e/cache-tree* (atom {:foo {:baz "bar"}})
-                      ::p.spec/path      [:foo]})
+                      ::p.spec/path     [:foo]})
          {:baz "bar"}))
 
   (is (= (p.e/entity {::p.e/cache-tree* (atom {:foo {:baz "bar"}})
-                      ::p.spec/path      [:baz]})
+                      ::p.spec/path     [:baz]})
          {}))
 
   (is (= (p.e/entity {::p.e/cache-tree* (atom {:foo [{:baz "bar"}]})

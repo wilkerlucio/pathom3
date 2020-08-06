@@ -64,13 +64,15 @@
   Returns an instance of the Resolver type.
   "
   ([name config resolve]
-   [::name (s/keys :req [::output]) ::resolve => ::resolver]
+   [::name (s/keys :opt [::output]) ::resolve => ::resolver]
    (resolver (assoc config ::name name ::resolve resolve)))
   ([{::keys [resolve output] :as config}]
-   [(s/keys :req [::name ::output ::resolve]) => ::resolver]
+   [(s/keys :req [::name ::resolve] :opt [::output]) => ::resolver]
    (let [config' (->> (dissoc config ::resolve)
-                      (merge {::input    []
-                              ::provides (pfsd/query->shape-descriptor output)}))]
+                      (merge (if output
+                               {::input    []
+                                ::provides (pfsd/query->shape-descriptor output)}
+                               {})))]
      (->Resolver config' resolve))))
 
 ; endregion

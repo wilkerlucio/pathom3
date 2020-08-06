@@ -371,8 +371,8 @@
       node-ids)))
 
 (defn dynamic-resolver?
-  [{::pci/keys [index-resolvers]} sym]
-  (get-in index-resolvers [sym ::pco/dynamic-resolver?]))
+  [env sym]
+  (::pco/dynamic-resolver? (pci/resolver-config env sym)))
 
 (defn add-unreachable-attr
   "Add attribute to unreachable list"

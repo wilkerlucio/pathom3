@@ -27,7 +27,16 @@
              {::pco/name     'foo
               ::pco/output   [:foo]
               ::pco/input    []
-              ::pco/provides {:foo {}}})))))
+              ::pco/provides {:foo {}}}))))
+
+  (testing "dynamic resolver"
+    (let [resolver (pco/resolver {::pco/name              'foo
+                                  ::pco/dynamic-resolver? true
+                                  ::pco/resolve           (fn [_ _] "bar")})]
+
+      (is (= (pco/operation-config resolver)
+             {::pco/name              'foo
+              ::pco/dynamic-resolver? true})))))
 
 (deftest defresolver-syntax-test
   (testing "classic form"

@@ -14,7 +14,7 @@
 (>defn entity
   "Returns the cache entity map at the current path."
   [{::keys [cache-tree*] ::p.spec/keys [path]}]
-  [(s/keys :req [::cache-tree* ::p.spec/path])
+  [(s/keys :req [::cache-tree*] :opt [::p.spec/path])
    => map?]
   (get-in @cache-tree* path {}))
 
