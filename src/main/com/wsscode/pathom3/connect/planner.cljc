@@ -61,7 +61,7 @@
   "A index pointing from attribute to the node that provides its value."
   (s/map-of ::pspec/attribute ::node-id))
 
-(>def ::index-syms
+(>def ::index-resolver->node
   "An index from resolver symbol to a set of execution nodes where its used."
   (s/map-of ::pco/name ::node-id-set))
 
@@ -158,10 +158,10 @@
          compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes)
 
 (defn base-graph []
-  {::nodes             {}
-   ::index-syms        {}
-   ::unreachable-syms  #{}
-   ::unreachable-attrs #{}})
+  {::nodes                {}
+   ::index-resolver->node {}
+   ::unreachable-syms     #{}
+   ::unreachable-attrs    #{}})
 
 (defn base-env []
   {::id-counter     (atom 0)
@@ -495,7 +495,7 @@
     (-> graph
         (cond->
           (pc-sym node)
-          (update-in [::index-syms (pc-sym node)] disj node-id))
+          (update-in [::index-resolver->node (pc-sym node)] disj node-id))
         (remove-branch-node-after-nodes node-id)
         (remove-after-node run-next node-id)
         (update ::nodes dissoc node-id))))
@@ -775,21 +775,21 @@
   (if (= root node-id)
     graph
     (compute-root-branch graph (assoc env ::branch-type ::run-or) node
-                         (fn []
-                           {::node-id  (next-node-id env)
-                            ::requires {attribute {}}
-                            ::run-or   #{(::root graph)}}))))
+      (fn []
+        {::node-id  (next-node-id env)
+         ::requires {attribute {}}
+         ::run-or   #{(::root graph)}}))))
 
 (defn compute-root-and
   [{::keys [root] :as graph} env {::keys [node-id] :as node}]
   (if (= root node-id)
     graph
     (compute-root-branch graph (assoc env ::branch-type ::run-and) node
-                         (fn []
-                           (let [{::keys [requires]} (get-root-node graph)]
-                             {::node-id  (next-node-id env)
-                              ::requires requires
-                              ::run-and  #{(::root graph)}})))))
+      (fn []
+        (let [{::keys [requires]} (get-root-node graph)]
+          {::node-id  (next-node-id env)
+           ::requires requires
+           ::run-and  #{(::root graph)}})))))
 
 (def dynamic-base-provider-sym `run-graph-base-provider)
 
@@ -843,7 +843,7 @@
         root-dyn-nodes (into []
                              (comp (filter #(root-execution-node? nested-graph %))
                                    (map #(get-node nested-graph %)))
-                             (get-in nested-graph [::index-syms sym]))
+                             (get-in nested-graph [::index-resolver->node sym]))
         nodes-inputs   (into []
                              (comp (keep ::run-next)
                                    (map #(get-node nested-graph %))
@@ -906,7 +906,7 @@
         (assoc-in [::nodes node-id] node)
         (cond->
           sym
-          (update-in [::index-syms sym] misc/sconj node-id)))))
+          (update-in [::index-resolver->node sym] misc/sconj node-id)))))
 
 (>defn direct-node-successors
   "Direct successors of node, branch nodes and run-next, in case of branch nodes the
@@ -1217,7 +1217,7 @@
     (fn [graph ast]
       (if (contains? #{:prop :join} (:type ast))
         (compute-attribute-graph graph
-                                 (assoc env :edn-query-language.ast/node ast))
+          (assoc env :edn-query-language.ast/node ast))
         graph))
     graph
     (remove (comp eql/ident? :key) (:children (ast-node env)))))
@@ -1251,9 +1251,9 @@
             ::pci/index-resolvers])
     => ::graph]
    (compute-run-graph* (base-graph)
-                       (merge
-                         (base-env)
-                         env))))
+     (merge
+       (base-env)
+       env))))
 
 (>defn graph-provides
   "Get a set with all provided attributes from the graph."
