@@ -61,7 +61,7 @@
   "A index pointing from attribute to the node that provides its value."
   (s/map-of ::pspec/attribute ::node-id))
 
-(>def ::index-resolver->node
+(>def ::index-resolver->nodes
   "An index from resolver symbol to a set of execution nodes where its used."
   (s/map-of ::pco/name ::node-id-set))
 
@@ -158,10 +158,10 @@
          compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes)
 
 (defn base-graph []
-  {::nodes                {}
-   ::index-resolver->node {}
-   ::unreachable-syms     #{}
-   ::unreachable-attrs    #{}})
+  {::nodes                 {}
+   ::index-resolver->nodes {}
+   ::unreachable-syms      #{}
+   ::unreachable-attrs     #{}})
 
 (defn base-env []
   {::id-counter     (atom 0)
@@ -495,7 +495,7 @@
     (-> graph
         (cond->
           (pc-sym node)
-          (update-in [::index-resolver->node (pc-sym node)] disj node-id))
+          (update-in [::index-resolver->nodes (pc-sym node)] disj node-id))
         (remove-branch-node-after-nodes node-id)
         (remove-after-node run-next node-id)
         (update ::nodes dissoc node-id))))
@@ -843,7 +843,7 @@
         root-dyn-nodes (into []
                              (comp (filter #(root-execution-node? nested-graph %))
                                    (map #(get-node nested-graph %)))
-                             (get-in nested-graph [::index-resolver->node sym]))
+                             (get-in nested-graph [::index-resolver->nodes sym]))
         nodes-inputs   (into []
                              (comp (keep ::run-next)
                                    (map #(get-node nested-graph %))
@@ -906,7 +906,7 @@
         (assoc-in [::nodes node-id] node)
         (cond->
           sym
-          (update-in [::index-resolver->node sym] misc/sconj node-id)))))
+          (update-in [::index-resolver->nodes sym] misc/sconj node-id)))))
 
 (>defn direct-node-successors
   "Direct successors of node, branch nodes and run-next, in case of branch nodes the

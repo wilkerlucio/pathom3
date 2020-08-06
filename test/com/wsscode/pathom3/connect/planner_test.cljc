@@ -4,11 +4,11 @@
     [clojure.test :refer [deftest is are run-tests testing]]
     [clojure.walk :as walk]
     [com.wsscode.misc.core :as misc]
-    [com.wsscode.pathom3.connect.foreign :as p.c.f]
+    [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
-    [com.wsscode.pathom3.specs :as pspec]
+    [com.wsscode.pathom3.specs :as p.spec]
     [edn-query-language.core :as eql]
     #?(:clj [tangle.core :as tangle])))
 
@@ -128,7 +128,7 @@
                     (reduce
                       (fn [env' [name resolvers]]
                         (pci/merge-indexes env'
-                          (p.c.f/internalize-parser-index*
+                          (pcf/internalize-parser-index*
                             (assoc (register-index resolvers) ::pci/index-source-id name))))
                       <>
                       dynamics)))
@@ -146,36 +146,36 @@
     (is (= (compute-run-graph
              {::pci/index-oir '{}
               ::eql/query     [:a]})
-           {::pcp/nodes                {}
-            ::pcp/index-resolver->node {}
-            ::pcp/unreachable-attrs    #{:a}
-            ::pcp/unreachable-syms     #{}}))
+           {::pcp/nodes                 {}
+            ::pcp/index-resolver->nodes {}
+            ::pcp/unreachable-attrs     #{:a}
+            ::pcp/unreachable-syms      #{}}))
 
     (testing "ignore mutations"
       (is (= (compute-run-graph
                {::pci/index-oir '{}
                 ::eql/query     '[(foo {})]})
-             {::pcp/nodes                {}
-              ::pcp/index-resolver->node {}
-              ::pcp/unreachable-syms     #{}
-              ::pcp/unreachable-attrs    #{}})))
+             {::pcp/nodes                 {}
+              ::pcp/index-resolver->nodes {}
+              ::pcp/unreachable-syms      #{}
+              ::pcp/unreachable-attrs     #{}})))
 
     (testing "broken chain"
       (is (= (compute-run-graph
                {::pci/index-oir '{:b {#{:a} #{b}}}
                 ::eql/query     [:b]})
-             '#::pcp{:nodes                {}
-                     :index-resolver->node {}
-                     :unreachable-attrs    #{:a :b}
-                     :unreachable-syms     #{b}}))
+             '#::pcp{:nodes                 {}
+                     :index-resolver->nodes {}
+                     :unreachable-attrs     #{:a :b}
+                     :unreachable-syms      #{b}}))
 
       (is (= (compute-run-graph
                {::pci/index-oir '{:b {#{:a} #{b1 b}}}
                 ::eql/query     [:b]})
-             '#::pcp{:nodes                {}
-                     :index-resolver->node {}
-                     :unreachable-attrs    #{:a :b}
-                     :unreachable-syms     #{b b1}}))
+             '#::pcp{:nodes                 {}
+                     :index-resolver->nodes {}
+                     :unreachable-attrs     #{:a :b}
+                     :unreachable-syms      #{b b1}}))
 
       (is (= (compute-run-graph
                {::resolvers [{::pco/name   'a
@@ -185,10 +185,10 @@
                               ::pco/output [:b]}]
                 ::eql/query [:b]
                 ::out       {::pcp/unreachable-attrs #{:a}}})
-             '#::pcp{:nodes                {}
-                     :index-resolver->node {}
-                     :unreachable-attrs    #{:a :b}
-                     :unreachable-syms     #{b}}))
+             '#::pcp{:nodes                 {}
+                     :index-resolver->nodes {}
+                     :unreachable-attrs     #{:a :b}
+                     :unreachable-syms      #{b}}))
 
       (is (= (compute-run-graph
                {::resolvers [{::pco/name   'b
@@ -198,10 +198,10 @@
                               ::pco/input  [:b]
                               ::pco/output [:c]}]
                 ::eql/query [:c]})
-             '#::pcp{:nodes                {}
-                     :index-resolver->node {}
-                     :unreachable-attrs    #{:a :b :c}
-                     :unreachable-syms     #{b c}}))
+             '#::pcp{:nodes                 {}
+                     :index-resolver->nodes {}
+                     :unreachable-attrs     #{:a :b :c}
+                     :unreachable-syms      #{b c}}))
 
       (is (= (compute-run-graph
                {::resolvers [{::pco/name   'b
@@ -213,10 +213,10 @@
                               ::pco/input  [:b :d]
                               ::pco/output [:c]}]
                 ::eql/query [:c]})
-             '#::pcp{:nodes                {}
-                     :index-resolver->node {}
-                     :unreachable-attrs    #{:a :b :c}
-                     :unreachable-syms     #{b c}}))
+             '#::pcp{:nodes                 {}
+                     :index-resolver->nodes {}
+                     :unreachable-attrs     #{:a :b :c}
+                     :unreachable-syms      #{b c}}))
 
       (is (= (compute-run-graph
                {::resolvers [{::pco/name   'b
@@ -228,16 +228,16 @@
                               ::pco/input  [:b :d]
                               ::pco/output [:c]}]
                 ::eql/query [:c :d]})
-             '{::pcp/nodes                {4 {::pco/name             d
+             '{::pcp/nodes                 {4 {::pco/name             d
                                               ::pcp/node-id          4
                                               ::pcp/requires         {:d {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:d}}}
-               ::pcp/index-resolver->node {d #{4}}
-               ::pcp/unreachable-syms     #{c b}
-               ::pcp/unreachable-attrs    #{:c :b :a}
-               ::pcp/root                 4
-               ::pcp/index-attrs          {:d 4}})))))
+               ::pcp/index-resolver->nodes {d #{4}}
+               ::pcp/unreachable-syms      #{c b}
+               ::pcp/unreachable-attrs     #{:c :b :a}
+               ::pcp/root                  4
+               ::pcp/index-attrs           {:d 4}})))))
 
 (deftest compute-run-graph-test
   (testing "simplest path"
@@ -245,32 +245,32 @@
              {::resolvers [{::pco/name   'a
                             ::pco/output [:a]}]
               ::eql/query [:a]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->node {a #{1}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 1
-             ::pcp/index-attrs          {:a 1}})))
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  1
+             ::pcp/index-attrs           {:a 1}})))
 
   (testing "ignore idents"
     (is (= (compute-run-graph
              {::resolvers [{::pco/name   'a
                             ::pco/output [:a]}]
               ::eql/query [:a [:foo "bar"]]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->node {a #{1}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 1
-             ::pcp/index-attrs          {:a 1}})))
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  1
+             ::pcp/index-attrs           {:a 1}})))
 
   (testing "cycles"
     (is (= (compute-run-graph
@@ -281,10 +281,10 @@
                             ::pco/input  [:a]
                             ::pco/output [:b]}]
               ::eql/query [:a]})
-           '#::pcp{:nodes                {}
-                   :index-resolver->node {}
-                   :unreachable-attrs    #{:b :a}
-                   :unreachable-syms     #{a b}}))
+           '#::pcp{:nodes                 {}
+                   :index-resolver->nodes {}
+                   :unreachable-attrs     #{:b :a}
+                   :unreachable-syms      #{a b}}))
 
     (is (= (compute-run-graph
              {::resolvers [{::pco/name   'a
@@ -297,10 +297,10 @@
                             ::pco/input  [:b]
                             ::pco/output [:c]}]
               ::eql/query [:a]})
-           '#::pcp{:nodes                {}
-                   :index-resolver->node {}
-                   :unreachable-attrs    #{:c :b :a}
-                   :unreachable-syms     #{a b c}}))
+           '#::pcp{:nodes                 {}
+                   :index-resolver->nodes {}
+                   :unreachable-attrs     #{:c :b :a}
+                   :unreachable-syms      #{a b c}}))
 
     (testing "partial cycle"
       (is (= (compute-run-graph
@@ -310,7 +310,7 @@
                                   :c {#{:b} #{c}}
                                   :d {#{} #{d}}}
                 ::eql/query     [:c :a]})
-             '{::pcp/nodes                {1 {::pco/name             c
+             '{::pcp/nodes                 {1 {::pco/name             c
                                               ::pcp/node-id          1
                                               ::pcp/requires         {:c {}}
                                               ::pcp/input            {:b {}}
@@ -329,11 +329,11 @@
                                               ::pcp/input            {}
                                               ::pcp/run-next         2
                                               ::pcp/source-for-attrs #{:a}}}
-               ::pcp/index-resolver->node {c #{1} b #{2} a1 #{4}}
-               ::pcp/unreachable-syms     #{a}
-               ::pcp/unreachable-attrs    #{}
-               ::pcp/root                 4
-               ::pcp/index-attrs          {:a 4 :b 2 :c 1}}))))
+               ::pcp/index-resolver->nodes {c #{1} b #{2} a1 #{4}}
+               ::pcp/unreachable-syms      #{a}
+               ::pcp/unreachable-attrs     #{}
+               ::pcp/root                  4
+               ::pcp/index-attrs           {:a 4 :b 2 :c 1}}))))
 
   (testing "collapse nodes"
     (is (= (compute-run-graph
@@ -341,16 +341,16 @@
                                 :b {#{} #{a}}
                                 :c {#{} #{a}}}
               ::eql/query     [:a :b]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {} :b {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:a :b}}}
-             ::pcp/index-resolver->node {a #{1}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:a 1 :b 1}
-             ::pcp/root                 1}))
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:a 1 :b 1}
+             ::pcp/root                  1}))
 
     (is (= (compute-run-graph
              {::resolvers [{::pco/name   'a
@@ -358,7 +358,7 @@
                            {::pco/name   'b
                             ::pco/output [:b]}]
               ::eql/query [:a :b :c]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {} :c {}}
                                             ::pcp/input            {}
@@ -373,11 +373,11 @@
                                          3 {::pcp/node-id  3
                                             ::pcp/requires {:b {} :a {} :c {}}
                                             ::pcp/run-and  #{2 1}}}
-             ::pcp/index-resolver->node {a #{1} b #{2}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:a 1 :b 2 :c 1}
-             ::pcp/root                 3})))
+             ::pcp/index-resolver->nodes {a #{1} b #{2}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:a 1 :b 2 :c 1}
+             ::pcp/root                  3})))
 
   (testing "OR on multiple paths"
     (is (= (compute-run-graph
@@ -386,7 +386,7 @@
                            {::pco/name   'a2
                             ::pco/output [:a]}]
               ::eql/query [:a]})
-           '{::pcp/nodes                {1 {::pco/name        a
+           '{::pcp/nodes                 {1 {::pco/name        a
                                             ::pcp/node-id     1
                                             ::pcp/requires    {:a {}}
                                             ::pcp/input       {}
@@ -400,11 +400,11 @@
                                             ::pcp/requires         {:a {}}
                                             ::pcp/run-or           #{1 2}
                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->node {a #{1} a2 #{2}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 3
-             ::pcp/index-attrs          {:a 3}})))
+             ::pcp/index-resolver->nodes {a #{1} a2 #{2}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  3
+             ::pcp/index-attrs           {:a 3}})))
 
   (testing "AND on multiple attributes"
     (is (= (compute-run-graph
@@ -413,7 +413,7 @@
                            {::pco/name   'b
                             ::pco/output [:b]}]
               ::eql/query [:a :b]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {}
@@ -428,11 +428,11 @@
                                          3 {::pcp/node-id  3
                                             ::pcp/requires {:b {} :a {}}
                                             ::pcp/run-and  #{2 1}}}
-             ::pcp/index-resolver->node {a #{1} b #{2}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:a 1 :b 2}
-             ::pcp/root                 3}))
+             ::pcp/index-resolver->nodes {a #{1} b #{2}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:a 1 :b 2}
+             ::pcp/root                  3}))
 
     (is (= (compute-run-graph
              {::resolvers [{::pco/name   'a
@@ -442,7 +442,7 @@
                            {::pco/name   'c
                             ::pco/output [:c]}]
               ::eql/query [:a :b :c]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {}
@@ -463,11 +463,11 @@
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:c}
                                             ::pcp/after-nodes      #{3}}}
-             ::pcp/index-resolver->node {a #{1} b #{2} c #{4}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:a 1 :b 2 :c 4}
-             ::pcp/root                 3})))
+             ::pcp/index-resolver->nodes {a #{1} b #{2} c #{4}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:a 1 :b 2 :c 4}
+             ::pcp/root                  3})))
 
   (testing "requires one nested nodes"
     (is (= (compute-run-graph
@@ -476,7 +476,7 @@
                                 :indirect {#{:dep} #{indirect}}
                                 :dep      {#{} #{dep}}}
                ::eql/query     [:multi]})
-           '{::pcp/nodes                {1 {::pco/name             multi
+           '{::pcp/nodes                 {1 {::pco/name             multi
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:multi {}}
                                             ::pcp/input            {:direct {} :indirect {}}
@@ -505,11 +505,11 @@
                                             ::pcp/requires {:dep {} :direct {} :indirect {}}
                                             ::pcp/run-and  #{4 2}
                                             ::pcp/run-next 1}}
-             ::pcp/index-resolver->node {multi #{1} direct #{2} indirect #{3} dep #{4}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:direct 2 :dep 4 :indirect 3 :multi 1}
-             ::pcp/root                 5})))
+             ::pcp/index-resolver->nodes {multi #{1} direct #{2} indirect #{3} dep #{4}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:direct 2 :dep 4 :indirect 3 :multi 1}
+             ::pcp/root                  5})))
 
   (testing "and collapsing"
     (is (= (compute-run-graph
@@ -519,7 +519,7 @@
                                 :d {#{} #{d}}
                                 :e {#{} #{e}}}
                ::eql/query     [:a]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {:c {} :b {} :d {}}
@@ -554,11 +554,11 @@
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:d}
                                             ::pcp/after-nodes      #{5}}}
-             ::pcp/index-resolver->node {a #{1} c #{2} e #{3} b #{4} d #{6}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:e 3 :c 2 :b 4 :d 6 :a 1}
-             ::pcp/root                 5})))
+             ::pcp/index-resolver->nodes {a #{1} c #{2} e #{3} b #{4} d #{6}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:e 3 :c 2 :b 4 :d 6 :a 1}
+             ::pcp/root                  5})))
 
   (testing "adding multiple ands"
     (is (= (compute-run-graph
@@ -567,7 +567,7 @@
                                 :c {#{} #{c}}
                                 :d {#{:c :b} #{d}}}
                ::eql/query     [:a :d]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {:c {} :b {}}
@@ -597,11 +597,11 @@
                                          7 {::pcp/node-id  7
                                             ::pcp/requires {:a {} :d {}}
                                             ::pcp/run-and  #{1 5}}}
-             ::pcp/index-resolver->node {a #{1} c #{2} b #{3} d #{5}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:c 2 :b 3 :a 1}
-             ::pcp/root                 6}))
+             ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:c 2 :b 3 :a 1}
+             ::pcp/root                  6}))
 
     (testing "chain with recursive deps"
       (is (= (compute-run-graph
@@ -609,7 +609,7 @@
                                   :b {#{:c} #{b}}
                                   :c {#{} #{c}}}
                  ::eql/query     [:a]})
-             '{::pcp/nodes                {1 {::pco/name             a
+             '{::pcp/nodes                 {1 {::pco/name             a
                                               ::pcp/node-id          1
                                               ::pcp/requires         {:a {}}
                                               ::pcp/input            {:c {} :b {}}
@@ -628,11 +628,11 @@
                                               ::pcp/after-nodes      #{2}
                                               ::pcp/source-for-attrs #{:b}
                                               ::pcp/run-next         1}}
-               ::pcp/index-resolver->node {a #{1} c #{2} b #{3}}
-               ::pcp/unreachable-syms     #{}
-               ::pcp/unreachable-attrs    #{}
-               ::pcp/index-attrs          {:c 2 :b 3 :a 1}
-               ::pcp/root                 2}))
+               ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3}}
+               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-attrs     #{}
+               ::pcp/index-attrs           {:c 2 :b 3 :a 1}
+               ::pcp/root                  2}))
 
       (is (= (compute-run-graph
                '{::pci/index-oir {:a {#{:b :c :d} #{a}}
@@ -640,7 +640,7 @@
                                   :c {#{:d} #{c}}
                                   :d {#{} #{d}}}
                  ::eql/query     [:a]})
-             '{::pcp/nodes                {1 {::pco/name             a
+             '{::pcp/nodes                 {1 {::pco/name             a
                                               ::pcp/node-id          1
                                               ::pcp/requires         {:a {}}
                                               ::pcp/input            {:c {} :b {} :d {}}
@@ -666,11 +666,11 @@
                                               ::pcp/after-nodes      #{2}
                                               ::pcp/source-for-attrs #{:b}
                                               ::pcp/run-next         1}}
-               ::pcp/index-resolver->node {a #{1} c #{2} d #{3} b #{4}}
-               ::pcp/unreachable-syms     #{}
-               ::pcp/unreachable-attrs    #{}
-               ::pcp/index-attrs          {:d 3 :c 2 :b 4 :a 1}
-               ::pcp/root                 3})))
+               ::pcp/index-resolver->nodes {a #{1} c #{2} d #{3} b #{4}}
+               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-attrs     #{}
+               ::pcp/index-attrs           {:d 3 :c 2 :b 4 :a 1}
+               ::pcp/root                  3})))
 
     (is (= (compute-run-graph
              '{::pci/index-oir {:a {#{:c :b} #{a}
@@ -682,7 +682,7 @@
                                 :e {#{:b :f} #{e}}
                                 :f {#{} #{f}}}
                ::eql/query     [:a :e]})
-           '{::pcp/nodes                {10 {::pco/name             a1
+           '{::pcp/nodes                 {10 {::pco/name             a1
                                              ::pcp/node-id          10
                                              ::pcp/requires         {:a {}}
                                              ::pcp/input            {:e {}}
@@ -711,11 +711,11 @@
                                              ::pcp/requires {:f {} :e {} :b {}}
                                              ::pcp/run-and  #{13 12}
                                              ::pcp/run-next 11}}
-             ::pcp/index-resolver->node {a1 #{10} e #{11} b #{12} f #{13}}
-             ::pcp/unreachable-syms     #{a d2 c3 c2 c d}
-             ::pcp/unreachable-attrs    #{:c :d}
-             ::pcp/index-attrs          {:b 12 :f 13 :e 11 :a 10}
-             ::pcp/root                 14}))
+             ::pcp/index-resolver->nodes {a1 #{10} e #{11} b #{12} f #{13}}
+             ::pcp/unreachable-syms      #{a d2 c3 c2 c d}
+             ::pcp/unreachable-attrs     #{:c :d}
+             ::pcp/index-attrs           {:b 12 :f 13 :e 11 :a 10}
+             ::pcp/root                  14}))
 
     (is (= (compute-run-graph
              '{::pci/index-oir {:a {#{:c :b} #{a}}
@@ -725,7 +725,7 @@
                                 :e {#{:c :b :f} #{e}}
                                 :f {#{} #{f}}}
                ::eql/query     [:a :d :e]})
-           '{::pcp/nodes                {7  {::pcp/node-id  7
+           '{::pcp/nodes                 {7  {::pcp/node-id  7
                                              ::pcp/requires {:a {} :d {}}
                                              ::pcp/run-and  #{1 5}}
                                          1  {::pco/name             a
@@ -776,11 +776,11 @@
                                              ::pcp/input            {:c {} :b {} :f {}}
                                              ::pcp/after-nodes      #{9}
                                              ::pcp/source-for-attrs #{:e}}}
-             ::pcp/index-resolver->node {a #{1} c #{2} b #{3} d #{5} e #{8} f #{10}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:c 2 :b 3 :a 1 :f 10 :e 8}
-             ::pcp/root                 11}))
+             ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5} e #{8} f #{10}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:c 2 :b 3 :a 1 :f 10 :e 8}
+             ::pcp/root                  11}))
 
     (is (= (compute-run-graph
              '{::pci/index-oir {:a {#{:c :b} #{a}}
@@ -790,7 +790,7 @@
                                 :e {#{} #{e}}
                                 :f {#{} #{f}}}
                ::eql/query     [:a :d]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {:c {} :b {}}
@@ -833,11 +833,11 @@
                                          8 {::pcp/node-id  8
                                             ::pcp/requires {:b {} :e {} :c {}}
                                             ::pcp/run-and  #{7 4}}}
-             ::pcp/index-resolver->node {a #{1} c #{2} b #{3} d #{5} e #{6}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:c 2 :b 3 :a 1 :e 6 :d 5}
-             ::pcp/root                 8}))
+             ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5} e #{6}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:c 2 :b 3 :a 1 :e 6 :d 5}
+             ::pcp/root                  8}))
 
     #_(is (= (compute-run-graph
                '{::pci/index-oir {:a {#{:b} #{a}
@@ -857,16 +857,16 @@
                {::pci/index-oir {:a {#{} #{'a}}
                                  :b {#{} #{'a}}}
                 ::eql/query     [:a :b]})
-             '{::pcp/nodes                {1 {::pco/name             a
+             '{::pcp/nodes                 {1 {::pco/name             a
                                               ::pcp/node-id          1
                                               ::pcp/requires         {:a {} :b {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:b :a}}}
-               ::pcp/index-resolver->node {a #{1}}
-               ::pcp/unreachable-syms     #{}
-               ::pcp/unreachable-attrs    #{}
-               ::pcp/index-attrs          {:a 1 :b 1}
-               ::pcp/root                 1}))))
+               ::pcp/index-resolver->nodes {a #{1}}
+               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-attrs     #{}
+               ::pcp/index-attrs           {:a 1 :b 1}
+               ::pcp/root                  1}))))
 
   (testing "add requires to appropriated node"
     (is (= (compute-run-graph
@@ -876,7 +876,7 @@
                             ::pco/input  [:z]
                             ::pco/output [:a :b]}]
               ::eql/query [:a :b]})
-           '{::pcp/nodes                {2 {::pco/name             z
+           '{::pcp/nodes                 {2 {::pco/name             z
                                             ::pcp/node-id          2
                                             ::pcp/requires         {:z {}}
                                             ::pcp/input            {}
@@ -888,11 +888,11 @@
                                             ::pcp/input            {:z {}}
                                             ::pcp/source-for-attrs #{:b :a}
                                             ::pcp/after-nodes      #{2}}}
-             ::pcp/index-resolver->node {a #{3} z #{2}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:z 2 :a 3 :b 3}
-             ::pcp/root                 2}))
+             ::pcp/index-resolver->nodes {a #{3} z #{2}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:z 2 :a 3 :b 3}
+             ::pcp/root                  2}))
 
     (is (= (compute-run-graph
              {::resolvers [{::pco/name   'z
@@ -904,7 +904,7 @@
                             ::pco/input  [:b]
                             ::pco/output [:c]}]
               ::eql/query [:c :a]})
-           '{::pcp/nodes                {1 {::pco/name             c
+           '{::pcp/nodes                 {1 {::pco/name             c
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:c {}}
                                             ::pcp/input            {:b {}}
@@ -923,11 +923,11 @@
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:b :a}
                                             ::pcp/after-nodes      #{3}}}
-             ::pcp/index-resolver->node {c #{1} a #{4} z #{3}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:z 3 :b 4 :c 1 :a 4}
-             ::pcp/root                 3})))
+             ::pcp/index-resolver->nodes {c #{1} a #{4} z #{3}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:z 3 :b 4 :c 1 :a 4}
+             ::pcp/root                  3})))
 
   (testing "single dependency"
     (is (= (compute-run-graph
@@ -937,7 +937,7 @@
                             ::pco/input  [:a]
                             ::pco/output [:b]}]
               ::eql/query [:b]})
-           '{::pcp/nodes                {1 {::pco/name             b
+           '{::pcp/nodes                 {1 {::pco/name             b
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:b {}}
                                             ::pcp/input            {:a {}}
@@ -949,11 +949,11 @@
                                             ::pcp/input            {}
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->node {b #{1} a #{2}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 2
-             ::pcp/index-attrs          {:a 2 :b 1}})))
+             ::pcp/index-resolver->nodes {b #{1} a #{2}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  2
+             ::pcp/index-attrs           {:a 2 :b 1}})))
 
   (testing "optimize multiple resolver calls"
     (is (= (compute-run-graph
@@ -965,7 +965,7 @@
                            {::pco/name   'b
                             ::pco/output [:b]}]
               ::eql/query [:a]})
-           '{::pcp/nodes                {1 {::pco/name        a
+           '{::pcp/nodes                 {1 {::pco/name        a
                                             ::pcp/node-id     1
                                             ::pcp/requires    {:a {}}
                                             ::pcp/input       {}
@@ -986,11 +986,11 @@
                                             ::pcp/requires         {:a {}}
                                             ::pcp/run-or           #{3 1}
                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->node {a #{1} a2 #{2} b #{3}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 4
-             ::pcp/index-attrs          {:b 3 :a 4}}))
+             ::pcp/index-resolver->nodes {a #{1} a2 #{2} b #{3}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  4
+             ::pcp/index-attrs           {:b 3 :a 4}}))
 
     (testing "create and root path for quicker dependency dispatch"
       (is (= (compute-run-graph
@@ -1002,7 +1002,7 @@
                              {::pco/name   'b
                               ::pco/output [:b]}]
                 ::eql/query [:a :b]})
-             '{::pcp/nodes                {1 {::pco/name        a
+             '{::pcp/nodes                 {1 {::pco/name        a
                                               ::pcp/node-id     1
                                               ::pcp/requires    {:a {}}
                                               ::pcp/input       {}
@@ -1027,11 +1027,11 @@
                                            5 {::pcp/node-id  5
                                               ::pcp/requires {:b {} :a {}}
                                               ::pcp/run-and  #{4 3}}}
-               ::pcp/index-resolver->node {a #{1} a2 #{2} b #{3}}
-               ::pcp/unreachable-syms     #{}
-               ::pcp/unreachable-attrs    #{}
-               ::pcp/index-attrs          {:b 3 :a 4}
-               ::pcp/root                 5}))))
+               ::pcp/index-resolver->nodes {a #{1} a2 #{2} b #{3}}
+               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-attrs     #{}
+               ::pcp/index-attrs           {:b 3 :a 4}
+               ::pcp/root                  5}))))
 
   (testing "single dependency with extra provides"
     (is (= (compute-run-graph
@@ -1041,7 +1041,7 @@
                             ::pco/input  [:a]
                             ::pco/output [:b :b2 :b3]}]
               ::eql/query [:b]})
-           '{::pcp/nodes                {1 {::pco/name             b
+           '{::pcp/nodes                 {1 {::pco/name             b
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:b {}}
                                             ::pcp/input            {:a {}}
@@ -1053,11 +1053,11 @@
                                             ::pcp/input            {}
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->node {b #{1} a #{2}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 2
-             ::pcp/index-attrs          {:a 2 :b 1}})))
+             ::pcp/index-resolver->nodes {b #{1} a #{2}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  2
+             ::pcp/index-attrs           {:a 2 :b 1}})))
 
   (testing "dependency chain"
     (is (= (compute-run-graph
@@ -1070,7 +1070,7 @@
                             ::pco/input  [:b]
                             ::pco/output [:c]}]
               ::eql/query [:c]})
-           '{::pcp/nodes                {1 {::pco/name             c
+           '{::pcp/nodes                 {1 {::pco/name             c
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:c {}}
                                             ::pcp/input            {:b {}}
@@ -1089,11 +1089,11 @@
                                             ::pcp/input            {}
                                             ::pcp/run-next         2
                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->node {c #{1} b #{2} a #{3}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 3
-             ::pcp/index-attrs          {:a 3 :b 2 :c 1}})))
+             ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  3
+             ::pcp/index-attrs           {:a 3 :b 2 :c 1}})))
 
   (testing "dependency chain with available data"
     (is (= (compute-run-graph
@@ -1105,7 +1105,7 @@
                                      ::pco/output [:c]}]
               ::eql/query          [:c]
               ::pcp/available-data {:a {}}})
-           '{::pcp/nodes                {1 {::pco/name             c
+           '{::pcp/nodes                 {1 {::pco/name             c
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:c {}}
                                             ::pcp/input            {:b {}}
@@ -1117,11 +1117,11 @@
                                             ::pcp/input            {:a {}}
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:b}}}
-             ::pcp/index-resolver->node {c #{1} b #{2}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 2
-             ::pcp/index-attrs          {:b 2 :c 1}})))
+             ::pcp/index-resolver->nodes {c #{1} b #{2}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  2
+             ::pcp/index-attrs           {:b 2 :c 1}})))
 
   (testing "multiple paths chain at root"
     (is (= (compute-run-graph
@@ -1133,7 +1133,7 @@
                             ::pco/input  [:a]
                             ::pco/output [:b]}]
               ::eql/query [:b]})
-           '{::pcp/nodes                {1 {::pco/name             b
+           '{::pcp/nodes                 {1 {::pco/name             b
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:b {}}
                                             ::pcp/input            {:a {}}
@@ -1154,11 +1154,11 @@
                                             ::pcp/run-or           #{2 3}
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->node {b #{1} a #{2} a2 #{3}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 4
-             ::pcp/index-attrs          {:a 4 :b 1}})))
+             ::pcp/index-resolver->nodes {b #{1} a #{2} a2 #{3}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  4
+             ::pcp/index-attrs           {:a 4 :b 1}})))
 
   (testing "multiple paths chain at edge"
     (is (= (compute-run-graph
@@ -1172,7 +1172,7 @@
                             ::pco/output [:b]}]
               ::eql/query [:b]})
            #?(:clj
-              '{::pcp/nodes                {1 {::pco/name        b2
+              '{::pcp/nodes                 {1 {::pco/name        b2
                                                ::pcp/node-id     1
                                                ::pcp/requires    {:b {}}
                                                ::pcp/input       {:a {}}
@@ -1193,13 +1193,13 @@
                                                ::pcp/input            {}
                                                ::pcp/run-next         3
                                                ::pcp/source-for-attrs #{:a}}}
-                ::pcp/index-resolver->node {b2 #{1} b #{2} a #{4}}
-                ::pcp/unreachable-syms     #{}
-                ::pcp/unreachable-attrs    #{}
-                ::pcp/root                 4
-                ::pcp/index-attrs          {:a 4 :b 3}}
+                ::pcp/index-resolver->nodes {b2 #{1} b #{2} a #{4}}
+                ::pcp/unreachable-syms      #{}
+                ::pcp/unreachable-attrs     #{}
+                ::pcp/root                  4
+                ::pcp/index-attrs           {:a 4 :b 3}}
               :cljs
-              '{::pcp/nodes                {1 {::pco/name        b
+              '{::pcp/nodes                 {1 {::pco/name        b
                                                ::pcp/node-id     1
                                                ::pcp/requires    {:b {}}
                                                ::pcp/input       {:a {}}
@@ -1220,11 +1220,11 @@
                                                ::pcp/input            {}
                                                ::pcp/run-next         3
                                                ::pcp/source-for-attrs #{:a}}}
-                ::pcp/index-resolver->node {b2 #{2} b #{1} a #{4}}
-                ::pcp/unreachable-syms     #{}
-                ::pcp/unreachable-attrs    #{}
-                ::pcp/root                 4
-                ::pcp/index-attrs          {:a 4 :b 3}}))))
+                ::pcp/index-resolver->nodes {b2 #{2} b #{1} a #{4}}
+                ::pcp/unreachable-syms      #{}
+                ::pcp/unreachable-attrs     #{}
+                ::pcp/root                  4
+                ::pcp/index-attrs           {:a 4 :b 3}}))))
 
   (testing "multiple inputs"
     (is (= (compute-run-graph
@@ -1236,7 +1236,7 @@
                             ::pco/input  [:a :b]
                             ::pco/output [:c]}]
               ::eql/query [:c]})
-           '{::pcp/nodes                {1 {::pco/name             c
+           '{::pcp/nodes                 {1 {::pco/name             c
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:c {}}
                                             ::pcp/input            {:b {} :a {}}
@@ -1258,11 +1258,11 @@
                                             ::pcp/requires {:a {} :b {}}
                                             ::pcp/run-and  #{3 2}
                                             ::pcp/run-next 1}}
-             ::pcp/index-resolver->node {c #{1} b #{2} a #{3}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:b 2 :a 3 :c 1}
-             ::pcp/root                 4})))
+             ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:b 2 :a 3 :c 1}
+             ::pcp/root                  4})))
 
   (testing "skip resolves that have self dependency"
     (is (= (compute-run-graph
@@ -1275,7 +1275,7 @@
                             ::pco/input  [:a]
                             ::pco/output [:c]}]
               ::eql/query [:c]})
-           '{::pcp/nodes                {1 {::pco/name             c2
+           '{::pcp/nodes                 {1 {::pco/name             c2
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:c {}}
                                             ::pcp/input            {:a {}}
@@ -1287,11 +1287,11 @@
                                             ::pcp/input            {}
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->node {c2 #{1} a #{2}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 2
-             ::pcp/index-attrs          {:a 2 :c 1}})))
+             ::pcp/index-resolver->nodes {c2 #{1} a #{2}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  2
+             ::pcp/index-attrs           {:a 2 :c 1}})))
 
   (testing "multiple inputs with different tail sizes"
     (is (= (compute-run-graph
@@ -1305,7 +1305,7 @@
                             ::pco/input  [:a :b]
                             ::pco/output [:c]}]
               ::eql/query [:c]})
-           '{::pcp/nodes                {1 {::pco/name             c
+           '{::pcp/nodes                 {1 {::pco/name             c
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:c {}}
                                             ::pcp/input            {:b {} :a {}}
@@ -1336,11 +1336,11 @@
                                             ::pcp/requires {:a {} :b {}}
                                             ::pcp/run-and  #{5 2}
                                             ::pcp/run-next 1}}
-             ::pcp/index-resolver->node {c #{1} b #{2} a #{3} a1 #{4}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:b 2 :a 5 :c 1}
-             ::pcp/root                 6})))
+             ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3} a1 #{4}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:b 2 :a 5 :c 1}
+             ::pcp/root                  6})))
 
   (testing "multiple calls to same resolver"
     (is (= (compute-run-graph
@@ -1355,7 +1355,7 @@
                             {::pco/name   d
                              ::pco/output [:d]}]
               ::eql/query [:a :b]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {:c {}}
@@ -1393,11 +1393,11 @@
                                          7 {::pcp/node-id  7
                                             ::pcp/requires {:d {} :c {}}
                                             ::pcp/run-and  #{6 2}}}
-             ::pcp/index-resolver->node {a #{1} cd #{4 2} b #{3} d #{5}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:c 2 :a 1 :d 6 :b 3}
-             ::pcp/root                 7})))
+             ::pcp/index-resolver->nodes {a #{1} cd #{4 2} b #{3} d #{5}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:c 2 :a 1 :d 6 :b 3}
+             ::pcp/root                  7})))
 
   (testing "diamond shape deps"
     (is (= (compute-run-graph
@@ -1406,7 +1406,7 @@
                                 :c {#{:a} #{c}}
                                 :d {#{:c :b} #{d}}}
                ::eql/query     [:d]})
-           '{::pcp/nodes                {1 {::pco/name             d
+           '{::pcp/nodes                 {1 {::pco/name             d
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:d {}}
                                             ::pcp/input            {:c {} :b {}}
@@ -1435,11 +1435,11 @@
                                             ::pcp/run-and     #{2 4}
                                             ::pcp/after-nodes #{3}
                                             ::pcp/run-next    1}}
-             ::pcp/index-resolver->node {d #{1} c #{2} a #{3} b #{4}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:a 3 :c 2 :b 4 :d 1}
-             ::pcp/root                 3})))
+             ::pcp/index-resolver->nodes {d #{1} c #{2} a #{3} b #{4}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:a 3 :c 2 :b 4 :d 1}
+             ::pcp/root                  3})))
 
   (testing "diamond shape deps with tail"
     (is (= (compute-run-graph
@@ -1458,7 +1458,7 @@
                             ::pco/input  [:b :c]
                             ::pco/output [:d]}]
               ::eql/query [:d]})
-           '{::pcp/nodes                {1 {::pco/name             d
+           '{::pcp/nodes                 {1 {::pco/name             d
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:d {}}
                                             ::pcp/input            {:c {} :b {}}
@@ -1494,11 +1494,11 @@
                                             ::pcp/run-and     #{2 5}
                                             ::pcp/after-nodes #{3}
                                             ::pcp/run-next    1}}
-             ::pcp/index-resolver->node {d #{1} c #{2} a #{3} z #{4} b #{5}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:z 4 :a 3 :c 2 :b 5 :d 1}
-             ::pcp/root                 4})))
+             ::pcp/index-resolver->nodes {d #{1} c #{2} a #{3} z #{4} b #{5}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:z 4 :a 3 :c 2 :b 5 :d 1}
+             ::pcp/root                  4})))
 
   (testing "deep recurring dependency"
     (is (= (compute-run-graph
@@ -1514,7 +1514,7 @@
                                {::pco/name   'recur-dep
                                 ::pco/input  [:label/type]
                                 ::pco/output [:recur-dep]}]}))
-           '{::pcp/nodes                {1 {::pco/name             release-script
+           '{::pcp/nodes                 {1 {::pco/name             release-script
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:release/script {}}
                                             ::pcp/input            {:db/id {}}
@@ -1543,17 +1543,17 @@
                                             ::pcp/requires    {:release/script {} :label/type {}}
                                             ::pcp/run-and     #{1 4}
                                             ::pcp/after-nodes #{2}}}
-             ::pcp/index-resolver->node {release-script #{1}
-                                         id             #{2}
-                                         recur-dep      #{3}
-                                         label-type     #{4}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:db/id          2
+             ::pcp/index-resolver->nodes {release-script #{1}
+                                         id              #{2}
+                                         recur-dep       #{3}
+                                         label-type      #{4}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:db/id          2
                                          :release/script 1
                                          :label/type     4
                                          :recur-dep      3}
-             ::pcp/root                 2})))
+             ::pcp/root                  2})))
 
   (testing "push interdependent paths back"
     (is (= (compute-run-graph
@@ -1565,7 +1565,7 @@
                                         {::pco/name   'from-id
                                          ::pco/input  [:id]
                                          ::pco/output [:id :name :other-id]}]}))
-           '{::pcp/nodes                {1 {::pco/name        from-other-id
+           '{::pcp/nodes                 {1 {::pco/name        from-other-id
                                             ::pcp/node-id     1
                                             ::pcp/requires    {:name {}}
                                             ::pcp/input       {:other-id {}}
@@ -1576,11 +1576,11 @@
                                             ::pcp/input            {:id {}}
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:name :other-id}}}
-             ::pcp/index-resolver->node {from-other-id #{1} from-id #{2}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:other-id 2 :name 2}
-             ::pcp/root                 2}))
+             ::pcp/index-resolver->nodes {from-other-id #{1} from-id #{2}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:other-id 2 :name 2}
+             ::pcp/root                  2}))
 
     (is (= (compute-run-graph
              (-> {::eql/query          [:name]
@@ -1594,7 +1594,7 @@
                                         {::pco/name   'from-other-id2
                                          ::pco/input  [:other-id2]
                                          ::pco/output [:id :name :other]}]}))
-           '{::pcp/nodes                {1 {::pco/name             from-id
+           '{::pcp/nodes                 {1 {::pco/name             from-id
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:name {} :other-id {}}
                                             ::pcp/input            {:id {}}
@@ -1612,13 +1612,13 @@
                                             ::pcp/run-next         2
                                             ::pcp/after-nodes      #{1}
                                             ::pcp/source-for-attrs #{:other-id2}}}
-             ::pcp/index-resolver->node {from-id        #{1}
+             ::pcp/index-resolver->nodes {from-id       #{1}
                                          from-other-id2 #{2}
                                          from-other-id  #{3}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 1
-             ::pcp/index-attrs          {:other-id 1 :other-id2 3 :name 1}}))
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  1
+             ::pcp/index-attrs           {:other-id 1 :other-id2 3 :name 1}}))
 
     (testing "unless they add something new"
       (is (= (compute-run-graph
@@ -1633,7 +1633,7 @@
                                           {::pco/name   'from-other-id2
                                            ::pco/input  [:other-id2]
                                            ::pco/output [:id :name :other]}]}))
-             '{::pcp/nodes                {1 {::pco/name             from-id
+             '{::pcp/nodes                 {1 {::pco/name             from-id
                                               ::pcp/node-id          1
                                               ::pcp/requires         {:name {} :other-id {}}
                                               ::pcp/input            {:id {}}
@@ -1652,13 +1652,13 @@
                                               ::pcp/input            {:other-id2 {}}
                                               ::pcp/after-nodes      #{3}
                                               ::pcp/source-for-attrs #{:other}}}
-               ::pcp/index-resolver->node {from-id        #{1}
+               ::pcp/index-resolver->nodes {from-id       #{1}
                                            from-other-id2 #{5}
                                            from-other-id  #{3}}
-               ::pcp/unreachable-syms     #{}
-               ::pcp/unreachable-attrs    #{}
-               ::pcp/index-attrs          {:other-id 1 :other-id2 3 :name 1 :other 5}
-               ::pcp/root                 1})))))
+               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-attrs     #{}
+               ::pcp/index-attrs           {:other-id 1 :other-id2 3 :name 1 :other 5}
+               ::pcp/root                  1})))))
 
 (deftest compute-run-graph-placeholders-test
   [{:>/p1 [:a]}
@@ -1671,17 +1671,17 @@
              {::resolvers [{::pco/name   'a
                             ::pco/output [:a]}]
               ::eql/query '[(:a {:x "y"})]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/params           {:x "y"}
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->node {a #{1}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 1
-             ::pcp/index-attrs          {:a 1}}))))
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  1
+             ::pcp/index-attrs           {:a 1}}))))
 
 (deftest compute-run-graph-params-test
   (testing "add params to resolver call"
@@ -1689,17 +1689,17 @@
              {::resolvers [{::pco/name   'a
                             ::pco/output [:a]}]
               ::eql/query '[(:a {:x "y"})]})
-           '{::pcp/nodes                {1 {::pco/name             a
+           '{::pcp/nodes                 {1 {::pco/name             a
                                             ::pcp/params           {:x "y"}
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:a {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->node {a #{1}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/root                 1
-             ::pcp/index-attrs          {:a 1}})))
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  1
+             ::pcp/index-attrs           {:a 1}})))
 
   (testing "params while collapsing"
     (testing "params come from first node"
@@ -1707,70 +1707,70 @@
                {::pci/index-oir '{:a {#{} #{a}}
                                   :b {#{} #{a}}}
                 ::eql/query     '[(:a {:x 1}) :b]})
-             '{::pcp/nodes                {1 {::pco/name             a
+             '{::pcp/nodes                 {1 {::pco/name             a
                                               ::pcp/params           {:x 1}
                                               ::pcp/node-id          1
                                               ::pcp/requires         {:a {} :b {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:a :b}}}
-               ::pcp/index-resolver->node {a #{1}}
-               ::pcp/unreachable-syms     #{}
-               ::pcp/unreachable-attrs    #{}
-               ::pcp/index-attrs          {:a 1 :b 1}
-               ::pcp/root                 1})))
+               ::pcp/index-resolver->nodes {a #{1}}
+               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-attrs     #{}
+               ::pcp/index-attrs           {:a 1 :b 1}
+               ::pcp/root                  1})))
 
     (testing "getting params from the later node"
       (is (= (compute-run-graph
                {::pci/index-oir '{:a {#{} #{a}}
                                   :b {#{} #{a}}}
                 ::eql/query     '[:a (:b {:x 1})]})
-             '{::pcp/nodes                {1 {::pco/name             a
+             '{::pcp/nodes                 {1 {::pco/name             a
                                               ::pcp/params           {:x 1}
                                               ::pcp/node-id          1
                                               ::pcp/requires         {:a {} :b {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:a :b}}}
-               ::pcp/index-resolver->node {a #{1}}
-               ::pcp/unreachable-syms     #{}
-               ::pcp/unreachable-attrs    #{}
-               ::pcp/index-attrs          {:a 1 :b 1}
-               ::pcp/root                 1})))
+               ::pcp/index-resolver->nodes {a #{1}}
+               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-attrs     #{}
+               ::pcp/index-attrs           {:a 1 :b 1}
+               ::pcp/root                  1})))
 
     (testing "merging params"
       (is (= (compute-run-graph
                {::pci/index-oir '{:a {#{} #{a}}
                                   :b {#{} #{a}}}
                 ::eql/query     '[(:a {:x 1}) (:b {:y 2})]})
-             '{::pcp/nodes                {1 {::pco/name             a
+             '{::pcp/nodes                 {1 {::pco/name             a
                                               ::pcp/params           {:x 1
                                                                       :y 2}
                                               ::pcp/node-id          1
                                               ::pcp/requires         {:a {} :b {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:a :b}}}
-               ::pcp/index-resolver->node {a #{1}}
-               ::pcp/unreachable-syms     #{}
-               ::pcp/unreachable-attrs    #{}
-               ::pcp/index-attrs          {:a 1 :b 1}
-               ::pcp/root                 1})))
+               ::pcp/index-resolver->nodes {a #{1}}
+               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-attrs     #{}
+               ::pcp/index-attrs           {:a 1 :b 1}
+               ::pcp/root                  1})))
 
     (testing "conflicting params"
       (is (= (compute-run-graph
                {::pci/index-oir '{:a {#{} #{a}}
                                   :b {#{} #{a}}}
                 ::eql/query     '[(:a {:x 1}) (:b {:x 2})]})
-             '{::pcp/nodes                {1 {::pco/name             a
+             '{::pcp/nodes                 {1 {::pco/name             a
                                               ::pcp/params           {:x 2}
                                               ::pcp/node-id          1
                                               ::pcp/requires         {:a {} :b {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:a :b}}}
-               ::pcp/index-resolver->node {a #{1}}
-               ::pcp/unreachable-syms     #{}
-               ::pcp/unreachable-attrs    #{}
-               ::pcp/index-attrs          {:a 1 :b 1}
-               ::pcp/root                 1
-               ::pcp/warnings             [{::pcp/node-id         1
+               ::pcp/index-resolver->nodes {a #{1}}
+               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-attrs     #{}
+               ::pcp/index-attrs           {:a 1 :b 1}
+               ::pcp/root                  1
+               ::pcp/warnings              [{::pcp/node-id         1
                                             ::pcp/warn            "Conflicting params on resolver call."
                                             ::pcp/conflict-params #{:x}}]})))
 
@@ -1779,17 +1779,17 @@
                {::pci/index-oir '{:a {#{} #{a}}
                                   :b {#{} #{a}}}
                 ::eql/query     '[(:a {:x 1}) (:b {:x 1})]})
-             '{::pcp/nodes                {1 {::pco/name             a
+             '{::pcp/nodes                 {1 {::pco/name             a
                                               ::pcp/params           {:x 1}
                                               ::pcp/node-id          1
                                               ::pcp/requires         {:a {} :b {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:a :b}}}
-               ::pcp/index-resolver->node {a #{1}}
-               ::pcp/unreachable-syms     #{}
-               ::pcp/unreachable-attrs    #{}
-               ::pcp/index-attrs          {:a 1 :b 1}
-               ::pcp/root                 1})))))
+               ::pcp/index-resolver->nodes {a #{1}}
+               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-attrs     #{}
+               ::pcp/index-attrs           {:a 1 :b 1}
+               ::pcp/root                  1})))))
 
 (deftest compute-run-graph-dynamic-resolvers-test
   (testing "unreachable"
@@ -1800,10 +1800,10 @@
                                                         ::pco/resolve           (fn [_ _])}}
               ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
               ::eql/query           [:release/script]})
-           {::pcp/nodes                {}
-            ::pcp/index-resolver->node {}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{:db/id}})))
+           {::pcp/nodes                 {}
+            ::pcp/index-resolver->nodes {}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{:db/id}})))
 
   (testing "simple dynamic call"
     (is (= (compute-run-graph
@@ -1816,17 +1816,17 @@
               ::pcp/available-data  {:db/id {}}
               ::eql/query           [:release/script]})
 
-           {::pcp/nodes                {1 {::pco/name             'dynamic-resolver
+           {::pcp/nodes                 {1 {::pco/name             'dynamic-resolver
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:release/script {}}
                                            ::pcp/input            {:db/id {}}
                                            ::pcp/source-for-attrs #{:release/script}
                                            ::pcp/foreign-ast      (eql/query->ast [:release/script])}}
-            ::pcp/index-resolver->node {'dynamic-resolver #{1}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/root                 1
-            ::pcp/index-attrs          {:release/script 1}}))
+            ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/root                  1
+            ::pcp/index-attrs           {:release/script 1}}))
 
     (testing "retain params"
       (is (= (compute-run-graph
@@ -1839,7 +1839,7 @@
                 ::pcp/available-data  {:db/id {}}
                 ::eql/query           [(list :release/script {:foo "bar"})]})
 
-             {::pcp/nodes                {1 {::pco/name             'dynamic-resolver
+             {::pcp/nodes                 {1 {::pco/name             'dynamic-resolver
                                              ::pcp/node-id          1
                                              ::pcp/requires         {:release/script {}}
                                              ::pcp/input            {:db/id {}}
@@ -1850,11 +1850,11 @@
                                                                                  :params       {:foo "bar"}
                                                                                  :type         :prop}]
                                                                      :type     :root}}}
-              ::pcp/index-resolver->node {'dynamic-resolver #{1}}
-              ::pcp/unreachable-syms     #{}
-              ::pcp/unreachable-attrs    #{}
-              ::pcp/root                 1
-              ::pcp/index-attrs          {:release/script 1}}))))
+              ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
+              ::pcp/unreachable-syms      #{}
+              ::pcp/unreachable-attrs     #{}
+              ::pcp/root                  1
+              ::pcp/index-attrs           {:release/script 1}}))))
 
   (testing "optimize multiple calls"
     (is (= (compute-run-graph
@@ -1868,17 +1868,17 @@
                   ::eql/query           [:release/script :label/type]
                   ::pcp/available-data  {:db/id {}}}))
 
-           {::pcp/nodes                {1 {::pco/name             'dynamic-resolver
+           {::pcp/nodes                 {1 {::pco/name             'dynamic-resolver
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:release/script {} :label/type {}}
                                            ::pcp/input            {:db/id {}}
                                            ::pcp/source-for-attrs #{:release/script :label/type}
                                            ::pcp/foreign-ast      (eql/query->ast [:release/script :label/type])}}
-            ::pcp/index-resolver->node {'dynamic-resolver #{1}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/index-attrs          {:release/script 1 :label/type 1}
-            ::pcp/root                 1})))
+            ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/index-attrs           {:release/script 1 :label/type 1}
+            ::pcp/root                  1})))
 
   (testing "optimized with dependencies"
     (is (= (compute-run-graph
@@ -1893,7 +1893,7 @@
                   ::resolvers           [{::pco/name   'id
                                           ::pco/output [:db/id]}]}))
 
-           {::pcp/nodes                {2 {::pco/name             'id
+           {::pcp/nodes                 {2 {::pco/name             'id
                                            ::pcp/node-id          2
                                            ::pcp/requires         {:db/id {}}
                                            ::pcp/input            {}
@@ -1906,11 +1906,11 @@
                                            ::pcp/source-for-attrs #{:release/script :label/type}
                                            ::pcp/after-nodes      #{2}
                                            ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
-            ::pcp/index-resolver->node '{dynamic-resolver #{3} id #{2}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/index-attrs          {:db/id 2 :release/script 3 :label/type 3}
-            ::pcp/root                 2})))
+            ::pcp/index-resolver->nodes '{dynamic-resolver #{3} id #{2}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/index-attrs           {:db/id 2 :release/script 3 :label/type 3}
+            ::pcp/root                  2})))
 
   (testing "chained calls"
     (is (= (compute-run-graph
@@ -1923,17 +1923,17 @@
                                          :b {#{:a} #{'dynamic-resolver}}}
                   ::eql/query           [:b]}))
 
-           {::pcp/nodes                {2 {::pco/name             'dynamic-resolver
+           {::pcp/nodes                 {2 {::pco/name             'dynamic-resolver
                                            ::pcp/node-id          2
                                            ::pcp/requires         {:a {} :b {}}
                                            ::pcp/input            {}
                                            ::pcp/source-for-attrs #{:b :a}
                                            ::pcp/foreign-ast      (eql/query->ast [:a :b])}}
-            ::pcp/index-resolver->node {'dynamic-resolver #{2}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/root                 2
-            ::pcp/index-attrs          {:a 2 :b 2}}))
+            ::pcp/index-resolver->nodes {'dynamic-resolver #{2}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/root                  2
+            ::pcp/index-attrs           {:a 2 :b 2}}))
 
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
@@ -1946,17 +1946,17 @@
                                          :c {#{:b} #{'dynamic-resolver}}}
                   ::eql/query           [:c]}))
 
-           {::pcp/nodes                {3 {::pco/name             'dynamic-resolver
+           {::pcp/nodes                 {3 {::pco/name             'dynamic-resolver
                                            ::pcp/node-id          3
                                            ::pcp/requires         {:a {} :b {} :c {}}
                                            ::pcp/input            {}
                                            ::pcp/source-for-attrs #{:c :b :a}
                                            ::pcp/foreign-ast      (eql/query->ast [:a :b :c])}}
-            ::pcp/index-resolver->node '{dynamic-resolver #{3}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/root                 3
-            ::pcp/index-attrs          {:a 3 :b 3 :c 3}}))
+            ::pcp/index-resolver->nodes '{dynamic-resolver #{3}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/root                  3
+            ::pcp/index-attrs           {:a 3 :b 3 :c 3}}))
 
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
@@ -1970,7 +1970,7 @@
                                          :b {#{:a} #{'dynamic-resolver}}}
                   ::eql/query           [:b]}))
 
-           {::pcp/nodes                {2 {::pco/name             'dynamic-resolver
+           {::pcp/nodes                 {2 {::pco/name             'dynamic-resolver
                                            ::pcp/node-id          2
                                            ::pcp/requires         {:a {} :b {}}
                                            ::pcp/input            {:z {}}
@@ -1983,11 +1983,11 @@
                                            ::pcp/input            {}
                                            ::pcp/source-for-attrs #{:z}
                                            ::pcp/run-next         2}}
-            ::pcp/index-resolver->node '{dynamic-resolver #{2} z #{3}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/root                 3
-            ::pcp/index-attrs          {:z 3 :a 2 :b 2}}))
+            ::pcp/index-resolver->nodes '{dynamic-resolver #{2} z #{3}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/root                  3
+            ::pcp/index-attrs           {:z 3 :a 2 :b 2}}))
 
     (testing "chain with dynamic at start"
       (is (= (compute-run-graph
@@ -2003,7 +2003,7 @@
                                            :b {#{:a} #{'dynamic-resolver}}}
                     ::eql/query           [:z]}))
 
-             {::pcp/nodes                {1 {::pco/name             'z
+             {::pcp/nodes                 {1 {::pco/name             'z
                                              ::pcp/node-id          1
                                              ::pcp/requires         {:z {}}
                                              ::pcp/input            {:b {}}
@@ -2016,11 +2016,11 @@
                                              ::pcp/source-for-attrs #{:b :a}
                                              ::pcp/run-next         1
                                              ::pcp/foreign-ast      (eql/query->ast [:a :b])}}
-              ::pcp/index-resolver->node '{z #{1} dynamic-resolver #{3}}
-              ::pcp/unreachable-syms     #{}
-              ::pcp/unreachable-attrs    #{}
-              ::pcp/root                 3
-              ::pcp/index-attrs          {:a 3 :b 3 :z 1}}))))
+              ::pcp/index-resolver->nodes '{z #{1} dynamic-resolver #{3}}
+              ::pcp/unreachable-syms      #{}
+              ::pcp/unreachable-attrs     #{}
+              ::pcp/root                  3
+              ::pcp/index-attrs           {:a 3 :b 3 :z 1}}))))
 
   (testing "multiple dependencies on dynamic resolver"
     (is (= (compute-run-graph
@@ -2034,17 +2034,17 @@
                                          :c {#{} #{'dynamic-resolver}}}
                   ::eql/query           [:a]}))
 
-           {::pcp/nodes                {2 {::pco/name             'dynamic-resolver
+           {::pcp/nodes                 {2 {::pco/name             'dynamic-resolver
                                            ::pcp/node-id          2
                                            ::pcp/requires         {:c {} :b {} :a {}}
                                            ::pcp/input            {}
                                            ::pcp/source-for-attrs #{:c :b :a}
                                            ::pcp/foreign-ast      (eql/query->ast [:c :b :a])}}
-            ::pcp/index-resolver->node '{dynamic-resolver #{2}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/index-attrs          {:c 2 :b 2 :a 2}
-            ::pcp/root                 2})))
+            ::pcp/index-resolver->nodes '{dynamic-resolver #{2}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/index-attrs           {:c 2 :b 2 :a 2}
+            ::pcp/root                  2})))
 
   (testing "multiple calls to dynamic resolver"
     (is (= (compute-run-graph
@@ -2060,7 +2060,7 @@
                                          :c {#{:b} #{'dynamic-resolver}}}
                   ::eql/query           [:c]}))
 
-           {::pcp/nodes                {1 {::pco/name             'dynamic-resolver
+           {::pcp/nodes                 {1 {::pco/name             'dynamic-resolver
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:c {}}
                                            ::pcp/input            {:b {}}
@@ -2081,11 +2081,11 @@
                                            ::pcp/run-next         2
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [:a])}}
-            ::pcp/index-resolver->node '{dynamic-resolver #{1 3} b #{2}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/root                 3
-            ::pcp/index-attrs          {:a 3 :b 2 :c 1}})))
+            ::pcp/index-resolver->nodes '{dynamic-resolver #{1 3} b #{2}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/root                  3
+            ::pcp/index-attrs           {:a 3 :b 2 :c 1}})))
 
   (testing "inner repeated dependencies"
     (is (= (compute-run-graph
@@ -2103,7 +2103,7 @@
                                           ::pco/input  [:db/id :label/type]
                                           ::pco/output [:complex]}]}))
 
-           {::pcp/nodes                {2 {::pco/name             'id
+           {::pcp/nodes                 {2 {::pco/name             'id
                                            ::pcp/node-id          2
                                            ::pcp/requires         {:db/id {}}
                                            ::pcp/input            {}
@@ -2123,14 +2123,14 @@
                                            ::pcp/after-nodes      #{2}
                                            ::pcp/run-next         3
                                            ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
-            ::pcp/index-resolver->node '{dynamic-resolver #{4} id #{2} complex #{3}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/index-attrs          {:db/id          2
+            ::pcp/index-resolver->nodes '{dynamic-resolver #{4} id #{2} complex #{3}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/index-attrs           {:db/id          2
                                         :release/script 4
                                         :label/type     4
                                         :complex        3}
-            ::pcp/root                 2})))
+            ::pcp/root                  2})))
 
   #_
   (testing "merging long chains"
@@ -2151,18 +2151,18 @@
                                      {::pco/name   'c
                                       ::pco/output [:c :d]}]}
                   ::eql/query [:a :b]}))
-           {::pcp/nodes                {6 {::pco/name             'dyn
+           {::pcp/nodes                 {6 {::pco/name             'dyn
                                            ::pcp/node-id          6
                                            ::pcp/requires         {:b {} :a {} :c {} :d {}}
                                            ::pcp/input            {}
                                            ::pcp/source-sym       'b
                                            ::pcp/source-for-attrs #{:c :b :d :a}
                                            ::pcp/foreign-ast      (eql/query->ast [:b :a :c :d])}}
-            ::pcp/index-resolver->node '{dyn #{6}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/index-attrs          {:c 6 :d 6 :a 6 :b 6}
-            ::pcp/root                 6})))
+            ::pcp/index-resolver->nodes '{dyn #{6}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/index-attrs           {:c 6 :d 6 :a 6 :b 6}
+            ::pcp/root                  6})))
 
   (testing "dynamic dependency input on local dependency and dynamic dependency"
     (is (= (compute-run-graph
@@ -2176,7 +2176,7 @@
                                           ::pco/output [:l1]}]
                   ::eql/query           [:d1]}))
 
-           {::pcp/nodes                {1 {::pco/name             'dyn
+           {::pcp/nodes                 {1 {::pco/name             'dyn
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:d1 {}}
                                            ::pcp/input            {:d2 {} :l1 {}}
@@ -2200,11 +2200,11 @@
                                            ::pcp/requires {:l1 {} :d2 {}}
                                            ::pcp/run-and  #{3 2}
                                            ::pcp/run-next 1}}
-            ::pcp/index-resolver->node '{dyn #{1 2} l1 #{3}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/index-attrs          {:d2 2 :l1 3 :d1 1}
-            ::pcp/root                 4}))))
+            ::pcp/index-resolver->nodes '{dyn #{1 2} l1 #{3}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/index-attrs           {:d2 2 :l1 3 :d1 1}
+            ::pcp/root                  4}))))
 
 (deftest compute-run-graph-dynamic-nested-queries-test
   (testing "simple nested query"
@@ -2221,18 +2221,18 @@
                                            ::pco/resolve      (fn [_ _])}}
               ::pci/index-oir       {:a {#{} #{'a}}}
               ::eql/query           [{:a [:b]}]})
-           {::pcp/nodes                {1 {::pco/name             'dyn
+           {::pcp/nodes                 {1 {::pco/name             'dyn
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {:b {}}}
                                            ::pcp/input            {}
                                            ::pcp/source-sym       'a
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
-            ::pcp/index-resolver->node '{dyn #{1}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/root                 1
-            ::pcp/index-attrs          {:a 1}})))
+            ::pcp/index-resolver->nodes '{dyn #{1}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/root                  1
+            ::pcp/index-attrs           {:a 1}})))
 
   (testing "nested dependency"
     (is (= (compute-run-graph
@@ -2249,18 +2249,18 @@
                                       ::pco/input  [:b]
                                       ::pco/output [:c]}]
               ::eql/query           [{:a [:c]}]})
-           {::pcp/nodes                {1 {::pco/name             'dyn
+           {::pcp/nodes                 {1 {::pco/name             'dyn
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {:b {}}}
                                            ::pcp/input            {}
                                            ::pcp/source-sym       'a
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
-            ::pcp/index-resolver->node '{dyn #{1}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/root                 1
-            ::pcp/index-attrs          {:a 1}})))
+            ::pcp/index-resolver->nodes '{dyn #{1}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/root                  1
+            ::pcp/index-attrs           {:a 1}})))
 
   (testing "collapse dynamic dependencies when they are from the same dynamic resolver"
     (is (= (compute-run-graph
@@ -2285,7 +2285,7 @@
                                                             ::pco/cache?            false
                                                             ::pco/dynamic-resolver? true}}
               ::eql/query           [:local :dynamic-2]})
-           '{::pcp/nodes                {1 {::pco/name             dynamic-1->local
+           '{::pcp/nodes                 {1 {::pco/name             dynamic-1->local
                                             ::pcp/node-id          1
                                             ::pcp/requires         {:local {}}
                                             ::pcp/input            {:dynamic-1 {}}
@@ -2307,14 +2307,14 @@
                                             ::pcp/source-for-attrs #{:dynamic-2
                                                                      :dynamic-1}
                                             ::pcp/run-next         1}}
-             ::pcp/index-resolver->node {dynamic-1->local     #{1}
+             ::pcp/index-resolver->nodes {dynamic-1->local    #{1}
                                          dynamic-parser-42276 #{2}}
-             ::pcp/unreachable-syms     #{}
-             ::pcp/unreachable-attrs    #{}
-             ::pcp/index-attrs          {:dynamic-1 2
+             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/index-attrs           {:dynamic-1 2
                                          :local     1
                                          :dynamic-2 2}
-             ::pcp/root                 2})))
+             ::pcp/root                  2})))
 
   (testing "union queries"
     (testing "resolver has simple output"
@@ -2332,7 +2332,7 @@
                 ::pci/index-oir       {:a {#{} #{'a}}}
                 ::eql/query           [{:a {:b [:b]
                                             :c [:c]}}]})
-             {::pcp/nodes                {1 {::pco/name             'dyn
+             {::pcp/nodes                 {1 {::pco/name             'dyn
                                              ::pcp/node-id          1
                                              ::pcp/requires         {:a {:b {}
                                                                          :c {}}}
@@ -2340,11 +2340,11 @@
                                              ::pcp/source-sym       'a
                                              ::pcp/source-for-attrs #{:a}
                                              ::pcp/foreign-ast      (eql/query->ast [{:a [:b :c]}])}}
-              ::pcp/index-resolver->node '{dyn #{1}}
-              ::pcp/unreachable-syms     #{}
-              ::pcp/unreachable-attrs    #{}
-              ::pcp/root                 1
-              ::pcp/index-attrs          {:a 1}})))
+              ::pcp/index-resolver->nodes '{dyn #{1}}
+              ::pcp/unreachable-syms      #{}
+              ::pcp/unreachable-attrs     #{}
+              ::pcp/root                  1
+              ::pcp/index-attrs           {:a 1}})))
 
     #_(testing "resolver has union output"
         (is (= (compute-run-graph
@@ -2364,7 +2364,7 @@
                   ::pci/index-oir       {:a {#{} #{'a}}}
                   ::eql/query           [{:a {:b [:b]
                                               :c [:c]}}]})
-               {::pcp/nodes                {1 {::pco/name             'dyn
+               {::pcp/nodes                 {1 {::pco/name             'dyn
                                                ::pcp/node-id          1
                                                ::pcp/requires         {:a {:b {}}}
                                                ::pcp/input            {}
@@ -2372,11 +2372,11 @@
                                                ::pcp/source-for-attrs #{:a}
                                                ::pcp/foreign-ast      (eql/query->ast [{:a {:b [:b]
                                                                                             :c [:c]}}])}}
-                ::pcp/index-resolver->node '{dyn #{1}}
-                ::pcp/unreachable-syms     #{}
-                ::pcp/unreachable-attrs    #{}
-                ::pcp/root                 1
-                ::pcp/index-attrs          {:a 1}}))))
+                ::pcp/index-resolver->nodes '{dyn #{1}}
+                ::pcp/unreachable-syms      #{}
+                ::pcp/unreachable-attrs     #{}
+                ::pcp/root                  1
+                ::pcp/index-attrs           {:a 1}}))))
 
   (testing "deep nesting"
     (is (= (compute-run-graph
@@ -2390,18 +2390,18 @@
                                            ::pco/resolve      (fn [_ _])}}
               ::pci/index-oir       {:a {#{} #{'a}}}
               ::eql/query           [{:a [{:b [:c :d]}]}]})
-           {::pcp/nodes                {1 {::pco/name             'dyn
+           {::pcp/nodes                 {1 {::pco/name             'dyn
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {:b {:c {}}}}
                                            ::pcp/input            {}
                                            ::pcp/source-sym       'a
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [{:b [:c]}]}])}}
-            ::pcp/index-resolver->node '{dyn #{1}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/root                 1
-            ::pcp/index-attrs          {:a 1}}))
+            ::pcp/index-resolver->nodes '{dyn #{1}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/root                  1
+            ::pcp/index-attrs           {:a 1}}))
 
     (testing "with dependency"
       (is (= (compute-run-graph
@@ -2416,18 +2416,18 @@
                 ::pci/index-oir       {:a {#{} #{'a}}
                                        :d {#{:c} #{'d}}}
                 ::eql/query           [{:a [{:b [:d]}]}]})
-             {::pcp/nodes                {1 {::pco/name             'dyn
+             {::pcp/nodes                 {1 {::pco/name             'dyn
                                              ::pcp/node-id          1
                                              ::pcp/requires         {:a {:b {:c {}}}}
                                              ::pcp/input            {}
                                              ::pcp/source-sym       'a
                                              ::pcp/source-for-attrs #{:a}
                                              ::pcp/foreign-ast      (eql/query->ast [{:a [{:b [:c]}]}])}}
-              ::pcp/index-resolver->node '{dyn #{1}}
-              ::pcp/unreachable-syms     #{}
-              ::pcp/unreachable-attrs    #{}
-              ::pcp/root                 1
-              ::pcp/index-attrs          {:a 1}}))))
+              ::pcp/index-resolver->nodes '{dyn #{1}}
+              ::pcp/unreachable-syms      #{}
+              ::pcp/unreachable-attrs     #{}
+              ::pcp/root                  1
+              ::pcp/index-attrs           {:a 1}}))))
 
   (testing "only returns the deps from the dynamic resolver in the child requirements"
     (is (= (compute-run-graph
@@ -2447,18 +2447,18 @@
               ::pci/index-oir       {:a {#{} #{'a}}
                                      :c {#{:b} #{'c}}}
               ::eql/query           [{:a [:c]}]})
-           {::pcp/nodes                {1 {::pco/name             'dyn
+           {::pcp/nodes                 {1 {::pco/name             'dyn
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {:c {}}}
                                            ::pcp/input            {}
                                            ::pcp/source-sym       'a
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [:c]}])}}
-            ::pcp/index-resolver->node '{dyn #{1}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/root                 1
-            ::pcp/index-attrs          {:a 1}}))
+            ::pcp/index-resolver->nodes '{dyn #{1}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/root                  1
+            ::pcp/index-attrs           {:a 1}}))
 
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/name              'dyn
@@ -2473,18 +2473,18 @@
                                       :c {#{:b} #{c}}
                                       :d {#{} #{c}}}
               ::eql/query           [{:a [:c :d]}]})
-           {::pcp/nodes                {1 {::pco/name             'dyn
+           {::pcp/nodes                 {1 {::pco/name             'dyn
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {:b {}}}
                                            ::pcp/input            {}
                                            ::pcp/source-sym       'a
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
-            ::pcp/index-resolver->node '{dyn #{1}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/root                 1
-            ::pcp/index-attrs          {:a 1}})))
+            ::pcp/index-resolver->nodes '{dyn #{1}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/root                  1
+            ::pcp/index-attrs           {:a 1}})))
 
   (testing "indirect dependencies don't need to be in the query"
     (is (= (compute-run-graph
@@ -2501,18 +2501,18 @@
                                       :d {#{} #{d}}
                                       :e {#{:d} #{a}}}
               ::eql/query           [{:a [:c :e]}]})
-           {::pcp/nodes                {1 {::pco/name             'dyn
+           {::pcp/nodes                 {1 {::pco/name             'dyn
                                            ::pcp/node-id          1
                                            ::pcp/requires         {:a {:b {}}}
                                            ::pcp/input            {}
                                            ::pcp/source-sym       'a
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
-            ::pcp/index-resolver->node '{dyn #{1}}
-            ::pcp/unreachable-syms     #{}
-            ::pcp/unreachable-attrs    #{}
-            ::pcp/root                 1
-            ::pcp/index-attrs          {:a 1}}))))
+            ::pcp/index-resolver->nodes '{dyn #{1}}
+            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-attrs     #{}
+            ::pcp/root                  1
+            ::pcp/index-attrs           {:a 1}}))))
 
 (deftest root-execution-node?-test
   (is (= (pcp/root-execution-node?
@@ -2566,20 +2566,20 @@
 
   (testing "merge nodes with same sym"
     (is (= (pcp/compute-root-or
-             {::pcp/nodes                {1 {::pcp/node-id  1
+             {::pcp/nodes                 {1 {::pcp/node-id  1
                                              ::pco/name     'a
                                              ::pcp/requires {:a {}}}
                                           2 {::pcp/node-id  2
                                              ::pco/name     'a
                                              ::pcp/requires {:b {}}}}
-              ::pcp/index-resolver->node '{a #{1 2}}
-              ::pcp/root                 2}
+              ::pcp/index-resolver->nodes '{a #{1 2}}
+              ::pcp/root                  2}
              (assoc (base-graph-env) ::pcp/id-counter (atom 2))
              {::pcp/node-id 1})
 
-           '{::pcp/root                 1
-             ::pcp/index-resolver->node {a #{1}}
-             ::pcp/nodes                {1 {::pcp/node-id  1
+           '{::pcp/root                  1
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/nodes                 {1 {::pcp/node-id  1
                                             ::pco/name     a
                                             ::pcp/requires {:a {}
                                                             :b {}}}}})))
@@ -2594,7 +2594,7 @@
                               ::pco/name     'a2
                               ::pcp/requires {:a {}}}}}
              (assoc (base-graph-env) ::pcp/id-counter (atom 2)
-               ::pspec/attribute :a)
+               ::p.spec/attribute :a)
              {::pcp/node-id 2})
            {::pcp/root  3
             ::pcp/nodes {1 {::pcp/node-id     1
@@ -2621,7 +2621,7 @@
                                 ::pcp/requires {:a {}}
                                 ::pcp/run-next 1}}}
                (assoc (base-graph-env) ::pcp/id-counter (atom 3)
-                 ::pspec/attribute :a
+                 ::p.spec/attribute :a
                  ::pci/index-resolvers {'a  {::pco/provides {:a {}}}
                                         'a2 {::pco/provides {:a {}}}})
                {::pcp/node-id 3})
@@ -2651,7 +2651,7 @@
                                   ::pcp/requires {:a {}}
                                   ::pcp/run-next 10}}}
                  (assoc (base-graph-env) ::pcp/id-counter (atom 3)
-                   ::pspec/attribute :a)
+                   ::p.spec/attribute :a)
                  {::pcp/node-id 3})
                {::pcp/root  4
                 ::pcp/nodes {2 {::pcp/node-id     2
@@ -2702,9 +2702,9 @@
 
     (testing "collapse when symbol is already there"
       (is (= (pcp/compute-root-or
-               {::pcp/root                 3
-                ::pcp/index-resolver->node {'a #{1 2 4}}
-                ::pcp/nodes                {1 {::pcp/node-id  1
+               {::pcp/root                  3
+                ::pcp/index-resolver->nodes {'a #{1 2 4}}
+                ::pcp/nodes                 {1 {::pcp/node-id  1
                                                ::pco/name     'a
                                                ::pcp/requires {:a {}}
                                                }
@@ -2720,9 +2720,9 @@
 
                (base-graph-env)
                {::pcp/node-id 4})
-             '{::pcp/root                 3
-               ::pcp/index-resolver->node {a #{1 2}}
-               ::pcp/nodes                {1
+             '{::pcp/root                  3
+               ::pcp/index-resolver->nodes {a #{1 2}}
+               ::pcp/nodes                 {1
                                            {::pcp/node-id  1
                                             ::pco/name     a
                                             ::pcp/requires {:a {} :b {}}}
@@ -3076,65 +3076,65 @@
 (deftest remove-node-test
   (testing "remove node and references"
     (is (= (pcp/remove-node
-             '{::pcp/nodes                {1 {::pcp/node-id 1
+             '{::pcp/nodes                 {1 {::pcp/node-id 1
                                               ::pco/name    a}}
-               ::pcp/index-resolver->node {a #{1}}}
+               ::pcp/index-resolver->nodes {a #{1}}}
              1)
-           '{::pcp/nodes                {}
-             ::pcp/index-resolver->node {a #{}}})))
+           '{::pcp/nodes                 {}
+             ::pcp/index-resolver->nodes {a #{}}})))
 
   (testing "remove after node reference from run-next"
     (is (= (pcp/remove-node
-             '{::pcp/nodes                {1 {::pcp/node-id  1
+             '{::pcp/nodes                 {1 {::pcp/node-id  1
                                               ::pco/name     a
                                               ::pcp/run-next 2}
                                            2 {::pcp/node-id     2
                                               ::pco/name        b
                                               ::pcp/after-nodes #{1}}}
-               ::pcp/index-resolver->node {a #{1}
-                                           b #{2}}}
+               ::pcp/index-resolver->nodes {a #{1}
+                                           b  #{2}}}
              1)
-           '{::pcp/nodes                {2 {::pcp/node-id 2
+           '{::pcp/nodes                 {2 {::pcp/node-id 2
                                             ::pco/name    b}}
-             ::pcp/index-resolver->node {a #{}
-                                         b #{2}}})))
+             ::pcp/index-resolver->nodes {a #{}
+                                         b  #{2}}})))
 
   (testing "remove after node of branch nodes"
     (is (= (pcp/remove-node
-             '{::pcp/nodes                {1 {::pcp/node-id     1
+             '{::pcp/nodes                 {1 {::pcp/node-id     1
                                               ::pco/name        a
                                               ::pcp/after-nodes #{3}}
                                            2 {::pcp/node-id     2
                                               ::pco/name        b
                                               ::pcp/after-nodes #{3}}
                                            3 {::pcp/run-and #{1 2}}}
-               ::pcp/index-resolver->node {a #{1}
-                                           b #{2}}}
+               ::pcp/index-resolver->nodes {a #{1}
+                                           b  #{2}}}
              3)
-           '{::pcp/nodes                {1 {::pcp/node-id 1
+           '{::pcp/nodes                 {1 {::pcp/node-id 1
                                             ::pco/name    a}
                                          2 {::pcp/node-id 2
                                             ::pco/name    b}}
-             ::pcp/index-resolver->node {a #{1} b #{2}}})))
+             ::pcp/index-resolver->nodes {a #{1} b #{2}}})))
 
   (testing "trigger error when after node references are still pointing to it"
     (is (thrown?
           #?(:clj AssertionError :cljs js/Error)
           (pcp/remove-node
-            '{::pcp/nodes                {1 {::pcp/node-id     1
+            '{::pcp/nodes                 {1 {::pcp/node-id     1
                                              ::pco/name        a
                                              ::pcp/after-nodes #{2}}
                                           2 {::pcp/node-id  2
                                              ::pco/name     b
                                              ::pcp/run-next 1}}
-              ::pcp/index-resolver->node {a #{1}
-                                          b #{2}}}
+              ::pcp/index-resolver->nodes {a #{1}
+                                          b  #{2}}}
             1)))))
 
 (deftest collapse-nodes-chain-test
   (testing "merge requires and attr sources"
     (is (= (pcp/collapse-nodes-chain
-             '{::pcp/nodes                {1 {::pcp/node-id          1
+             '{::pcp/nodes                 {1 {::pcp/node-id          1
                                               ::pco/name             a
                                               ::pcp/requires         {:a {}}
                                               ::pcp/source-for-attrs #{:a}}
@@ -3142,20 +3142,20 @@
                                               ::pco/name             a
                                               ::pcp/requires         {:b {}}
                                               ::pcp/source-for-attrs #{:b}}}
-               ::pcp/index-resolver->node {a #{1 2}}
-               ::pcp/index-attrs          {:a 1 :b 2}}
+               ::pcp/index-resolver->nodes {a #{1 2}}
+               ::pcp/index-attrs           {:a 1 :b 2}}
              1 2)
-           '{::pcp/nodes                {1 {::pcp/node-id          1
+           '{::pcp/nodes                 {1 {::pcp/node-id          1
                                             ::pco/name             a
                                             ::pcp/source-for-attrs #{:a :b}
                                             ::pcp/requires         {:a {}
                                                                     :b {}}}}
-             ::pcp/index-resolver->node {a #{1}}
-             ::pcp/index-attrs          {:a 1 :b 1}})))
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/index-attrs           {:a 1 :b 1}})))
 
   (testing "keep input from outer most"
     (is (= (pcp/collapse-nodes-chain
-             '{::pcp/nodes                {1 {::pcp/node-id          1
+             '{::pcp/nodes                 {1 {::pcp/node-id          1
                                               ::pco/name             a
                                               ::pcp/input            {:x {}}
                                               ::pcp/requires         {:a {}}
@@ -3165,21 +3165,21 @@
                                               ::pcp/input            {:y {}}
                                               ::pcp/requires         {:b {}}
                                               ::pcp/source-for-attrs #{:b}}}
-               ::pcp/index-resolver->node {a #{1 2}}
-               ::pcp/index-attrs          {:a 1 :b 2}}
+               ::pcp/index-resolver->nodes {a #{1 2}}
+               ::pcp/index-attrs           {:a 1 :b 2}}
              1 2)
-           '{::pcp/nodes                {1 {::pcp/node-id          1
+           '{::pcp/nodes                 {1 {::pcp/node-id          1
                                             ::pco/name             a
                                             ::pcp/input            {:x {}}
                                             ::pcp/source-for-attrs #{:a :b}
                                             ::pcp/requires         {:a {}
                                                                     :b {}}}}
-             ::pcp/index-resolver->node {a #{1}}
-             ::pcp/index-attrs          {:a 1 :b 1}})))
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/index-attrs           {:a 1 :b 1}})))
 
   (testing "pull run next"
     (is (= (pcp/collapse-nodes-chain
-             '{::pcp/nodes                {1 {::pcp/node-id 1
+             '{::pcp/nodes                 {1 {::pcp/node-id 1
                                               ::pco/name    a}
                                            2 {::pcp/node-id  2
                                               ::pco/name     a
@@ -3187,21 +3187,21 @@
                                            3 {::pcp/node-id     3
                                               ::pco/name        b
                                               ::pcp/after-nodes #{2}}}
-               ::pcp/index-resolver->node {a #{1 2}
-                                           b #{3}}}
+               ::pcp/index-resolver->nodes {a #{1 2}
+                                           b  #{3}}}
              1 2)
-           '{::pcp/nodes                {1 {::pcp/node-id  1
+           '{::pcp/nodes                 {1 {::pcp/node-id  1
                                             ::pco/name     a
                                             ::pcp/run-next 3}
                                          3 {::pcp/node-id     3
                                             ::pco/name        b
                                             ::pcp/after-nodes #{1}}}
-             ::pcp/index-resolver->node {a #{1}
-                                         b #{3}}})))
+             ::pcp/index-resolver->nodes {a #{1}
+                                         b  #{3}}})))
 
   (testing "move after nodes"
     (is (= (pcp/collapse-nodes-chain
-             '{::pcp/nodes                {1 {::pcp/node-id 1
+             '{::pcp/nodes                 {1 {::pcp/node-id 1
                                               ::pco/name    a}
                                            2 {::pcp/node-id     2
                                               ::pco/name        a
@@ -3212,11 +3212,11 @@
                                            4 {::pcp/node-id  4
                                               ::pco/name     c
                                               ::pcp/run-next 2}}
-               ::pcp/index-resolver->node {a #{1 2}
-                                           b #{3}
-                                           c #{4}}}
+               ::pcp/index-resolver->nodes {a #{1 2}
+                                           b  #{3}
+                                           c  #{4}}}
              1 2)
-           '{::pcp/nodes                {1 {::pcp/node-id     1
+           '{::pcp/nodes                 {1 {::pcp/node-id     1
                                             ::pco/name        a
                                             ::pcp/after-nodes #{3 4}}
                                          3 {::pcp/node-id  3
@@ -3225,9 +3225,9 @@
                                          4 {::pcp/node-id  4
                                             ::pco/name     c
                                             ::pcp/run-next 1}}
-             ::pcp/index-resolver->node {a #{1}
-                                         b #{3}
-                                         c #{4}}}))))
+             ::pcp/index-resolver->nodes {a #{1}
+                                         b  #{3}
+                                         c  #{4}}}))))
 
 (deftest compute-node-chain-depth-test
   (testing "simple chain"
