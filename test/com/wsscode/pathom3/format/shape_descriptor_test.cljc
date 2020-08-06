@@ -24,3 +24,18 @@
     (is (= (psd/query->shape-descriptor
              [{:foo {:a [:x] :b [:y]}}])
            {:foo {:x {} :y {}}}))))
+
+(deftest data->shape-descriptor-test
+  (is (= (psd/data->shape-descriptor {})
+         {}))
+
+  (is (= (psd/data->shape-descriptor {:foo "bar"})
+         {:foo {}}))
+
+  (is (= (psd/data->shape-descriptor {:foo {:bar "baz"}})
+         {:foo {:bar {}}}))
+
+  (is (= (psd/data->shape-descriptor {:foo [{:bar "x"}
+                                            {:baz "a"}]})
+         {:foo {:bar {}
+                :baz {}}})))

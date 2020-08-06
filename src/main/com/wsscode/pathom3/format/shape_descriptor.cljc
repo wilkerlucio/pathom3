@@ -6,6 +6,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.misc.core :as misc]
     [edn-query-language.core :as eql]))
 
 (>def ::shape-descriptor
@@ -25,6 +26,38 @@
      (map? b) b
 
      :else b)))
+
+(defn data->shape-descriptor
+  "Helper function to transform a map into an shape descriptor.
+
+  Edges of shape descriptor are always an empty map. If a value of the map is a sequence.
+  This will combine the keys present in all items on the final shape description.
+
+  WARN: this idea of merging is still under test, this may change in the future."
+  [data]
+  (if (map? data)
+    (reduce-kv
+      (fn [out k v]
+        (assoc out
+          k
+          (cond
+            (map? v)
+            (data->shape-descriptor v)
+
+            (sequential? v)
+            (let [shape (reduce
+                          (fn [q x]
+                            (misc/merge-grow q (data->shape-descriptor x)))
+                          {}
+                          v)]
+              (if (seq shape)
+                shape
+                {}))
+
+            :else
+            {})))
+      {}
+      data)))
 
 (>defn ast->shape-descriptor
   "Convert EQL AST to shape descriptor format."
