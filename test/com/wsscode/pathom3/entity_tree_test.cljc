@@ -36,19 +36,25 @@
          {:baz "bar"})))
 
 (deftest swap-entity!-test
-  (is (= (p.e/swap-entity! {::p.e/cache-tree* (atom {})
-                            ::p.spec/path     []}
-                           assoc :foo "bar")
-         {:foo "bar"}))
+  (let [tree* (atom {})]
+    (is (= (p.e/swap-entity! {::p.e/cache-tree* tree*
+                              ::p.spec/path     []}
+                             assoc :foo "bar")
+           {:foo "bar"}
+           @tree*)))
 
-  (is (= (p.e/swap-entity! {::p.e/cache-tree* (atom {:bar {:a 1}})
-                            ::p.spec/path     [:bar]}
-                           assoc :b 2)
-         {:bar {:a 1, :b 2}}))
+  (let [tree* (atom {:bar {:a 1}})]
+    (is (= (p.e/swap-entity! {::p.e/cache-tree* tree*
+                              ::p.spec/path     [:bar]}
+                             assoc :b 2)
+           {:bar {:a 1, :b 2}}
+           @tree*)))
 
   (testing "works with vector positions"
-    (is (= (p.e/swap-entity! {::p.e/cache-tree* (atom {:bar [{:a 1}
-                                                             {:a 2}]})
-                              ::p.spec/path     [:bar 0]}
-                             assoc :b 2)
-           {:bar [{:a 1, :b 2} {:a 2}]}))))
+    (let [tree* (atom {:bar [{:a 1}
+                             {:a 2}]})]
+      (is (= (p.e/swap-entity! {::p.e/cache-tree* tree*
+                                ::p.spec/path     [:bar 0]}
+                               assoc :b 2)
+             {:bar [{:a 1, :b 2} {:a 2}]}
+             @tree*)))))
