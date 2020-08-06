@@ -18,6 +18,43 @@
    => map?]
   (get-in @cache-tree* path {}))
 
+(defn- swap-entity*
+  ([cache-tree path f]
+   (if (seq path)
+     (update-in cache-tree path f)
+     (f cache-tree)))
+  ([cache-tree path f x]
+   (if (seq path)
+     (update-in cache-tree path f x)
+     (f cache-tree x)))
+  ([cache-tree path f x y]
+   (if (seq path)
+     (update-in cache-tree path f x y)
+     (f cache-tree x y)))
+  ([cache-tree path f x y & args]
+   (if (seq path)
+     (apply update-in cache-tree path f x y args)
+     (apply f cache-tree x y args))))
+
+(>defn swap-entity!
+  "Swap cache-tree at the current path. Returns the updated whole cache-tree."
+  ([{::keys [cache-tree*] ::p.spec/keys [path]} f]
+   [(s/keys :req [::cache-tree*] :opt [::p.spec/path]) fn?
+    => map?]
+   (swap! cache-tree* swap-entity* path f))
+  ([{::keys [cache-tree*] ::p.spec/keys [path]} f x]
+   [(s/keys :req [::cache-tree*] :opt [::p.spec/path]) fn? any?
+    => map?]
+   (swap! cache-tree* swap-entity* path f x))
+  ([{::keys [cache-tree*] ::p.spec/keys [path]} f x y]
+   [(s/keys :req [::cache-tree*] :opt [::p.spec/path]) fn? any? any?
+    => map?]
+   (swap! cache-tree* swap-entity* path f x y))
+  ([{::keys [cache-tree*] ::p.spec/keys [path]} f x y & args]
+   [(s/keys :req [::cache-tree*] :opt [::p.spec/path]) fn? any? any? (s/+ any?)
+    => map?]
+   (apply swap! cache-tree* swap-entity* path f x y args)))
+
 (>defn merge-entity-data
   "Specialized merge versions that work on entity data."
   [entity new-data]

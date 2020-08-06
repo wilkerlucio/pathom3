@@ -34,3 +34,21 @@
   (is (= (p.e/entity {::p.e/cache-tree* (atom {:foo [{:baz "bar"}]})
                       ::p.spec/path      [:foo 0]})
          {:baz "bar"})))
+
+(deftest swap-entity!-test
+  (is (= (p.e/swap-entity! {::p.e/cache-tree* (atom {})
+                            ::p.spec/path     []}
+                           assoc :foo "bar")
+         {:foo "bar"}))
+
+  (is (= (p.e/swap-entity! {::p.e/cache-tree* (atom {:bar {:a 1}})
+                            ::p.spec/path     [:bar]}
+                           assoc :b 2)
+         {:bar {:a 1, :b 2}}))
+
+  (testing "works with vector positions"
+    (is (= (p.e/swap-entity! {::p.e/cache-tree* (atom {:bar [{:a 1}
+                                                             {:a 2}]})
+                              ::p.spec/path     [:bar 0]}
+                             assoc :b 2)
+           {:bar [{:a 1, :b 2} {:a 2}]}))))
