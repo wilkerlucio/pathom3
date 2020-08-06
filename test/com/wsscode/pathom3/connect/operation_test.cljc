@@ -180,25 +180,25 @@
              `(pco/defresolver ~'foo ~'[] :sample "bar"))
            '(def foo
               (com.wsscode.pathom3.connect.operation/resolver
-                user/foo
+                'user/foo
                 #:com.wsscode.pathom3.connect.operation{:output [:sample]}
-                (clojure.core/fn [_ _] "bar"))))))
+                (clojure.core/fn foo [_ _] "bar"))))))
 
   (testing "explicit output, no args"
     (is (= (macroexpand-1
              `(pco/defresolver ~'foo ~'[] {::pco/output [:foo]} {:foo "bar"}))
            '(def foo
               (com.wsscode.pathom3.connect.operation/resolver
-                user/foo
+                'user/foo
                 #:com.wsscode.pathom3.connect.operation{:output [:foo]}
-                (clojure.core/fn [_ _] {:foo "bar"}))))))
+                (clojure.core/fn foo [_ _] {:foo "bar"}))))))
 
   (testing "single attribute, including implicit import via destructuring"
     (is (= (macroexpand-1
              `(pco/defresolver ~'foo ~'[{:keys [dep]}] :sample "bar"))
            '(def foo
               (com.wsscode.pathom3.connect.operation/resolver
-                user/foo
+                'user/foo
                 #:com.wsscode.pathom3.connect.operation{:output [:sample],
                                                         :input  [:dep]}
-                (clojure.core/fn [_ {:keys [dep]}] "bar")))))))
+                (clojure.core/fn foo [_ {:keys [dep]}] "bar")))))))

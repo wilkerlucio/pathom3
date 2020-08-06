@@ -107,7 +107,7 @@
 
      (s/def ::defresolver-args
        (s/and
-         (s/cat :name symbol?
+         (s/cat :name simple-symbol?
                 :docstring (s/? string?)
                 :arglist ::operation-args
                 :output-attr (s/? keyword?)
@@ -149,7 +149,7 @@
 (defn full-symbol [sym ns]
   (if (namespace sym)
     sym
-    (symbol (name (ns-name ns)) (name sym))))
+    (symbol ns (name sym))))
 
 (defmacro defresolver
   "Defines a new Pathom resolver.
@@ -196,10 +196,10 @@
             (update :arglist normalize-arglist))
 
         arglist' (s/unform ::operation-args arglist)
-        fqsym    (full-symbol name *ns*)]
+        fqsym    (full-symbol name (str *ns*))]
     `(def ~name
-       (resolver ~fqsym ~(params->resolver-options params)
-                 (fn ~arglist' ~@body)))))
+       (resolver '~fqsym ~(params->resolver-options params)
+                 (fn ~name ~arglist' ~@body)))))
 
 (s/fdef defresolver
   :args ::defresolver-args
