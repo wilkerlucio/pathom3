@@ -16,6 +16,6 @@
 
 (defn alias-resolver2
   "Like alias-resolver, but returns a vector containing the alias in both directions."
-  [from to]
-  [(alias-resolver from to)
-   (alias-resolver to from)])
+  [attribute-a attribute-b]
+  [(alias-resolver attribute-a attribute-b)
+   (alias-resolver attribute-b attribute-a)])
