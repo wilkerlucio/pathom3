@@ -47,27 +47,27 @@
   the output to input index in the ::pc/index-oir and the reverse index for auto-complete
   to the index ::pc/index-io."
   ([indexes resolver]
-   (let [{::pco/keys [name input output]} (pco/operation-config resolver)
+   (let [{::pco/keys [op-name input output]} (pco/operation-config resolver)
          input' (set input)]
      (merge-indexes indexes
-                    {::index-resolvers {name resolver}
+                    {::index-resolvers {op-name resolver}
                      ::index-oir       (reduce (fn [indexes out-attr]
                                                  (cond-> indexes
                                                    (not= #{out-attr} input')
-                                                   (update-in [out-attr input'] misc/sconj name)))
+                                                   (update-in [out-attr input'] misc/sconj op-name)))
                                          {}
                                          (pfse/query-root-properties output))}))))
 
 (>defn resolver
   [{::keys [index-resolvers]} resolver-name]
-  [(s/keys :opt [::index-resolvers]) ::pco/name
+  [(s/keys :opt [::index-resolvers]) ::pco/op-name
    => (? ::pco/resolver)]
   (get index-resolvers resolver-name))
 
 (>defn resolver-config
   "Given a indexes map and a resolver sym, returns the resolver configuration map."
   [{::keys [index-resolvers]} resolver-name]
-  [(s/keys :opt [::index-resolvers]) ::pco/name
+  [(s/keys :opt [::index-resolvers]) ::pco/op-name
    => (? ::pco/operation-config)]
   (some-> (get index-resolvers resolver-name)
           (pco/operation-config)))
@@ -75,7 +75,7 @@
 (>defn resolver-provides
   "Get the resolver provides from the resolver configuration map"
   [env resolver-sym]
-  [(s/keys :opt [::index-resolvers]) ::pco/name
+  [(s/keys :opt [::index-resolvers]) ::pco/op-name
    => (? ::pco/provides)]
   (-> (resolver-config env resolver-sym)
       ::pco/provides))

@@ -11,35 +11,35 @@
              {:foo "bar"}))
 
       (is (= (pco/operation-config resolver)
-             {::pco/name     'foo
+             {::pco/op-name  'foo
               ::pco/input    []
               ::pco/provides {:foo {}}
               ::pco/output   [:foo]}))))
 
   (testing "creating resolver from pure maps"
-    (let [resolver (pco/resolver {::pco/name    'foo
+    (let [resolver (pco/resolver {::pco/op-name 'foo
                                   ::pco/output  [:foo]
                                   ::pco/resolve (fn [_ _] "bar")})]
       (is (= (resolver nil nil)
              "bar"))
 
       (is (= (pco/operation-config resolver)
-             {::pco/name     'foo
+             {::pco/op-name  'foo
               ::pco/output   [:foo]
               ::pco/input    []
               ::pco/provides {:foo {}}}))))
 
   (testing "dynamic resolver"
-    (let [resolver (pco/resolver {::pco/name              'foo
+    (let [resolver (pco/resolver {::pco/op-name           'foo
                                   ::pco/dynamic-resolver? true
                                   ::pco/resolve           (fn [_ _] "bar")})]
 
       (is (= (pco/operation-config resolver)
-             {::pco/name              'foo
+             {::pco/op-name           'foo
               ::pco/dynamic-resolver? true}))))
 
   (testing "noop when called with a resolver"
-    (let [resolver (-> {::pco/name    'foo
+    (let [resolver (-> {::pco/op-name 'foo
                         ::pco/output  [:foo]
                         ::pco/resolve (fn [_ _] "bar")}
                        (pco/resolver)
@@ -49,7 +49,7 @@
              "bar"))
 
       (is (= (pco/operation-config resolver)
-             {::pco/name     'foo
+             {::pco/op-name  'foo
               ::pco/output   [:foo]
               ::pco/input    []
               ::pco/provides {:foo {}}})))))

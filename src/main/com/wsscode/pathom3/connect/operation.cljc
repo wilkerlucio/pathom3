@@ -7,7 +7,7 @@
 
 ; region specs
 
-(>def ::name symbol?)
+(>def ::op-name "Name of the operation" symbol?)
 (>def ::input vector?)
 (>def ::output vector?)
 (>def ::resolve fn?)
@@ -16,7 +16,7 @@
 (>def ::operation #(satisfies? pop/IOperation %))
 (>def ::resolver #(satisfies? pop/IResolver %))
 (>def ::provides ::pfsd/shape-descriptor)
-(>def ::dynamic-name ::name)
+(>def ::dynamic-name ::op-name)
 (>def ::dynamic-resolver? boolean?)
 
 ; endregion
@@ -64,10 +64,10 @@
   Returns an instance of the Resolver type.
   "
   ([name config resolve]
-   [::name (s/keys :opt [::output]) ::resolve => ::resolver]
-   (resolver (assoc config ::name name ::resolve resolve)))
+   [::op-name (s/keys :opt [::output]) ::resolve => ::resolver]
+   (resolver (assoc config ::op-name name ::resolve resolve)))
   ([{::keys [resolve output] :as config}]
-   [(s/or :map (s/keys :req [::name] :opt [::output ::resolve])
+   [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve])
           :resolver ::resolver) => ::resolver]
    (if (satisfies? pop/IResolver config)
      config

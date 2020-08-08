@@ -63,7 +63,7 @@
 
 (>def ::index-resolver->nodes
   "An index from resolver symbol to a set of execution nodes where its used."
-  (s/map-of ::pco/name ::node-id-set))
+  (s/map-of ::pco/op-name ::node-id-set))
 
 (>def ::node-depth
   "The node depth on the graph, starts on zero."
@@ -123,7 +123,7 @@
 
 (>def ::source-sym
   "On dynamic resolvers, this points to the original source resolver in the foreign parser."
-  ::pco/name)
+  ::pco/op-name)
 
 (>def ::unreachable-attrs
   "A set containing the attributes that can't be reached considering current graph and available data."
@@ -131,7 +131,7 @@
 
 (>def ::unreachable-resolvers
   "A set containing the resolvers that can't be reached considering current graph and available data."
-  (s/coll-of ::pco/name :kind set?))
+  (s/coll-of ::pco/op-name :kind set?))
 
 (>def ::warn
   "Warn message"
@@ -145,7 +145,7 @@
   "Set of params that were conflicting during merge."
   ::pspec/attributes-set)
 
-(def pc-sym ::pco/name)
+(def pc-sym ::pco/op-name)
 (def pc-dyn-sym ::pco/dynamic-name)
 (def pc-output ::pco/output)
 (def pc-provides ::pco/provides)
@@ -796,7 +796,7 @@
 (defn inject-index-nested-provides
   [indexes
    {::pspec/keys [attribute]
-    ::pco/keys   [name]
+    ::pco/keys   [op-name]
     :as          env}]
   (let [sym-provides    (or (resolver-provides env) {attribute {}})
         nested-provides (get sym-provides attribute)]
@@ -805,7 +805,7 @@
                    dynamic-base-provider-sym]
           (pco/resolver
             {pc-sym        dynamic-base-provider-sym
-             pc-dyn-sym    name
+             pc-dyn-sym    op-name
              pc-provides   nested-provides
              ::pco/resolve (fn [_ _])}))
         (update ::pci/index-oir
@@ -865,23 +865,23 @@
   [graph
    {::keys       [run-next input source-sym]
     ::pspec/keys [attribute]
-    ::pco/keys   [name]
+    ::pco/keys   [op-name]
     ast          :edn-query-language.ast/node
     :as          env}]
   (let [nested     (if (and (seq (:children ast))
-                            (dynamic-resolver? env name))
+                            (dynamic-resolver? env op-name))
                      (compute-nested-node-details env))
         requires   (if nested
                      {attribute (::requires nested)}
                      {attribute {}})
         next-node  (get-node graph run-next)
         ast-params (:params ast)]
-    (if (= name (pc-sym next-node))
+    (if (= op-name (pc-sym next-node))
       (-> next-node
           (update ::requires misc/merge-grow requires)
           (assoc ::input input))
       (cond->
-        {pc-sym     name
+        {pc-sym     op-name
          ::node-id  (next-node-id env)
          ::requires requires
          ::input    input}
@@ -889,13 +889,13 @@
         (seq ast-params)
         (assoc ::params ast-params)
 
-        (dynamic-resolver? env name)
+        (dynamic-resolver? env op-name)
         (assoc ::foreign-ast
           (if nested
             (::foreign-ast nested)
             {:type :root :children [ast]}))
 
-        (not= name source-sym)
+        (not= op-name source-sym)
         (assoc ::source-sym source-sym)))))
 
 (defn include-node

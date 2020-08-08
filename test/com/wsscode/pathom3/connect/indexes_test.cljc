@@ -17,7 +17,7 @@
                                resolver)]
     (is (= (pci/resolver-config env 'r)
            '{::pco/input    []
-             ::pco/name     r
+             ::pco/op-name  r
              ::pco/output   [:foo]
              ::pco/provides {:foo {}}})))
 
