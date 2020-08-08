@@ -82,11 +82,14 @@
 
 (>defn register
   "Add an operation to the indexes. The operation can be either a Resolver or a Mutation."
-  [indexes operation-or-operations]
-  [::indexes ::operations => ::indexes]
-  (if (sequential? operation-or-operations)
-    (reduce register indexes operation-or-operations)
+  ([operation-or-operations]
+   [::operations => ::indexes]
+   (register {} operation-or-operations))
+  ([indexes operation-or-operations]
+   [::indexes ::operations => ::indexes]
+   (if (sequential? operation-or-operations)
+     (reduce register indexes operation-or-operations)
 
-    (case (pco/operation-type operation-or-operations)
-      ::pco/operation-type-resolver
-      (register-resolver indexes operation-or-operations))))
+     (case (pco/operation-type operation-or-operations)
+       ::pco/operation-type-resolver
+       (register-resolver indexes operation-or-operations)))))
