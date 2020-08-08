@@ -11,7 +11,7 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [potemkin.collections :refer [def-map-type]]))
 
-(declare smart-map ->SmartMap)
+(declare smart-map)
 
 (defn wrap-smart-map [env x]
   (cond
