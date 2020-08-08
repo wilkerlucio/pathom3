@@ -18,9 +18,11 @@
    => map?]
   (get-in @cache-tree* path {}))
 
-(>defn with-cache-tree [env cache-tree]
-  [map? map?
-   => map?]
+(>defn with-cache-tree
+  "Set the cache in the environment. Note in this function you must send the cache-tree
+  as a map, not as an atom."
+  [env cache-tree]
+  [map? map? => map?]
   (assoc env ::cache-tree* (atom cache-tree)))
 
 (defn- swap-entity*
