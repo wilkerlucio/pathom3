@@ -18,6 +18,11 @@
    => map?]
   (get-in @cache-tree* path {}))
 
+(>defn with-cache-tree [env cache-tree]
+  [map? map?
+   => map?]
+  (assoc env ::cache-tree* (atom cache-tree)))
+
 (defn- swap-entity*
   ([cache-tree path f]
    (if (seq path)

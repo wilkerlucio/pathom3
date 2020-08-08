@@ -35,6 +35,10 @@
                       ::p.spec/path      [:foo 0]})
          {:baz "bar"})))
 
+(deftest with-cache-tree-test
+  (is (= @(::p.e/cache-tree* (p.e/with-cache-tree {} {:foo "bar"}))
+         {:foo "bar"})))
+
 (deftest swap-entity!-test
   (let [tree* (atom {})]
     (is (= (p.e/swap-entity! {::p.e/cache-tree* tree*
