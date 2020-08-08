@@ -182,7 +182,7 @@
               (com.wsscode.pathom3.connect.operation/resolver
                 'user/foo
                 #:com.wsscode.pathom3.connect.operation{:output [:sample]}
-                (clojure.core/fn foo [_ _] "bar"))))))
+                (clojure.core/fn foo [_ _] {:sample (do "bar")}))))))
 
   (testing "explicit output, no args"
     (is (= (macroexpand-1
@@ -191,7 +191,7 @@
               (com.wsscode.pathom3.connect.operation/resolver
                 'user/foo
                 #:com.wsscode.pathom3.connect.operation{:output [:foo]}
-                (clojure.core/fn foo [_ _] {:foo "bar"}))))))
+                (clojure.core/fn foo [_ _] (do {:foo "bar"})))))))
 
   (testing "single attribute, including implicit import via destructuring"
     (is (= (macroexpand-1
@@ -201,4 +201,4 @@
                 'user/foo
                 #:com.wsscode.pathom3.connect.operation{:output [:sample],
                                                         :input  [:dep]}
-                (clojure.core/fn foo [_ {:keys [dep]}] "bar")))))))
+                (clojure.core/fn foo [_ {:keys [dep]}] {:sample (do "bar")})))))))

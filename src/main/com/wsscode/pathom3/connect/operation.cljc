@@ -191,7 +191,7 @@
   "
   {:arglists '([name docstring? arglist output-prop? options? & body])}
   [& args]
-  (let [{:keys [name arglist body] :as params}
+  (let [{:keys [name arglist body output-attr] :as params}
         (-> (s/conform ::defresolver-args args)
             (update :arglist normalize-arglist))
 
@@ -199,7 +199,10 @@
         fqsym    (full-symbol name (str *ns*))]
     `(def ~name
        (resolver '~fqsym ~(params->resolver-options params)
-                 (fn ~name ~arglist' ~@body)))))
+                 (fn ~name ~arglist'
+                   ~(if output-attr
+                      `{~output-attr (do ~@body)}
+                      `(do ~@body)))))))
 
 (s/fdef defresolver
   :args ::defresolver-args
