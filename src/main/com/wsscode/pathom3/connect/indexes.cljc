@@ -58,12 +58,18 @@
                                          {}
                                          (pfse/query-root-properties output))}))))
 
+(>defn resolver
+  [{::keys [index-resolvers]} resolver-name]
+  [(s/keys :opt [::index-resolvers]) ::pco/name
+   => (? ::pco/resolver)]
+  (get index-resolvers resolver-name))
+
 (>defn resolver-config
   "Given a indexes map and a resolver sym, returns the resolver configuration map."
-  [{::keys [index-resolvers]} resolver-sym]
+  [{::keys [index-resolvers]} resolver-name]
   [(s/keys :opt [::index-resolvers]) ::pco/name
    => (? ::pco/operation-config)]
-  (some-> (get index-resolvers resolver-sym)
+  (some-> (get index-resolvers resolver-name)
           (pco/operation-config)))
 
 (>defn resolver-provides
