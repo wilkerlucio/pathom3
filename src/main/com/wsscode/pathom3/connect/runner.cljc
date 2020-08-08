@@ -107,4 +107,5 @@
   "Run the root node of the graph."
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/cache-tree*]) => nil?]
-  (run-node! env (pcp/get-root-node graph)))
+  (if-let [root (pcp/get-root-node graph)]
+    (run-node! env root)))
