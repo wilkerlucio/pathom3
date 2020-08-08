@@ -371,8 +371,8 @@
       node-ids)))
 
 (defn dynamic-resolver?
-  [env sym]
-  (::pco/dynamic-resolver? (pci/resolver-config env sym)))
+  [env resolver-name]
+  (::pco/dynamic-resolver? (pci/resolver-config env resolver-name)))
 
 (defn add-unreachable-attr
   "Add attribute to unreachable list"
@@ -1059,10 +1059,10 @@
 (defn runner-node-sym
   "Find the runner symbol for a resolver, on normal resolvers that is the resolver symbol,
   but for foreign resolvers it uses its ::p.c.o/dynamic-name."
-  [env rname]
-  (let [resolver (pci/resolver-config env rname)]
+  [env resolver-name]
+  (let [resolver (pci/resolver-config env resolver-name)]
     (or (pc-dyn-sym resolver)
-        rname)))
+        resolver-name)))
 
 (defn compute-resolver-graph
   [{::keys [unreachable-resolvers] :as graph}

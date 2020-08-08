@@ -53,7 +53,7 @@
   You can create a resolver using a map:
 
   (resolver
-    {::name    'foo
+    {::op-name 'foo
      ::output  [:foo]
      ::resolve (fn [env input] ...)})
 
@@ -63,9 +63,9 @@
 
   Returns an instance of the Resolver type.
   "
-  ([name config resolve]
+  ([op-name config resolve]
    [::op-name (s/keys :opt [::output]) ::resolve => ::resolver]
-   (resolver (assoc config ::op-name name ::resolve resolve)))
+   (resolver (assoc config ::op-name op-name ::resolve resolve)))
   ([{::keys [resolve output] :as config}]
    [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve])
           :resolver ::resolver) => ::resolver]
