@@ -149,7 +149,7 @@
            {::pcp/nodes                 {}
             ::pcp/index-resolver->nodes {}
             ::pcp/unreachable-attrs     #{:a}
-            ::pcp/unreachable-syms      #{}}))
+            ::pcp/unreachable-resolvers #{}}))
 
     (testing "ignore mutations"
       (is (= (compute-run-graph
@@ -157,7 +157,7 @@
                 ::eql/query     '[(foo {})]})
              {::pcp/nodes                 {}
               ::pcp/index-resolver->nodes {}
-              ::pcp/unreachable-syms      #{}
+              ::pcp/unreachable-resolvers #{}
               ::pcp/unreachable-attrs     #{}})))
 
     (testing "broken chain"
@@ -167,7 +167,7 @@
              '#::pcp{:nodes                 {}
                      :index-resolver->nodes {}
                      :unreachable-attrs     #{:a :b}
-                     :unreachable-syms      #{b}}))
+                     :unreachable-resolvers #{b}}))
 
       (is (= (compute-run-graph
                {::pci/index-oir '{:b {#{:a} #{b1 b}}}
@@ -175,7 +175,7 @@
              '#::pcp{:nodes                 {}
                      :index-resolver->nodes {}
                      :unreachable-attrs     #{:a :b}
-                     :unreachable-syms      #{b b1}}))
+                     :unreachable-resolvers #{b b1}}))
 
       (is (= (compute-run-graph
                {::resolvers [{::pco/name   'a
@@ -188,7 +188,7 @@
              '#::pcp{:nodes                 {}
                      :index-resolver->nodes {}
                      :unreachable-attrs     #{:a :b}
-                     :unreachable-syms      #{b}}))
+                     :unreachable-resolvers #{b}}))
 
       (is (= (compute-run-graph
                {::resolvers [{::pco/name   'b
@@ -201,7 +201,7 @@
              '#::pcp{:nodes                 {}
                      :index-resolver->nodes {}
                      :unreachable-attrs     #{:a :b :c}
-                     :unreachable-syms      #{b c}}))
+                     :unreachable-resolvers #{b c}}))
 
       (is (= (compute-run-graph
                {::resolvers [{::pco/name   'b
@@ -216,7 +216,7 @@
              '#::pcp{:nodes                 {}
                      :index-resolver->nodes {}
                      :unreachable-attrs     #{:a :b :c}
-                     :unreachable-syms      #{b c}}))
+                     :unreachable-resolvers #{b c}}))
 
       (is (= (compute-run-graph
                {::resolvers [{::pco/name   'b
@@ -234,7 +234,7 @@
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:d}}}
                ::pcp/index-resolver->nodes {d #{4}}
-               ::pcp/unreachable-syms      #{c b}
+               ::pcp/unreachable-resolvers #{c b}
                ::pcp/unreachable-attrs     #{:c :b :a}
                ::pcp/root                  4
                ::pcp/index-attrs           {:d 4}})))))
@@ -251,7 +251,7 @@
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  1
              ::pcp/index-attrs           {:a 1}})))
@@ -267,7 +267,7 @@
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  1
              ::pcp/index-attrs           {:a 1}})))
@@ -284,7 +284,7 @@
            '#::pcp{:nodes                 {}
                    :index-resolver->nodes {}
                    :unreachable-attrs     #{:b :a}
-                   :unreachable-syms      #{a b}}))
+                   :unreachable-resolvers #{a b}}))
 
     (is (= (compute-run-graph
              {::resolvers [{::pco/name   'a
@@ -300,7 +300,7 @@
            '#::pcp{:nodes                 {}
                    :index-resolver->nodes {}
                    :unreachable-attrs     #{:c :b :a}
-                   :unreachable-syms      #{a b c}}))
+                   :unreachable-resolvers #{a b c}}))
 
     (testing "partial cycle"
       (is (= (compute-run-graph
@@ -330,7 +330,7 @@
                                               ::pcp/run-next         2
                                               ::pcp/source-for-attrs #{:a}}}
                ::pcp/index-resolver->nodes {c #{1} b #{2} a1 #{4}}
-               ::pcp/unreachable-syms      #{a}
+               ::pcp/unreachable-resolvers #{a}
                ::pcp/unreachable-attrs     #{}
                ::pcp/root                  4
                ::pcp/index-attrs           {:a 4 :b 2 :c 1}}))))
@@ -347,7 +347,7 @@
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:a :b}}}
              ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:a 1 :b 1}
              ::pcp/root                  1}))
@@ -374,7 +374,7 @@
                                             ::pcp/requires {:b {} :a {} :c {}}
                                             ::pcp/run-and  #{2 1}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:a 1 :b 2 :c 1}
              ::pcp/root                  3})))
@@ -401,7 +401,7 @@
                                             ::pcp/run-or           #{1 2}
                                             ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1} a2 #{2}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  3
              ::pcp/index-attrs           {:a 3}})))
@@ -429,7 +429,7 @@
                                             ::pcp/requires {:b {} :a {}}
                                             ::pcp/run-and  #{2 1}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:a 1 :b 2}
              ::pcp/root                  3}))
@@ -464,7 +464,7 @@
                                             ::pcp/source-for-attrs #{:c}
                                             ::pcp/after-nodes      #{3}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2} c #{4}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:a 1 :b 2 :c 4}
              ::pcp/root                  3})))
@@ -506,7 +506,7 @@
                                             ::pcp/run-and  #{4 2}
                                             ::pcp/run-next 1}}
              ::pcp/index-resolver->nodes {multi #{1} direct #{2} indirect #{3} dep #{4}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:direct 2 :dep 4 :indirect 3 :multi 1}
              ::pcp/root                  5})))
@@ -555,7 +555,7 @@
                                             ::pcp/source-for-attrs #{:d}
                                             ::pcp/after-nodes      #{5}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} e #{3} b #{4} d #{6}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:e 3 :c 2 :b 4 :d 6 :a 1}
              ::pcp/root                  5})))
@@ -598,7 +598,7 @@
                                             ::pcp/requires {:a {} :d {}}
                                             ::pcp/run-and  #{1 5}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:c 2 :b 3 :a 1}
              ::pcp/root                  6}))
@@ -629,7 +629,7 @@
                                               ::pcp/source-for-attrs #{:b}
                                               ::pcp/run-next         1}}
                ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3}}
-               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
                ::pcp/index-attrs           {:c 2 :b 3 :a 1}
                ::pcp/root                  2}))
@@ -667,7 +667,7 @@
                                               ::pcp/source-for-attrs #{:b}
                                               ::pcp/run-next         1}}
                ::pcp/index-resolver->nodes {a #{1} c #{2} d #{3} b #{4}}
-               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
                ::pcp/index-attrs           {:d 3 :c 2 :b 4 :a 1}
                ::pcp/root                  3})))
@@ -712,7 +712,7 @@
                                              ::pcp/run-and  #{13 12}
                                              ::pcp/run-next 11}}
              ::pcp/index-resolver->nodes {a1 #{10} e #{11} b #{12} f #{13}}
-             ::pcp/unreachable-syms      #{a d2 c3 c2 c d}
+             ::pcp/unreachable-resolvers #{a d2 c3 c2 c d}
              ::pcp/unreachable-attrs     #{:c :d}
              ::pcp/index-attrs           {:b 12 :f 13 :e 11 :a 10}
              ::pcp/root                  14}))
@@ -777,7 +777,7 @@
                                              ::pcp/after-nodes      #{9}
                                              ::pcp/source-for-attrs #{:e}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5} e #{8} f #{10}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:c 2 :b 3 :a 1 :f 10 :e 8}
              ::pcp/root                  11}))
@@ -834,7 +834,7 @@
                                             ::pcp/requires {:b {} :e {} :c {}}
                                             ::pcp/run-and  #{7 4}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5} e #{6}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:c 2 :b 3 :a 1 :e 6 :d 5}
              ::pcp/root                  8}))
@@ -863,7 +863,7 @@
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:b :a}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/root                  1}))))
@@ -889,7 +889,7 @@
                                             ::pcp/source-for-attrs #{:b :a}
                                             ::pcp/after-nodes      #{2}}}
              ::pcp/index-resolver->nodes {a #{3} z #{2}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:z 2 :a 3 :b 3}
              ::pcp/root                  2}))
@@ -924,7 +924,7 @@
                                             ::pcp/source-for-attrs #{:b :a}
                                             ::pcp/after-nodes      #{3}}}
              ::pcp/index-resolver->nodes {c #{1} a #{4} z #{3}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:z 3 :b 4 :c 1 :a 4}
              ::pcp/root                  3})))
@@ -950,7 +950,7 @@
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {b #{1} a #{2}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  2
              ::pcp/index-attrs           {:a 2 :b 1}})))
@@ -987,7 +987,7 @@
                                             ::pcp/run-or           #{3 1}
                                             ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1} a2 #{2} b #{3}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  4
              ::pcp/index-attrs           {:b 3 :a 4}}))
@@ -1028,7 +1028,7 @@
                                               ::pcp/requires {:b {} :a {}}
                                               ::pcp/run-and  #{4 3}}}
                ::pcp/index-resolver->nodes {a #{1} a2 #{2} b #{3}}
-               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
                ::pcp/index-attrs           {:b 3 :a 4}
                ::pcp/root                  5}))))
@@ -1054,7 +1054,7 @@
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {b #{1} a #{2}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  2
              ::pcp/index-attrs           {:a 2 :b 1}})))
@@ -1090,7 +1090,7 @@
                                             ::pcp/run-next         2
                                             ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  3
              ::pcp/index-attrs           {:a 3 :b 2 :c 1}})))
@@ -1118,7 +1118,7 @@
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:b}}}
              ::pcp/index-resolver->nodes {c #{1} b #{2}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  2
              ::pcp/index-attrs           {:b 2 :c 1}})))
@@ -1155,7 +1155,7 @@
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {b #{1} a #{2} a2 #{3}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  4
              ::pcp/index-attrs           {:a 4 :b 1}})))
@@ -1194,7 +1194,7 @@
                                                ::pcp/run-next         3
                                                ::pcp/source-for-attrs #{:a}}}
                 ::pcp/index-resolver->nodes {b2 #{1} b #{2} a #{4}}
-                ::pcp/unreachable-syms      #{}
+                ::pcp/unreachable-resolvers #{}
                 ::pcp/unreachable-attrs     #{}
                 ::pcp/root                  4
                 ::pcp/index-attrs           {:a 4 :b 3}}
@@ -1221,7 +1221,7 @@
                                                ::pcp/run-next         3
                                                ::pcp/source-for-attrs #{:a}}}
                 ::pcp/index-resolver->nodes {b2 #{2} b #{1} a #{4}}
-                ::pcp/unreachable-syms      #{}
+                ::pcp/unreachable-resolvers #{}
                 ::pcp/unreachable-attrs     #{}
                 ::pcp/root                  4
                 ::pcp/index-attrs           {:a 4 :b 3}}))))
@@ -1259,7 +1259,7 @@
                                             ::pcp/run-and  #{3 2}
                                             ::pcp/run-next 1}}
              ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:b 2 :a 3 :c 1}
              ::pcp/root                  4})))
@@ -1288,7 +1288,7 @@
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {c2 #{1} a #{2}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  2
              ::pcp/index-attrs           {:a 2 :c 1}})))
@@ -1337,7 +1337,7 @@
                                             ::pcp/run-and  #{5 2}
                                             ::pcp/run-next 1}}
              ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3} a1 #{4}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:b 2 :a 5 :c 1}
              ::pcp/root                  6})))
@@ -1394,7 +1394,7 @@
                                             ::pcp/requires {:d {} :c {}}
                                             ::pcp/run-and  #{6 2}}}
              ::pcp/index-resolver->nodes {a #{1} cd #{4 2} b #{3} d #{5}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:c 2 :a 1 :d 6 :b 3}
              ::pcp/root                  7})))
@@ -1436,7 +1436,7 @@
                                             ::pcp/after-nodes #{3}
                                             ::pcp/run-next    1}}
              ::pcp/index-resolver->nodes {d #{1} c #{2} a #{3} b #{4}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:a 3 :c 2 :b 4 :d 1}
              ::pcp/root                  3})))
@@ -1495,7 +1495,7 @@
                                             ::pcp/after-nodes #{3}
                                             ::pcp/run-next    1}}
              ::pcp/index-resolver->nodes {d #{1} c #{2} a #{3} z #{4} b #{5}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:z 4 :a 3 :c 2 :b 5 :d 1}
              ::pcp/root                  4})))
@@ -1547,7 +1547,7 @@
                                          id              #{2}
                                          recur-dep       #{3}
                                          label-type      #{4}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:db/id          2
                                          :release/script 1
@@ -1577,7 +1577,7 @@
                                             ::pcp/run-next         1
                                             ::pcp/source-for-attrs #{:name :other-id}}}
              ::pcp/index-resolver->nodes {from-other-id #{1} from-id #{2}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:other-id 2 :name 2}
              ::pcp/root                  2}))
@@ -1615,7 +1615,7 @@
              ::pcp/index-resolver->nodes {from-id       #{1}
                                          from-other-id2 #{2}
                                          from-other-id  #{3}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  1
              ::pcp/index-attrs           {:other-id 1 :other-id2 3 :name 1}}))
@@ -1655,7 +1655,7 @@
                ::pcp/index-resolver->nodes {from-id       #{1}
                                            from-other-id2 #{5}
                                            from-other-id  #{3}}
-               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
                ::pcp/index-attrs           {:other-id 1 :other-id2 3 :name 1 :other 5}
                ::pcp/root                  1})))))
@@ -1678,7 +1678,7 @@
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  1
              ::pcp/index-attrs           {:a 1}}))))
@@ -1696,7 +1696,7 @@
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/root                  1
              ::pcp/index-attrs           {:a 1}})))
@@ -1714,7 +1714,7 @@
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/root                  1})))
@@ -1731,7 +1731,7 @@
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/root                  1})))
@@ -1749,7 +1749,7 @@
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/root                  1})))
@@ -1766,7 +1766,7 @@
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/root                  1
@@ -1786,7 +1786,7 @@
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-syms      #{}
+               ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/root                  1})))))
@@ -1802,7 +1802,7 @@
               ::eql/query           [:release/script]})
            {::pcp/nodes                 {}
             ::pcp/index-resolver->nodes {}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{:db/id}})))
 
   (testing "simple dynamic call"
@@ -1823,7 +1823,7 @@
                                            ::pcp/source-for-attrs #{:release/script}
                                            ::pcp/foreign-ast      (eql/query->ast [:release/script])}}
             ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:release/script 1}}))
@@ -1851,7 +1851,7 @@
                                                                                  :type         :prop}]
                                                                      :type     :root}}}
               ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
-              ::pcp/unreachable-syms      #{}
+              ::pcp/unreachable-resolvers #{}
               ::pcp/unreachable-attrs     #{}
               ::pcp/root                  1
               ::pcp/index-attrs           {:release/script 1}}))))
@@ -1875,7 +1875,7 @@
                                            ::pcp/source-for-attrs #{:release/script :label/type}
                                            ::pcp/foreign-ast      (eql/query->ast [:release/script :label/type])}}
             ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/index-attrs           {:release/script 1 :label/type 1}
             ::pcp/root                  1})))
@@ -1907,7 +1907,7 @@
                                            ::pcp/after-nodes      #{2}
                                            ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{3} id #{2}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/index-attrs           {:db/id 2 :release/script 3 :label/type 3}
             ::pcp/root                  2})))
@@ -1930,7 +1930,7 @@
                                            ::pcp/source-for-attrs #{:b :a}
                                            ::pcp/foreign-ast      (eql/query->ast [:a :b])}}
             ::pcp/index-resolver->nodes {'dynamic-resolver #{2}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/root                  2
             ::pcp/index-attrs           {:a 2 :b 2}}))
@@ -1953,7 +1953,7 @@
                                            ::pcp/source-for-attrs #{:c :b :a}
                                            ::pcp/foreign-ast      (eql/query->ast [:a :b :c])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{3}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/root                  3
             ::pcp/index-attrs           {:a 3 :b 3 :c 3}}))
@@ -1984,7 +1984,7 @@
                                            ::pcp/source-for-attrs #{:z}
                                            ::pcp/run-next         2}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{2} z #{3}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/root                  3
             ::pcp/index-attrs           {:z 3 :a 2 :b 2}}))
@@ -2017,7 +2017,7 @@
                                              ::pcp/run-next         1
                                              ::pcp/foreign-ast      (eql/query->ast [:a :b])}}
               ::pcp/index-resolver->nodes '{z #{1} dynamic-resolver #{3}}
-              ::pcp/unreachable-syms      #{}
+              ::pcp/unreachable-resolvers #{}
               ::pcp/unreachable-attrs     #{}
               ::pcp/root                  3
               ::pcp/index-attrs           {:a 3 :b 3 :z 1}}))))
@@ -2041,7 +2041,7 @@
                                            ::pcp/source-for-attrs #{:c :b :a}
                                            ::pcp/foreign-ast      (eql/query->ast [:c :b :a])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{2}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/index-attrs           {:c 2 :b 2 :a 2}
             ::pcp/root                  2})))
@@ -2082,7 +2082,7 @@
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [:a])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{1 3} b #{2}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/root                  3
             ::pcp/index-attrs           {:a 3 :b 2 :c 1}})))
@@ -2124,7 +2124,7 @@
                                            ::pcp/run-next         3
                                            ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{4} id #{2} complex #{3}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/index-attrs           {:db/id          2
                                         :release/script 4
@@ -2159,7 +2159,7 @@
                                            ::pcp/source-for-attrs #{:c :b :d :a}
                                            ::pcp/foreign-ast      (eql/query->ast [:b :a :c :d])}}
             ::pcp/index-resolver->nodes '{dyn #{6}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/index-attrs           {:c 6 :d 6 :a 6 :b 6}
             ::pcp/root                  6})))
@@ -2201,7 +2201,7 @@
                                            ::pcp/run-and  #{3 2}
                                            ::pcp/run-next 1}}
             ::pcp/index-resolver->nodes '{dyn #{1 2} l1 #{3}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/index-attrs           {:d2 2 :l1 3 :d1 1}
             ::pcp/root                  4}))))
@@ -2229,7 +2229,7 @@
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}})))
@@ -2257,7 +2257,7 @@
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}})))
@@ -2309,7 +2309,7 @@
                                             ::pcp/run-next         1}}
              ::pcp/index-resolver->nodes {dynamic-1->local    #{1}
                                          dynamic-parser-42276 #{2}}
-             ::pcp/unreachable-syms      #{}
+             ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
              ::pcp/index-attrs           {:dynamic-1 2
                                          :local     1
@@ -2341,7 +2341,7 @@
                                              ::pcp/source-for-attrs #{:a}
                                              ::pcp/foreign-ast      (eql/query->ast [{:a [:b :c]}])}}
               ::pcp/index-resolver->nodes '{dyn #{1}}
-              ::pcp/unreachable-syms      #{}
+              ::pcp/unreachable-resolvers #{}
               ::pcp/unreachable-attrs     #{}
               ::pcp/root                  1
               ::pcp/index-attrs           {:a 1}})))
@@ -2373,7 +2373,7 @@
                                                ::pcp/foreign-ast      (eql/query->ast [{:a {:b [:b]
                                                                                             :c [:c]}}])}}
                 ::pcp/index-resolver->nodes '{dyn #{1}}
-                ::pcp/unreachable-syms      #{}
+                ::pcp/unreachable-resolvers #{}
                 ::pcp/unreachable-attrs     #{}
                 ::pcp/root                  1
                 ::pcp/index-attrs           {:a 1}}))))
@@ -2398,7 +2398,7 @@
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [{:b [:c]}]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}}))
@@ -2424,7 +2424,7 @@
                                              ::pcp/source-for-attrs #{:a}
                                              ::pcp/foreign-ast      (eql/query->ast [{:a [{:b [:c]}]}])}}
               ::pcp/index-resolver->nodes '{dyn #{1}}
-              ::pcp/unreachable-syms      #{}
+              ::pcp/unreachable-resolvers #{}
               ::pcp/unreachable-attrs     #{}
               ::pcp/root                  1
               ::pcp/index-attrs           {:a 1}}))))
@@ -2455,7 +2455,7 @@
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [:c]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}}))
@@ -2481,7 +2481,7 @@
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}})))
@@ -2509,7 +2509,7 @@
                                            ::pcp/source-for-attrs #{:a}
                                            ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-syms      #{}
+            ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}}))))

@@ -129,7 +129,7 @@
   "A set containing the attributes that can't be reached considering current graph and available data."
   ::pspec/attributes-set)
 
-(>def ::unreachable-syms
+(>def ::unreachable-resolvers
   "A set containing the resolvers that can't be reached considering current graph and available data."
   (s/coll-of ::pco/name :kind set?))
 
@@ -160,7 +160,7 @@
 (defn base-graph []
   {::nodes                 {}
    ::index-resolver->nodes {}
-   ::unreachable-syms      #{}
+   ::unreachable-resolvers #{}
    ::unreachable-attrs     #{}})
 
 (defn base-env []
@@ -943,14 +943,14 @@
 (defn mark-node-unreachable
   [previous-graph
    graph
-   {::keys [unreachable-syms
+   {::keys [unreachable-resolvers
             unreachable-attrs]}
    env]
   (let [syms (->> (collect-syms graph env (get-root-node graph))
-                  (into unreachable-syms)
-                  (into (::unreachable-syms previous-graph)))]
+                  (into unreachable-resolvers)
+                  (into (::unreachable-resolvers previous-graph)))]
     (cond-> (assoc previous-graph
-              ::unreachable-syms syms
+              ::unreachable-resolvers syms
               ::unreachable-attrs unreachable-attrs)
       (set/subset? (all-attribute-resolvers env (pc-attr env)) syms)
       (update ::unreachable-attrs conj (pc-attr env)))))
@@ -1051,8 +1051,8 @@
           (cond-> (merge-nodes-run-next graph' env ancestor {::run-next (::root graph)})
             (::run-and (get-root-node graph'))
             (merge-node-requires (::root graph') {::requires (zipmap missing (repeat {}))})))
-        (let [{::keys [unreachable-syms] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
-              unreachable-attrs (filter #(set/subset? (all-attribute-resolvers env %) unreachable-syms) still-missing)]
+        (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
+              unreachable-attrs (filter #(set/subset? (all-attribute-resolvers env %) unreachable-resolvers) still-missing)]
           (update out' ::unreachable-attrs into unreachable-attrs))))
     graph))
 
@@ -1065,12 +1065,12 @@
         rname)))
 
 (defn compute-resolver-graph
-  [{::keys [unreachable-syms] :as graph}
+  [{::keys [unreachable-resolvers] :as graph}
    env
    resolver]
   (let [resolver' (runner-node-sym env resolver)]
     (cond
-      (contains? unreachable-syms resolver')
+      (contains? unreachable-resolvers resolver')
       graph
 
       :else
