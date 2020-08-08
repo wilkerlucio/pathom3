@@ -13,7 +13,8 @@
            fulcro.client.primitives/defsc                    clojure.core/defn
            com.wsscode.pathom3.connect.operation/defresolver clojure.core/defn
            nubank.workspaces.core/defcard                    clojure.core/def
-           nubank.workspaces.core/deftest                    clojure.test/deftest}
+           nubank.workspaces.core/deftest                    clojure.test/deftest
+           potemkin.collections/def-map-type                 clj-kondo.lint-as/def-catch-all}
  :linters {:unsorted-required-namespaces {:level :warning}
            :invalid-arity                {:level :error}
            :missing-else-branch          {:level :off}
