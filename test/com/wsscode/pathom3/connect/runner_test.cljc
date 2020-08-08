@@ -57,17 +57,20 @@
           ::geo/half-width 15
           ::geo/center-x   25})))
 
-(comment
-  (let [tree* (atom {::geo/left 10 ::geo/width 30})
-        env   (time
-                (assoc (pci/register {} geo/registry)
-                  ::p.ent/cache-tree* tree*))
-        graph (time (pcp/compute-run-graph
-                      (-> env
-                          (assoc
-                            ::pcp/available-data (pfsd/data->shape-descriptor @tree*)
-                            :edn-query-language.ast/node (eql/query->ast [::geo/right
-                                                                          ::geo/center-x])))))
-        env   (assoc env ::pcp/graph graph)]
-    (time (pcr/run-node! env (pcp/get-root-node graph)))
-    @tree*))
+(deftest run-graph!-test
+  (is (= (let [tree  {::geo/left 10 ::geo/width 30}
+               env   (p.ent/with-cache-tree (pci/register {} geo/registry)
+                                            tree)
+               graph (pcp/compute-run-graph
+                       (-> env
+                           (assoc
+                             ::pcp/available-data (pfsd/data->shape-descriptor tree)
+                             :edn-query-language.ast/node (eql/query->ast [::geo/right
+                                                                           ::geo/center-x]))))]
+           (pcr/run-graph! (assoc env ::pcp/graph graph))
+           @(::p.ent/cache-tree* env))
+         {::geo/left       10
+          ::geo/width      30
+          ::geo/right      40
+          ::geo/half-width 15
+          ::geo/center-x   25})))

@@ -157,10 +157,22 @@
   Resolvers are the central abstraction around Pathom, a resolver is a function
   that contains some annotated information and follow a few rules:
 
-  1. Every resolver takes two map arguments, the first being the env and the second the resolver input data.
-  2. A resolver MUST return a map, so the output information is labelled.
+  1. The resolver input must be a map, so the input information is labelled.
+  2. A resolver must return a map, so the output information is labelled.
+  3. A resolver also receives a separated map containing the environment information.
 
   Here are some examples of how you can use the defresolver syntax to define resolvers:
+
+  The verbose example:
+
+      (pco/defresolver song-by-id [env {:acme.song/keys [id]}]
+        {::pco/input     [:acme.song/id]
+         ::pco/output    [:acme.song/title :acme.song/duration :acme.song/tone]
+         ::pco/params    []
+         ::pco/transform identity}
+        (fetch-song env id))
+
+
 
   Defining a simple constant:
 
@@ -188,6 +200,13 @@
         {::p/input  [:user/id]
          ::p/output [:user/name :user/email]}
         (fetch-user-from-db env id))
+
+  Standard options:
+
+    ::pco/output -
+    ::pco/input -
+    ::pco/params -
+    ::pco/transform -
   "
   {:arglists '([name docstring? arglist output-prop? options? & body])}
   [& args]

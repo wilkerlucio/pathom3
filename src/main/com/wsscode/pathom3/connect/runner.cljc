@@ -33,15 +33,19 @@
     (run-node! env (pcp/get-node graph run-next))))
 
 (defn call-resolver-from-node
-  "Evaluates a resolver using node information."
+  "Evaluates a resolver using node information.
+
+  When this function runs the resolver, if filters the data to only include the keys
+  mentioned by the resolver input. This is important to ensure that the resolver is
+  not using some key that came accidentally due to execution order, that would lead to
+  brittle executions."
   [env
    {::pco/keys [op-name]
     ::pcp/keys [input]
     :as        node}]
   (let [input-keys (keys input)
         resolver   (pci/resolver env op-name)
-        env        (-> env
-                       (assoc ::pcp/node node))
+        env        (assoc env ::pcp/node node)
         entity     (p.ent/entity env)]
     (pco.prot/-resolve resolver env (select-keys entity input-keys))))
 
@@ -69,6 +73,7 @@
   (run-next-node! env or-node))
 
 (>defn run-and-node!
+  "Given an AND node, runs every attached node, then runs the attached next."
   [{::pcp/keys [graph] :as env} {::pcp/keys [run-and] :as and-node}]
   [(s/keys :req [::pcp/graph]) ::pcp/node => nil?]
   (doseq [node-id run-and]
@@ -97,3 +102,9 @@
     (run-or-node! env node)
 
     nil))
+
+(>defn run-graph!
+  "Run the root node of the graph."
+  [{::pcp/keys [graph] :as env}]
+  [(s/keys :req [::pcp/graph ::p.ent/cache-tree*]) => nil?]
+  (run-node! env (pcp/get-root-node graph)))
