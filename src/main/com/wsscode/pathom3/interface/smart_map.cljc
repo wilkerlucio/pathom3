@@ -65,6 +65,9 @@
 (defn sm-keys [env]
   (keys (p.ent/cache-tree env)))
 
+(defn sm-contains? [env k]
+  (contains? (p.ent/cache-tree env) k))
+
 (defn sm-meta
   "Returns meta data of smart map, which is the same as the meta data from context
    map used to create the smart map."
@@ -86,16 +89,14 @@
    :cljs
    (deftype SmartMap [env]
      Object
-     (toString [_]
-               (pr-str* (p.ent/cache-tree env)))
-     (equiv [_ other]
-            (-equiv (p.ent/cache-tree env) other))
+     (toString [_] (pr-str* (p.ent/cache-tree env)))
+     (equiv [_ other] (-equiv (p.ent/cache-tree env) other))
 
      ;; EXPERIMENTAL: subject to change
      (keys [_] (es6-iterator (keys (p.ent/cache-tree env))))
      (entries [_] (es6-entries-iterator (seq (p.ent/cache-tree env))))
      (values [_] (es6-iterator (vals (p.ent/cache-tree env))))
-     (has [_ k] (contains? (p.ent/cache-tree env) k))
+     (has [_ k] (sm-contains? env k))
      (get [_ k not-found] (-lookup (p.ent/cache-tree env) k not-found))
      (forEach [_ f] (doseq [[k v] (p.ent/cache-tree env)] (f v k)))
 
@@ -145,7 +146,7 @@
 
      IAssociative
      (-assoc [_ k v] (sm-assoc env k v))
-     (-contains-key? [_ k] (contains? (p.ent/cache-tree env) k))
+     (-contains-key? [_ k] (sm-contains? env k))
 
      #_ #_
      IFind
