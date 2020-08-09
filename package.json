@@ -1,0 +1,28 @@
+{
+  "name": "pathom3",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkerlucio/pathom3.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wilkerlucio/pathom3/issues"
+  },
+  "homepage": "https://github.com/wilkerlucio/pathom3#readme",
+  "dependencies": {
+    "karma": "^5.1.1",
+    "karma-chrome-launcher": "^3.1.0",
+    "karma-cljs-test": "^0.1.0",
+    "shadow-cljs": "^2.10.21"
+  }
+}

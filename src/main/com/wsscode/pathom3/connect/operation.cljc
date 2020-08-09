@@ -3,7 +3,10 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.pathom3.connect.operation.protocols :as pop]
-    [com.wsscode.pathom3.format.shape-descriptor :as pfsd]))
+    [com.wsscode.pathom3.format.shape-descriptor :as pfsd])
+  #?(:cljs
+     (:require-macros
+       [com.wsscode.pathom3.connect.operation])))
 
 ; region specs
 
@@ -31,8 +34,11 @@
   pop/IResolver
   (-resolve [_ env input] (resolve env input))
 
-  clojure.lang.IFn
-  (invoke [this env input] (resolve env input)))
+  #?(:clj clojure.lang.IFn)
+  #?(:clj (invoke [this env input] (resolve env input)))
+
+  #?(:cljs IFn)
+  #?(:cljs (-invoke [this env input] (resolve env input))))
 
 ; endregion
 
@@ -114,7 +120,10 @@
                 :options (s/? map?)
                 :body (s/+ any?))
          (fn must-have-output-prop-or-options [{:keys [output-attr options]}]
-           (or output-attr options))))))
+           (or output-attr options)))))
+
+   :cljs
+   (s/def ::defresolver-args any?))
 
 (defn as-entry? [x] (= :as (first x)))
 

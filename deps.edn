@@ -10,7 +10,7 @@
  :aliases
  {:provided
   {:extra-deps {org.clojure/clojure       {:mvn/version "1.10.0"}
-                org.clojure/clojurescript {:mvn/version "1.10.520"}}}
+                org.clojure/clojurescript {:mvn/version "1.10.764"}}}
 
   :graph-render
   {:extra-deps {macroz/tangle {:mvn/version "0.2.1"}}}
@@ -20,4 +20,8 @@
    :extra-deps  {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
                                             :sha     "209b64504cb3bd3b99ecfec7937b358a879f55c1"}
                  macroz/tangle             {:mvn/version "0.2.1"}}
-   :main-opts   ["-m" "cognitect.test-runner"]}}}
+   :main-opts   ["-m" "cognitect.test-runner"]}
+
+  :test-cljs
+  {:extra-paths ["test"]
+   :extra-deps  {thheller/shadow-cljs {:mvn/version "2.10.21"}}}}}
