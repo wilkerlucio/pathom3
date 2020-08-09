@@ -1236,33 +1236,65 @@
                             ::pco/input   [:a :b]
                             ::pco/output  [:c]}]
               ::eql/query [:c]})
-           '{::pcp/nodes                 {1 {::pco/op-name         c
-                                            ::pcp/node-id          1
-                                            ::pcp/requires         {:c {}}
-                                            ::pcp/input            {:b {} :a {}}
-                                            ::pcp/after-nodes      #{4}
-                                            ::pcp/source-for-attrs #{:c}}
-                                         2 {::pco/op-name          b
-                                            ::pcp/node-id          2
-                                            ::pcp/requires         {:b {}}
-                                            ::pcp/input            {}
-                                            ::pcp/source-for-attrs #{:b}
-                                            ::pcp/after-nodes      #{4}}
-                                         3 {::pco/op-name          a
-                                            ::pcp/node-id          3
-                                            ::pcp/requires         {:a {}}
-                                            ::pcp/input            {}
-                                            ::pcp/source-for-attrs #{:a}
-                                            ::pcp/after-nodes      #{4}}
-                                         4 {::pcp/node-id  4
-                                            ::pcp/requires {:a {} :b {}}
-                                            ::pcp/run-and  #{3 2}
-                                            ::pcp/run-next 1}}
-             ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3}}
-             ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     #{}
-             ::pcp/index-attrs           {:b 2 :a 3 :c 1}
-             ::pcp/root                  4})))
+           #?(:clj
+              '{::pcp/nodes                 {1 {::pco/op-name          c
+                                                ::pcp/node-id          1
+                                                ::pcp/requires         {:c {}}
+                                                ::pcp/input            {:b {} :a {}}
+                                                ::pcp/after-nodes      #{4}
+                                                ::pcp/source-for-attrs #{:c}}
+                                             2 {::pco/op-name          b
+                                                ::pcp/node-id          2
+                                                ::pcp/requires         {:b {}}
+                                                ::pcp/input            {}
+                                                ::pcp/source-for-attrs #{:b}
+                                                ::pcp/after-nodes      #{4}}
+                                             3 {::pco/op-name          a
+                                                ::pcp/node-id          3
+                                                ::pcp/requires         {:a {}}
+                                                ::pcp/input            {}
+                                                ::pcp/source-for-attrs #{:a}
+                                                ::pcp/after-nodes      #{4}}
+                                             4 {::pcp/node-id  4
+                                                ::pcp/requires {:a {} :b {}}
+                                                ::pcp/run-and  #{3 2}
+                                                ::pcp/run-next 1}}
+                ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3}}
+                ::pcp/unreachable-resolvers #{}
+                ::pcp/unreachable-attrs     #{}
+                ::pcp/index-attrs           {:b 2 :a 3 :c 1}
+                ::pcp/root                  4}
+              :cljs
+              '{::pcp/nodes                 {1 {::pco/op-name          c,
+                                                ::pcp/node-id          1,
+                                                ::pcp/requires         {:c {}},
+                                                ::pcp/input            {:a {},
+                                                                        :b {}},
+                                                ::pcp/after-nodes      #{4},
+                                                ::pcp/source-for-attrs #{:c}},
+                                             2 {::pco/op-name          a,
+                                                ::pcp/node-id          2,
+                                                ::pcp/requires         {:a {}},
+                                                ::pcp/input            {},
+                                                ::pcp/source-for-attrs #{:a},
+                                                ::pcp/after-nodes      #{4}},
+                                             3 {::pco/op-name          b,
+                                                ::pcp/node-id          3,
+                                                ::pcp/requires         {:b {}},
+                                                ::pcp/input            {},
+                                                ::pcp/source-for-attrs #{:b},
+                                                ::pcp/after-nodes      #{4}},
+                                             4 {::pcp/node-id  4,
+                                                ::pcp/requires {:b {},
+                                                                :a {}},
+                                                ::pcp/run-and  #{3
+                                                                 2},
+                                                ::pcp/run-next 1}},
+                ::pcp/index-resolver->nodes {c #{1}, a #{2}, b #{3}},
+                ::pcp/unreachable-resolvers #{},
+                ::pcp/unreachable-attrs     #{},
+                ::pcp/index-attrs           {:a 2, :b 3, :c 1},
+                ::pcp/root                  4}))))
 
   (testing "skip resolves that have self dependency"
     (is (= (compute-run-graph
@@ -1305,42 +1337,88 @@
                             ::pco/input   [:a :b]
                             ::pco/output  [:c]}]
               ::eql/query [:c]})
-           '{::pcp/nodes                 {1 {::pco/op-name         c
-                                            ::pcp/node-id          1
-                                            ::pcp/requires         {:c {}}
-                                            ::pcp/input            {:b {} :a {}}
-                                            ::pcp/after-nodes      #{6}
-                                            ::pcp/source-for-attrs #{:c}}
-                                         2 {::pco/op-name          b
-                                            ::pcp/node-id          2
-                                            ::pcp/requires         {:b {}}
-                                            ::pcp/input            {}
-                                            ::pcp/source-for-attrs #{:b}
-                                            ::pcp/after-nodes      #{6}}
-                                         3 {::pco/op-name     a
-                                            ::pcp/node-id     3
-                                            ::pcp/requires    {:a {}}
-                                            ::pcp/input       {}
-                                            ::pcp/after-nodes #{5}}
-                                         4 {::pco/op-name     a1
-                                            ::pcp/node-id     4
-                                            ::pcp/requires    {:a {}}
-                                            ::pcp/input       {}
-                                            ::pcp/after-nodes #{5}}
-                                         5 {::pcp/node-id          5
-                                            ::pcp/requires         {:a {}}
-                                            ::pcp/run-or           #{3 4}
-                                            ::pcp/source-for-attrs #{:a}
-                                            ::pcp/after-nodes      #{6}}
-                                         6 {::pcp/node-id  6
-                                            ::pcp/requires {:a {} :b {}}
-                                            ::pcp/run-and  #{5 2}
-                                            ::pcp/run-next 1}}
-             ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3} a1 #{4}}
-             ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     #{}
-             ::pcp/index-attrs           {:b 2 :a 5 :c 1}
-             ::pcp/root                  6})))
+           #?(:clj
+              '{::pcp/nodes                 {1 {::pco/op-name          c
+                                                ::pcp/node-id          1
+                                                ::pcp/requires         {:c {}}
+                                                ::pcp/input            {:b {} :a {}}
+                                                ::pcp/after-nodes      #{6}
+                                                ::pcp/source-for-attrs #{:c}}
+                                             2 {::pco/op-name          b
+                                                ::pcp/node-id          2
+                                                ::pcp/requires         {:b {}}
+                                                ::pcp/input            {}
+                                                ::pcp/source-for-attrs #{:b}
+                                                ::pcp/after-nodes      #{6}}
+                                             3 {::pco/op-name     a
+                                                ::pcp/node-id     3
+                                                ::pcp/requires    {:a {}}
+                                                ::pcp/input       {}
+                                                ::pcp/after-nodes #{5}}
+                                             4 {::pco/op-name     a1
+                                                ::pcp/node-id     4
+                                                ::pcp/requires    {:a {}}
+                                                ::pcp/input       {}
+                                                ::pcp/after-nodes #{5}}
+                                             5 {::pcp/node-id          5
+                                                ::pcp/requires         {:a {}}
+                                                ::pcp/run-or           #{3 4}
+                                                ::pcp/source-for-attrs #{:a}
+                                                ::pcp/after-nodes      #{6}}
+                                             6 {::pcp/node-id  6
+                                                ::pcp/requires {:a {} :b {}}
+                                                ::pcp/run-and  #{5 2}
+                                                ::pcp/run-next 1}}
+                ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3} a1 #{4}}
+                ::pcp/unreachable-resolvers #{}
+                ::pcp/unreachable-attrs     #{}
+                ::pcp/index-attrs           {:b 2 :a 5 :c 1}
+                ::pcp/root                  6}
+
+              :cljs
+              '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name        c,
+                                                                                :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                                :com.wsscode.pathom3.connect.planner/requires         {:c {}},
+                                                                                :com.wsscode.pathom3.connect.planner/input            {:a {},
+                                                                                                                                       :b {}},
+                                                                                :com.wsscode.pathom3.connect.planner/after-nodes      #{6},
+                                                                                :com.wsscode.pathom3.connect.planner/source-for-attrs #{:c}},
+                                                                             2 {:com.wsscode.pathom3.connect.operation/op-name   a,
+                                                                                :com.wsscode.pathom3.connect.planner/node-id     2,
+                                                                                :com.wsscode.pathom3.connect.planner/requires    {:a {}},
+                                                                                :com.wsscode.pathom3.connect.planner/input       {},
+                                                                                :com.wsscode.pathom3.connect.planner/after-nodes #{4}},
+                                                                             3 {:com.wsscode.pathom3.connect.operation/op-name   a1,
+                                                                                :com.wsscode.pathom3.connect.planner/node-id     3,
+                                                                                :com.wsscode.pathom3.connect.planner/requires    {:a {}},
+                                                                                :com.wsscode.pathom3.connect.planner/input       {},
+                                                                                :com.wsscode.pathom3.connect.planner/after-nodes #{4}},
+                                                                             4 #:com.wsscode.pathom3.connect.planner{:node-id          4,
+                                                                                                                     :requires         {:a {}},
+                                                                                                                     :run-or           #{3
+                                                                                                                                         2},
+                                                                                                                     :source-for-attrs #{:a},
+                                                                                                                     :after-nodes      #{6}},
+                                                                             5 {:com.wsscode.pathom3.connect.operation/op-name        b,
+                                                                                :com.wsscode.pathom3.connect.planner/node-id          5,
+                                                                                :com.wsscode.pathom3.connect.planner/requires         {:b {}},
+                                                                                :com.wsscode.pathom3.connect.planner/input            {},
+                                                                                :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                                                :com.wsscode.pathom3.connect.planner/after-nodes      #{6}},
+                                                                             6 #:com.wsscode.pathom3.connect.planner{:node-id  6,
+                                                                                                                     :requires {:b {},
+                                                                                                                                :a {}},
+                                                                                                                     :run-and  #{4
+                                                                                                                                 5},
+                                                                                                                     :run-next 1}},
+                                                     :index-resolver->nodes {c  #{1},
+                                                                             a  #{2},
+                                                                             a1 #{3},
+                                                                             b  #{5}},
+                                                     :unreachable-resolvers #{},
+                                                     :unreachable-attrs     #{},
+                                                     :index-attrs           {:a 4, :b 5, :c 1},
+                                                     :root                  6}))))
 
   (testing "multiple calls to same resolver"
     (is (= (compute-run-graph
@@ -1458,47 +1536,98 @@
                             ::pco/input   [:b :c]
                             ::pco/output  [:d]}]
               ::eql/query [:d]})
-           '{::pcp/nodes                 {1 {::pco/op-name         d
-                                            ::pcp/node-id          1
-                                            ::pcp/requires         {:d {}}
-                                            ::pcp/input            {:c {} :b {}}
-                                            ::pcp/after-nodes      #{6}
-                                            ::pcp/source-for-attrs #{:d}}
-                                         2 {::pco/op-name          c
-                                            ::pcp/node-id          2
-                                            ::pcp/requires         {:c {}}
-                                            ::pcp/input            {:a {}}
-                                            ::pcp/after-nodes      #{6}
-                                            ::pcp/source-for-attrs #{:c}}
-                                         3 {::pco/op-name          a
-                                            ::pcp/node-id          3
-                                            ::pcp/requires         {:a {}}
-                                            ::pcp/input            {:z {}}
-                                            ::pcp/after-nodes      #{4}
-                                            ::pcp/source-for-attrs #{:a}
-                                            ::pcp/run-next         6}
-                                         4 {::pco/op-name          z
-                                            ::pcp/node-id          4
-                                            ::pcp/requires         {:z {}}
-                                            ::pcp/input            {}
-                                            ::pcp/source-for-attrs #{:z}
-                                            ::pcp/run-next         3}
-                                         5 {::pco/op-name          b
-                                            ::pcp/node-id          5
-                                            ::pcp/requires         {:b {}}
-                                            ::pcp/input            {:a {}}
-                                            ::pcp/after-nodes      #{6}
-                                            ::pcp/source-for-attrs #{:b}}
-                                         6 {::pcp/node-id     6
-                                            ::pcp/requires    {:c {} :b {}}
-                                            ::pcp/run-and     #{2 5}
-                                            ::pcp/after-nodes #{3}
-                                            ::pcp/run-next    1}}
-             ::pcp/index-resolver->nodes {d #{1} c #{2} a #{3} z #{4} b #{5}}
-             ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     #{}
-             ::pcp/index-attrs           {:z 4 :a 3 :c 2 :b 5 :d 1}
-             ::pcp/root                  4})))
+           #?(:clj
+              '{::pcp/nodes                 {1 {::pco/op-name          d
+                                                ::pcp/node-id          1
+                                                ::pcp/requires         {:d {}}
+                                                ::pcp/input            {:c {} :b {}}
+                                                ::pcp/after-nodes      #{6}
+                                                ::pcp/source-for-attrs #{:d}}
+                                             2 {::pco/op-name          c
+                                                ::pcp/node-id          2
+                                                ::pcp/requires         {:c {}}
+                                                ::pcp/input            {:a {}}
+                                                ::pcp/after-nodes      #{6}
+                                                ::pcp/source-for-attrs #{:c}}
+                                             3 {::pco/op-name          a
+                                                ::pcp/node-id          3
+                                                ::pcp/requires         {:a {}}
+                                                ::pcp/input            {:z {}}
+                                                ::pcp/after-nodes      #{4}
+                                                ::pcp/source-for-attrs #{:a}
+                                                ::pcp/run-next         6}
+                                             4 {::pco/op-name          z
+                                                ::pcp/node-id          4
+                                                ::pcp/requires         {:z {}}
+                                                ::pcp/input            {}
+                                                ::pcp/source-for-attrs #{:z}
+                                                ::pcp/run-next         3}
+                                             5 {::pco/op-name          b
+                                                ::pcp/node-id          5
+                                                ::pcp/requires         {:b {}}
+                                                ::pcp/input            {:a {}}
+                                                ::pcp/after-nodes      #{6}
+                                                ::pcp/source-for-attrs #{:b}}
+                                             6 {::pcp/node-id     6
+                                                ::pcp/requires    {:c {} :b {}}
+                                                ::pcp/run-and     #{2 5}
+                                                ::pcp/after-nodes #{3}
+                                                ::pcp/run-next    1}}
+                ::pcp/index-resolver->nodes {d #{1} c #{2} a #{3} z #{4} b #{5}}
+                ::pcp/unreachable-resolvers #{}
+                ::pcp/unreachable-attrs     #{}
+                ::pcp/index-attrs           {:z 4 :a 3 :c 2 :b 5 :d 1}
+                ::pcp/root                  4}
+
+              :cljs
+              '{::pcp/nodes                 {1 {::pco/op-name          d,
+                                                ::pcp/node-id          1,
+                                                ::pcp/requires         {:d {}},
+                                                ::pcp/input            {:b {},
+                                                                        :c {}},
+                                                ::pcp/after-nodes      #{6},
+                                                ::pcp/source-for-attrs #{:d}},
+                                             2 {::pco/op-name          b,
+                                                ::pcp/node-id          2,
+                                                ::pcp/requires         {:b {}},
+                                                ::pcp/input            {:a {}},
+                                                ::pcp/after-nodes      #{6},
+                                                ::pcp/source-for-attrs #{:b}},
+                                             3 {::pco/op-name          a,
+                                                ::pcp/node-id          3,
+                                                ::pcp/requires         {:a {}},
+                                                ::pcp/input            {:z {}},
+                                                ::pcp/after-nodes      #{4},
+                                                ::pcp/source-for-attrs #{:a},
+                                                ::pcp/run-next         6},
+                                             4 {::pco/op-name          z,
+                                                ::pcp/node-id          4,
+                                                ::pcp/requires         {:z {}},
+                                                ::pcp/input            {},
+                                                ::pcp/source-for-attrs #{:z},
+                                                ::pcp/run-next         3},
+                                             5 {::pco/op-name          c,
+                                                ::pcp/node-id          5,
+                                                ::pcp/requires         {:c {}},
+                                                ::pcp/input            {:a {}},
+                                                ::pcp/after-nodes      #{6},
+                                                ::pcp/source-for-attrs #{:c}},
+                                             6 #::pcp{:node-id     6,
+                                                      :requires    {:b {},
+                                                                    :c {}},
+                                                      :run-and     #{2
+                                                                     5},
+                                                      :after-nodes #{3},
+                                                      :run-next    1}},
+                ::pcp/index-resolver->nodes {d #{1},
+                                             b #{2},
+                                             a #{3},
+                                             z #{4},
+                                             c #{5}},
+                ::pcp/unreachable-resolvers #{},
+                ::pcp/unreachable-attrs     #{},
+                ::pcp/index-attrs           {:z 4, :a 3, :b 2, :c 5, :d 1},
+                ::pcp/root                  4}))))
 
   (testing "deep recurring dependency"
     (is (= (compute-run-graph
