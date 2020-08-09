@@ -18,6 +18,12 @@
    => map?]
   (get-in @cache-tree* path {}))
 
+(>defn cache-tree
+  "Returns the cache tree value from env"
+  [{::keys [cache-tree*]}]
+  [(s/keys :opt [::cache-tree*]) => (? map?)]
+  (some-> cache-tree* deref))
+
 (>defn with-cache-tree
   "Set the cache in the environment. Note in this function you must send the cache-tree
   as a map, not as an atom."

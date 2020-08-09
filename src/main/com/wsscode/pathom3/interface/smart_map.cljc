@@ -54,25 +54,25 @@
   and will be like you have assoced in the original map and created a new smart object."
   [env k v]
   (smart-map env
-             (-> (::source-context env)
-                 (assoc k v))))
+    (-> (::source-context env)
+        (assoc k v))))
 
 (defn sm-dissoc [env k]
   (smart-map env
-             (-> (::source-context env)
-                 (dissoc k))))
+    (-> (::source-context env)
+        (dissoc k))))
 
 (defn sm-keys [env]
-  (keys @(get env ::p.ent/cache-tree*)))
+  (keys (p.ent/cache-tree env)))
 
 (defn sm-meta
   "Returns meta data of smart map, which is the same as the meta data from context
    map used to create the smart map."
   [env]
-  (meta @(get env ::p.ent/cache-tree*)))
+  (meta (p.ent/cache-tree env)))
 
 (defn sm-with-meta [env meta]
-  (smart-map env (with-meta @(get env ::p.ent/cache-tree*) meta)))
+  (smart-map env (with-meta (p.ent/cache-tree env) meta)))
 
 #?(:clj
    (def-map-type SmartMap [env]
@@ -81,10 +81,118 @@
      (dissoc [_ k] (sm-dissoc env k))
      (keys [_] (sm-keys env))
      (meta [_] (sm-meta env))
-     (with-meta [_ mta] (sm-with-meta env mta)))
+     (with-meta [_ new-meta] (sm-with-meta env new-meta)))
 
    :cljs
-   (deftype SmartMap [env]))
+   (deftype SmartMap [env]
+     Object
+     (toString [_]
+               (pr-str* (p.ent/cache-tree env)))
+     (equiv [_ other]
+            (-equiv (p.ent/cache-tree env) other))
+
+     ;; EXPERIMENTAL: subject to change
+     (keys [_]
+           (es6-iterator (keys (p.ent/cache-tree env))))
+     (entries [_]
+              (es6-entries-iterator (seq (p.ent/cache-tree env))))
+     (values [_]
+             (es6-iterator (vals (p.ent/cache-tree env))))
+     (has [_ k]
+          (contains? (p.ent/cache-tree env) k))
+     (get [_ k not-found]
+          (-lookup (p.ent/cache-tree env) k not-found))
+     (forEach [_ f]
+              (doseq [[k v] (p.ent/cache-tree env)]
+                (f v k)))
+
+     ICloneable
+     (-clone [_] (smart-map env (p.ent/cache-tree env)))
+
+     IWithMeta
+     (-with-meta [_ new-meta] (sm-with-meta env new-meta))
+
+     IMeta
+     (-meta [_] (sm-meta env))
+
+     ICollection
+     (-conj [coll entry]
+            (if (vector? entry)
+              (-assoc coll (-nth entry 0) (-nth entry 1))
+              (loop [ret coll es (seq entry)]
+                (if (nil? es)
+                  ret
+                  (let [e (first es)]
+                    (if (vector? e)
+                      (recur (-assoc ret (-nth e 0) (-nth e 1))
+                        (next es))
+                      (throw (js/Error. "conj on a map takes map entries or seqables of map entries"))))))))
+
+     IEmptyableCollection
+     (-empty [coll] (-with-meta (smart-map env {}) meta))
+
+     IEquiv
+     (-equiv [coll other] (-equiv (p.ent/cache-tree env) other))
+
+     IHash
+     (-hash [coll] (hash (p.ent/cache-tree env)))
+
+     IIterable
+     (-iterator [this] (-iterator (p.ent/cache-tree env)))
+
+     ISeqable
+     (-seq [coll] (-seq (p.ent/cache-tree env)))
+
+     ICounted
+     (-count [coll] (count (p.ent/cache-tree env)))
+
+     ILookup
+     (-lookup [_ k] (sm-get env k nil))
+     (-lookup [_ k not-found] (sm-get env k not-found))
+
+     IAssociative
+     (-assoc [_ k v] (sm-assoc env k v))
+
+     (-contains-key? [coll k]
+                     (not (== (array-map-index-of coll k) -1)))
+
+     #_ #_
+     IFind
+     (-find [coll k]
+       (let [idx (array-map-index-of coll k)]
+         (when-not (== idx -1)
+           (MapEntry. (aget arr idx) (aget arr (inc idx)) nil))))
+
+     IMap
+     (-dissoc [coll k] (sm-dissoc env k))
+
+     #_ #_
+     IKVReduce
+     (-kv-reduce [coll f init]
+       (let [len (alength arr)]
+         (loop [i 0 init init]
+           (if (< i len)
+             (let [init (f init (aget arr i) (aget arr (inc i)))]
+               (if (reduced? init)
+                 @init
+                 (recur (+ i 2) init)))
+             init))))
+
+     #_ #_ #_
+     IReduce
+     (-reduce [coll f]
+       (iter-reduce coll f))
+     (-reduce [coll f start]
+       (iter-reduce coll f start))
+
+     IFn
+     (-invoke [coll k] (-lookup coll k))
+     (-invoke [coll k not-found] (-lookup coll k not-found))
+
+     #_ #_
+     IEditableCollection
+     (-as-transient [coll]
+       (TransientArrayMap. (js-obj) (alength arr) (aclone arr)))))
 
 (>def ::smart-map #(instance? SmartMap %))
 
