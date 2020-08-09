@@ -76,18 +76,12 @@
 
 #?(:clj
    (def-map-type SmartMap [env]
-     (get [_ k default-value]
-          (sm-get env k default-value))
-     (assoc [_ k v]
-       (sm-assoc env k v))
-     (dissoc [_ k]
-             (sm-dissoc env k))
-     (keys [_]
-           (sm-keys env))
-     (meta [_]
-           (sm-meta env))
-     (with-meta [_ mta]
-       (sm-with-meta env mta)))
+     (get [_ k default-value] (sm-get env k default-value))
+     (assoc [_ k v] (sm-assoc env k v))
+     (dissoc [_ k] (sm-dissoc env k))
+     (keys [_] (sm-keys env))
+     (meta [_] (sm-meta env))
+     (with-meta [_ mta] (sm-with-meta env mta)))
 
    :cljs
    (deftype SmartMap [env]))
