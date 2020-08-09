@@ -92,19 +92,12 @@
             (-equiv (p.ent/cache-tree env) other))
 
      ;; EXPERIMENTAL: subject to change
-     (keys [_]
-           (es6-iterator (keys (p.ent/cache-tree env))))
-     (entries [_]
-              (es6-entries-iterator (seq (p.ent/cache-tree env))))
-     (values [_]
-             (es6-iterator (vals (p.ent/cache-tree env))))
-     (has [_ k]
-          (contains? (p.ent/cache-tree env) k))
-     (get [_ k not-found]
-          (-lookup (p.ent/cache-tree env) k not-found))
-     (forEach [_ f]
-              (doseq [[k v] (p.ent/cache-tree env)]
-                (f v k)))
+     (keys [_] (es6-iterator (keys (p.ent/cache-tree env))))
+     (entries [_] (es6-entries-iterator (seq (p.ent/cache-tree env))))
+     (values [_] (es6-iterator (vals (p.ent/cache-tree env))))
+     (has [_ k] (contains? (p.ent/cache-tree env) k))
+     (get [_ k not-found] (-lookup (p.ent/cache-tree env) k not-found))
+     (forEach [_ f] (doseq [[k v] (p.ent/cache-tree env)] (f v k)))
 
      ICloneable
      (-clone [_] (smart-map env (p.ent/cache-tree env)))
@@ -152,9 +145,7 @@
 
      IAssociative
      (-assoc [_ k v] (sm-assoc env k v))
-
-     (-contains-key? [coll k]
-                     (not (== (array-map-index-of coll k) -1)))
+     (-contains-key? [_ k] (contains? (p.ent/cache-tree env) k))
 
      #_ #_
      IFind
