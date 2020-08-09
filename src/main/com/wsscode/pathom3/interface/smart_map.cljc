@@ -9,17 +9,22 @@
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
-    [potemkin.collections :refer [def-map-type]]))
+    #?(:clj [potemkin.collections :refer [def-map-type]])))
 
 (declare smart-map)
 
-(defn wrap-smart-map [env x]
+(defn wrap-smart-map
+  "If x is a composite data structure, return the data wrapped by smart maps."
+  [env x]
   (cond
     (map? x)
     (smart-map env x)
 
     (sequential? x)
     (map #(wrap-smart-map env %) x)
+
+    (set? x)
+    (into #{} (map #(wrap-smart-map env %)) x)
 
     :else
     x))
@@ -61,30 +66,39 @@
   (keys @(get env ::p.ent/cache-tree*)))
 
 (defn sm-meta
-  "Returns meta data of smart map. This will add the special ::env key on the meta, this
-  is the value of the environment on this smart map."
+  "Returns meta data of smart map, which is the same as the meta data from context
+   map used to create the smart map."
   [env]
-  (-> (meta @(get env ::p.ent/cache-tree*))
-      (assoc ::env env)))
+  (meta @(get env ::p.ent/cache-tree*)))
 
 (defn sm-with-meta [env meta]
   (smart-map env (with-meta @(get env ::p.ent/cache-tree*) meta)))
 
-(def-map-type SmartMap [env]
-  (get [_ k default-value]
-       (sm-get env k default-value))
-  (assoc [_ k v]
-    (sm-assoc env k v))
-  (dissoc [_ k]
-          (sm-dissoc env k))
-  (keys [_]
-        (sm-keys env))
-  (meta [_]
-        (sm-meta env))
-  (with-meta [_ mta]
-    (sm-with-meta env mta)))
+#?(:clj
+   (def-map-type SmartMap [env]
+     (get [_ k default-value]
+          (sm-get env k default-value))
+     (assoc [_ k v]
+       (sm-assoc env k v))
+     (dissoc [_ k]
+             (sm-dissoc env k))
+     (keys [_]
+           (sm-keys env))
+     (meta [_]
+           (sm-meta env))
+     (with-meta [_ mta]
+       (sm-with-meta env mta)))
+
+   :cljs
+   (deftype SmartMap [env]))
 
 (>def ::smart-map #(instance? SmartMap %))
+
+(>defn sm-env
+  "Extract the env map from the smart map."
+  [smart-map]
+  [::smart-map => map?]
+  (.-env smart-map))
 
 (defn sm-assoc!
   "Assoc on the smart map in place, this function mutates the current cache and return
@@ -93,11 +107,11 @@
   You should use this only in cases where the optimization is required, try starting
   with the immutable versions first, given this has side effects and so more error phone."
   [smart-map k v]
-  (swap! (-> smart-map meta ::env ::p.ent/cache-tree*) assoc k v)
+  (swap! (-> smart-map sm-env ::p.ent/cache-tree*) assoc k v)
   smart-map)
 
 (defn sm-dissoc! [smart-map k]
-  (swap! (-> smart-map meta ::env ::p.ent/cache-tree*) dissoc k)
+  (swap! (-> smart-map sm-env ::p.ent/cache-tree*) dissoc k)
   smart-map)
 
 (>defn smart-map
