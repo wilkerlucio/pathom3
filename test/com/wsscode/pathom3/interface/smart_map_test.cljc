@@ -22,37 +22,37 @@
 
 (deftest smart-map-test
   (let [sm (psm/smart-map (pci/register geo/registry)
-                          {::geo/left 3 ::geo/width 5})]
+             {::geo/left 3 ::geo/width 5})]
     (is (= (::geo/right sm) 8)))
 
   (testing "assoc uses source context on the new smart map"
     (let [sm (psm/smart-map (pci/register registry)
-                            {:x 3 :width 5})]
+               {:x 3 :width 5})]
       (is (= (:right sm) 8))
       (is (= (:right (assoc sm :width 10)) 13))))
 
   (testing "dissoc"
     (let [sm (psm/smart-map (pci/register registry)
-                            {:x 3 :width 5})]
+               {:x 3 :width 5})]
       (is (= (:right sm) 8))
       (is (= (:right (dissoc sm :width)) nil))))
 
   (testing "nested maps should also be smart maps"
     (let [sm (psm/smart-map (pci/register registry)
-                            {:x 10 :y 20})]
+               {:x 10 :y 20})]
       (is (= (-> sm ::geo/turn-point :right)
              10))))
 
   (testing "nested maps in sequences should also be smart maps"
     (testing "vector"
       (let [sm (psm/smart-map (pci/register registry)
-                              {})]
+                 {})]
         (is (= (->> sm ::points-vector (map :left))
                [1 3 -10]))))
 
     (testing "set"
       (let [sm (psm/smart-map (pci/register registry)
-                              {})]
+                 {})]
         (is (= (->> sm ::points-set)
                #{{:x 1 :y 10}
                  {:x 3 :y 11}
@@ -63,7 +63,7 @@
 (deftest sm-assoc!-test
   (testing "uses source context on the new smart map"
     (let [sm (psm/smart-map (pci/register registry)
-                            {:x 3 :width 5})]
+               {:x 3 :width 5})]
       (is (= (:right sm) 8))
       (is (= (:right (psm/sm-assoc! sm :width 10)) 8))
       (is (= (:width sm) 10)))))
@@ -71,6 +71,6 @@
 (deftest sm-dissoc!-test
   (testing "uses source context on the new smart map"
     (let [sm (psm/smart-map (pci/register registry)
-                            {:x 3 :width 5})]
+               {:x 3 :width 5})]
       (is (= (:right sm) 8))
       (is (= (:right (psm/sm-dissoc! sm :width)) 8)))))
