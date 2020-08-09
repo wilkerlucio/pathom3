@@ -131,7 +131,7 @@
      IHash
      (-hash [coll] (hash (p.ent/cache-tree env)))
 
-     IIterable
+     IIterable ; TODO wrap iterator items
      (-iterator [this] (-iterator (p.ent/cache-tree env)))
 
      ISeqable
@@ -156,30 +156,19 @@
            (MapEntry. (aget arr idx) (aget arr (inc idx)) nil))))
 
      IMap
-     (-dissoc [coll k] (sm-dissoc env k))
+     (-dissoc [_ k] (sm-dissoc env k))
 
-     #_ #_
      IKVReduce
-     (-kv-reduce [coll f init]
-       (let [len (alength arr)]
-         (loop [i 0 init init]
-           (if (< i len)
-             (let [init (f init (aget arr i) (aget arr (inc i)))]
-               (if (reduced? init)
-                 @init
-                 (recur (+ i 2) init)))
-             init))))
+     (-kv-reduce [_ f init]
+                 (reduce-kv (fn [cur k v] (f cur k (wrap-smart-map env v))) init (p.ent/cache-tree env)))
 
-     #_ #_ #_
      IReduce
-     (-reduce [coll f]
-       (iter-reduce coll f))
-     (-reduce [coll f start]
-       (iter-reduce coll f start))
+     (-reduce [coll f] (iter-reduce coll f))
+     (-reduce [coll f start] (iter-reduce coll f start))
 
      IFn
-     (-invoke [coll k] (-lookup coll k))
-     (-invoke [coll k not-found] (-lookup coll k not-found))
+     (-invoke [this k] (-lookup this k))
+     (-invoke [this k not-found] (-lookup this k not-found))
 
      #_ #_
      IEditableCollection

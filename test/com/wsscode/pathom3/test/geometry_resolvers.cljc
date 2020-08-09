@@ -22,7 +22,6 @@
 (>def ::point (s/keys :req [(or (and ::left ::top) (and ::right ::bottom))]))
 (>def ::midpoint ::point)
 (>def ::turn-point ::point)
-(>def ::box (s/keys))
 
 (>defn sqrt [n]
   [number? => number?]
@@ -93,12 +92,12 @@
    (pbir/alias-resolver2 ::y ::top)])
 
 (def geo->svg-registry
-  [(pbir/alias-resolver2 :x ::left)
-   (pbir/alias-resolver2 :y ::top)
-   (pbir/alias-resolver2 :left ::left)
+  [(pbir/alias-resolver2 :left ::left)
    (pbir/alias-resolver2 :right ::right)
    (pbir/alias-resolver2 :top ::top)
    (pbir/alias-resolver2 :bottom ::bottom)
+   (pbir/alias-resolver2 :x ::x)
+   (pbir/alias-resolver2 :y ::y)
    (pbir/alias-resolver2 :width ::width)
    (pbir/alias-resolver2 :height ::height)
    (pbir/alias-resolver2 :cx ::center-x)

@@ -21,9 +21,21 @@
    points-vector points-set])
 
 (deftest smart-map-test
-  (let [sm (psm/smart-map (pci/register geo/registry)
-             {::geo/left 3 ::geo/width 5})]
-    (is (= (::geo/right sm) 8)))
+  (testing "reading"
+    (testing "get"
+      (let [sm (psm/smart-map (pci/register geo/registry)
+                 {::geo/left 3 ::geo/width 5})]
+        (is (= (get sm ::geo/right) 8))))
+
+    (testing "keyword call read"
+      (let [sm (psm/smart-map (pci/register geo/registry)
+                 {::geo/left 3 ::geo/width 5})]
+        (is (= (::geo/right sm) 8))))
+
+    (testing "calling smart map as a fn"
+      (let [sm (psm/smart-map (pci/register geo/registry)
+                 {::geo/left 3 ::geo/width 5})]
+        (is (= (sm ::geo/right) 8)))))
 
   (testing "assoc uses source context on the new smart map"
     (let [sm (psm/smart-map (pci/register registry)
