@@ -13,8 +13,7 @@
 (deftest resolver-config-test
   (let [resolver (pco/resolver 'r {::pco/output [:foo]}
                                (fn [_ _] {:foo 42}))
-        env      (pci/register {}
-                               resolver)]
+        env      (pci/register resolver)]
     (is (= (pci/resolver-config env 'r)
            '{::pco/input    []
              ::pco/op-name  r
@@ -26,8 +25,7 @@
 (deftest register-test
   (let [resolver (pco/resolver 'r {::pco/output [:foo]}
                                (fn [_ _] {:foo 42}))]
-    (is (= (pci/register {}
-                         resolver)
+    (is (= (pci/register resolver)
            {::pci/index-resolvers {'r resolver}
             ::pci/index-oir       {:foo {#{} #{'r}}}})))
 
@@ -35,9 +33,13 @@
                          (fn [_ _] {:foo 42}))
         r2 (pco/resolver 'r2 {::pco/output [:foo2]}
                          (fn [_ _] {:foo2 "val"}))]
-    (is (= (pci/register {}
-                         [r1 r2])
+    (is (= (pci/register [r1 r2])
            {::pci/index-resolvers {'r  r1
                                    'r2 r2}
             ::pci/index-oir       {:foo  {#{} #{'r}}
                                    :foo2 {#{} #{'r2}}}}))))
+
+(deftest attribute-available?-test
+  (let [register (pci/register (pco/resolver 'r {::pco/output [:foo]} (fn [_ _] {})))]
+    (is (= (pci/attribute-available? register :foo) true))
+    (is (= (pci/attribute-available? register :bar) false))))

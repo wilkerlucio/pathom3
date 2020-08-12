@@ -4,7 +4,8 @@
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.core :as misc]
     [com.wsscode.pathom3.connect.operation :as pco]
-    [com.wsscode.pathom3.format.eql :as pfse]))
+    [com.wsscode.pathom3.format.eql :as pfse]
+    [com.wsscode.pathom3.specs :as p.spec]))
 
 (>def ::indexes map?)
 (>def ::index-oir map?)
@@ -93,3 +94,10 @@
      (case (pco/operation-type operation-or-operations)
        ::pco/operation-type-resolver
        (register-resolver indexes operation-or-operations)))))
+
+(>defn attribute-available?
+  "Check if some attribute is known in the index, this checks uses the index-oir."
+  [{::keys [index-oir]} k]
+  [(s/keys :req [::index-oir]) ::p.spec/attribute
+   => boolean?]
+  (contains? index-oir k))
