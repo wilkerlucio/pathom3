@@ -41,7 +41,13 @@
     (let [sm (psm/smart-map (pci/register registry)
                {:x 3 :width 5})]
       (is (= (:right sm) 8))
-      (is (= (:right (assoc sm :width 10)) 13))))
+      (is (= (:right (assoc sm :width 10)) 13)))
+
+    (testing "via conj"
+      (let [sm (psm/smart-map (pci/register registry)
+                 {:x 3 :width 5})]
+        (is (= (:right sm) 8))
+        (is (= (:right (conj sm [:width 10])) 13)))))
 
   (testing "dissoc"
     (let [sm (psm/smart-map (pci/register registry)
@@ -70,7 +76,26 @@
                  {:x 3 :y 11}
                  {:x -10 :y 30}}))
         (is (= (->> sm ::points-set first :left)
-               3))))))
+               3)))))
+
+  (testing "meta"
+    (let [sm (-> (pci/register registry)
+                 (psm/smart-map {:x 3 :width 5})
+                 (with-meta {:foo "bar"}))]
+      (is (= (:right sm) 8))
+      (is (= (meta sm) {:foo "bar"}))))
+
+  (testing "count, uses the count from cache-tree"
+    (let [sm (-> (pci/register registry)
+                 (psm/smart-map {:x 3 :width 5}))]
+      (is (= (:right sm) 8))
+      (is (= (count sm) 7))))
+
+  (testing "find"
+    (let [sm (-> (pci/register registry)
+                 (psm/smart-map {:x 3 :width 5}))]
+      (is (= (find sm :right) [:right 8]))
+      (is (= (find sm ::noop) nil)))))
 
 (deftest sm-assoc!-test
   (testing "uses source context on the new smart map"

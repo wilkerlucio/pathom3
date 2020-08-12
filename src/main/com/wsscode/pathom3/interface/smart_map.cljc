@@ -5,11 +5,16 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
-    #?(:clj [potemkin.collections :refer [def-map-type]])))
+    #?(:clj [potemkin.collections :refer [def-map-type]]))
+  #?(:clj
+     (:import
+       (clojure.lang
+         MapEntry))))
 
 (declare smart-map)
 
@@ -30,18 +35,19 @@
     x))
 
 (defn sm-get
-  [{::p.ent/keys [cache-tree*] :as env} k default-value]
-  (let [cache-tree @cache-tree*]
-    (if (contains? cache-tree k)
-      (wrap-smart-map env (get cache-tree k))
-      (let [ast   {:type     :root
-                   :children [{:type :prop, :dispatch-key k, :key k}]}
-            graph (pcp/compute-run-graph
-                    (assoc env
-                      ::pcp/available-data (pfsd/data->shape-descriptor cache-tree)
-                      :edn-query-language.ast/node ast))]
-        (pcr/run-graph! (assoc env ::pcp/graph graph))
-        (wrap-smart-map env (get @cache-tree* k default-value))))))
+  ([env k] (sm-get env k nil))
+  ([{::p.ent/keys [cache-tree*] :as env} k default-value]
+   (let [cache-tree @cache-tree*]
+     (if (contains? cache-tree k)
+       (wrap-smart-map env (get cache-tree k))
+       (let [ast   {:type     :root
+                    :children [{:type :prop, :dispatch-key k, :key k}]}
+             graph (pcp/compute-run-graph
+                     (assoc env
+                       ::pcp/available-data (pfsd/data->shape-descriptor cache-tree)
+                       :edn-query-language.ast/node ast))]
+         (pcr/run-graph! (assoc env ::pcp/graph graph))
+         (wrap-smart-map env (get @cache-tree* k default-value)))))))
 
 (defn sm-assoc
   "Creates a new smart map by adding k v to the initial context.
@@ -77,6 +83,16 @@
 (defn sm-with-meta [env meta]
   (smart-map env (with-meta (p.ent/cache-tree env) meta)))
 
+(defn sm-find
+  "Check if attribute can be found in the smart map."
+  [env k]
+  (if (pci/attribute-available? env k)
+    #?(:clj
+       (MapEntry. k (sm-get env k))
+
+       :cljs
+       (MapEntry. k (sm-get env k) nil))))
+
 #?(:clj
    (def-map-type SmartMap [env]
      (get [_ k default-value] (sm-get env k default-value))
@@ -84,7 +100,8 @@
      (dissoc [_ k] (sm-dissoc env k))
      (keys [_] (sm-keys env))
      (meta [_] (sm-meta env))
-     (with-meta [_ new-meta] (sm-with-meta env new-meta)))
+     (with-meta [_ new-meta] (sm-with-meta env new-meta))
+     (entryAt [_ k] (sm-find env k)))
 
    :cljs
    (deftype SmartMap [env]
@@ -113,7 +130,8 @@
      (-conj [coll entry]
             (if (vector? entry)
               (-assoc coll (-nth entry 0) (-nth entry 1))
-              (loop [ret coll es (seq entry)]
+              (loop [ret coll
+                     es  (seq entry)]
                 (if (nil? es)
                   ret
                   (let [e (first es)]
@@ -123,22 +141,19 @@
                       (throw (js/Error. "conj on a map takes map entries or seqables of map entries"))))))))
 
      IEmptyableCollection
-     (-empty [coll] (-with-meta (smart-map env {}) meta))
+     (-empty [_] (-with-meta (smart-map env {}) meta))
 
      IEquiv
-     (-equiv [coll other] (-equiv (p.ent/cache-tree env) other))
+     (-equiv [_ other] (-equiv (p.ent/cache-tree env) other))
 
      IHash
-     (-hash [coll] (hash (p.ent/cache-tree env)))
-
-     IIterable ; TODO wrap iterator items
-     (-iterator [this] (-iterator (p.ent/cache-tree env)))
+     (-hash [_] (hash (p.ent/cache-tree env)))
 
      ISeqable
-     (-seq [coll] (-seq (p.ent/cache-tree env)))
+     (-seq [_] (-seq (p.ent/cache-tree env)))
 
      ICounted
-     (-count [coll] (count (p.ent/cache-tree env)))
+     (-count [_] (count (p.ent/cache-tree env)))
 
      ILookup
      (-lookup [_ k] (sm-get env k nil))
@@ -148,12 +163,8 @@
      (-assoc [_ k v] (sm-assoc env k v))
      (-contains-key? [_ k] (sm-contains? env k))
 
-     #_ #_
      IFind
-     (-find [coll k]
-       (let [idx (array-map-index-of coll k)]
-         (when-not (== idx -1)
-           (MapEntry. (aget arr idx) (aget arr (inc idx)) nil))))
+     (-find [_ k] (sm-find env k))
 
      IMap
      (-dissoc [_ k] (sm-dissoc env k))
@@ -168,12 +179,7 @@
 
      IFn
      (-invoke [this k] (-lookup this k))
-     (-invoke [this k not-found] (-lookup this k not-found))
-
-     #_ #_
-     IEditableCollection
-     (-as-transient [coll]
-       (TransientArrayMap. (js-obj) (alength arr) (aclone arr)))))
+     (-invoke [this k not-found] (-lookup this k not-found))))
 
 (>def ::smart-map #(instance? SmartMap %))
 
