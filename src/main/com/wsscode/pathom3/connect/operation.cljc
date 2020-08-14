@@ -181,41 +181,54 @@
          ::pco/transform identity}
         (fetch-song env id))
 
+  The previous example demonstrates the usage of the most common options in defresolver.
 
+  But we don't need to write all of that, for example, instead of manually saying
+  the ::pco/input, we can let the defresolver infer it from the param destructuring, so
+  the following code works the same (::pco/params and ::pco/transform also removed, since
+  they were no-ops in this example):
 
-  Defining a simple constant:
+      (pco/defresolver song-by-id [env {:acme.song/keys [id]}]
+        {::pco/output [:acme.song/title :acme.song/duration :acme.song/tone]}
+        (fetch-song env id))
 
-      (p/defresolver pi [] :pi 3.14)
+  This makes for a cleaner write, now lets use this format and write a new example
+  resolver:
 
-  Define a resolver with dependent attribute:
+      (pco/defresolver full-name [env {:acme.user/keys [first-name last-name]}]
+        {::pco/output [:acme.user/full-name]}
+        {:acme.user/full-name (str first-name \" \" last-name)})
 
-      (p/defresolver tao [{:keys [pi]}] :tau (* 2 pi))
+  The first thing we see is that we don't use env, so we can omit it.
 
-  Note that the required input was inferred from the param destructuring.
+      (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}]
+        {::pco/output [:acme.user/full-name]}
+        {:acme.user/full-name (str first-name \" \" last-name)})
 
-  To require multiple attributes:
+  Now the special syntax, when the resolver outputs a single attribute, we can use
+  the following syntax:
 
-      (p/defresolver user-by-id [env {:keys [user/id]}]
-        {::p/output [:user/name :user/email]}
-        (fetch-user-from-db env id))
+      (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}] :acme.user/full-name
+        (str first-name \" \" last-name))
 
-  Note when we request 2 arguments in params, the first will be the environment.
+  Note that in this example we don't have to wrap the output with the map, the macro
+  will do that automatically.
 
-  So far we seen examples using implicit input (inferred from input destructuring).
+  In case you also want to provide options, add then after the output keyword:
 
-  If you want to control the input, you can add it to the resolver config:
-
-      (p/defresolver user-by-id [env {:keys [user/id]}]
-        {::p/input  [:user/id]
-         ::p/output [:user/name :user/email]}
-        (fetch-user-from-db env id))
+      (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}] :acme.user/full-name
+        {::pco/params []}
+        (str first-name \" \" last-name))
 
   Standard options:
 
-    ::pco/output -
-    ::pco/input -
-    ::pco/params -
-    ::pco/transform -
+    ::pco/output - description of resolver output, in EQL format
+    ::pco/input - description of resolver input, in EQL format
+    ::pco/params - description of resolver parameters, in EQL format
+    ::pco/transform - a function to transform the resolver configuration before instantiating the resolver
+
+  Note that any other option that you send to the resolver config will be stored in the
+  index and can be read from it at any time.
   "
   {:arglists '([name docstring? arglist output-prop? options? & body])}
   [& args]
