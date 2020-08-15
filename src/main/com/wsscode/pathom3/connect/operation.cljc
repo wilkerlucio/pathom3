@@ -77,11 +77,12 @@
           :resolver ::resolver) => ::resolver]
    (if (satisfies? pop/IResolver config)
      config
-     (let [config' (->> (dissoc config ::resolve)
-                        (merge (if output
-                                 {::input    []
-                                  ::provides (pfsd/query->shape-descriptor output)}
-                                 {})))]
+     (let [defaults (if output
+                      {::input    []
+                       ::provides (pfsd/query->shape-descriptor output)}
+                      {})
+           config'  (-> (merge defaults config)
+                        (dissoc ::resolve))]
        (->Resolver config' (or resolve (fn [_ _])))))))
 
 ; endregion
