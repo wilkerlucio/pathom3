@@ -5,16 +5,13 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.misc.core :as misc]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
-    #?(:clj [potemkin.collections :refer [def-map-type]]))
-  #?(:clj
-     (:import
-       (clojure.lang
-         MapEntry))))
+    #?(:clj [potemkin.collections :refer [def-map-type]])))
 
 (declare smart-map)
 
@@ -35,6 +32,15 @@
     x))
 
 (defn sm-get
+  "Get a property from a smart map.
+
+  First it checks if the property is available in the cache-tree, if not it triggers
+  the connect engine to lookup for the property. After the lookup is triggered the
+  cache-tree will be updated in place, note this has a mutable effect in this data,
+  but this change is consistent.
+
+  Repeated lookups will use the cache-tree and should be as fast as reading from a
+  regular Clojure map."
   ([env k] (sm-get env k nil))
   ([{::p.ent/keys [cache-tree*] :as env} k default-value]
    (let [cache-tree @cache-tree*]
@@ -63,15 +69,28 @@
     (-> (::source-context env)
         (assoc k v))))
 
-(defn sm-dissoc [env k]
+(defn sm-dissoc
+  "Creates a new smart map by adding k v to the initial context.
+
+  When you read information in the smart map, that information is cached into an internal
+  atom, and any dependencies that were required to get to the requested data is also
+  included in this atom.
+
+  When you assoc into a smart map, it will discard all the data loaded by Pathom itself
+  and will be like you have assoced in the original map and created a new smart object."
+  [env k]
   (smart-map env
     (-> (::source-context env)
         (dissoc k))))
 
-(defn sm-keys [env]
+(defn sm-keys
+  "Retrieve the keys in the smart map cache-tree."
+  [env]
   (keys (p.ent/cache-tree env)))
 
-(defn sm-contains? [env k]
+(defn sm-contains?
+  "Check if a property is present in the cache-tree."
+  [env k]
   (contains? (p.ent/cache-tree env) k))
 
 (defn sm-meta
@@ -80,19 +99,18 @@
   [env]
   (meta (p.ent/cache-tree env)))
 
-(defn sm-with-meta [env meta]
+(defn sm-with-meta
+  "Return a new smart-map with the given meta."
+  [env meta]
   (smart-map env (with-meta (p.ent/cache-tree env) meta)))
 
 (defn sm-find
   "Check if attribute can be found in the smart map."
   [env k]
   (if (pci/attribute-available? env k)
-    #?(:clj
-       (MapEntry. k (sm-get env k))
+    (misc/make-map-entry k (sm-get env k))))
 
-       :cljs
-       (MapEntry. k (sm-get env k) nil))))
-
+; region type definition
 #?(:clj
    (def-map-type SmartMap [env]
      (get [_ k default-value] (sm-get env k default-value))
@@ -180,6 +198,7 @@
      IFn
      (-invoke [this k] (-lookup this k))
      (-invoke [this k not-found] (-lookup this k not-found))))
+; endregion
 
 (>def ::smart-map #(instance? SmartMap %))
 
@@ -200,11 +219,29 @@
   smart-map)
 
 (defn sm-dissoc!
+  "Dissoc on the smart map in place, this function mutates the current cache and return
+  the same instance of smart map.
+
+  You should use this only in cases where the optimization is required, try starting
+  with the immutable versions first, given this has side effects and so more error phone."
   [^SmartMap smart-map k]
   (swap! (-> smart-map sm-env ::p.ent/cache-tree*) dissoc k)
   smart-map)
 
-(>defn smart-map
+(>defn ^SmartMap smart-map
+  "Create a new smart map.
+
+  Smart maps are a special data structure that realizes properties using Pathom resolvers.
+
+  They work like maps and can be used interchangeable with it.
+
+  To create a smart map you need send an environment with the indexes and a context
+  map with the initial context data:
+
+      (smart-map (pci/register [resolver1 resolver2]) {:some \"context\"})
+
+  When the value of a property of the smart map is a map, that map will also be cast
+  into a smart map, including maps inside collections."
   [env context]
   [(s/keys :req [:com.wsscode.pathom3.connect.indexes/index-oir])
    map? => ::smart-map]
