@@ -38,8 +38,8 @@
   ([env k] (sm-get env k nil))
   ([{::p.ent/keys [cache-tree*] :as env} k default-value]
    (let [cache-tree @cache-tree*]
-     (if (contains? cache-tree k)
-       (wrap-smart-map env (get cache-tree k))
+     (if-let [x (find cache-tree k)]
+       (wrap-smart-map env (val x))
        (let [ast   {:type     :root
                     :children [{:type :prop, :dispatch-key k, :key k}]}
              graph (pcp/compute-run-graph
