@@ -4,7 +4,8 @@
   #?(:clj
      (:import
        (clojure.lang
-         IDeref)
+         IDeref
+         MapEntry)
        (java.util
          UUID))))
 
@@ -122,3 +123,12 @@
 
      :else
      b)))
+
+(defn make-map-entry
+  "CLJC helper to create MapEntry."
+  [k v]
+  #?(:clj
+     (MapEntry. k v)
+
+     :cljs
+     (MapEntry. k v nil)))
