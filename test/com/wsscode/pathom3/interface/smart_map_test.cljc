@@ -91,6 +91,19 @@
       (is (= (:right sm) 8))
       (is (= (count sm) 7))))
 
+  (testing "keys, uses the count from cache-tree"
+    (let [sm (-> (pci/register registry)
+                 (psm/smart-map {:x 3 :width 5}))]
+      (is (= (:right sm) 8))
+      (is (= (into #{} (keys sm))
+             #{:x
+               :width
+               :right
+               ::geo/x
+               ::geo/left
+               ::geo/width
+               ::geo/right}))))
+
   (testing "find"
     (let [sm (-> (pci/register registry)
                  (psm/smart-map {:x 3 :width 5}))]

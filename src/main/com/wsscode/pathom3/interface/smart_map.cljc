@@ -185,7 +185,7 @@
 
 (>defn sm-env
   "Extract the env map from the smart map."
-  [smart-map]
+  [^SmartMap smart-map]
   [::smart-map => map?]
   (.-env smart-map))
 
@@ -195,11 +195,12 @@
 
   You should use this only in cases where the optimization is required, try starting
   with the immutable versions first, given this has side effects and so more error phone."
-  [smart-map k v]
+  [^SmartMap smart-map k v]
   (swap! (-> smart-map sm-env ::p.ent/cache-tree*) assoc k v)
   smart-map)
 
-(defn sm-dissoc! [smart-map k]
+(defn sm-dissoc!
+  [^SmartMap smart-map k]
   (swap! (-> smart-map sm-env ::p.ent/cache-tree*) dissoc k)
   smart-map)
 
