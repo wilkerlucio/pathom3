@@ -243,7 +243,7 @@
   When the value of a property of the smart map is a map, that map will also be cast
   into a smart map, including maps inside collections."
   [env context]
-  [(s/keys :req [:com.wsscode.pathom3.connect.indexes/index-oir])
+  [(s/keys :req [::pci/index-oir])
    map? => ::smart-map]
   (->SmartMap
     (-> env
