@@ -1227,11 +1227,36 @@
   indexes in it (::pc/index-oir and ::pc/index-resolvers). It computes a plan to execute
   one level of an AST, the AST must be provided via the key :edn-query-language.ast/node.
 
-       (compute-run-graph (assoc indexes :edn-query-language.ast/node ...))
+      (compute-run-graph (assoc indexes :edn-query-language.ast/node ...))
 
   The resulting graph will look like this:
 
-    ::nodes {1 {::node-id 1}}
+      {::nodes                 {1 {::pco/op-name         a
+                                   ::node-id          1
+                                   ::requires         {:a {}}
+                                   ::input            {}
+                                   ::source-for-attrs #{:a}
+                                   ::after-nodes      #{3}}
+                                2 {::pco/op-name          b
+                                   ::node-id          2
+                                   ::requires         {:b {}}
+                                   ::input            {}
+                                   ::source-for-attrs #{:b}
+                                   ::after-nodes      #{3}}
+                                3 {::node-id  3
+                                   ::requires {:b {} :a {} :c {}}
+                                   ::run-and  #{2 1 4}}
+                                4 {::pco/op-name          c
+                                   ::node-id          4
+                                   ::requires         {:c {}}
+                                   ::input            {}
+                                   ::source-for-attrs #{:c}
+                                   ::after-nodes      #{3}}}
+       ::index-resolver->nodes {a #{1} b #{2} c #{4}}
+       ::unreachable-resolvers #{}
+       ::unreachable-attrs     #{}
+       ::index-attrs           {:a 1 :b 2 :c 4}
+       ::root                  3}
   "
   ([graph env]
    [(? (s/keys))
