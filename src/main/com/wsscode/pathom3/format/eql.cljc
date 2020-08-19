@@ -1,9 +1,13 @@
 (ns com.wsscode.pathom3.format.eql
   "Helpers to manipulate EQL."
   (:require
+    [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.misc.core :as misc]
     [com.wsscode.pathom3.specs :as p.spec]
     [edn-query-language.core :as eql]))
+
+(>def ::prop->ast (s/map-of ::p.spec/path-entry :edn-query-language.ast/node))
 
 (defn query-root-properties
   "Returns a vector with the properties at the root of the query.
@@ -44,3 +48,8 @@
   [key]
   [any? => (? ::p.spec/attribute)]
   (if (vector? key) (first key)))
+
+(>defn index-ast-props [{:keys [children]}]
+  [:edn-query-language.ast/node => ::prop->ast]
+  ; TODO consider merging issues when key is repeated
+  (misc/index-by :key children))
