@@ -106,3 +106,5 @@
    (pbir/alias-resolver2 :ry ::half-height)
    (pbir/alias-resolver :rx :r)
    (pbir/alias-resolver :ry :r)])
+
+(def full-registry [registry geo->svg-registry])
