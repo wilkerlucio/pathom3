@@ -132,3 +132,5 @@
 
      :cljs
      (MapEntry. k v nil)))
+
+(defn noop "Does nothing." [& _])
