@@ -95,3 +95,6 @@
   (testing "keep left value if right one is nil"
     (is (= (misc/merge-grow {:foo {:a 1}} {:foo {:a nil}})
            {:foo {:a 1}}))))
+
+(deftest keys-set-test
+  (is (= (misc/keys-set {:a 1 :b 2}) #{:a :b})))

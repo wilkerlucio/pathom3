@@ -100,6 +100,11 @@
   [f m]
   (into {} (for [[k v] m] [k (f v)])))
 
+(defn keys-set
+  "Return the map keys, as a set."
+  [m]
+  (into #{} (keys m)))
+
 (defn merge-grow
   "Additive merging.
 
