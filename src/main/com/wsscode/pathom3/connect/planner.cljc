@@ -145,14 +145,20 @@
   "Set of params that were conflicting during merge."
   ::pspec/attributes-set)
 
+(>def ::attribute-ast
+  "Index to find the AST for a given property."
+  (s/map-of ::pspec/path-entry :edn-query-language.ast/node))
+
+(>def ::nested-available-process
+  "Which attributes need further processing due to subquery requirements."
+  ::pspec/attributes-set)
+
 (def pc-sym ::pco/op-name)
 (def pc-dyn-sym ::pco/dynamic-name)
 (def pc-output ::pco/output)
 (def pc-provides ::pco/provides)
 (def pc-attr ::pspec/attribute)
 (def pc-input ::pco/input)
-
-(def ast-node :edn-query-language.ast/node)
 
 (declare compute-run-graph* compute-root-and collapse-nodes-chain node-ancestors
          compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes)
@@ -838,7 +844,7 @@
                              (merge (select-keys env [::pci/index-resolvers
                                                       ::pci/index-oir]))
                              (inject-index-nested-provides env)
-                             (assoc ast-node ast)))
+                             (assoc :edn-query-language.ast/node ast)))
         sym            (pc-sym env)
         root-dyn-nodes (into []
                              (comp (filter #(root-execution-node? nested-graph %))
@@ -1042,7 +1048,7 @@
                 (dissoc pc-attr)
                 (update ::run-next-trail misc/sconj (::root graph))
                 (update ::attr-deps-trail misc/sconj (pc-attr env))
-                (assoc ast-node (eql/query->ast (vec missing)))))
+                (assoc :edn-query-language.ast/node (eql/query->ast (vec missing)))))
           still-missing (remove (or index-attrs {}) missing)
           all-provided? (not (seq still-missing))]
       (if all-provided?
@@ -1191,17 +1197,29 @@
         (compute-root-and graph' env {::node-id root})
         (set-root-node graph' root)))))
 
+(defn mark-attribute-process-sub-query
+  "Add information about attribute that is present but requires further processing
+  due to subquery, this is created so the runner can quickly know which attributes
+  need to have the subquery processing done."
+  [graph {:keys [key children]}]
+  (if children
+    (update graph ::nested-available-process misc/sconj key)
+    graph))
+
 (defn compute-attribute-graph
   "Compute the run graph for a given attribute."
   [{::keys [unreachable-attrs] :as graph}
-   {::keys      [available-data attr-deps-trail]
-    ::pci/keys  [index-oir]
-    {attr :key} :edn-query-language.ast/node
-    :as         env}]
+   {::keys     [available-data attr-deps-trail]
+    ::pci/keys [index-oir]
+    {attr :key
+     :as  ast} :edn-query-language.ast/node
+    :as        env}]
   (let [env (assoc env pc-attr attr)]
     (cond
-      (or (contains? available-data attr)
-          (contains? unreachable-attrs attr)
+      (contains? available-data attr)
+      (mark-attribute-process-sub-query graph ast)
+
+      (or (contains? unreachable-attrs attr)
           (contains? attr-deps-trail attr))
       graph
 
@@ -1220,7 +1238,7 @@
           (assoc env :edn-query-language.ast/node ast))
         graph))
     graph
-    (remove (comp eql/ident? :key) (:children (ast-node env)))))
+    (remove (comp eql/ident? :key) (:children (:edn-query-language.ast/node env)))))
 
 (>defn compute-run-graph
   "Generates a run plan for a given environment, the environment should contain the

@@ -228,16 +228,37 @@
                               ::pco/input   [:b :d]
                               ::pco/output  [:c]}]
                 ::eql/query [:c :d]})
-             '{::pcp/nodes                 {4 {::pco/op-name         d
-                                              ::pcp/node-id          4
-                                              ::pcp/requires         {:d {}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-for-attrs #{:d}}}
+             '{::pcp/nodes                 {4 {::pco/op-name          d
+                                               ::pcp/node-id          4
+                                               ::pcp/requires         {:d {}}
+                                               ::pcp/input            {}
+                                               ::pcp/source-for-attrs #{:d}}}
                ::pcp/index-resolver->nodes {d #{4}}
                ::pcp/unreachable-resolvers #{c b}
                ::pcp/unreachable-attrs     #{:c :b :a}
                ::pcp/root                  4
-               ::pcp/index-attrs           {:d 4}})))))
+               ::pcp/index-attrs           {:d 4}})))
+
+    (testing "currently available data"
+      (is (= (compute-run-graph
+               {::pci/index-oir      '{}
+                ::eql/query          [:a]
+                ::pcp/available-data {:a {}}})
+             {::pcp/nodes                 {}
+              ::pcp/index-resolver->nodes {}
+              ::pcp/unreachable-attrs     #{}
+              ::pcp/unreachable-resolvers #{}}))
+
+      (testing "exposed nested needs"
+        (is (= (compute-run-graph
+                 {::pci/index-oir      '{}
+                  ::eql/query          [{:a [:bar]}]
+                  ::pcp/available-data {:a {}}})
+               {::pcp/nodes                    {}
+                ::pcp/index-resolver->nodes    {}
+                ::pcp/unreachable-attrs        #{}
+                ::pcp/unreachable-resolvers    #{}
+                ::pcp/nested-available-process #{:a}}))))))
 
 (deftest compute-run-graph-test
   (testing "simplest path"
