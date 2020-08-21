@@ -97,4 +97,5 @@
            {:foo {:a 1}}))))
 
 (deftest keys-set-test
-  (is (= (misc/keys-set {:a 1 :b 2}) #{:a :b})))
+  (is (= (misc/keys-set {:a 1 :b 2}) #{:a :b}))
+  (is (= (misc/keys-set 5) nil)))

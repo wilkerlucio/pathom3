@@ -82,6 +82,15 @@
   ([coll]
    (into (queue) coll)))
 
+(defn make-map-entry
+  "CLJC helper to create MapEntry."
+  [k v]
+  #?(:clj
+     (MapEntry. k v)
+
+     :cljs
+     (MapEntry. k v nil)))
+
 (defn map-keys
   "Map over the given hash-map keys.
 
@@ -89,7 +98,7 @@
     (map-keys #(str/replace (name %) \"_\" \"-\") {\"foo_bar\" 1}) => {\"foo-bar\" 1}
   "
   [f m]
-  (into {} (for [[k v] m] [(f k) v])))
+  (into {} (map (fn [x] (make-map-entry (f (key x)) (val x)))) m))
 
 (defn map-vals
   "Map over the given hash-map vals.
@@ -98,12 +107,13 @@
     (map-vals inc {:a 1 :b 2})
   "
   [f m]
-  (into {} (for [[k v] m] [k (f v)])))
+  (into {} (map (fn [x] (make-map-entry (key x) (f (val x))))) m))
 
 (defn keys-set
-  "Return the map keys, as a set."
+  "Return the map keys, as a set. This also checks if the entry is a map, otherwise
+  returns nil (instead of throw)."
   [m]
-  (into #{} (keys m)))
+  (if (map? m) (into #{} (keys m))))
 
 (defn merge-grow
   "Additive merging.
@@ -128,14 +138,5 @@
 
      :else
      b)))
-
-(defn make-map-entry
-  "CLJC helper to create MapEntry."
-  [k v]
-  #?(:clj
-     (MapEntry. k v)
-
-     :cljs
-     (MapEntry. k v nil)))
 
 (defn noop "Does nothing." [& _])
