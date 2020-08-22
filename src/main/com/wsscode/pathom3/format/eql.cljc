@@ -7,6 +7,8 @@
     [com.wsscode.pathom3.specs :as p.spec]
     [edn-query-language.core :as eql]))
 
+(declare map-select-ast)
+
 (>def ::prop->ast (s/map-of any? :edn-query-language.ast/node))
 
 (defn query-root-properties
@@ -53,3 +55,42 @@
   [:edn-query-language.ast/node => ::prop->ast]
   ; TODO consider merging issues when key is repeated
   (misc/index-by :key children))
+
+(defn map-select-entry
+  [source {:keys [key children] :as ast}]
+  (if-let [x (find source key)]
+    (let [val (val x)]
+      (misc/make-map-entry
+        key
+        (if children
+          (cond
+            (map? val)
+            (map-select-ast val ast)
+
+            (or (sequential? val)
+                (set? val))
+            (into (empty val) (map #(map-select-ast % ast)) val)
+
+            :else
+            val)
+          val)))))
+
+(>defn map-select-ast
+  "Same as map-select, but using AST as source."
+  [source {:keys [children]}]
+  [any? (s/keys :opt-un [:edn-query-language.ast/children])
+   => any?]
+  (if (map? source)
+    (into {} (keep #(map-select-entry source %)) children)
+    source))
+
+(>defn map-select
+  "Starting from a map, do a EQL selection on that map. Think of this function as
+  a power up version of select-keys.
+
+  Example:
+  (p/map-select {:foo \"bar\" :deep {:a 1 :b 2}} [{:deep [:a]}])
+  => {:deep {:a 1}}"
+  [source tx]
+  [any? ::eql/query => any?]
+  (map-select-ast source (eql/query->ast tx)))
