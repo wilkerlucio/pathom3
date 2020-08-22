@@ -7,17 +7,15 @@
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
-    [com.wsscode.pathom3.specs :as p.spec]
     [edn-query-language.core :as eql]))
 
 (declare process-ast)
 
 (defn prepare-process-env [env ast]
-  (let [env' (merge (-> {::p.spec/path []}
-                        (p.ent/with-cache-tree {}))
+  (let [env' (merge (p.ent/with-cache-tree {} {})
                     env)]
     (assoc env'
-      ::pcp/available-data (pfsd/data->shape-descriptor (p.ent/entity env'))
+      ::pcp/available-data (pfsd/data->shape-descriptor (p.ent/cache-tree env'))
       :edn-query-language.ast/node ast)))
 
 (>defn process-ast
@@ -29,6 +27,29 @@
     (pf.eql/map-select-ast (p.ent/cache-tree env) ast)))
 
 (>defn process
+  "Evaluate EQL expression.
+
+  This interface allows you to request a specific data shape to Pathom and get
+  the response as a map with all data combined.
+
+  This is efficient for large queries, given Pathom can make a plan considering
+  the whole request at once (different from Smart Map, which always plans for one
+  attribute at a time).
+
+  At minimum you need to build an index to use this.
+
+      (p.eql/process (pci/register some-resolvers)
+        [:eql :request])
+
+
+  By default the process will start with a blank cache tree, you can override it by
+  changing sending a cache tree in the environment:
+
+      (p.eql/process (-> (pci/register some-resolvers)
+                         (p.ent/with-cache-tree {:eql \"initial data\"}))
+        [:eql :request])
+
+  For more options around processing check the docs on the connect runner."
   [env tx]
   [(s/keys) ::eql/query => map?]
   (process-ast env (eql/query->ast tx)))
