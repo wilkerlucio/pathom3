@@ -64,3 +64,14 @@
                                     {:c 1 :b 1}}}
                             [{:foo [:b]}])
          {:foo #{{:b 2} {:b 1}}})))
+
+(deftest data->shape-test
+  (is (= (pf.eql/data->shape {}) []))
+  (is (= (pf.eql/data->shape {:foo "bar"}) [:foo]))
+  (is (= (pf.eql/data->shape {:foo {:buz "bar"}}) [{:foo [:buz]}]))
+  (is (= (pf.eql/data->shape {:foo [{:buz "bar"}]}) [{:foo [:buz]}]))
+  (is (= (pf.eql/data->shape {:other "key" [:complex "key"] "value"}) [:other [:complex "key"]]))
+  (is (= (pf.eql/data->shape {:foo ["abc"]}) [:foo]))
+  (is (= (pf.eql/data->shape {:foo [{:buz "baz"} {:it "nih"}]}) [{:foo [:buz :it]}]))
+  (is (= (pf.eql/data->shape {:foo [{:buz "baz"} "abc" {:it "nih"}]}) [{:foo [:buz :it]}]))
+  (is (= (pf.eql/data->shape {:z 10 :a 1 :b {:d 3 :e 4}}) [:a {:b [:d :e]} :z])))
