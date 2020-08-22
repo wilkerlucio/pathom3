@@ -2,29 +2,15 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    [com.wsscode.misc.core :as misc]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.specs :as p.spec]
     [edn-query-language.core :as eql]))
 
 (declare process-ast)
-
-(>def ::output-tree* ::p.ent/entity-tree*)
-
-(defn process-entry [env {:keys [key children] :as ast}]
-  (let [val (get (p.ent/entity env) key)]
-    (misc/make-map-entry key
-                         (if children
-                           (cond
-                             (map? val)
-                             (process-ast (update env ::p.spec/path conj key) ast)
-
-                             :else
-                             val)
-                           val))))
 
 (defn prepare-process-env [env ast]
   (let [env' (merge (-> {::p.spec/path []}
@@ -40,9 +26,7 @@
   (let [env   (prepare-process-env env ast)
         graph (pcp/compute-run-graph env)]
     (pcr/run-graph! (assoc env ::pcp/graph graph))
-    (into {}
-          (map #(process-entry env %))
-          (:children ast))))
+    (pf.eql/map-select-ast (p.ent/cache-tree env) ast)))
 
 (>defn process
   [env tx]
