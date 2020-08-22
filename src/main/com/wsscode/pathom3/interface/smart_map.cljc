@@ -10,7 +10,6 @@
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
-    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [edn-query-language.core :as eql]
     #?(:clj [potemkin.collections :refer [def-map-type]])))
@@ -241,10 +240,7 @@
                   ::pcp/available-data (pfsd/data->shape-descriptor (p.ent/cache-tree env))
                   :edn-query-language.ast/node ast))]
     (pcr/run-graph!
-      (assoc env
-        ::pcp/graph graph
-        ::pcr/merge-attribute pcr/merge-attribute-merge-subquery
-        ::pf.eql/prop->ast (pf.eql/index-ast-props ast)))
+      (assoc env ::pcp/graph graph))
     smart-map))
 
 (defn sm-load!

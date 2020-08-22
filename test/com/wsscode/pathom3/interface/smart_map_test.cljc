@@ -150,28 +150,3 @@
               ::geo/turn-point {::geo/right  3
                                 ::geo/bottom 5
                                 :right       3}})))))
-
-(comment
-  (def data (take 50))
-  (time
-    (dotimes [_ 10000]
-      (reduce-kv
-        assoc
-        {}
-        {:a 1 :b 2 :c 3 :d 4})))
-
-  (time
-    (dotimes [_ 10000]
-      (persistent!
-        (reduce-kv
-          assoc!
-          (transient {})
-          {:a 1 :b 2 :c 3 :d 4}))))
-
-  (let [sm (-> (psm/smart-map (pci/register registry)
-                 {:x 3 :y 5})
-               (psm/sm-load! [{::geo/turn-point [:right]}]))]
-    (-> sm psm/sm-env p.ent/cache-tree)))
-
-(comment
-  )

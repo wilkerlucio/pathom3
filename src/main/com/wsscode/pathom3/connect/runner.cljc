@@ -6,7 +6,9 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.operation.protocols :as pco.prot]
     [com.wsscode.pathom3.connect.planner :as pcp]
-    [com.wsscode.pathom3.entity-tree :as p.ent]))
+    [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [com.wsscode.pathom3.specs :as p.spec]))
 
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
@@ -16,14 +18,68 @@
   (let [entity (p.ent/entity env)]
     (every? #(contains? entity %) (keys requires))))
 
-(declare run-node!)
+(declare run-node! run-graph!)
+
+(>def ::merge-attribute fn?)
+
+(defn process-map-subquery
+  [env ast v]
+  (let [plan        (pcp/compute-run-graph
+                      (assoc env
+                        :edn-query-language.ast/node ast
+                        ::pcp/available-data (pfsd/data->shape-descriptor v)))
+        cache-tree* (atom v)]
+    (run-graph! (assoc env
+                  ::pcp/graph plan
+                  ::p.ent/cache-tree* cache-tree*))
+    @cache-tree*))
+
+(defn process-sequence-subquery
+  [env ast v]
+  (into
+    (empty v)
+    (map (fn [item]
+           (if (map? item)
+             (process-map-subquery env ast item)
+             item)))
+    v))
+
+(>defn process-attr-subquery
+  [{::pcp/keys [graph]
+    :as        env} k v]
+  [(s/keys :opt [:edn-query-language.ast/node]) ::p.spec/path-entry any?
+   => any?]
+  (let [ast (pcp/entry-ast graph k)]
+    (if (:children ast)
+      (cond
+        (map? v)
+        (process-map-subquery env ast v)
+
+        (sequential? v)
+        (process-sequence-subquery env ast v)
+
+        :else
+        v)
+      v)))
+
+(>defn merge-entity-data
+  "Specialized merge versions that work on entity data."
+  [{::keys [merge-attribute]
+    :or    {merge-attribute (fn [_ m k v] (assoc m k v))}
+    :as    env} entity new-data]
+  [(s/keys :opt [::merge-attribute]) ::p.ent/entity-tree ::p.ent/entity-tree
+   => ::p.ent/entity-tree]
+  (reduce-kv
+    (fn [out k v] (merge-attribute env out k (process-attr-subquery env k v)))
+    entity
+    new-data))
 
 (defn merge-resolver-response!
   "This function gets the map returned from the resolver and merge the data in the
   current cache-tree."
   [env response]
   (if (map? response)
-    (p.ent/swap-entity! env p.ent/merge-entity-data response))
+    (p.ent/swap-entity! env #(merge-entity-data env % %2) response))
   env)
 
 (defn run-next-node!
@@ -58,8 +114,8 @@
   (if (all-requires-ready? env node)
     (run-next-node! env node)
     (let [response (call-resolver-from-node env node)]
-      (if (merge-resolver-response! env response)
-        (run-next-node! env node)))))
+      (merge-resolver-response! env response)
+      (run-next-node! env node))))
 
 (>defn run-or-node!
   [{::pcp/keys [graph] :as env} {::pcp/keys [run-or] :as or-node}]
@@ -104,8 +160,11 @@
     nil))
 
 (>defn run-graph!
-  "Run the root node of the graph."
+  "Run the root node of the graph. As resolvers run, the result will be add to the
+  cache tree."
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/cache-tree*]) => nil?]
+  (if-let [nested (::pcp/nested-available-process graph)]
+    (merge-resolver-response! env (select-keys (p.ent/entity env) nested)))
   (if-let [root (pcp/get-root-node graph)]
     (run-node! env root)))
