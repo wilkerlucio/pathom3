@@ -151,7 +151,7 @@
 
 (>def ::nested-available-process
   "Which attributes need further processing due to subquery requirements."
-  ::pspec/attributes-set)
+  (s/map-of ::pspec/path-entry :edn-query-language.ast/node))
 
 (def pc-sym ::pco/op-name)
 (def pc-dyn-sym ::pco/dynamic-name)
@@ -1201,9 +1201,9 @@
   "Add information about attribute that is present but requires further processing
   due to subquery, this is created so the runner can quickly know which attributes
   need to have the subquery processing done."
-  [graph {:keys [key children]}]
+  [graph {:keys [key children] :as ast}]
   (if children
-    (update graph ::nested-available-process misc/sconj key)
+    (assoc-in graph [::nested-available-process key] ast)
     graph))
 
 (defn compute-attribute-graph

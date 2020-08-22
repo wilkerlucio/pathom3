@@ -258,7 +258,13 @@
                 ::pcp/index-resolver->nodes    {}
                 ::pcp/unreachable-attrs        #{}
                 ::pcp/unreachable-resolvers    #{}
-                ::pcp/nested-available-process #{:a}}))))))
+                ::pcp/nested-available-process {:a {:children     [{:dispatch-key :bar
+                                                                    :key          :bar
+                                                                    :type         :prop}]
+                                                    :dispatch-key :a
+                                                    :key          :a
+                                                    :query        [:bar]
+                                                    :type         :join}}}))))))
 
 (deftest compute-run-graph-test
   (testing "simplest path"
