@@ -85,14 +85,14 @@
           ::geo/half-width 15
           ::geo/center-x   25}))
 
-  (testing "processing sequence of consistent elements"
-    (is (= (run-graph (pci/register [geo/full-registry])
-                      {:data {::geo/x 10}}
-                      [{:data [:left]}])
-           {:data {::geo/x    10
-                   ::geo/left 10
-                   :left      10}}))
+  (is (= (run-graph (pci/register [geo/full-registry])
+                    {:data {::geo/x 10}}
+                    [{:data [:left]}])
+         {:data {::geo/x    10
+                 ::geo/left 10
+                 :left      10}}))
 
+  (testing "processing sequence of consistent elements"
     (is (= (run-graph (pci/register [geo/full-registry
                                      (coords-resolver
                                        [{::geo/x 7 ::geo/y 9}
@@ -108,7 +108,15 @@
                                    {::geo/x 3 ::geo/y 4}]}
                         [{::coords [:left]}])
              {::coords [{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
-                        {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}]}))))
+                        {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}]})))
+
+    (testing "set data from join"
+      (is (= (run-graph (pci/register geo/full-registry)
+                        {::coords #{{::geo/x 7 ::geo/y 9}
+                                    {::geo/x 3 ::geo/y 4}}}
+                        [{::coords [:left]}])
+             {::coords #{{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
+                         {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))))
 
   (testing "processing sequence of inconsistent maps"
     (is (= (run-graph (pci/register geo/full-registry)

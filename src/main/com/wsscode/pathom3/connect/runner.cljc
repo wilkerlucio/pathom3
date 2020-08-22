@@ -55,7 +55,8 @@
         (map? v)
         (process-map-subquery env ast v)
 
-        (sequential? v)
+        (or (sequential? v)
+            (set? v))
         (process-sequence-subquery env ast v)
 
         :else
