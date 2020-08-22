@@ -7,7 +7,7 @@
     [com.wsscode.pathom3.specs :as p.spec]
     [edn-query-language.core :as eql]))
 
-(>def ::prop->ast (s/map-of ::p.spec/path-entry :edn-query-language.ast/node))
+(>def ::prop->ast (s/map-of any? :edn-query-language.ast/node))
 
 (defn query-root-properties
   "Returns a vector with the properties at the root of the query.
@@ -49,7 +49,7 @@
   [any? => (? ::p.spec/attribute)]
   (if (vector? key) (first key)))
 
-(>defn index-ast-props [{:keys [children]}]
+(>defn index-ast [{:keys [children]}]
   [:edn-query-language.ast/node => ::prop->ast]
   ; TODO consider merging issues when key is repeated
   (misc/index-by :key children))

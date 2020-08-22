@@ -6,7 +6,7 @@
     [com.wsscode.misc.core :as misc]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
-    [com.wsscode.pathom3.format.eql :as feql]
+    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as fsd]
     [com.wsscode.pathom3.specs :as pspec]
     [edn-query-language.core :as eql]))
@@ -145,13 +145,13 @@
   "Set of params that were conflicting during merge."
   ::pspec/attributes-set)
 
-(>def ::attribute-ast
+(>def ::index-ast
   "Index to find the AST for a given property."
-  (s/map-of ::pspec/path-entry :edn-query-language.ast/node))
+  ::pf.eql/prop->ast)
 
 (>def ::nested-available-process
   "Which attributes need further processing due to subquery requirements."
-  (s/map-of ::pspec/path-entry :edn-query-language.ast/node))
+  ::pspec/attributes-set)
 
 (def pc-sym ::pco/op-name)
 (def pc-dyn-sym ::pco/dynamic-name)
@@ -837,7 +837,7 @@
   for dynamic nodes."
   [{ast :edn-query-language.ast/node
     :as env}]
-  (let [ast            (feql/maybe-merge-union-ast ast)
+  (let [ast            (pf.eql/maybe-merge-union-ast ast)
         nested-graph   (compute-run-graph*
                          (base-graph)
                          (-> (base-env)
@@ -1201,9 +1201,9 @@
   "Add information about attribute that is present but requires further processing
   due to subquery, this is created so the runner can quickly know which attributes
   need to have the subquery processing done."
-  [graph {:keys [key children] :as ast}]
+  [graph {:keys [key children]}]
   (if children
-    (assoc-in graph [::nested-available-process key] ast)
+    (update graph ::nested-available-process misc/sconj key)
     graph))
 
 (defn compute-attribute-graph
@@ -1276,6 +1276,15 @@
        ::index-attrs           {:a 1 :b 2 :c 4}
        ::root                  3}
   "
+  ([env]
+   [(s/keys
+      :req [:edn-query-language.ast/node
+            ::pci/index-oir]
+      :opt [::available-data
+            ::pci/index-resolvers])
+    => ::graph]
+   (compute-run-graph {} env))
+
   ([graph env]
    [(? (s/keys))
     (s/keys
@@ -1284,19 +1293,11 @@
       :opt [::available-data
             ::pci/index-resolvers])
     => ::graph]
-   (-> (compute-run-graph* (merge (base-graph) graph) (merge (base-env) env))))
-
-  ([env]
-   [(s/keys
-      :req [:edn-query-language.ast/node
-            ::pci/index-oir]
-      :opt [::available-data
-            ::pci/index-resolvers])
-    => ::graph]
-   (compute-run-graph* (base-graph)
-     (merge
-       (base-env)
-       env))))
+   (compute-run-graph*
+     (merge (base-graph)
+            graph
+            {::index-ast (pf.eql/index-ast (:edn-query-language.ast/node env))})
+     (merge (base-env) env))))
 
 (>defn graph-provides
   "Get a set with all provided attributes from the graph."

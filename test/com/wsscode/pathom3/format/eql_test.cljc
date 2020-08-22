@@ -34,8 +34,8 @@
   (is (= (p.f.eql/ident-key [:foo "bar"])
          :foo)))
 
-(deftest index-ast-props-test
-  (is (= (p.f.eql/index-ast-props (eql/query->ast [:foo {:bar [:baz]}]))
+(deftest index-ast-test
+  (is (= (p.f.eql/index-ast (eql/query->ast [:foo {:bar [:baz]}]))
          {:foo {:type :prop, :dispatch-key :foo, :key :foo},
           :bar {:type :join,
                 :dispatch-key :bar,
