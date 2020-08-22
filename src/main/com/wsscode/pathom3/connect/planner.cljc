@@ -1305,3 +1305,10 @@
   [(s/keys :req [::index-attrs])
    => ::pspec/attributes-set]
   (-> index-attrs keys set))
+
+(>defn entry-ast
+  "Find AST node a given entry from the source AST."
+  [graph k]
+  [(s/keys :req [::index-ast]) any?
+   => (? :edn-query-language.ast/node)]
+  (get-in graph [::index-ast k]))
