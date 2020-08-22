@@ -8,65 +8,37 @@
 (>def ::entity-tree map?)
 (>def ::entity-tree* misc/atom?)
 
-(>def ::cache-tree* ::entity-tree*)
-(>def ::output-tree* ::entity-tree*)
-
 (>defn entity
-  "Returns the cache entity map at the current path."
-  [{::keys [cache-tree*] ::p.spec/keys [path]}]
-  [(s/keys :req [::cache-tree*] :opt [::p.spec/path])
-   => map?]
-  (get-in @cache-tree* path {}))
+  "Returns the entity tree value from env"
+  [{::keys [entity-tree*]}]
+  [(s/keys :opt [::entity-tree*]) => (? map?)]
+  (some-> entity-tree* deref))
 
-(>defn cache-tree
-  "Returns the cache tree value from env"
-  [{::keys [cache-tree*]}]
-  [(s/keys :opt [::cache-tree*]) => (? map?)]
-  (some-> cache-tree* deref))
-
-(>defn with-cache-tree
-  "Set the cache in the environment. Note in this function you must send the cache-tree
+(>defn with-entity
+  "Set the entity in the environment. Note in this function you must send the cache-tree
   as a map, not as an atom."
   [env cache-tree]
   [map? map? => map?]
-  (assoc env ::cache-tree* (atom cache-tree)))
-
-(defn- swap-entity*
-  ([cache-tree path f]
-   (if (seq path)
-     (update-in cache-tree path f)
-     (f cache-tree)))
-  ([cache-tree path f x]
-   (if (seq path)
-     (update-in cache-tree path f x)
-     (f cache-tree x)))
-  ([cache-tree path f x y]
-   (if (seq path)
-     (update-in cache-tree path f x y)
-     (f cache-tree x y)))
-  ([cache-tree path f x y & args]
-   (if (seq path)
-     (apply update-in cache-tree path f x y args)
-     (apply f cache-tree x y args))))
+  (assoc env ::entity-tree* (atom cache-tree)))
 
 (>defn swap-entity!
   "Swap cache-tree at the current path. Returns the updated whole cache-tree."
-  ([{::keys [cache-tree*] ::p.spec/keys [path]} f]
-   [(s/keys :req [::cache-tree*] :opt [::p.spec/path]) fn?
+  ([{::keys [entity-tree*]} f]
+   [(s/keys :req [::entity-tree*] :opt [::p.spec/path]) fn?
     => map?]
-   (swap! cache-tree* swap-entity* path f))
-  ([{::keys [cache-tree*] ::p.spec/keys [path]} f x]
-   [(s/keys :req [::cache-tree*] :opt [::p.spec/path]) fn? any?
+   (swap! entity-tree* f))
+  ([{::keys [entity-tree*]} f x]
+   [(s/keys :req [::entity-tree*] :opt [::p.spec/path]) fn? any?
     => map?]
-   (swap! cache-tree* swap-entity* path f x))
-  ([{::keys [cache-tree*] ::p.spec/keys [path]} f x y]
-   [(s/keys :req [::cache-tree*] :opt [::p.spec/path]) fn? any? any?
+   (swap! entity-tree* f x))
+  ([{::keys [entity-tree*]} f x y]
+   [(s/keys :req [::entity-tree*] :opt [::p.spec/path]) fn? any? any?
     => map?]
-   (swap! cache-tree* swap-entity* path f x y))
-  ([{::keys [cache-tree*] ::p.spec/keys [path]} f x y & args]
-   [(s/keys :req [::cache-tree*] :opt [::p.spec/path]) fn? any? any? (s/+ any?)
+   (swap! entity-tree* f x y))
+  ([{::keys [entity-tree*]} f x y & args]
+   [(s/keys :req [::entity-tree*] :opt [::p.spec/path]) fn? any? any? (s/+ any?)
     => map?]
-   (apply swap! cache-tree* swap-entity* path f x y args)))
+   (apply swap! entity-tree* f x y args)))
 
 (>defn merge-entity-data
   "Specialized merge versions that work on entity data."

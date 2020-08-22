@@ -30,7 +30,7 @@
 
 (defn compute-foreign-input [{::pcp/keys [node] :as env}]
   (let [input  (::pcp/input node)
-        entity (p.ent/cache-tree env)]
+        entity (p.ent/entity env)]
     (select-keys entity (keys input))))
 
 (defn compute-foreign-query

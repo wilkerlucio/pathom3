@@ -140,7 +140,7 @@
     (let [sm (-> (psm/smart-map (pci/register registry)
                    {:x 3 :y 5})
                  (psm/sm-load! [{::geo/turn-point [:right]}]))]
-      (is (= (-> sm psm/sm-env p.ent/cache-tree)
+      (is (= (-> sm psm/sm-env p.ent/entity)
              {:x               3
               :y               5
               ::geo/x          3

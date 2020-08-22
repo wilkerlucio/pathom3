@@ -15,7 +15,7 @@
   [env {::pcp/keys [requires]}]
   [map? (s/keys :req [::pcp/requires])
    => boolean?]
-  (let [entity (p.ent/cache-tree env)]
+  (let [entity (p.ent/entity env)]
     (every? #(contains? entity %) (keys requires))))
 
 (declare run-node! run-graph!)
@@ -31,7 +31,7 @@
         cache-tree* (atom v)]
     (run-graph! (assoc env
                   ::pcp/graph plan
-                  ::p.ent/cache-tree* cache-tree*))
+                  ::p.ent/entity-tree* cache-tree*))
     @cache-tree*))
 
 (defn process-sequence-subquery
@@ -103,7 +103,7 @@
   (let [input-keys (keys input)
         resolver   (pci/resolver env op-name)
         env        (assoc env ::pcp/node node)
-        entity     (p.ent/cache-tree env)]
+        entity     (p.ent/entity env)]
     (pco.prot/-resolve resolver env (select-keys entity input-keys))))
 
 (defn run-resolver-node!
@@ -146,7 +146,7 @@
 
   TODO: return diagnostic of the running process."
   [env node]
-  [(s/keys :req [::pcp/graph ::p.ent/cache-tree*]) ::pcp/node
+  [(s/keys :req [::pcp/graph ::p.ent/entity-tree*]) ::pcp/node
    => nil?]
   (case (pcp/node-kind node)
     ::pcp/node-resolver
@@ -162,10 +162,10 @@
 
 (>defn run-graph!
   "Run the root node of the graph. As resolvers run, the result will be add to the
-  cache tree."
+  entity cache tree."
   [{::pcp/keys [graph] :as env}]
-  [(s/keys :req [::pcp/graph ::p.ent/cache-tree*]) => nil?]
+  [(s/keys :req [::pcp/graph ::p.ent/entity-tree*]) => nil?]
   (if-let [nested (::pcp/nested-available-process graph)]
-    (merge-resolver-response! env (select-keys (p.ent/cache-tree env) nested)))
+    (merge-resolver-response! env (select-keys (p.ent/entity env) nested)))
   (if-let [root (pcp/get-root-node graph)]
     (run-node! env root)))

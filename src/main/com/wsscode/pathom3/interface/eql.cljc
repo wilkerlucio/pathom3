@@ -12,10 +12,10 @@
 (declare process-ast)
 
 (defn prepare-process-env [env ast]
-  (let [env' (merge (p.ent/with-cache-tree {} {})
+  (let [env' (merge (p.ent/with-entity {} {})
                     env)]
     (assoc env'
-      ::pcp/available-data (pfsd/data->shape-descriptor (p.ent/cache-tree env'))
+      ::pcp/available-data (pfsd/data->shape-descriptor (p.ent/entity env'))
       :edn-query-language.ast/node ast)))
 
 (>defn process-ast
@@ -24,7 +24,7 @@
   (let [env   (prepare-process-env env ast)
         graph (pcp/compute-run-graph env)]
     (pcr/run-graph! (assoc env ::pcp/graph graph))
-    (pf.eql/map-select-ast (p.ent/cache-tree env) ast)))
+    (pf.eql/map-select-ast (p.ent/entity env) ast)))
 
 (>defn process
   "Evaluate EQL expression.
@@ -42,8 +42,8 @@
         [:eql :request])
 
 
-  By default the process will start with a blank cache tree, you can override it by
-  changing sending a cache tree in the environment:
+  By default the process will start with a blank entity tree, you can override it by
+  changing sending a entity tree in the environment:
 
       (p.eql/process (-> (pci/register some-resolvers)
                          (p.ent/with-cache-tree {:eql \"initial data\"}))

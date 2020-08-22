@@ -11,39 +11,39 @@
     [edn-query-language.core :as eql]))
 
 (deftest all-requires-ready?-test
-  (is (= (pcr/all-requires-ready? (p.ent/with-cache-tree {} {:a 1})
+  (is (= (pcr/all-requires-ready? (p.ent/with-entity {} {:a 1})
            {::pcp/requires {}})
          true))
 
-  (is (= (pcr/all-requires-ready? (p.ent/with-cache-tree {} {:a 1})
+  (is (= (pcr/all-requires-ready? (p.ent/with-entity {} {:a 1})
            {::pcp/requires {:a {}}})
          true))
 
-  (is (= (pcr/all-requires-ready? (p.ent/with-cache-tree {} {:a 1})
+  (is (= (pcr/all-requires-ready? (p.ent/with-entity {} {:a 1})
            {::pcp/requires {:b {}}})
          false)))
 
 (deftest merge-resolver-response!-test
   (testing "does nothing when response is not a map"
     (is (= (-> (pcr/merge-resolver-response!
-                 (p.ent/with-cache-tree {} {:foo "bar"})
+                 (p.ent/with-entity {} {:foo "bar"})
                  nil)
-               ::p.ent/cache-tree* deref)
+               ::p.ent/entity-tree* deref)
            {:foo "bar"})))
 
   (testing "adds new data to cache tree"
     (is (= (-> (pcr/merge-resolver-response!
-                 (p.ent/with-cache-tree {::pcp/graph {::pcp/nodes     {}
-                                                      ::pcp/index-ast {}}} {:foo "bar"})
+                 (p.ent/with-entity {::pcp/graph {::pcp/nodes         {}
+                                                  ::pcp/index-ast {}}} {:foo "bar"})
                  {:buz "baz"})
-               ::p.ent/cache-tree* deref)
+               ::p.ent/entity-tree* deref)
            {:foo "bar"
             :buz "baz"}))))
 
 (deftest run-node!-test
   (is (= (let [tree  {::geo/left 10 ::geo/width 30}
-               env   (p.ent/with-cache-tree (pci/register {} geo/registry)
-                                            tree)
+               env   (p.ent/with-entity (pci/register {} geo/registry)
+                                        tree)
                graph (pcp/compute-run-graph
                        (-> env
                            (assoc
@@ -52,7 +52,7 @@
                                                                            ::geo/center-x]))))
                env   (assoc env ::pcp/graph graph)]
            (pcr/run-node! env (pcp/get-root-node graph))
-           @(::p.ent/cache-tree* env))
+           @(::p.ent/entity-tree* env))
          {::geo/left       10
           ::geo/width      30
           ::geo/right      40
@@ -61,7 +61,7 @@
 
 (defn run-graph [env tree query]
   (let [env   (-> env
-                  (p.ent/with-cache-tree tree))
+                  (p.ent/with-entity tree))
         ast   (eql/query->ast query)
         graph (pcp/compute-run-graph
                 (-> env
@@ -69,7 +69,7 @@
                       ::pcp/available-data (pfsd/data->shape-descriptor tree)
                       :edn-query-language.ast/node ast)))]
     (pcr/run-graph! (assoc env ::pcp/graph graph))
-    @(::p.ent/cache-tree* env)))
+    @(::p.ent/entity-tree* env)))
 
 (defn coords-resolver [c]
   (pco/resolver 'coords-resolver {::pco/output [::coords]}

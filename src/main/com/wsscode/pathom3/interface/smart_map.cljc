@@ -45,8 +45,8 @@
   Repeated lookups will use the cache-tree and should be as fast as reading from a
   regular Clojure map."
   ([env k] (sm-get env k nil))
-  ([{::p.ent/keys [cache-tree*] :as env} k default-value]
-   (let [cache-tree @cache-tree*]
+  ([{::p.ent/keys [entity-tree*] :as env} k default-value]
+   (let [cache-tree @entity-tree*]
      (if-let [x (find cache-tree k)]
        (wrap-smart-map env (val x))
        (let [ast   {:type     :root
@@ -56,7 +56,7 @@
                        ::pcp/available-data (pfsd/data->shape-descriptor cache-tree)
                        :edn-query-language.ast/node ast))]
          (pcr/run-graph! (assoc env ::pcp/graph graph))
-         (wrap-smart-map env (get @cache-tree* k default-value)))))))
+         (wrap-smart-map env (get @entity-tree* k default-value)))))))
 
 (defn sm-assoc
   "Creates a new smart map by adding k v to the initial context.
@@ -89,23 +89,23 @@
 (defn sm-keys
   "Retrieve the keys in the smart map cache-tree."
   [env]
-  (keys (p.ent/cache-tree env)))
+  (keys (p.ent/entity env)))
 
 (defn sm-contains?
   "Check if a property is present in the cache-tree."
   [env k]
-  (contains? (p.ent/cache-tree env) k))
+  (contains? (p.ent/entity env) k))
 
 (defn sm-meta
   "Returns meta data of smart map, which is the same as the meta data from context
    map used to create the smart map."
   [env]
-  (meta (p.ent/cache-tree env)))
+  (meta (p.ent/entity env)))
 
 (defn sm-with-meta
   "Return a new smart-map with the given meta."
   [env meta]
-  (smart-map env (with-meta (p.ent/cache-tree env) meta)))
+  (smart-map env (with-meta (p.ent/entity env) meta)))
 
 (defn sm-find
   "Check if attribute can be found in the smart map."
@@ -128,19 +128,19 @@
    :cljs
    (deftype SmartMap [env]
      Object
-     (toString [_] (pr-str* (p.ent/cache-tree env)))
-     (equiv [_ other] (-equiv (p.ent/cache-tree env) other))
+     (toString [_] (pr-str* (p.ent/entity env)))
+     (equiv [_ other] (-equiv (p.ent/entity env) other))
 
      ;; EXPERIMENTAL: subject to change
-     (keys [_] (es6-iterator (keys (p.ent/cache-tree env))))
-     (entries [_] (es6-entries-iterator (seq (p.ent/cache-tree env))))
-     (values [_] (es6-iterator (vals (p.ent/cache-tree env))))
+     (keys [_] (es6-iterator (keys (p.ent/entity env))))
+     (entries [_] (es6-entries-iterator (seq (p.ent/entity env))))
+     (values [_] (es6-iterator (vals (p.ent/entity env))))
      (has [_ k] (sm-contains? env k))
-     (get [_ k not-found] (-lookup (p.ent/cache-tree env) k not-found))
-     (forEach [_ f] (doseq [[k v] (p.ent/cache-tree env)] (f v k)))
+     (get [_ k not-found] (-lookup (p.ent/entity env) k not-found))
+     (forEach [_ f] (doseq [[k v] (p.ent/entity env)] (f v k)))
 
      ICloneable
-     (-clone [_] (smart-map env (p.ent/cache-tree env)))
+     (-clone [_] (smart-map env (p.ent/entity env)))
 
      IWithMeta
      (-with-meta [_ new-meta] (sm-with-meta env new-meta))
@@ -166,16 +166,16 @@
      (-empty [_] (-with-meta (smart-map env {}) meta))
 
      IEquiv
-     (-equiv [_ other] (-equiv (p.ent/cache-tree env) other))
+     (-equiv [_ other] (-equiv (p.ent/entity env) other))
 
      IHash
-     (-hash [_] (hash (p.ent/cache-tree env)))
+     (-hash [_] (hash (p.ent/entity env)))
 
      ISeqable
-     (-seq [_] (-seq (p.ent/cache-tree env)))
+     (-seq [_] (-seq (p.ent/entity env)))
 
      ICounted
-     (-count [_] (count (p.ent/cache-tree env)))
+     (-count [_] (count (p.ent/entity env)))
 
      ILookup
      (-lookup [_ k] (sm-get env k nil))
@@ -193,7 +193,7 @@
 
      IKVReduce
      (-kv-reduce [_ f init]
-                 (reduce-kv (fn [cur k v] (f cur k (wrap-smart-map env v))) init (p.ent/cache-tree env)))
+                 (reduce-kv (fn [cur k v] (f cur k (wrap-smart-map env v))) init (p.ent/entity env)))
 
      IReduce
      (-reduce [coll f] (iter-reduce coll f))
@@ -219,7 +219,7 @@
   You should use this only in cases where the optimization is required, try starting
   with the immutable versions first, given this has side effects and so more error phone."
   [^SmartMap smart-map k v]
-  (swap! (-> smart-map sm-env ::p.ent/cache-tree*) assoc k v)
+  (swap! (-> smart-map sm-env ::p.ent/entity-tree*) assoc k v)
   smart-map)
 
 (defn sm-dissoc!
@@ -229,7 +229,7 @@
   You should use this only in cases where the optimization is required, try starting
   with the immutable versions first, given this has side effects and so more error phone."
   [^SmartMap smart-map k]
-  (swap! (-> smart-map sm-env ::p.ent/cache-tree*) dissoc k)
+  (swap! (-> smart-map sm-env ::p.ent/entity-tree*) dissoc k)
   smart-map)
 
 (defn sm-load-ast!
@@ -237,7 +237,7 @@
   (let [env   (sm-env smart-map)
         graph (pcp/compute-run-graph
                 (assoc env
-                  ::pcp/available-data (pfsd/data->shape-descriptor (p.ent/cache-tree env))
+                  ::pcp/available-data (pfsd/data->shape-descriptor (p.ent/entity env))
                   :edn-query-language.ast/node ast))]
     (pcr/run-graph!
       (assoc env ::pcp/graph graph))
@@ -266,5 +266,5 @@
    map? => ::smart-map]
   (->SmartMap
     (-> env
-        (p.ent/with-cache-tree context)
+        (p.ent/with-entity context)
         (assoc ::source-context context))))
