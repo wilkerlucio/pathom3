@@ -10,7 +10,9 @@
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [edn-query-language.core :as eql]
     #?(:clj [potemkin.collections :refer [def-map-type]])))
 
 (declare smart-map)
@@ -23,7 +25,9 @@
     (smart-map env x)
 
     (sequential? x)
-    (map #(wrap-smart-map env %) x)
+    (if (vector? x)
+      (mapv #(wrap-smart-map env %) x)
+      (map #(wrap-smart-map env %) x))
 
     (set? x)
     (into #{} (map #(wrap-smart-map env %)) x)
@@ -107,7 +111,8 @@
 (defn sm-find
   "Check if attribute can be found in the smart map."
   [env k]
-  (if (pci/attribute-available? env k)
+  (if (or (sm-contains? env k)
+          (pci/attribute-available? env k))
     (misc/make-map-entry k (sm-get env k))))
 
 ; region type definition
@@ -227,6 +232,24 @@
   [^SmartMap smart-map k]
   (swap! (-> smart-map sm-env ::p.ent/cache-tree*) dissoc k)
   smart-map)
+
+(defn sm-load-ast!
+  [smart-map ast]
+  (let [env   (sm-env smart-map)
+        graph (pcp/compute-run-graph
+                (assoc env
+                  ::pcp/available-data (pfsd/data->shape-descriptor (p.ent/cache-tree env))
+                  :edn-query-language.ast/node ast))]
+    (pcr/run-graph!
+      (assoc env
+        ::pcp/graph graph
+        ::pcr/merge-attribute pcr/merge-attribute-merge-subquery
+        ::pf.eql/prop->ast (pf.eql/index-ast-props ast)))
+    smart-map))
+
+(defn sm-load!
+  [smart-map eql]
+  (sm-load-ast! smart-map (eql/query->ast eql)))
 
 (>defn ^SmartMap smart-map
   "Create a new smart map.

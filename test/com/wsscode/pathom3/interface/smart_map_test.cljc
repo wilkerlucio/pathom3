@@ -3,6 +3,7 @@
     [clojure.test :refer [deftest is are run-tests testing]]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
+    [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.interface.smart-map :as psm]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]))
 
@@ -22,15 +23,15 @@
 
 (deftest smart-map-test
   (testing "reading"
-    (testing "get"
-      (let [sm (psm/smart-map (pci/register geo/registry)
-                 {::geo/left 3 ::geo/width 5})]
-        (is (= (get sm ::geo/right) 8))))
-
     (testing "keyword call read"
       (let [sm (psm/smart-map (pci/register geo/registry)
                  {::geo/left 3 ::geo/width 5})]
         (is (= (::geo/right sm) 8))))
+
+    (testing "get"
+      (let [sm (psm/smart-map (pci/register geo/registry)
+                 {::geo/left 3 ::geo/width 5})]
+        (is (= (get sm ::geo/right) 8))))
 
     (testing "calling smart map as a fn"
       (let [sm (psm/smart-map (pci/register geo/registry)
@@ -65,6 +66,7 @@
     (testing "vector"
       (let [sm (psm/smart-map (pci/register registry)
                  {})]
+        (is (vector? (->> sm ::points-vector)))
         (is (= (->> sm ::points-vector (map :left))
                [1 3 -10]))))
 
@@ -107,6 +109,14 @@
   (testing "find"
     (let [sm (-> (pci/register registry)
                  (psm/smart-map {:x 3 :width 5}))]
+      (is (= (find sm :x) [:x 3])))
+
+    (let [sm (-> (pci/register registry)
+                 (psm/smart-map {:not-in-index 42}))]
+      (is (= (find sm :not-in-index) [:not-in-index 42])))
+
+    (let [sm (-> (pci/register registry)
+                 (psm/smart-map {:x 3 :width 5}))]
       (is (= (find sm :right) [:right 8]))
       (is (= (find sm ::noop) nil)))))
 
@@ -124,3 +134,44 @@
                {:x 3 :width 5})]
       (is (= (:right sm) 8))
       (is (= (:right (psm/sm-dissoc! sm :width)) 8)))))
+
+(deftest sm-load-test
+  (testing "loads data from a EQL expression into the smart map"
+    (let [sm (-> (psm/smart-map (pci/register registry)
+                   {:x 3 :y 5})
+                 (psm/sm-load! [{::geo/turn-point [:right]}]))]
+      (is (= (-> sm psm/sm-env p.ent/cache-tree)
+             {:x               3
+              :y               5
+              ::geo/x          3
+              ::geo/left       3
+              ::geo/y          5
+              ::geo/top        5
+              ::geo/turn-point {::geo/right  3
+                                ::geo/bottom 5
+                                :right       3}})))))
+
+(comment
+  (def data (take 50))
+  (time
+    (dotimes [_ 10000]
+      (reduce-kv
+        assoc
+        {}
+        {:a 1 :b 2 :c 3 :d 4})))
+
+  (time
+    (dotimes [_ 10000]
+      (persistent!
+        (reduce-kv
+          assoc!
+          (transient {})
+          {:a 1 :b 2 :c 3 :d 4}))))
+
+  (let [sm (-> (psm/smart-map (pci/register registry)
+                 {:x 3 :y 5})
+               (psm/sm-load! [{::geo/turn-point [:right]}]))]
+    (-> sm psm/sm-env p.ent/cache-tree)))
+
+(comment
+  )
