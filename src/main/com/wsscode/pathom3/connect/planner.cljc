@@ -4,11 +4,11 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>def >defn >fdef => | <- ?]]
     [com.wsscode.misc.core :as misc]
+    [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as fsd]
-    [com.wsscode.pathom3.specs :as pspec]
     [edn-query-language.core :as eql]))
 
 (>def ::node-id
@@ -35,7 +35,7 @@
 
 (>def ::attr-deps-trail
   "A set containing attributes already in consideration when computing missing dependencies."
-  ::pspec/attributes-set)
+  ::p.attr/attributes-set)
 
 (>def ::branch-type
   "The branch type for a branch node, can be AND or OR"
@@ -59,7 +59,7 @@
 
 (>def ::index-attrs
   "A index pointing from attribute to the node that provides its value."
-  (s/map-of ::pspec/attribute ::node-id))
+  (s/map-of ::p.attr/attribute ::node-id))
 
 (>def ::index-resolver->nodes
   "An index from resolver symbol to a set of execution nodes where its used."
@@ -119,7 +119,7 @@
 
 (>def ::source-for-attrs
   "Set of attributes that are provided by this node."
-  ::pspec/attributes-set)
+  ::p.attr/attributes-set)
 
 (>def ::source-sym
   "On dynamic resolvers, this points to the original source resolver in the foreign parser."
@@ -127,7 +127,7 @@
 
 (>def ::unreachable-attrs
   "A set containing the attributes that can't be reached considering current graph and available data."
-  ::pspec/attributes-set)
+  ::p.attr/attributes-set)
 
 (>def ::unreachable-resolvers
   "A set containing the resolvers that can't be reached considering current graph and available data."
@@ -143,7 +143,7 @@
 
 (>def ::conflict-params
   "Set of params that were conflicting during merge."
-  ::pspec/attributes-set)
+  ::p.attr/attributes-set)
 
 (>def ::index-ast
   "Index to find the AST for a given property."
@@ -151,13 +151,13 @@
 
 (>def ::nested-available-process
   "Which attributes need further processing due to subquery requirements."
-  ::pspec/attributes-set)
+  ::p.attr/attributes-set)
 
 (def pc-sym ::pco/op-name)
 (def pc-dyn-sym ::pco/dynamic-name)
 (def pc-output ::pco/output)
 (def pc-provides ::pco/provides)
-(def pc-attr ::pspec/attribute)
+(def pc-attr ::p.attr/attribute)
 (def pc-input ::pco/input)
 
 (declare compute-run-graph* compute-root-and collapse-nodes-chain node-ancestors
@@ -248,7 +248,7 @@
 (>defn get-attribute-node
   "Find the node for attribute in attribute index."
   [graph attribute]
-  [::graph ::pspec/attribute => (? ::node-id)]
+  [::graph ::p.attr/attribute => (? ::node-id)]
   (get-in graph [::index-attrs attribute]))
 
 (>defn branch-node?
@@ -776,7 +776,7 @@
 
 (defn compute-root-or
   [{::keys [root] :as graph}
-   {::pspec/keys [attribute] :as env}
+   {::p.attr/keys [attribute] :as env}
    {::keys [node-id] :as node}]
   (if (= root node-id)
     graph
@@ -801,9 +801,9 @@
 
 (defn inject-index-nested-provides
   [indexes
-   {::pspec/keys [attribute]
-    ::pco/keys   [op-name]
-    :as          env}]
+   {::p.attr/keys [attribute]
+    ::pco/keys    [op-name]
+    :as           env}]
   (let [sym-provides    (or (resolver-provides env) {attribute {}})
         nested-provides (get sym-provides attribute)]
     (-> indexes
@@ -869,11 +869,11 @@
 (defn create-resolver-node
   "Create a new node representative to run a given resolver."
   [graph
-   {::keys       [run-next input source-sym]
-    ::pspec/keys [attribute]
-    ::pco/keys   [op-name]
-    ast          :edn-query-language.ast/node
-    :as          env}]
+   {::keys        [run-next input source-sym]
+    ::p.attr/keys [attribute]
+    ::pco/keys    [op-name]
+    ast           :edn-query-language.ast/node
+    :as           env}]
   (let [nested     (if (and (seq (:children ast))
                             (dynamic-resolver? env op-name))
                      (compute-nested-node-details env))
@@ -992,13 +992,13 @@
 
 (>defn resolver-node-requires-attribute?
   [{::keys [requires sym]} attribute]
-  [::node ::pspec/attribute => boolean?]
+  [::node ::p.attr/attribute => boolean?]
   (boolean (and sym (contains? requires attribute))))
 
 (>defn find-attribute-resolver-in-successors
   "Find the nodes that get the data required for the require in the OR node."
   [graph node-id attribute]
-  [::graph ::node-id ::pspec/attribute => ::node-id]
+  [::graph ::node-id ::p.attr/attribute => ::node-id]
   (->> (node-successors graph node-id)
        (filter #(resolver-node-requires-attribute? (get-node graph %) attribute))
        first))
@@ -1025,7 +1025,7 @@
   "Find the first common AND node ancestors from missing list, missing is a list
   of attributes"
   [graph missing]
-  [::graph ::pspec/attributes-set
+  [::graph ::p.attr/attributes-set
    => ::node-id]
   (if (= 1 (count missing))
     (get-attribute-node graph (first missing))
@@ -1113,7 +1113,7 @@
   "Walks the graph run next chain until it finds the node that's providing the
   attribute."
   [graph
-   {::pspec/keys [attribute] :as env}
+   {::p.attr/keys [attribute] :as env}
    root]
   (loop [node-id root]
     (let [{::keys [run-next requires run-and]} (get-node graph node-id)]
@@ -1131,7 +1131,7 @@
         (recur run-next)))))
 
 (defn set-node-source-for-attrs
-  [graph {::pspec/keys [attribute] :as env}]
+  [graph {::p.attr/keys [attribute] :as env}]
   (if-let [node-id (node-for-attribute-in-chain graph env (::root graph))]
     (-> graph
         (update-in [::nodes node-id ::source-for-attrs] misc/sconj attribute)
@@ -1172,9 +1172,9 @@
 
 (defn compute-attribute-graph*
   [{::keys [root] :as graph}
-   {::pci/keys   [index-oir]
-    ::pspec/keys [attribute]
-    :as          env}]
+   {::pci/keys    [index-oir]
+    ::p.attr/keys [attribute]
+    :as           env}]
   (cond
     (get-attribute-node graph attribute)
     (let [node-id (get-attribute-node graph attribute)]
@@ -1303,7 +1303,7 @@
   "Get a set with all provided attributes from the graph."
   [{::keys [index-attrs]}]
   [(s/keys :req [::index-attrs])
-   => ::pspec/attributes-set]
+   => ::p.attr/attributes-set]
   (-> index-attrs keys set))
 
 (>defn entry-ast

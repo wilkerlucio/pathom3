@@ -4,7 +4,7 @@
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.entity-tree :as p.ent]
-    [com.wsscode.pathom3.specs :as p.spec]
+    [com.wsscode.pathom3.path :as p.path]
     [edn-query-language.core :as eql]))
 
 (deftest remove-internal-keys-test
@@ -49,7 +49,7 @@
       (is (= (pcf/compute-foreign-query {::pcp/node           {::pcp/foreign-ast (eql/query->ast [:a])
                                                                ::pcp/input       {:x {}
                                                                                   :z {}}}
-                                         ::p.spec/path        [[:z "bar"] :a]
+                                         ::p.path/path        [[:z "bar"] :a]
                                          ::p.ent/entity-tree* (atom {:x "foo"
                                                                      :z "bar"})})
              {::pcf/base-query [:a]
@@ -57,17 +57,17 @@
               ::pcf/join-node  [:z "bar"]})))))
 
 (deftest internalize-foreign-errors-test
-  (is (= (pcf/internalize-foreign-errors {::p.spec/path [:a]}
+  (is (= (pcf/internalize-foreign-errors {::p.path/path [:a]}
                                          {[:a] "error"})
          {[:a] "error"}))
 
-  (is (= (pcf/internalize-foreign-errors {::p.spec/path [:x :y :a]}
+  (is (= (pcf/internalize-foreign-errors {::p.path/path [:x :y :a]}
                                          {[:a]    "error"
                                           [:b :c] "error 2"})
          {[:x :y :a]    "error"
           [:x :y :b :c] "error 2"}))
 
-  (is (= (pcf/internalize-foreign-errors {::p.spec/path   [:x :y :a]
+  (is (= (pcf/internalize-foreign-errors {::p.path/path   [:x :y :a]
                                           ::pcf/join-node [:z "foo"]}
                                          {[[:z "foo"] :a]    "error"
                                           [[:z "foo"] :b :c] "error 2"})

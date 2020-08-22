@@ -4,7 +4,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.core :as misc]
-    [com.wsscode.pathom3.specs :as p.spec]
+    [com.wsscode.pathom3.attribute :as p.attr]
     [edn-query-language.core :as eql]))
 
 (declare map-select-ast)
@@ -48,7 +48,7 @@
 (>defn ident-key
   "When key is an ident, return the first part of it. Otherwise returns nil."
   [key]
-  [any? => (? ::p.spec/attribute)]
+  [any? => (? ::p.attr/attribute)]
   (if (vector? key) (first key)))
 
 (>defn index-ast [{:keys [children]}]

@@ -4,11 +4,11 @@
     [clojure.test :refer [deftest is are run-tests testing]]
     [clojure.walk :as walk]
     [com.wsscode.misc.core :as misc]
+    [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
-    [com.wsscode.pathom3.specs :as p.spec]
     [edn-query-language.core :as eql]
     #?(:clj [tangle.core :as tangle])))
 
@@ -3137,7 +3137,7 @@
                               ::pco/op-name  'a2
                               ::pcp/requires {:a {}}}}}
              (assoc (base-graph-env) ::pcp/id-counter (atom 2)
-               ::p.spec/attribute :a)
+               ::p.attr/attribute :a)
              {::pcp/node-id 2})
            {::pcp/root  3
             ::pcp/nodes {1 {::pcp/node-id     1
@@ -3164,7 +3164,7 @@
                                 ::pcp/requires {:a {}}
                                 ::pcp/run-next 1}}}
                (assoc (base-graph-env) ::pcp/id-counter (atom 3)
-                 ::p.spec/attribute :a
+                 ::p.attr/attribute :a
                  ::pci/index-resolvers {'a  {::pco/provides {:a {}}}
                                         'a2 {::pco/provides {:a {}}}})
                {::pcp/node-id 3})
@@ -3194,7 +3194,7 @@
                                   ::pcp/requires {:a {}}
                                   ::pcp/run-next 10}}}
                  (assoc (base-graph-env) ::pcp/id-counter (atom 3)
-                   ::p.spec/attribute :a)
+                   ::p.attr/attribute :a)
                  {::pcp/node-id 3})
                {::pcp/root  4
                 ::pcp/nodes {2 {::pcp/node-id     2

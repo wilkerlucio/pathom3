@@ -8,7 +8,7 @@
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
-    [com.wsscode.pathom3.specs :as p.spec]))
+    [com.wsscode.pathom3.path :as p.path]))
 
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
@@ -47,7 +47,7 @@
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
     :as        env} k v]
-  [(s/keys :opt [:edn-query-language.ast/node]) ::p.spec/path-entry any?
+  [(s/keys :opt [:edn-query-language.ast/node]) ::p.path/path-entry any?
    => any?]
   (let [ast (pcp/entry-ast graph k)]
     (if (:children ast)

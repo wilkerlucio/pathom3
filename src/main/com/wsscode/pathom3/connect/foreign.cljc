@@ -11,8 +11,8 @@
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.error :as p.err]
     [com.wsscode.pathom3.format.eql :as pf.eql]
+    [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.placeholder :as p.ph]
-    [com.wsscode.pathom3.specs :as p.spec]
     [edn-query-language.core :as eql]))
 
 (def index-query
@@ -52,7 +52,7 @@
        ::query      base-query})))
 
 (defn internalize-foreign-errors
-  [{::p.spec/keys [path]
+  [{::p.path/keys [path]
     ::keys        [join-node]} errors]
   (misc/map-keys #(into (pop path) (cond-> % join-node next)) errors))
 

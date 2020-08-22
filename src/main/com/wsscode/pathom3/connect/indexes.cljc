@@ -3,9 +3,9 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.core :as misc]
+    [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.operation :as pco]
-    [com.wsscode.pathom3.format.eql :as pfse]
-    [com.wsscode.pathom3.specs :as p.spec]))
+    [com.wsscode.pathom3.format.eql :as pfse]))
 
 (>def ::indexes map?)
 (>def ::index-oir map?)
@@ -98,6 +98,6 @@
 (>defn attribute-available?
   "Check if some attribute is known in the index, this checks uses the index-oir."
   [{::keys [index-oir]} k]
-  [(s/keys :req [::index-oir]) ::p.spec/attribute
+  [(s/keys :req [::index-oir]) ::p.attr/attribute
    => boolean?]
   (contains? index-oir k))
