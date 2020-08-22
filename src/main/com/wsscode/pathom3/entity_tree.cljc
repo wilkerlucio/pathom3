@@ -2,8 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    [com.wsscode.misc.core :as misc]
-    [com.wsscode.pathom3.specs :as p.spec]))
+    [com.wsscode.misc.core :as misc]))
 
 (>def ::entity-tree map?)
 (>def ::entity-tree* misc/atom?)
@@ -24,19 +23,19 @@
 (>defn swap-entity!
   "Swap cache-tree at the current path. Returns the updated whole cache-tree."
   ([{::keys [entity-tree*]} f]
-   [(s/keys :req [::entity-tree*] :opt [::p.spec/path]) fn?
+   [(s/keys :req [::entity-tree*]) fn?
     => map?]
    (swap! entity-tree* f))
   ([{::keys [entity-tree*]} f x]
-   [(s/keys :req [::entity-tree*] :opt [::p.spec/path]) fn? any?
+   [(s/keys :req [::entity-tree*]) fn? any?
     => map?]
    (swap! entity-tree* f x))
   ([{::keys [entity-tree*]} f x y]
-   [(s/keys :req [::entity-tree*] :opt [::p.spec/path]) fn? any? any?
+   [(s/keys :req [::entity-tree*]) fn? any? any?
     => map?]
    (swap! entity-tree* f x y))
   ([{::keys [entity-tree*]} f x y & args]
-   [(s/keys :req [::entity-tree*] :opt [::p.spec/path]) fn? any? any? (s/+ any?)
+   [(s/keys :req [::entity-tree*]) fn? any? any? (s/+ any?)
     => map?]
    (apply swap! entity-tree* f x y args)))
 
