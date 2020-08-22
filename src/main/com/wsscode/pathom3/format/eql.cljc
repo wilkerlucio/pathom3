@@ -98,7 +98,7 @@
 (>defn data->shape
   "Helper function to transform a data into an output shape."
   [data]
-  [any? => (? map?)]
+  [any? => (? ::eql/query)]
   (if (map? data)
     (->> (reduce-kv
            (fn [out k v]

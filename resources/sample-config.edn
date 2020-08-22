@@ -1,0 +1,2 @@
+{:my.system/port         1234
+ :my.system/initial-path "/tmp/system"}
