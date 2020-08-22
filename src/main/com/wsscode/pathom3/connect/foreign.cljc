@@ -5,43 +5,43 @@
         :cljs com.wsscode.async.async-cljs)
      :refer [let-chan go-promise <? <?maybe <!maybe]]
     [com.wsscode.misc.core :as misc]
-    [com.wsscode.pathom3.connect.indexes :as p.c.i]
-    [com.wsscode.pathom3.connect.operation :as p.c.o]
-    [com.wsscode.pathom3.connect.planner :as p.c.p]
+    [com.wsscode.pathom3.connect.indexes :as pci]
+    [com.wsscode.pathom3.connect.operation :as pco]
+    [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.error :as p.err]
-    [com.wsscode.pathom3.format.eql :as p.f.eql]
+    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.placeholder :as p.ph]
     [com.wsscode.pathom3.specs :as p.spec]
     [edn-query-language.core :as eql]))
 
 (def index-query
-  [{::p.c.i/indexes
-    [::p.c.i/index-attributes
-     ::p.c.i/index-oir
-     ::p.c.i/index-io
-     ::p.c.i/idents
-     ::p.c.i/autocomplete-ignore
-     ::p.c.i/index-resolvers
-     ::p.c.i/index-mutations]}])
+  [{::pci/indexes
+    [::pci/index-attributes
+     ::pci/index-oir
+     ::pci/index-io
+     ::pci/idents
+     ::pci/autocomplete-ignore
+     ::pci/index-resolvers
+     ::pci/index-mutations]}])
 
 (defn remove-internal-keys [m]
   (into {} (remove (fn [[k _]] (str/starts-with? (or (namespace k) "") "com.wsscode.pathom"))) m))
 
-(defn compute-foreign-input [{::p.c.p/keys [node] :as env}]
-  (let [input  (::p.c.p/input node)
-        entity (p.ent/entity env)]
+(defn compute-foreign-input [{::pcp/keys [node] :as env}]
+  (let [input  (::pcp/input node)
+        entity (p.ent/cache-tree env)]
     (select-keys entity (keys input))))
 
 (defn compute-foreign-query
-  [{::p.c.p/keys [node] :as env}]
+  [{::pcp/keys [node] :as env}]
   (let [inputs     (compute-foreign-input env)
-        base-query (eql/ast->query (::p.c.p/foreign-ast node))]
+        base-query (eql/ast->query (::pcp/foreign-ast node))]
     (if (seq inputs)
       (let [ident-join-key (if (= 1 (count inputs))
                              (first (keys inputs))
                              (-> (p.ph/find-closest-non-placeholder-parent-join-key env)
-                                 p.f.eql/ident-key))
+                                 pf.eql/ident-key))
             join-node      (if (contains? inputs ident-join-key)
                              [ident-join-key (get inputs ident-join-key)]
                              [::foreign-call nil])]
@@ -66,18 +66,18 @@
 
 (defn internalize-parser-index*
   ([indexes] (internalize-parser-index* indexes nil))
-  ([{::p.c.i/keys [index-source-id] :as indexes} parser]
+  ([{::pci/keys [index-source-id] :as indexes} parser]
    (let [index-source-id (or index-source-id (gensym "dynamic-parser-"))]
      (-> indexes
-         (update ::p.c.i/index-resolvers
+         (update ::pci/index-resolvers
            (fn [resolvers]
              (into {}
-                   (map (fn [[r v]] [r (assoc v ::p.c.o/dynamic-name index-source-id)]))
+                   (map (fn [[r v]] [r (assoc v ::pco/dynamic-name index-source-id)]))
                    resolvers)))
-         (assoc-in [::p.c.i/index-resolvers index-source-id]
-           (p.c.o/resolver index-source-id
-                           {::p.c.o/cache?            false
-                            ::p.c.o/dynamic-resolver? true}
-                           (fn [env _] (call-foreign-parser env parser))))
-         (dissoc ::p.c.i/index-source-id)))))
+         (assoc-in [::pci/index-resolvers index-source-id]
+           (pco/resolver index-source-id
+                         {::pco/cache?            false
+                          ::pco/dynamic-resolver? true}
+                         (fn [env _] (call-foreign-parser env parser))))
+         (dissoc ::pci/index-source-id)))))
 

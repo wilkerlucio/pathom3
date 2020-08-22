@@ -15,7 +15,7 @@
   [env {::pcp/keys [requires]}]
   [map? (s/keys :req [::pcp/requires])
    => boolean?]
-  (let [entity (p.ent/entity env)]
+  (let [entity (p.ent/cache-tree env)]
     (every? #(contains? entity %) (keys requires))))
 
 (declare run-node! run-graph!)
@@ -103,7 +103,7 @@
   (let [input-keys (keys input)
         resolver   (pci/resolver env op-name)
         env        (assoc env ::pcp/node node)
-        entity     (p.ent/entity env)]
+        entity     (p.ent/cache-tree env)]
     (pco.prot/-resolve resolver env (select-keys entity input-keys))))
 
 (defn run-resolver-node!
@@ -166,6 +166,6 @@
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/cache-tree*]) => nil?]
   (if-let [nested (::pcp/nested-available-process graph)]
-    (merge-resolver-response! env (select-keys (p.ent/entity env) nested)))
+    (merge-resolver-response! env (select-keys (p.ent/cache-tree env) nested)))
   (if-let [root (pcp/get-root-node graph)]
     (run-node! env root)))
