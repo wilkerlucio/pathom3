@@ -12,7 +12,7 @@
 
 (defn alias-resolver
   "Create a resolver that will convert property `from` to a property `to` with
-  the same value. This only creates the alias in one direction"
+  the same value. This only creates the alias in one direction."
   [from to]
   (pco/resolver (attr-alias-name from to)
     {::pco/input  [from]
@@ -48,6 +48,9 @@
 
         (let [m (psm/smart-map (pci/register (pbir/env-resolver \"env\")) {})]
           (:env/PATH m))
+
+     Note that the exposed keys are the ones available when you call (system-env-resolver),
+     if new keys are add you need to generate the resolver again to make it available.
 
      Clojure only."
      [prefix]
