@@ -13,6 +13,7 @@
 
 (defn prepare-process-env [env ast]
   (let [env' (merge (p.ent/with-entity {} {})
+                    ; merge is necessary to allow user to override the initial entity
                     env)]
     (assoc env'
       ::pcp/available-data (pfsd/data->shape-descriptor (p.ent/entity env'))
