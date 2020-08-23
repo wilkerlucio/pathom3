@@ -1,5 +1,6 @@
 (ns com.wsscode.pathom3.connect.built-in.resolvers
   (:require
+    #?(:clj [com.wsscode.misc.core :as misc])
     [com.wsscode.pathom3.connect.operation :as pco]
     #?(:clj [com.wsscode.pathom3.format.eql :as pf.eql]))
   #?(:cljs
@@ -37,3 +38,24 @@
        `(pco/resolver '~sym
           {::pco/output ~output}
           (fn ~'[_ _] ~data)))))
+
+#?(:clj
+   (defn system-env-resolver
+     "Create resolver that exposes data available in system environment.
+
+     Prefix will be used as the namespace for the environment variables, so for example
+     if you want to access the $PATH variable made available from this helper:
+
+        (let [m (psm/smart-map (pci/register (pbir/env-resolver \"env\")) {})]
+          (:env/PATH m))
+
+     Clojure only."
+     [prefix]
+     (let [sym    (symbol "env-resolver" prefix)
+           output (->> (System/getenv)
+                       (keys)
+                       (mapv #(keyword prefix %)))]
+       (pco/resolver sym
+         {::pco/output output}
+         (fn [_ _]
+           (misc/map-keys #(keyword prefix %) (System/getenv)))))))
