@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.misc.core :as misc]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.operation.protocols :as pco.prot]
@@ -9,6 +10,8 @@
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]))
+
+(>def ::map-container? boolean?)
 
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
@@ -24,25 +27,39 @@
 
 (defn process-map-subquery
   [env ast v]
-  (let [plan        (pcp/compute-run-graph
-                      (assoc env
-                        :edn-query-language.ast/node ast
-                        ::pcp/available-data (pfsd/data->shape-descriptor v)))
-        cache-tree* (atom v)]
-    (run-graph! (assoc env
-                  ::pcp/graph plan
-                  ::p.ent/entity-tree* cache-tree*))
-    @cache-tree*))
+  (if (map? v)
+    (let [plan        (pcp/compute-run-graph
+                        (assoc env
+                          :edn-query-language.ast/node ast
+                          ::pcp/available-data (pfsd/data->shape-descriptor v)))
+          cache-tree* (atom v)]
+      (run-graph! (assoc env
+                    ::pcp/graph plan
+                    ::p.ent/entity-tree* cache-tree*))
+      @cache-tree*)
+    v))
 
 (defn process-sequence-subquery
   [env ast v]
   (into
     (empty v)
-    (map (fn [item]
-           (if (map? item)
-             (process-map-subquery env ast item)
-             item)))
+    (map #(process-map-subquery env ast %))
     v))
+
+(defn process-map-container-subquery
+  "Build a new map where the values are replaced with the map process of the subquery."
+  [env ast v]
+  (misc/map-vals #(process-map-subquery env ast %) v))
+
+(defn process-map-container?
+  "Check if the map should be processed as a map-container, this means the sub-query
+  should apply to the map values instead of the map itself.
+
+  This can be dictated by adding the ::pcr/map-container? meta data on the value, or
+  requested by the query as part of the param."
+  [ast v]
+  (or (-> v meta ::map-container?)
+      (-> ast :params ::map-container?)))
 
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
@@ -53,7 +70,9 @@
     (if (:children ast)
       (cond
         (map? v)
-        (process-map-subquery env ast v)
+        (if (process-map-container? ast v)
+          (process-map-container-subquery env ast v)
+          (process-map-subquery env ast v))
 
         (or (sequential? v)
             (set? v))
@@ -142,9 +161,7 @@
   and them will run everything that's connected to this node as sequences of it.
 
   The result is going to build up at ::p.ent/cache-tree*, after the run is concluded
-  the output will be there.
-
-  TODO: return diagnostic of the running process."
+  the output will be there."
   [env node]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*]) ::pcp/node
    => nil?]
@@ -162,7 +179,9 @@
 
 (>defn run-graph!
   "Run the root node of the graph. As resolvers run, the result will be add to the
-  entity cache tree."
+  entity cache tree.
+
+  TODO: return diagnostic of the running process."
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*]) => nil?]
   (if-let [nested (::pcp/nested-available-process graph)]

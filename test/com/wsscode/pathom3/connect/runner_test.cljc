@@ -73,7 +73,7 @@
 
 (defn coords-resolver [c]
   (pco/resolver 'coords-resolver {::pco/output [::coords]}
-                (fn [_ _] {::coords c})))
+    (fn [_ _] {::coords c})))
 
 (deftest run-graph!-test
   (is (= (run-graph (pci/register geo/registry)
@@ -116,7 +116,22 @@
                                     {::geo/x 3 ::geo/y 4}}}
                         [{::coords [:left]}])
              {::coords #{{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
-                         {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))))
+                         {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}})))
+
+    (testing "map values"
+      (is (= (run-graph (pci/register geo/full-registry)
+                        {::coords ^::pcr/map-container? {:a {::geo/x 7 ::geo/y 9}
+                                                         :b {::geo/x 3 ::geo/y 4}}}
+                        [{::coords [:left]}])
+             {::coords {:a {::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
+                        :b {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))
+
+      (is (= (run-graph (pci/register geo/full-registry)
+                        {::coords {:a {::geo/x 7 ::geo/y 9}
+                                   :b {::geo/x 3 ::geo/y 4}}}
+                        '[{(::coords {::pcr/map-container? true}) [:left]}])
+             {::coords {:a {::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
+                        :b {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))))
 
   (testing "processing sequence of inconsistent maps"
     (is (= (run-graph (pci/register geo/full-registry)

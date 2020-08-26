@@ -2,10 +2,11 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.pathom3.attribute :as p.attr]
     [edn-query-language.core :as eql]))
 
 (>def ::path-entry
-  (s/or :attr ::attribute
+  (s/or :attr ::p.attr/attribute
         :ident ::eql/ident
         :index nat-int?))
 
