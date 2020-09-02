@@ -35,9 +35,13 @@
   (-resolve [_ env input] (resolve env input))
 
   #?(:clj clojure.lang.IFn)
+  #?(:clj (invoke [this] (resolve {} {})))
+  #?(:clj (invoke [this input] (resolve {} input)))
   #?(:clj (invoke [this env input] (resolve env input)))
 
   #?(:cljs IFn)
+  #?(:cljs (-invoke [this] (resolve {} {})))
+  #?(:cljs (-invoke [this input] (resolve {} input)))
   #?(:cljs (-invoke [this env input] (resolve env input))))
 
 ; endregion
