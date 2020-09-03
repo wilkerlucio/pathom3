@@ -121,8 +121,8 @@
          (s/cat :name simple-symbol?
                 :docstring (s/? string?)
                 :arglist ::operation-args
-                :output-attr (s/? keyword?)
                 :options (s/? map?)
+                :output-attr (s/? keyword?)
                 :body (s/+ any?))
          (fn must-have-output-prop-or-options [{:keys [output-attr options]}]
            (or output-attr options)))))
@@ -213,7 +213,8 @@
   Now the special syntax, when the resolver outputs a single attribute, we can use
   the following syntax:
 
-      (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}] :acme.user/full-name
+      (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}]
+        :acme.user/full-name
         (str first-name \" \" last-name))
 
   Note that in this example we don't have to wrap the output with the map, the macro
@@ -221,8 +222,9 @@
 
   In case you also want to provide options, add then after the output keyword:
 
-      (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}] :acme.user/full-name
+      (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}]
         {::pco/params []}
+        :acme.user/full-name
         (str first-name \" \" last-name))
 
   Standard options:

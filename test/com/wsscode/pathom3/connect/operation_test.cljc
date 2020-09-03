@@ -73,7 +73,7 @@
                 :body        ["bar"]})))
 
      (testing "short keyword simple output form + options"
-       (is (= (s/conform ::pco/defresolver-args '[foo [env input] :foo {::pco/input [:x]} "bar"])
+       (is (= (s/conform ::pco/defresolver-args '[foo [env input] {::pco/input [:x]} :foo "bar"])
               '{:name        foo
                 :arglist     [[:sym env] [:sym input]]
                 :output-attr :foo
