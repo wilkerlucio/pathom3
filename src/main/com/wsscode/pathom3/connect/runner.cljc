@@ -104,9 +104,13 @@
 
 (defn run-next-node!
   "Runs the next node associated with the node, in case it exists."
-  [{::pcp/keys [graph] :as env} {::pcp/keys [run-next]}]
+  [{::pcp/keys [graph] :as env} {::pcp/keys [run-next] :as node}]
   (if run-next
-    (run-node! env (pcp/get-node graph run-next))))
+    (if (all-requires-ready? env node)
+      (run-node! env (pcp/get-node graph run-next))
+      (throw (ex-info "Insufficient data"
+                      {::pcp/node          node
+                       ::p.ent/entity-tree (p.ent/entity env)})))))
 
 (defn call-resolver-from-node
   "Evaluates a resolver using node information.
