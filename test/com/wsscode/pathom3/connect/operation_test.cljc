@@ -78,6 +78,13 @@
                 :arglist     [[:sym env] [:sym input]]
                 :output-attr :foo
                 :options     {::pco/input [:x]}
+                :body        ["bar"]}))
+
+       (is (= (s/conform ::pco/defresolver-args '[foo [env input] {::pco/output [{:foo [:bar]}]} :foo "bar"])
+              '{:name        foo
+                :arglist     [[:sym env] [:sym input]]
+                :output-attr :foo
+                :options     {::pco/output [{:foo [:bar]}]}
                 :body        ["bar"]})))
 
      (testing "argument destructuring"
@@ -198,6 +205,16 @@
      (testing "single attribute, including implicit import via destructuring"
        (is (= (macroexpand-1
                 `(pco/defresolver ~'foo ~'[{:keys [dep]}] :sample "bar"))
+              '(def foo
+                 (com.wsscode.pathom3.connect.operation/resolver
+                   'user/foo
+                   #:com.wsscode.pathom3.connect.operation{:output [:sample],
+                                                           :input  [:dep]}
+                   (clojure.core/fn foo [_ {:keys [dep]}] {:sample (do "bar")}))))))
+
+     (testing "single attribute, including implicit import via destructuring"
+       (is (= (macroexpand-1
+                `(pco/defresolver ~'foo ~'[{:keys [dep]}] {::pco/output [{:sample [:thing]}]} :sample "bar"))
               '(def foo
                  (com.wsscode.pathom3.connect.operation/resolver
                    'user/foo
