@@ -13,6 +13,7 @@
 
 (>def ::operations
   (s/or :single ::pco/operation
+        :indexes ::indexes
         :many (s/coll-of ::operations)))
 
 (defn merge-oir
@@ -86,14 +87,22 @@
   ([operation-or-operations]
    [::operations => ::indexes]
    (register {} operation-or-operations))
-  ([indexes operation-or-operations]
+  ([indexes operation-or-operations-or-indexes]
    [::indexes ::operations => ::indexes]
-   (if (sequential? operation-or-operations)
-     (reduce register indexes operation-or-operations)
+   (cond
+     (sequential? operation-or-operations-or-indexes)
+     (reduce register indexes operation-or-operations-or-indexes)
 
-     (case (pco/operation-type operation-or-operations)
+     (pco/operation? operation-or-operations-or-indexes)
+     (case (pco/operation-type operation-or-operations-or-indexes)
        ::pco/operation-type-resolver
-       (register-resolver indexes operation-or-operations)))))
+       (register-resolver indexes operation-or-operations-or-indexes))
+
+     (map? operation-or-operations-or-indexes)
+     (merge-indexes indexes operation-or-operations-or-indexes)
+
+     :else
+     (throw (ex-info "Invalid type to register" {::operations operation-or-operations-or-indexes})))))
 
 (>defn attribute-available?
   "Check if some attribute is known in the index, this checks uses the index-oir."
