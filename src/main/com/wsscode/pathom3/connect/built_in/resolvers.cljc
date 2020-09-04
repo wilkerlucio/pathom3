@@ -25,6 +25,39 @@
   [(alias-resolver attribute-a attribute-b)
    (alias-resolver attribute-b attribute-a)])
 
+(defn constantly-resolver
+  "Create a simple resolver that always return `value` for `attribute`."
+  ([attribute value]
+   (constantly-resolver {::attribute attribute
+                         :value      value}))
+  ([{::keys [attribute sym] :keys [value]}]
+   (let [sym (or sym (symbol (str (munge (subs (str attribute) 1)) "-constant")))]
+     (pco/resolver sym
+       {::pco/output [attribute]}
+       (fn [_ _] {attribute value})))))
+
+(defn single-attr-resolver
+  "Apply fn `f` to input `from` and spits the result with the name `to`.
+
+  `f` receives a single argument, which is the input value from `from`."
+  [from to f]
+  (let [sym (symbol (str (attr-alias-name from to) "-single-attr-transform"))]
+    (pco/resolver sym
+      {::pco/input  [from]
+       ::pco/output [to]}
+      (fn [_ input]
+        {to (f (get input from))}))))
+
+(defn single-attr-resolver2
+  "Similar single-attr-resolver, but `f` receives two arguments, `env` and the input."
+  [from to f]
+  (let [sym (symbol (str (attr-alias-name from to) "-single-attr-transform"))]
+    (pco/resolver sym
+      {::pco/input  [from]
+       ::pco/output [to]}
+      (fn [env input]
+        {to (f env (get input from))}))))
+
 #?(:clj
    (defmacro edn-file-resolver
      "Creates a resolver to provide data loaded from a file.

@@ -15,3 +15,17 @@
     (is (= (resolver {} {})
            #:my.system{:initial-path "/tmp/system"
                        :port         1234}))))
+
+(deftest constantly-resolver-test
+  (is (= ((pbir/constantly-resolver :foo "bar"))
+         {:foo "bar"})))
+
+(deftest single-attr-resolver-test
+  (is (= ((pbir/single-attr-resolver :n :x inc) {:n 10})
+         {:x 11})))
+
+(deftest single-attr-resolver2-test
+  (is (= ((pbir/single-attr-resolver2 :n :x #(+ (:add %1) %2))
+          {:add 5}
+          {:n 10})
+         {:x 15})))
