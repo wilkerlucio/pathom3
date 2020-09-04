@@ -8,6 +8,13 @@
      (:require-macros
        [com.wsscode.pathom3.connect.operation])))
 
+; region type predicates
+
+(defn operation? [x] (satisfies? pop/IOperation x))
+(defn resolver? [x] (satisfies? pop/IResolver x))
+
+; endregion
+
 ; region specs
 
 (>def ::op-name "Name of the operation" symbol?)
@@ -16,8 +23,8 @@
 (>def ::resolve fn?)
 (>def ::operation-type #{::operation-type-resolver})
 (>def ::operation-config map?)
-(>def ::operation #(satisfies? pop/IOperation %))
-(>def ::resolver #(satisfies? pop/IResolver %))
+(>def ::operation operation?)
+(>def ::resolver resolver?)
 (>def ::provides ::pfsd/shape-descriptor)
 (>def ::dynamic-name ::op-name)
 (>def ::dynamic-resolver? boolean?)
