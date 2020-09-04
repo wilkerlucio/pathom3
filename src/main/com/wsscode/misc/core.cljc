@@ -140,3 +140,7 @@
      b)))
 
 (defn noop "Does nothing." [& _])
+
+(defn now []
+  #?(:clj  (System/currentTimeMillis)
+     :cljs (inst-ms (js/Date.))))
