@@ -5,6 +5,7 @@
     [com.fulcrologic.guardrails.core :refer [>def >defn >fdef => | <- ?]]
     [com.wsscode.misc.core :as misc]
     [com.wsscode.pathom3.attribute :as p.attr]
+    [com.wsscode.pathom3.cache :as p.cache]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as pf.eql]
@@ -150,8 +151,12 @@
   ::pf.eql/prop->ast)
 
 (>def ::nested-available-process
-  "Which attributes need further processing due to subquery requirements."
+  "Which attributes need further processing due to sub-query requirements."
   ::p.attr/attributes-set)
+
+(>def ::plan-cache*
+  "Atom containing the cache atom to support cached planning."
+  misc/atom?)
 
 (def pc-sym ::pco/op-name)
 (def pc-dyn-sym ::pco/dynamic-name)
@@ -1291,13 +1296,16 @@
       :req [:edn-query-language.ast/node
             ::pci/index-oir]
       :opt [::available-data
+            ::plan-cache*
             ::pci/index-resolvers])
     => ::graph]
-   (compute-run-graph*
-     (merge (base-graph)
-            graph
-            {::index-ast (pf.eql/index-ast (:edn-query-language.ast/node env))})
-     (merge (base-env) env))))
+   (p.cache/cached ::plan-cache* env [(::available-data env)
+                                      (:edn-query-language.ast/node env)]
+     #(compute-run-graph*
+        (merge (base-graph)
+               graph
+               {::index-ast (pf.eql/index-ast (:edn-query-language.ast/node env))})
+        (merge (base-env) env)))))
 
 (>defn graph-provides
   "Get a set with all provided attributes from the graph."

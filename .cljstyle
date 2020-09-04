@@ -22,6 +22,7 @@
                          let-chan                [[:inner 0]]
                          let-chan*               [[:inner 0]]
                          mapv                    [[:inner 0]]
+                         p.cache/cached          [[:inner 0]]
                          p/cached-async          [[:inner 0]]
                          pc/defmutation          [[:inner 0]]
                          pc/defresolver          [[:inner 0]]
