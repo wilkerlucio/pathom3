@@ -244,7 +244,7 @@
   Note that any other option that you send to the resolver config will be stored in the
   index and can be read from it at any time.
   "
-  {:arglists '([name docstring? arglist output-prop? options? & body])}
+  {:arglists '([name docstring? arglist options? output-prop? & body])}
   [& args]
   (let [{:keys [name arglist body output-attr] :as params}
         (-> (s/conform ::defresolver-args args)
