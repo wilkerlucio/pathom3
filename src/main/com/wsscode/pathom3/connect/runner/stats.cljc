@@ -10,7 +10,7 @@
 (pco/defresolver resolver-accumulated-duration
   [{::pcr/keys [node-run-stats]}]
   ::pcr/resolver-accumulated-duration-ns
-  (transduce (map ::run-duration-ns) + 0 (vals node-run-stats)))
+  (transduce (map ::pcr/run-duration-ns) + 0 (vals node-run-stats)))
 
 (pco/defresolver overhead-duration
   [{::pcr/keys [graph-process-duration-ns
