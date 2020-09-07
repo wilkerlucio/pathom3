@@ -18,10 +18,7 @@
   "If x is a composite data structure, return the data wrapped by smart maps."
   [env x]
   (cond
-    (smart-map? x)
-    x
-
-    (map? x)
+    (misc/native-map? x)
     (smart-map env x)
 
     (sequential? x)
