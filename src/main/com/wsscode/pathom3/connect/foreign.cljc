@@ -76,8 +76,8 @@
                    resolvers)))
          (assoc-in [::pci/index-resolvers index-source-id]
            (pco/resolver index-source-id
-                         {::pco/cache?            false
-                          ::pco/dynamic-resolver? true}
-                         (fn [env _] (call-foreign-parser env parser))))
+             {::pco/cache?            false
+              ::pco/dynamic-resolver? true}
+             (fn [env _] (call-foreign-parser env parser))))
          (dissoc ::pci/index-source-id)))))
 
