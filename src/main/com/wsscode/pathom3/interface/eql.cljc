@@ -3,6 +3,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.pathom3.connect.runner :as pcr]
+    [com.wsscode.pathom3.connect.runner.stats :as pcrs]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.interface.smart-map :as psm]
@@ -14,7 +15,7 @@
   (let [ent-tree* (get env ::p.ent/entity-tree* (atom {}))
         run-stats (pcr/run-graph! env ast ent-tree*)]
     (-> (p.ent/entity env)
-        (assoc ::pcr/run-stats (psm/smart-map pcr/stats-index run-stats))
+        (assoc ::pcr/run-stats (psm/smart-map pcrs/stats-index run-stats))
         (pf.eql/map-select-ast ast))))
 
 (>defn process

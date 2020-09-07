@@ -3,7 +3,6 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.core :as misc]
-    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.operation.protocols :as pco.prot]
@@ -184,43 +183,6 @@
 
     nil))
 
-(pco/defresolver resolver-accumulated-duration
-  [{::keys [node-run-stats]}]
-  ::resolver-accumulated-duration-ns
-  (transduce (map ::run-duration-ns) + 0 (vals node-run-stats)))
-
-(pco/defresolver overhead-duration
-  [{::keys [graph-process-duration-ns
-            resolver-accumulated-duration-ns]}]
-  ::overhead-duration-ns
-  (- graph-process-duration-ns resolver-accumulated-duration-ns))
-
-(pco/defresolver overhead-pct
-  [{::keys [graph-process-duration-ns
-            overhead-duration-ns]}]
-  ::overhead-duration-percentage
-  (double (/ overhead-duration-ns graph-process-duration-ns)))
-
-(defn duration-extensions [attr]
-  (let [ns (namespace attr)
-        n  (name attr)
-        mk #(keyword ns (str n "-" %))]
-    [(pbir/single-attr-resolver (mk "ns") (mk "ms") #(misc/round (/ % 1000000)))
-     (pbir/single-attr-resolver (mk "ms") (mk "s") #(misc/round (/ % 1000)))
-     (pbir/single-attr-resolver (mk "s") (mk "mins") #(misc/round (/ % 60)))
-     (pbir/single-attr-resolver (mk "mins") (mk "hours") #(misc/round (/ % 60)))]))
-
-(def stats-registry
-  [resolver-accumulated-duration
-   overhead-duration
-   overhead-pct
-   (duration-extensions ::graph-process-duration)
-   (duration-extensions ::run-duration)
-   (duration-extensions ::resolver-accumulated-duration)
-   (duration-extensions ::overhead-duration)])
-
-(def stats-index (pci/register stats-registry))
-
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the
   entity cache tree."
@@ -240,9 +202,9 @@
 
     ; compute minimal stats
     (let [total-time (- (misc/nano-now) start)]
-      {::pcp/graph                 graph
-       ::graph-process-duration-ns total-time
-       ::node-run-stats            (some-> env ::node-run-stats* deref)})))
+      (assoc graph
+        ::graph-process-duration-ns total-time
+        ::node-run-stats (some-> env ::node-run-stats* deref)))))
 
 (>defn run-graph!
   [env ast entity-tree*]

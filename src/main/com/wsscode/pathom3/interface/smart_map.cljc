@@ -8,6 +8,7 @@
     [com.wsscode.misc.core :as misc]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.runner :as pcr]
+    [com.wsscode.pathom3.connect.runner.stats :as pcrs]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [edn-query-language.core :as eql]
     #?(:clj [potemkin.collections :refer [def-map-type]])))
@@ -219,7 +220,7 @@
          ast       {:type     :root
                     :children [{:type :prop, :dispatch-key k, :key k}]}
          run-stats (pcr/run-graph! env ast entity-tree*)]
-     {::pcr/run-stats (smart-map pcr/stats-index run-stats)
+     {::pcr/run-stats (smart-map pcrs/stats-index run-stats)
       ::value         (wrap-smart-map env (get @entity-tree* k))})))
 
 (defn sm-assoc!
