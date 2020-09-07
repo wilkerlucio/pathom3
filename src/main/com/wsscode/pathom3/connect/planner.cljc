@@ -1320,3 +1320,7 @@
   [(s/keys :req [::index-ast]) any?
    => (? :edn-query-language.ast/node)]
   (get-in graph [::index-ast k]))
+
+(>defn with-plan-cache
+  ([env] [map? => map?] (with-plan-cache env (atom {})))
+  ([env cache*] [map? misc/atom? => map?] (assoc env ::plan-cache* cache*)))
