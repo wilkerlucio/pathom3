@@ -181,20 +181,3 @@
                  [:error])
                {:error       ::pcr/resolver-error
                 ::pcr/errors {[:error] error}})))))
-
-(deftest resolver-accumulated-duration-test
-  (is (= (pcr/resolver-accumulated-duration {::pcr/node-run-stats
-                                             {1 {::pcr/run-duration-ns 1}
-                                              2 {::pcr/run-duration-ns 10}
-                                              3 {::pcr/run-duration-ns 100}}})
-         {::pcr/resolver-accumulated-duration-ns 111})))
-
-(deftest overhead-duration-test
-  (is (= (pcr/overhead-duration {::pcr/graph-process-duration-ns        100
-                                 ::pcr/resolver-accumulated-duration-ns 90})
-         {::pcr/overhead-duration-ns 10})))
-
-(deftest overhead-pct-test
-  (is (= (pcr/overhead-pct {::pcr/graph-process-duration-ns 100
-                            ::pcr/overhead-duration-ns      20})
-         {::pcr/overhead-duration-percentage 0.2})))
