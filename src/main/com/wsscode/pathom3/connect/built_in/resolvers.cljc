@@ -7,14 +7,17 @@
      (:require-macros
        [com.wsscode.pathom3.connect.built-in.resolvers])))
 
-(defn attr-alias-name [from to]
-  (symbol (str (munge (subs (str from) 1)) "->" (munge (subs (str to) 1)))))
+(defn attr-munge [attr]
+  (munge (subs (str attr) 1)))
+
+(defn attr-alias-resolver-name [from to]
+  (symbol (str (attr-munge from) "->" (attr-munge to))))
 
 (defn alias-resolver
   "Create a resolver that will convert property `from` to a property `to` with
   the same value. This only creates the alias in one direction."
   [from to]
-  (pco/resolver (attr-alias-name from to)
+  (pco/resolver (attr-alias-resolver-name from to)
     {::pco/input  [from]
      ::pco/output [to]}
     (fn [_ input] {to (get input from)})))
@@ -41,7 +44,7 @@
 
   `f` receives a single argument, which is the input value from `from`."
   [from to f]
-  (let [sym (symbol (str (attr-alias-name from to) "-single-attr-transform"))]
+  (let [sym (symbol (str (attr-alias-resolver-name from to) "-single-attr-transform"))]
     (pco/resolver sym
       {::pco/input  [from]
        ::pco/output [to]}
@@ -51,7 +54,7 @@
 (defn single-attr-resolver2
   "Similar single-attr-resolver, but `f` receives two arguments, `env` and the input."
   [from to f]
-  (let [sym (symbol (str (attr-alias-name from to) "-single-attr-transform"))]
+  (let [sym (symbol (str (attr-alias-resolver-name from to) "-single-attr-transform"))]
     (pco/resolver sym
       {::pco/input  [from]
        ::pco/output [to]}
