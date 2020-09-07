@@ -141,6 +141,10 @@
 
 (defn noop "Does nothing." [& _])
 
-(defn now []
-  #?(:clj  (System/currentTimeMillis)
-     :cljs (inst-ms (js/Date.))))
+(defn round [x]
+  #?(:clj  (Math/round ^double x)
+     :cljs (Math/round x)))
+
+(defn nano-now []
+  #?(:clj  (System/nanoTime)
+     :cljs (* 1000 (js/performance.now))))
