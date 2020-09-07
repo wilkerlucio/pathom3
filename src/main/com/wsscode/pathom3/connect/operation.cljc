@@ -28,6 +28,7 @@
 (>def ::provides ::pfsd/shape-descriptor)
 (>def ::dynamic-name ::op-name)
 (>def ::dynamic-resolver? boolean?)
+(>def ::transform fn?)
 
 ; endregion
 
