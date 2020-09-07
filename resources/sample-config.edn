@@ -1,2 +1,10 @@
-{:my.system/port         1234
- :my.system/initial-path "/tmp/system"}
+{:my.system/port
+ 1234
+
+ :my.system/initial-path
+ "/tmp/system"
+
+ :my.system/generic-db
+ ^{:com.wsscode.pathom3/entity-table :my.system/user-id}
+ {4 {:my.system.user/name "Anne"}
+  2 {:my.system.user/name "Fred"}}}
