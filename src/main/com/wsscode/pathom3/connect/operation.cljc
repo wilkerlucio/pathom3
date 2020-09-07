@@ -69,31 +69,33 @@
 
   You can create a resolver using a map:
 
-  (resolver
-    {::op-name 'foo
-     ::output  [:foo]
-     ::resolve (fn [env input] ...)})
+      (resolver
+        {::op-name 'foo
+         ::output  [:foo]
+         ::resolve (fn [env input] ...)})
 
   Or with the helper syntax:
 
-  (resolver 'foo {::output [:foo]} (fn [env input] ...))
+      (resolver 'foo {::output [:foo]} (fn [env input] ...))
 
   Returns an instance of the Resolver type.
   "
   ([op-name config resolve]
    [::op-name (s/keys :opt [::output]) ::resolve => ::resolver]
    (resolver (assoc config ::op-name op-name ::resolve resolve)))
-  ([{::keys [resolve output] :as config}]
-   [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve])
-          :resolver ::resolver) => ::resolver]
+  ([{::keys [transform] :as config}]
+   [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve ::transform])
+          :resolver ::resolver)
+    => ::resolver]
    (if (satisfies? pop/IResolver config)
      config
-     (let [defaults (if output
+     (let [{::keys [resolve output] :as config} (cond-> config transform transform)
+           defaults (if output
                       {::input    []
                        ::provides (pfsd/query->shape-descriptor output)}
                       {})
            config'  (-> (merge defaults config)
-                        (dissoc ::resolve))]
+                        (dissoc ::resolve ::transform))]
        (->Resolver config' (or resolve (fn [_ _])))))))
 
 ; endregion

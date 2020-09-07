@@ -7,7 +7,7 @@
 (deftest resolver-test
   (testing "creating resolvers"
     (let [resolver (pco/resolver 'foo {::pco/output [:foo]} (fn [_ _] {:foo "bar"}))]
-      (is (= (resolver nil nil)
+      (is (= (resolver)
              {:foo "bar"}))
 
       (is (= (pco/operation-config resolver)
@@ -37,6 +37,18 @@
       (is (= (pco/operation-config resolver)
              {::pco/op-name           'foo
               ::pco/dynamic-resolver? true}))))
+
+  (testing "transform"
+    (let [resolver (pco/resolver 'foo {::pco/output    [:foo]
+                                       ::pco/transform (fn [config]
+                                                         (assoc config ::other "bar"))}
+                     (fn [_ _] {:foo "bar"}))]
+      (is (= (pco/operation-config resolver)
+             {::pco/op-name  'foo
+              ::other        "bar"
+              ::pco/output   [:foo]
+              ::pco/input    []
+              ::pco/provides {:foo {}}}))))
 
   (testing "noop when called with a resolver"
     (let [resolver (-> {::pco/op-name 'foo
