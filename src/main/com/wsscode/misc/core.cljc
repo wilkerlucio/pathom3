@@ -147,4 +147,10 @@
 
 (defn nano-now []
   #?(:clj  (System/nanoTime)
-     :cljs (* 1000 (js/performance.now))))
+     :cljs 1 #_ (js/performance.now)))
+
+(defn native-map? [x]
+  #?(:clj  (or (= (type x) clojure.lang.PersistentArrayMap)
+               (= (type x) clojure.lang.PersistentHashMap))
+     :cljs (or (= (type x) cljs.core/PersistentArrayMap)
+               (= (type x) cljs.core/PersistentHashMap))))

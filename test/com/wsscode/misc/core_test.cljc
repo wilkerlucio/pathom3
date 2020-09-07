@@ -1,7 +1,8 @@
 (ns com.wsscode.misc.core-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
-    [com.wsscode.misc.core :as misc]))
+    [com.wsscode.misc.core :as misc]
+    [com.wsscode.pathom3.connect.operation :as pco]))
 
 (deftest cljc-random-uuid-test
   (is (uuid? (misc/cljc-random-uuid))))
@@ -99,3 +100,9 @@
 (deftest keys-set-test
   (is (= (misc/keys-set {:a 1 :b 2}) #{:a :b}))
   (is (= (misc/keys-set 5) nil)))
+
+(deftest native-map?-test
+  (is (= true (misc/native-map? {})))
+  (is (= true (misc/native-map? {:foo "bar"})))
+  (is (= true (misc/native-map? (zipmap (range 50) (range 50)))))
+  (is (= false (misc/native-map? (pco/resolver 'r {} (fn [_ _]))))))
