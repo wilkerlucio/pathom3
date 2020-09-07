@@ -16,9 +16,9 @@
 (>defn with-entity
   "Set the entity in the environment. Note in this function you must send the cache-tree
   as a map, not as an atom."
-  [env cache-tree]
+  [env entity-tree]
   [map? map? => map?]
-  (assoc env ::entity-tree* (atom cache-tree)))
+  (assoc env ::entity-tree* (atom entity-tree)))
 
 (>defn swap-entity!
   "Swap cache-tree at the current path. Returns the updated whole cache-tree."
