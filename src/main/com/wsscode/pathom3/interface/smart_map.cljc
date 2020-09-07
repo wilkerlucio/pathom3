@@ -7,19 +7,20 @@
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.core :as misc]
     [com.wsscode.pathom3.connect.indexes :as pci]
-    [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
-    [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [edn-query-language.core :as eql]
     #?(:clj [potemkin.collections :refer [def-map-type]])))
 
-(declare smart-map)
+(declare smart-map smart-map?)
 
 (defn wrap-smart-map
   "If x is a composite data structure, return the data wrapped by smart maps."
   [env x]
   (cond
+    (smart-map? x)
+    x
+
     (map? x)
     (smart-map env x)
 
@@ -46,16 +47,12 @@
   regular Clojure map."
   ([env k] (sm-get env k nil))
   ([{::p.ent/keys [entity-tree*] :as env} k default-value]
-   (let [cache-tree @entity-tree*]
-     (if-let [x (find cache-tree k)]
+   (let [ent-tree @entity-tree*]
+     (if-let [x (find ent-tree k)]
        (wrap-smart-map env (val x))
-       (let [ast   {:type     :root
-                    :children [{:type :prop, :dispatch-key k, :key k}]}
-             graph (pcp/compute-run-graph
-                     (assoc env
-                       ::pcp/available-data (pfsd/data->shape-descriptor cache-tree)
-                       :edn-query-language.ast/node ast))]
-         (pcr/run-graph! (assoc env ::pcp/graph graph))
+       (let [ast {:type     :root
+                  :children [{:type :prop, :dispatch-key k, :key k}]}]
+         (pcr/run-graph! env ast entity-tree*)
          (wrap-smart-map env (get @entity-tree* k default-value)))))))
 
 (defn sm-assoc
@@ -115,6 +112,7 @@
     (misc/make-map-entry k (sm-get env k))))
 
 ; region type definition
+
 #?(:clj
    (def-map-type SmartMap [env]
      (get [_ k default-value] (sm-get env k default-value))
@@ -202,15 +200,30 @@
      IFn
      (-invoke [this k] (-lookup this k))
      (-invoke [this k not-found] (-lookup this k not-found))))
-; endregion
 
-(>def ::smart-map #(instance? SmartMap %))
+(defn smart-map? [x] (instance? SmartMap x))
+
+(>def ::smart-map smart-map?)
+
+; endregion
 
 (>defn sm-env
   "Extract the env map from the smart map."
   [^SmartMap smart-map]
   [::smart-map => map?]
   (.-env smart-map))
+
+(defn sm-get-debug
+  "Return the a map containing the value of the key requested, plus the graph running
+  analysis, use for debugging. Note that if the value is cached, there will be a blank
+  stats."
+  ([^SmartMap sm k]
+   (let [{::p.ent/keys [entity-tree*] :as env} (sm-env sm)
+         ast       {:type     :root
+                    :children [{:type :prop, :dispatch-key k, :key k}]}
+         run-stats (pcr/run-graph! env ast entity-tree*)]
+     {::pcr/run-stats (smart-map pcr/stats-index run-stats)
+      ::value         (wrap-smart-map env (get @entity-tree* k))})))
 
 (defn sm-assoc!
   "Assoc on the smart map in place, this function mutates the current cache and return
@@ -234,13 +247,8 @@
 
 (defn sm-load-ast!
   [smart-map ast]
-  (let [env   (sm-env smart-map)
-        graph (pcp/compute-run-graph
-                (assoc env
-                  ::pcp/available-data (pfsd/data->shape-descriptor (p.ent/entity env))
-                  :edn-query-language.ast/node ast))]
-    (pcr/run-graph!
-      (assoc env ::pcp/graph graph))
+  (let [env (sm-env smart-map)]
+    (pcr/run-graph! env ast (::p.ent/entity-tree* env))
     smart-map))
 
 (defn sm-load!
@@ -262,7 +270,7 @@
   When the value of a property of the smart map is a map, that map will also be cast
   into a smart map, including maps inside collections."
   [env context]
-  [(s/keys :req [::pci/index-oir])
+  [(s/keys :opt [::pci/index-oir])
    map? => ::smart-map]
   (->SmartMap
     (-> env

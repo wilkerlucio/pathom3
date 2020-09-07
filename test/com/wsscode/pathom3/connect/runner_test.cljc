@@ -50,7 +50,8 @@
                              ::pcp/available-data (pfsd/data->shape-descriptor tree)
                              :edn-query-language.ast/node (eql/query->ast [::geo/right
                                                                            ::geo/center-x]))))
-               env   (assoc env ::pcp/graph graph)]
+               env   (assoc env ::pcp/graph graph
+                       ::pcr/node-run-stats* (atom {}))]
            (pcr/run-node! env (pcp/get-root-node graph))
            @(::p.ent/entity-tree* env))
          {::geo/left       10
@@ -68,7 +69,8 @@
                     (assoc
                       ::pcp/available-data (pfsd/data->shape-descriptor tree)
                       :edn-query-language.ast/node ast)))]
-    (pcr/run-graph! (assoc env ::pcp/graph graph))
+    (pcr/run-graph!* (assoc env ::pcp/graph graph
+                       ::pcr/node-run-stats* (atom {})))
     @(::p.ent/entity-tree* env)))
 
 (defn coords-resolver [c]
@@ -92,6 +94,7 @@
                  ::geo/left 10
                  :left      10}}))
 
+  #_
   (testing "insufficient data"
     (is (= (run-graph (pci/register [(pco/resolver 'a {::pco/output [:a]
                                                        ::pco/input  [:b]}
@@ -169,12 +172,29 @@
                        :left      7}
                       20]})))
 
-  (testing "errors"
-    (let [error (ex-info "Error" {})]
-      (is (= (run-graph (pci/register
-                          (pco/resolver 'error {::pco/output [:error]}
-                            (fn [_ _] (throw error))))
-                        {}
-                        [:error])
-             {:error       ::pcr/resolver-error
-              ::pcr/errors {[:error] error}})))))
+  #_(testing "errors"
+      (let [error (ex-info "Error" {})]
+        (is (= (run-graph (pci/register
+                            (pco/resolver 'error {::pco/output [:error]}
+                              (fn [_ _] (throw error))))
+                 {}
+                 [:error])
+               {:error       ::pcr/resolver-error
+                ::pcr/errors {[:error] error}})))))
+
+(deftest resolver-accumulated-duration-test
+  (is (= (pcr/resolver-accumulated-duration {::pcr/node-run-stats
+                                             {1 {::pcr/run-duration-ns 1}
+                                              2 {::pcr/run-duration-ns 10}
+                                              3 {::pcr/run-duration-ns 100}}})
+         {::pcr/resolver-accumulated-duration-ns 111})))
+
+(deftest overhead-duration-test
+  (is (= (pcr/overhead-duration {::pcr/graph-process-duration-ns        100
+                                 ::pcr/resolver-accumulated-duration-ns 90})
+         {::pcr/overhead-duration-ns 10})))
+
+(deftest overhead-pct-test
+  (is (= (pcr/overhead-pct {::pcr/graph-process-duration-ns 100
+                            ::pcr/overhead-duration-ns      20})
+         {::pcr/overhead-duration-percentage 0.2})))

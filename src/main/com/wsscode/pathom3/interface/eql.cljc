@@ -2,30 +2,20 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
-    [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [com.wsscode.pathom3.interface.smart-map :as psm]
     [edn-query-language.core :as eql]))
-
-(declare process-ast)
-
-(defn prepare-process-env [env ast]
-  (let [env' (merge (p.ent/with-entity {} {})
-                    ; merge is necessary to allow user to override the initial entity
-                    env)]
-    (assoc env'
-      ::pcp/available-data (pfsd/data->shape-descriptor (p.ent/entity env'))
-      :edn-query-language.ast/node ast)))
 
 (>defn process-ast
   [env ast]
   [(s/keys) :edn-query-language.ast/node => map?]
-  (let [env   (prepare-process-env env ast)
-        graph (pcp/compute-run-graph env)]
-    (pcr/run-graph! (assoc env ::pcp/graph graph))
-    (pf.eql/map-select-ast (p.ent/entity env) ast)))
+  (let [ent-tree* (get env ::p.ent/entity-tree* (atom {}))
+        run-stats (pcr/run-graph! env ast ent-tree*)]
+    (-> (p.ent/entity env)
+        (assoc ::pcr/run-stats (psm/smart-map pcr/stats-index run-stats))
+        (pf.eql/map-select-ast ast))))
 
 (>defn process
   "Evaluate EQL expression.
@@ -41,7 +31,6 @@
 
       (p.eql/process (pci/register some-resolvers)
         [:eql :request])
-
 
   By default the process will start with a blank entity tree, you can override it by
   changing sending a entity tree in the environment:

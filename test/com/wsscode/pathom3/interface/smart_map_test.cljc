@@ -62,6 +62,12 @@
       (is (= (-> sm ::geo/turn-point :right)
              10))))
 
+  (testing "nested smart maps should return as-is"
+    (let [sm-child (psm/smart-map (pci/register registry) {:x 10 :width 20})
+          sm       (psm/smart-map {} {:thing sm-child})]
+      (is (= (-> sm :thing :right)
+             30))))
+
   (testing "nested maps in sequences should also be smart maps"
     (testing "vector"
       (let [sm (psm/smart-map (pci/register registry)

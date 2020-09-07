@@ -3,6 +3,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.core :as misc]
+    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.operation.protocols :as pco.prot]
@@ -28,14 +29,8 @@
 (defn process-map-subquery
   [env ast v]
   (if (map? v)
-    (let [plan        (pcp/compute-run-graph
-                        (assoc env
-                          :edn-query-language.ast/node ast
-                          ::pcp/available-data (pfsd/data->shape-descriptor v)))
-          cache-tree* (atom v)]
-      (run-graph! (assoc env
-                    ::pcp/graph plan
-                    ::p.ent/entity-tree* cache-tree*))
+    (let [cache-tree* (atom v)]
+      (run-graph! env ast cache-tree*)
       @cache-tree*)
     v))
 
@@ -84,13 +79,11 @@
 
 (>defn merge-entity-data
   "Specialized merge versions that work on entity data."
-  [{::keys [merge-attribute]
-    :or    {merge-attribute (fn [_ m k v] (assoc m k v))}
-    :as    env} entity new-data]
+  [env entity new-data]
   [(s/keys :opt [::merge-attribute]) ::p.ent/entity-tree ::p.ent/entity-tree
    => ::p.ent/entity-tree]
   (reduce-kv
-    (fn [out k v] (merge-attribute env out k (process-attr-subquery env k v)))
+    (fn [out k v] (assoc out k (process-attr-subquery env k v)))
     entity
     new-data))
 
@@ -104,13 +97,16 @@
 
 (defn run-next-node!
   "Runs the next node associated with the node, in case it exists."
-  [{::pcp/keys [graph] :as env} {::pcp/keys [run-next] :as node}]
+  [{::pcp/keys [graph] :as env} {::pcp/keys [run-next]}]
   (if run-next
-    (if (all-requires-ready? env node)
-      (run-node! env (pcp/get-node graph run-next))
-      (throw (ex-info "Insufficient data"
-                      {::pcp/node          node
-                       ::p.ent/entity-tree (p.ent/entity env)})))))
+    (run-node! env (pcp/get-node graph run-next))))
+
+(defn merge-node-stats
+  [{::keys [node-run-stats*]}
+   {::pcp/keys [node-id]}
+   data]
+  (if node-run-stats*
+    (swap! node-run-stats* update node-id merge data)))
 
 (defn call-resolver-from-node
   "Evaluates a resolver using node information.
@@ -126,8 +122,15 @@
   (let [input-keys (keys input)
         resolver   (pci/resolver env op-name)
         env        (assoc env ::pcp/node node)
-        entity     (p.ent/entity env)]
-    (pco.prot/-resolve resolver env (select-keys entity input-keys))))
+        entity     (p.ent/entity env)
+        start      (misc/nano-now)
+        input-data (select-keys entity input-keys)
+        result     (pco.prot/-resolve resolver env input-data)
+        duration   (- (misc/nano-now) start)]
+    (merge-node-stats env node
+                      {::run-duration-ns duration
+                       ::node-run-input  input-data})
+    result))
 
 (defn run-resolver-node!
   "This function evaluates the resolver associated with the node.
@@ -181,14 +184,74 @@
 
     nil))
 
-(>defn run-graph!
-  "Run the root node of the graph. As resolvers run, the result will be add to the
-  entity cache tree.
+(pco/defresolver resolver-accumulated-duration
+  [{::keys [node-run-stats]}]
+  ::resolver-accumulated-duration-ns
+  (transduce (map ::run-duration-ns) + 0 (vals node-run-stats)))
 
-  TODO: return diagnostic of the running process."
+(pco/defresolver overhead-duration
+  [{::keys [graph-process-duration-ns
+            resolver-accumulated-duration-ns]}]
+  ::overhead-duration-ns
+  (- graph-process-duration-ns resolver-accumulated-duration-ns))
+
+(pco/defresolver overhead-pct
+  [{::keys [graph-process-duration-ns
+            overhead-duration-ns]}]
+  ::overhead-duration-percentage
+  (double (/ overhead-duration-ns graph-process-duration-ns)))
+
+(defn duration-extensions [attr]
+  (let [ns (namespace attr)
+        n  (name attr)
+        mk #(keyword ns (str n "-" %))]
+    [(pbir/single-attr-resolver (mk "ns") (mk "ms") #(misc/round (/ % 1000000)))
+     (pbir/single-attr-resolver (mk "ms") (mk "s") #(misc/round (/ % 1000)))
+     (pbir/single-attr-resolver (mk "s") (mk "mins") #(misc/round (/ % 60)))
+     (pbir/single-attr-resolver (mk "mins") (mk "hours") #(misc/round (/ % 60)))]))
+
+(def stats-registry
+  [resolver-accumulated-duration
+   overhead-duration
+   overhead-pct
+   (duration-extensions ::graph-process-duration)
+   (duration-extensions ::run-duration)
+   (duration-extensions ::resolver-accumulated-duration)
+   (duration-extensions ::overhead-duration)])
+
+(def stats-index (pci/register stats-registry))
+
+(>defn run-graph!*
+  "Run the root node of the graph. As resolvers run, the result will be add to the
+  entity cache tree."
   [{::pcp/keys [graph] :as env}]
-  [(s/keys :req [::pcp/graph ::p.ent/entity-tree*]) => nil?]
-  (if-let [nested (::pcp/nested-available-process graph)]
-    (merge-resolver-response! env (select-keys (p.ent/entity env) nested)))
-  (if-let [root (pcp/get-root-node graph)]
-    (run-node! env root)))
+  [(s/keys :req [::pcp/graph ::p.ent/entity-tree*])
+   => (s/keys)]
+  (let [start (misc/nano-now)
+        env   (assoc env ::node-run-stats* (atom ^::map-container? {}))]
+
+    ; compute nested available fields first
+    (if-let [nested (::pcp/nested-available-process graph)]
+      (merge-resolver-response! env (select-keys (p.ent/entity env) nested)))
+
+    ; now run the nodes
+    (if-let [root (pcp/get-root-node graph)]
+      (run-node! env root))
+
+    ; compute minimal stats
+    (let [total-time (- (misc/nano-now) start)]
+      {::pcp/graph                 graph
+       ::graph-process-duration-ns total-time
+       ::node-run-stats            (some-> env ::node-run-stats* deref)})))
+
+(>defn run-graph!
+  [env ast entity-tree*]
+  [(s/keys) :edn-query-language.ast/node ::p.ent/entity-tree*
+   => (s/keys)]
+  (let [graph (pcp/compute-run-graph
+                (assoc env
+                  :edn-query-language.ast/node ast
+                  ::pcp/available-data (pfsd/data->shape-descriptor @entity-tree*)))]
+    (run-graph!* (assoc env
+                   ::pcp/graph graph
+                   ::p.ent/entity-tree* entity-tree*))))
