@@ -243,6 +243,16 @@
 
   Note that any other option that you send to the resolver config will be stored in the
   index and can be read from it at any time.
+
+  The returned value is of the type Resolver, you can test your resolver by calling
+  directly:
+
+      (full-name {:acme.user/first-name \"Ada\"
+                  :acme.user/last-name  \"Lace\"})
+      => \"Ada Lace\"
+
+  Note that similar to the way we define the resolver, we can also omit `env` (and even
+  the input) when calling, the resolvers fns always support arity 0, 1 and 2.
   "
   {:arglists '([name docstring? arglist options? output-prop? & body])}
   [& args]
