@@ -95,32 +95,36 @@
   [any? ::eql/query => any?]
   (map-select-ast source (eql/query->ast tx)))
 
-(>defn data->shape
+(>defn data->query
   "Helper function to transform a data into an output shape."
   [data]
   [any? => (? ::eql/query)]
   (if (map? data)
     (->> (reduce-kv
            (fn [out k v]
-             (conj out
-               (cond
-                 (map? v)
-                 {k (data->shape v)}
+             (if (or (keyword? k)
+                     (eql/ident? k))
+               (conj out
+                 (cond
+                   (map? v)
+                   (let [q (data->query v)]
+                     (if (seq q)
+                       {k q}
+                       k))
 
-                 (sequential? v)
-                 (let [shape (reduce
-                               (fn [q x]
-                                 (eql/merge-queries q (data->shape x)))
-                               []
-                               v)]
-                   (if (seq shape)
-                     {k shape}
-                     k))
+                   (sequential? v)
+                   (let [shape (reduce
+                                 (fn [q x]
+                                   (eql/merge-queries q (data->query x)))
+                                 []
+                                 v)]
+                     (if (seq shape)
+                       {k shape}
+                       k))
 
-                 :else
-                 k)))
+                   :else
+                   k))
+               out))
            []
            data)
-         ;optimize-empty-joins
-         (sort-by (comp pr-str #(if (map? %) (ffirst %) %)))
          vec)))
