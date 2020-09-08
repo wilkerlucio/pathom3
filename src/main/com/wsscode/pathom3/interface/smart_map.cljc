@@ -196,8 +196,8 @@
      (-reduce [coll f start] (iter-reduce coll f start))
 
      IFn
-     (-invoke [this k] (-lookup this k))
-     (-invoke [this k not-found] (-lookup this k not-found))))
+     (-invoke [_ k] (sm-get env k))
+     (-invoke [_ k not-found] (sm-get env k not-found))))
 
 (defn smart-map? [x] (instance? SmartMap x))
 
@@ -267,10 +267,13 @@
 
   When the value of a property of the smart map is a map, that map will also be cast
   into a smart map, including maps inside collections."
-  [env context]
-  [(s/keys :opt [::pci/index-oir])
-   map? => ::smart-map]
-  (->SmartMap
-    (-> env
-        (p.ent/with-entity context)
-        (assoc ::source-context context))))
+  ([env]
+   [(s/keys :opt [::pci/index-oir]) => ::smart-map]
+   (smart-map env {}))
+  ([env context]
+   [(s/keys :opt [::pci/index-oir])
+    map? => ::smart-map]
+   (->SmartMap
+     (-> env
+         (p.ent/with-entity context)
+         (assoc ::source-context context)))))
