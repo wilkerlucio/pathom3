@@ -28,50 +28,50 @@
   #?(:clj  (Math/sqrt n)
      :cljs (js/Math.sqrt n)))
 
-(pco/defresolver left [{::keys [right width]}] ::left
-  (- right width))
+(pco/defresolver left [{::keys [right width]}]
+  ::left (- right width))
 
-(pco/defresolver right [{::keys [left width]}] ::right
-  (+ left width))
+(pco/defresolver right [{::keys [left width]}]
+  ::right (+ left width))
 
-(pco/defresolver top [{::keys [bottom height]}] ::top
-  (- bottom height))
+(pco/defresolver top [{::keys [bottom height]}]
+  ::top (- bottom height))
 
-(pco/defresolver bottom [{::keys [top height]}] ::bottom
-  (+ top height))
+(pco/defresolver bottom [{::keys [top height]}]
+  ::bottom (+ top height))
 
-(pco/defresolver width [{::keys [left right]}] ::width
-  (- right left))
+(pco/defresolver width [{::keys [left right]}]
+  ::width (- right left))
 
-(pco/defresolver height [{::keys [top bottom]}] ::height
-  (- bottom top))
+(pco/defresolver height [{::keys [top bottom]}]
+  ::height (- bottom top))
 
-(pco/defresolver half-width [{::keys [width]}] ::half-width
-  (/ width 2))
+(pco/defresolver half-width [{::keys [width]}]
+  ::half-width (/ width 2))
 
-(pco/defresolver half-height [{::keys [height]}] ::half-height
-  (/ height 2))
+(pco/defresolver half-height [{::keys [height]}]
+  ::half-height (/ height 2))
 
-(pco/defresolver center-x [{::keys [left half-width]}] ::center-x
-  (+ left half-width))
+(pco/defresolver center-x [{::keys [left half-width]}]
+  ::center-x (+ left half-width))
 
-(pco/defresolver center-y [{::keys [top half-height]}] ::center-y
-  (+ top half-height))
+(pco/defresolver center-y [{::keys [top half-height]}]
+  ::center-y (+ top half-height))
 
-(pco/defresolver midpoint [{::keys [center-x center-y]}] ::midpoint
-  {::left center-x
-   ::top  center-y})
+(pco/defresolver midpoint [{::keys [center-x center-y]}]
+  ::midpoint {::left center-x
+              ::top  center-y})
 
-(pco/defresolver turn-point [{::keys [left top]}] ::turn-point
-  {::right  left
-   ::bottom top})
+(pco/defresolver turn-point [{::keys [left top]}]
+  ::turn-point {::right  left
+                ::bottom top})
 
-(pco/defresolver turn-point2 [{::keys [right bottom]}] ::turn-point
-  {::left right
-   ::top  bottom})
+(pco/defresolver turn-point2 [{::keys [right bottom]}]
+  ::turn-point {::left right
+                ::top  bottom})
 
-(pco/defresolver diagonal [{::keys [width height]}] ::diagonal
-  (sqrt (+ (* width width) (* height height))))
+(pco/defresolver diagonal [{::keys [width height]}]
+  ::diagonal (sqrt (+ (* width width) (* height height))))
 
 (def registry
   [left
