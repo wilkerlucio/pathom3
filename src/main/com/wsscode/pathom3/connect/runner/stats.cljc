@@ -9,19 +9,19 @@
 
 (pco/defresolver resolver-accumulated-duration
   [{::pcr/keys [node-run-stats]}]
-  ::pcr/resolver-accumulated-duration-ns
+  ::resolver-accumulated-duration-ns
   (transduce (map ::pcr/run-duration-ns) + 0 (vals node-run-stats)))
 
 (pco/defresolver overhead-duration
-  [{::pcr/keys [graph-process-duration-ns
-                resolver-accumulated-duration-ns]}]
-  ::pcr/overhead-duration-ns
+  [{::pcr/keys [graph-process-duration-ns]
+    ::keys     [resolver-accumulated-duration-ns]}]
+  ::overhead-duration-ns
   (- graph-process-duration-ns resolver-accumulated-duration-ns))
 
 (pco/defresolver overhead-pct
-  [{::pcr/keys [graph-process-duration-ns
-                overhead-duration-ns]}]
-  ::pcr/overhead-duration-percentage
+  [{::pcr/keys [graph-process-duration-ns]
+    ::keys     [overhead-duration-ns]}]
+  ::overhead-duration-percentage
   (double (/ overhead-duration-ns graph-process-duration-ns)))
 
 (defn duration-extensions [attr]
@@ -39,8 +39,8 @@
    overhead-pct
    (duration-extensions ::pcr/graph-process-duration)
    (duration-extensions ::pcr/run-duration)
-   (duration-extensions ::pcr/resolver-accumulated-duration)
-   (duration-extensions ::pcr/overhead-duration)
+   (duration-extensions ::resolver-accumulated-duration)
+   (duration-extensions ::overhead-duration)
    (pbir/attribute-table-resolver ::pcp/nodes ::pcp/node-id
                                   [::pco/op-name
                                    ::pcp/requires
