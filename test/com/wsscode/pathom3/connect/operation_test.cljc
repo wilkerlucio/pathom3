@@ -110,7 +110,14 @@
               '[:map {:keys [foo] :as bar}]))
 
        (is (= (s/conform ::pco/operation-argument '{:strs [foo]})
-              :clojure.spec.alpha/invalid)))
+              :clojure.spec.alpha/invalid))
+
+       (testing "keywords on keys"
+         (is (= (s/conform ::pco/operation-argument '{:keys [:foo]})
+                '[:map {:keys [:foo]}]))
+
+         (is (= (s/conform ::pco/operation-argument '{:keys [:foo/bar]})
+                '[:map {:keys [:foo/bar]}]))))
 
      (testing "fails without options or output"
        (is (= (s/explain-data ::pco/defresolver-args '[foo [env input] "bar"])
@@ -131,6 +138,14 @@
   (is (= (pco/extract-destructure-map-keys-as-keywords
            '{:keys [foo]})
          [:foo]))
+
+  (is (= (pco/extract-destructure-map-keys-as-keywords
+           '{:keys [:foo]})
+         [:foo]))
+
+  (is (= (pco/extract-destructure-map-keys-as-keywords
+           '{:keys [:foo/bar]})
+         [:foo/bar]))
 
   (is (= (pco/extract-destructure-map-keys-as-keywords
            '{:keys      [foo]

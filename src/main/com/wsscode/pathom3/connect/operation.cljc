@@ -105,9 +105,12 @@
 
 #?(:clj
    (do
-     (s/def ::ns-keys-binding
+     (s/def ::simple-keys-binding
+       (s/tuple #{:keys} (s/coll-of ident? :kind vector?)))
+
+     (s/def ::qualified-keys-binding
        (s/tuple
-         (s/and keyword? #(= (name %) "keys"))
+         (s/and qualified-keyword? #(= (name %) "keys"))
          (s/coll-of simple-symbol? :kind vector?)))
 
      (s/def ::as-binding
@@ -115,7 +118,8 @@
 
      (s/def ::map-destructure
        (s/every
-         (s/or :keys-bindings ::ns-keys-binding
+         (s/or :simple-keys-binding ::simple-keys-binding
+               :qualified-keys-bindings ::qualified-keys-binding
                :as ::as-binding)
          :kind map?))
 
@@ -149,7 +153,8 @@
           (remove as-entry?)
           (mapcat
             (fn [[k vals]]
-              (map #(keyword (namespace k) (name %)) vals))))
+              (map #(keyword (or (namespace %)
+                                 (namespace k)) (name %)) vals))))
         m))
 
 (defn params->resolver-options [{:keys [arglist options output-attr]}]
