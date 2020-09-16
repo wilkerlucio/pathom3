@@ -2,7 +2,8 @@
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
     [com.wsscode.misc.core :as misc]
-    [com.wsscode.pathom3.connect.operation :as pco]))
+    [com.wsscode.pathom3.connect.operation :as pco]
+    [com.wsscode.pathom3.interface.smart-map :as psm]))
 
 (deftest cljc-random-uuid-test
   (is (uuid? (misc/cljc-random-uuid))))
@@ -105,4 +106,5 @@
   (is (= true (misc/native-map? {})))
   (is (= true (misc/native-map? {:foo "bar"})))
   (is (= true (misc/native-map? (zipmap (range 50) (range 50)))))
-  (is (= false (misc/native-map? (pco/resolver 'r {} (fn [_ _]))))))
+  (is (= false (misc/native-map? (pco/resolver 'r {} (fn [_ _])))))
+  (is (= false (misc/native-map? (psm/smart-map {})))))
