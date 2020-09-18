@@ -185,7 +185,7 @@
         attrs))
     attributes))
 
-(defn reachable-groups*
+(defn reachable-attributes-for-groups*
   [{::keys [index-io]} groups attributes]
   (into #{}
         (comp (filter #(every? (fn [x] (contains? attributes x)) %))
@@ -206,12 +206,12 @@
                   (into (keys (get index-io #{})))
                   (into (keys available-data)))]
     (loop [attrs         (persistent! (reachable-attributes* env queue (transient #{})))
-           group-reaches (reachable-groups* env (attrs-multi-deps env attrs) attrs)]
+           group-reaches (reachable-attributes-for-groups* env (attrs-multi-deps env attrs) attrs)]
       (if (seq group-reaches)
         (let [new-attrs (persistent! (reachable-attributes* env group-reaches (transient attrs)))]
           (recur
             new-attrs
-            (reachable-groups* env (attrs-multi-deps env new-attrs) new-attrs)))
+            (reachable-attributes-for-groups* env (attrs-multi-deps env new-attrs) new-attrs)))
         attrs))))
 
 (>defn attribute-reachable?
