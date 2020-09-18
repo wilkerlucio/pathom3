@@ -256,8 +256,8 @@
   directly:
 
       (full-name {:acme.user/first-name \"Ada\"
-                  :acme.user/last-name  \"Lace\"})
-      => \"Ada Lace\"
+                  :acme.user/last-name  \"Lovelace\"})
+      => \"Ada Lovelace\"
 
   Note that similar to the way we define the resolver, we can also omit `env` (and even
   the input) when calling, the resolvers fns always support arity 0, 1 and 2.
