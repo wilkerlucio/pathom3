@@ -152,9 +152,11 @@
 
 (>def ::nested-available-process
   "Which attributes need further processing due to sub-query requirements."
-  (s/coll-of (s/or :attr ::p.attr/attribute
-                   :ident ::eql/ident)
-             :kind set?))
+  ::p.attr/attributes-set)
+
+(>def ::idents
+  "Idents collected while scanning query"
+  (s/coll-of ::eql/ident :kind set?))
 
 (>def ::plan-cache*
   "Atom containing the cache atom to support cached planning."
@@ -1214,7 +1216,7 @@
     graph))
 
 (defn add-ident-process [graph {:keys [key]}]
-  (update graph ::nested-available-process misc/sconj key))
+  (update graph ::idents misc/sconj key))
 
 (defn compute-attribute-graph
   "Compute the run graph for a given attribute."

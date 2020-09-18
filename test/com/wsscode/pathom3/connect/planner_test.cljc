@@ -323,48 +323,48 @@
              {::resolvers [{::pco/op-name 'a
                             ::pco/output  [:a]}]
               ::eql/query [:a [:foo "bar"]]})
-           '{::pcp/nodes                    {1 {::pco/op-name          a
-                                                ::pcp/node-id          1
-                                                ::pcp/requires         {:a {}}
-                                                ::pcp/input            {}
-                                                ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->nodes    {a #{1}}
-             ::pcp/unreachable-resolvers    #{}
-             ::pcp/unreachable-attrs        #{}
-             ::pcp/root                     1
-             ::pcp/nested-available-process #{[:foo "bar"]}
-             ::pcp/index-attrs              {:a 1}
-             ::pcp/index-ast                {:a           {:dispatch-key :a
-                                                           :key          :a
-                                                           :type         :prop}
-                                             [:foo "bar"] {:dispatch-key :foo
-                                                           :key          [:foo
-                                                                          "bar"]
-                                                           :type         :prop}}}))
+           '{::pcp/nodes                 {1 {::pco/op-name          a
+                                             ::pcp/node-id          1
+                                             ::pcp/requires         {:a {}}
+                                             ::pcp/input            {}
+                                             ::pcp/source-for-attrs #{:a}}}
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/unreachable-resolvers #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  1
+             ::pcp/idents                #{[:foo "bar"]}
+             ::pcp/index-attrs           {:a 1}
+             ::pcp/index-ast             {:a           {:dispatch-key :a
+                                                        :key          :a
+                                                        :type         :prop}
+                                          [:foo "bar"] {:dispatch-key :foo
+                                                        :key          [:foo
+                                                                       "bar"]
+                                                        :type         :prop}}}))
 
     (is (= (compute-run-graph
              {::resolvers [{::pco/op-name 'a
                             ::pco/output  [:a]}]
               ::eql/query [:a {[:foo "bar"] [:baz]}]})
-           '{::pcp/nodes                    {1 {::pco/op-name          a
-                                                ::pcp/node-id          1
-                                                ::pcp/requires         {:a {}}
-                                                ::pcp/input            {}
-                                                ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->nodes    {a #{1}}
-             ::pcp/unreachable-resolvers    #{}
-             ::pcp/unreachable-attrs        #{}
-             ::pcp/root                     1
-             ::pcp/nested-available-process #{[:foo "bar"]}
-             ::pcp/index-attrs              {:a 1}
-             ::pcp/index-ast                {:a           {:dispatch-key :a
-                                                           :key          :a
-                                                           :type         :prop}
-                                             [:foo "bar"] {:children     [{:dispatch-key :baz
+           '{::pcp/nodes                 {1 {::pco/op-name          a
+                                             ::pcp/node-id          1
+                                             ::pcp/requires         {:a {}}
+                                             ::pcp/input            {}
+                                             ::pcp/source-for-attrs #{:a}}}
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/unreachable-resolvers #{}
+             ::pcp/unreachable-attrs     #{}
+             ::pcp/root                  1
+             ::pcp/idents                #{[:foo "bar"]}
+             ::pcp/index-attrs           {:a 1}
+             ::pcp/index-ast             {:a           {:dispatch-key :a
+                                                        :key          :a
+                                                        :type         :prop}
+                                          [:foo "bar"] {:children        [{:dispatch-key :baz
                                                                            :key          :baz
                                                                            :type         :prop}]
-                                                           :dispatch-key :foo
-                                                           :key          [:foo
+                                                        :dispatch-key    :foo
+                                                        :key             [:foo
                                                                           "bar"]
                                                            :query        [:baz]
                                                            :type         :join}}})))
