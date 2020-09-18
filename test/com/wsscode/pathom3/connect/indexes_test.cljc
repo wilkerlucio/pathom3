@@ -137,6 +137,14 @@
                                                  ::y {}})
              #{::x ::y ::z})))
 
+    (testing "no go"
+      (let [register (pci/register (pco/resolver 'xyz
+                                     {::pco/input  [::x ::y]
+                                      ::pco/output [::z]}
+                                     (fn [_ _])))]
+        (is (= (pci/reachable-attributes register {::x {}})
+               #{::x}))))
+
     (testing "extended dependency"
       (let [register (pci/register
                        [(pco/resolver 'xyz

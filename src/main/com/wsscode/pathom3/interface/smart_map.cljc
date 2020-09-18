@@ -127,8 +127,8 @@
      (toString [_] (pr-str* (p.ent/entity env)))
      (equiv [_ other] (-equiv (p.ent/entity env) other))
 
-     ;; EXPERIMENTAL: subject to change
-     (keys [_] (es6-iterator (keys (p.ent/entity env))))
+     ;; ES6
+     (keys [_] (es6-iterator (sm-keys env)))
      (entries [_] (es6-entries-iterator (seq (p.ent/entity env))))
      (values [_] (es6-iterator (vals (p.ent/entity env))))
      (has [_ k] (sm-contains? env k))

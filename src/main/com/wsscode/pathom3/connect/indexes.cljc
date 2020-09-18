@@ -188,7 +188,8 @@
 (defn reachable-groups*
   [{::keys [index-io]} groups attributes]
   (into #{}
-        (comp (mapcat #(-> index-io (get %) keys))
+        (comp (filter #(every? (fn [x] (contains? attributes x)) %))
+              (mapcat #(-> index-io (get %) keys))
               (remove #(contains? attributes %)))
         groups))
 
@@ -210,7 +211,7 @@
         (let [new-attrs (persistent! (reachable-attributes* env group-reaches (transient attrs)))]
           (recur
             new-attrs
-            (reachable-groups* env (attrs-multi-deps env group-reaches) new-attrs)))
+            (reachable-groups* env (attrs-multi-deps env new-attrs) new-attrs)))
         attrs))))
 
 (>defn attribute-reachable?
