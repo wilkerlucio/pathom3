@@ -106,7 +106,7 @@
   "Check if attribute can be found in the smart map."
   [env k]
   (if (or (sm-contains? env k)
-          (pci/attribute-available? env k))
+          (pci/attribute-reachable? env (p.ent/entity env) k))
     (misc/make-map-entry k (sm-get env k))))
 
 ; region type definition

@@ -199,7 +199,7 @@
 (>defn reachable-attributes
   "Discover which attributes are available, given an index and a data context."
   [{::keys [index-io] :as env} available-data]
-  [(s/keys) ::pfsd/shape-descriptor
+  [(s/keys) map?
    => ::p.attr/attributes-set]
   (let [queue (-> #{}
                   (into (keys (get index-io #{})))
@@ -212,3 +212,10 @@
             new-attrs
             (reachable-groups* env (attrs-multi-deps env group-reaches) new-attrs)))
         attrs))))
+
+(>defn attribute-reachable?
+  "Discover which attributes are available, given an index and a data context."
+  [env available-data attr]
+  [(s/keys) map? ::p.attr/attribute
+   => boolean?]
+  (contains? (reachable-attributes env available-data) attr))

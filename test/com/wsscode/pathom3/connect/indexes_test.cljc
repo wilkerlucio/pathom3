@@ -161,3 +161,24 @@
         (is (= (pci/reachable-attributes register {::x {}
                                                    ::y {}})
                #{::x ::y ::z ::a ::c}))))))
+
+(deftest attribute-reachable?-test
+  (let [register (pci/register
+                   [(pco/resolver 'xyz
+                      {::pco/input  [::x ::y]
+                       ::pco/output [::z]}
+                      (fn [_ _]))
+                    (pbir/alias-resolver ::z ::a)
+                    (pco/resolver 'axc
+                      {::pco/input  [::a ::x]
+                       ::pco/output [::c]}
+                      (fn [_ _]))])]
+    (is (= (pci/attribute-reachable? register {::x {}
+                                               ::y {}}
+                                     ::c)
+           true))
+
+    (is (= (pci/attribute-reachable? register {::x {}
+                                               ::y {}}
+                                     ::d)
+           false))))
