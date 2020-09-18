@@ -141,11 +141,11 @@
       (is (= (:right sm) 8))
       (is (= (:right (psm/sm-dissoc! sm :width)) 8)))))
 
-(deftest sm-load-test
+(deftest sm-touch-test
   (testing "loads data from a EQL expression into the smart map"
     (let [sm (-> (psm/smart-map (pci/register registry)
                    {:x 3 :y 5})
-                 (psm/sm-load! [{::geo/turn-point [:right]}]))]
+                 (psm/sm-touch! [{::geo/turn-point [:right]}]))]
       (is (= (-> sm psm/sm-env p.ent/entity)
              {:x               3
               :y               5

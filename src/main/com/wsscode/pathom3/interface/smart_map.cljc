@@ -243,15 +243,17 @@
   (swap! (-> smart-map sm-env ::p.ent/entity-tree*) dissoc k)
   smart-map)
 
-(defn sm-load-ast!
+(defn sm-touch-ast!
   [smart-map ast]
   (let [env (sm-env smart-map)]
     (pcr/run-graph! env ast (::p.ent/entity-tree* env))
     smart-map))
 
-(defn sm-load!
+(defn sm-touch!
+  "Will pre-fetch data in a smart map, given the EQL request. Use this to optimize the
+  load of data ahead of time, instead of pulling one by one lazily."
   [smart-map eql]
-  (sm-load-ast! smart-map (eql/query->ast eql)))
+  (sm-touch-ast! smart-map (eql/query->ast eql)))
 
 (>defn ^SmartMap smart-map
   "Create a new smart map.
