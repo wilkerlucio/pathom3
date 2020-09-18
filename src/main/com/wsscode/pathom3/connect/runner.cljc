@@ -94,6 +94,16 @@
     (p.ent/swap-entity! env #(merge-entity-data env % %2) response))
   env)
 
+(defn process-idents!
+  "Process the idents from the Graph, this will add the ident data into the child.
+
+  If there is ident data already, it gets merged with the ident value."
+  [env idents]
+  (doseq [k idents]
+    (p.ent/swap-entity! env
+                        #(assoc % k (process-attr-subquery env k
+                                                           (assoc (get % k) (first k) (second k)))))))
+
 (defn run-next-node!
   "Runs the next node associated with the node, in case it exists."
   [{::pcp/keys [graph] :as env} {::pcp/keys [run-next]}]
@@ -192,9 +202,13 @@
   (let [start (misc/nano-now)
         env   (assoc env ::node-run-stats* (atom ^::map-container? {}))]
 
-    ; compute nested available fields first
+    ; compute nested available fields
     (if-let [nested (::pcp/nested-available-process graph)]
       (merge-resolver-response! env (select-keys (p.ent/entity env) nested)))
+
+    ; process idents
+    (if-let [idents (::pcp/idents graph)]
+      (process-idents! env idents))
 
     ; now run the nodes
     (if-let [root (pcp/get-root-node graph)]

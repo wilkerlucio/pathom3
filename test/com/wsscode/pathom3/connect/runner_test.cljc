@@ -94,17 +94,35 @@
                  ::geo/left 10
                  :left      10}}))
 
-  #_
-  (testing "insufficient data"
-    (is (= (run-graph (pci/register [(pco/resolver 'a {::pco/output [:a]
-                                                       ::pco/input  [:b]}
-                                       (fn [_ _] {:a "a"}))
-                                     (pco/resolver 'b {::pco/output [:b]}
-                                       (fn [_ _] {}))])
+  (testing "ident"
+    (is (= (run-graph (pci/register [geo/full-registry])
                       {}
-                      [:a])
-           {::coords [{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
-                      {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}]})))
+                      [[::geo/x 10]])
+           {[::geo/x 10] {::geo/x 10}}))
+
+    (is (= (run-graph (pci/register [geo/full-registry])
+                      {}
+                      [{[::geo/x 10] [::geo/left]}])
+           {[::geo/x 10] {::geo/x    10
+                          ::geo/left 10}}))
+
+    (is (= (run-graph (pci/register [geo/full-registry])
+                      {[::geo/x 10] {:random "data"}}
+                      [{[::geo/x 10] [::geo/left]}])
+           {[::geo/x 10] {:random    "data"
+                          ::geo/x    10
+                          ::geo/left 10}})))
+
+  #_(testing "insufficient data"
+      (is (= (run-graph (pci/register [(pco/resolver 'a {::pco/output [:a]
+                                                         ::pco/input  [:b]}
+                                         (fn [_ _] {:a "a"}))
+                                       (pco/resolver 'b {::pco/output [:b]}
+                                         (fn [_ _] {}))])
+               {}
+               [:a])
+             {::coords [{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
+                        {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}]})))
 
   (testing "processing sequence of consistent elements"
     (is (= (run-graph (pci/register [geo/full-registry
