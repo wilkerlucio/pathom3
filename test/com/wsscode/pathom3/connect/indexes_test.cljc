@@ -1,6 +1,7 @@
 (ns com.wsscode.pathom3.connect.indexes-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]))
 
@@ -22,22 +23,62 @@
 
   (is (= (pci/resolver-config {} 'r) nil)))
 
-(deftest register-test
-  (let [resolver (pco/resolver 'r {::pco/output [:foo]}
-                   (fn [_ _] {:foo 42}))]
-    (is (= (pci/register resolver)
-           {::pci/index-resolvers {'r resolver}
-            ::pci/index-oir       {:foo {#{} #{'r}}}})))
+(deftest index-attributes-test
+  (testing "combinations"
+    (is (= (pci/index-attributes {::pco/op-name 'x
+                                  ::pco/input   [:a :b]
+                                  ::pco/output  [:c]})
+           '{#{:b :a} #:com.wsscode.pathom3.connect.indexes{:attr-id #{:b :a},
+                                                            :attr-provides {:c #{x}},
+                                                            :attr-input-in #{x}},
+             :b #:com.wsscode.pathom3.connect.indexes{:attr-id :b,
+                                                      :attr-combinations #{#{:b :a}},
+                                                      :attr-input-in #{x}},
+             :a #:com.wsscode.pathom3.connect.indexes{:attr-id :a,
+                                                      :attr-combinations #{#{:b :a}},
+                                                      :attr-input-in #{x}},
+             :c #:com.wsscode.pathom3.connect.indexes{:attr-id :c,
+                                                      :attr-reach-via {#{:b :a} #{x}},
+                                                      :attr-output-in #{x}}}))))
 
-  (let [r1 (pco/resolver 'r {::pco/output [:foo]}
-             (fn [_ _] {:foo 42}))
-        r2 (pco/resolver 'r2 {::pco/output [:foo2]}
-             (fn [_ _] {:foo2 "val"}))]
-    (is (= (pci/register [r1 r2])
-           {::pci/index-resolvers {'r  r1
-                                   'r2 r2}
-            ::pci/index-oir       {:foo  {#{} #{'r}}
-                                   :foo2 {#{} #{'r2}}}})))
+(deftest register-test
+  (testing "global resolver"
+    (let [resolver (pco/resolver 'r {::pco/output [:foo]}
+                     (fn [_ _] {:foo 42}))]
+      (is (= (pci/register resolver)
+             {::pci/index-resolvers  {'r resolver}
+              ::pci/index-attributes '{#{}  #::pci{:attr-id       #{}
+                                                   :attr-input-in #{r}
+                                                   :attr-provides {:foo #{r}}}
+                                       :foo #::pci{:attr-id        :foo
+                                                   :attr-output-in #{r}
+                                                   :attr-reach-via {#{} #{r}}}}
+              ::pci/index-io         {#{} {:foo {}}}
+              ::pci/index-oir        {:foo {#{} #{'r}}}}))))
+
+  (testing "multiple globals"
+    (let [r1 (pco/resolver 'r {::pco/output [:foo]}
+               (fn [_ _] {:foo 42}))
+          r2 (pco/resolver 'r2 {::pco/output [:foo2]}
+               (fn [_ _] {:foo2 "val"}))]
+      (is (= (pci/register [r1 r2])
+             {::pci/index-resolvers  {'r  r1
+                                      'r2 r2}
+              ::pci/index-attributes '{#{}   #::pci{:attr-id       #{}
+                                                    :attr-input-in #{r
+                                                                     r2}
+                                                    :attr-provides {:foo  #{r}
+                                                                    :foo2 #{r2}}}
+                                       :foo  #::pci{:attr-id        :foo
+                                                    :attr-output-in #{r}
+                                                    :attr-reach-via {#{} #{r}}}
+                                       :foo2 #::pci{:attr-id        :foo2
+                                                    :attr-output-in #{r2}
+                                                    :attr-reach-via {#{} #{r2}}}}
+              ::pci/index-oir        {:foo  {#{} #{'r}}
+                                      :foo2 {#{} #{'r2}}}
+              ::pci/index-io         {#{} {:foo  {}
+                                           :foo2 {}}}}))))
 
   (testing "adding indexes together"
     (let [r1 (pco/resolver 'r {::pco/output [:foo]}
@@ -45,12 +86,78 @@
           r2 (pco/resolver 'r2 {::pco/output [:foo2]}
                (fn [_ _] {:foo2 "val"}))]
       (is (= (pci/register [(pci/register r1) r2])
-             {::pci/index-resolvers {'r  r1
-                                     'r2 r2}
-              ::pci/index-oir       {:foo  {#{} #{'r}}
-                                     :foo2 {#{} #{'r2}}}})))))
+             {::pci/index-resolvers  {'r  r1
+                                      'r2 r2}
+              ::pci/index-attributes '{#{}   #::pci{:attr-id       #{}
+                                                    :attr-input-in #{r
+                                                                     r2}
+                                                    :attr-provides {:foo  #{r}
+                                                                    :foo2 #{r2}}}
+                                       :foo  #::pci{:attr-id        :foo
+                                                    :attr-output-in #{r}
+                                                    :attr-reach-via {#{} #{r}}}
+                                       :foo2 #::pci{:attr-id        :foo2
+                                                    :attr-output-in #{r2}
+                                                    :attr-reach-via {#{} #{r2}}}}
+              ::pci/index-oir        {:foo  {#{} #{'r}}
+                                      :foo2 {#{} #{'r2}}}
+              ::pci/index-io         {#{} {:foo  {}
+                                           :foo2 {}}}})))))
 
 (deftest attribute-available?-test
   (let [register (pci/register (pco/resolver 'r {::pco/output [:foo]} (fn [_ _] {})))]
     (is (= (pci/attribute-available? register :foo) true))
     (is (= (pci/attribute-available? register :bar) false))))
+
+(deftest reachable-attributes-test
+  (testing "all blanks"
+    (is (= (pci/reachable-attributes {} {})
+           #{})))
+
+  (testing "context data is always in"
+    (is (= (pci/reachable-attributes {} {::x {}})
+           #{::x})))
+
+  (testing "globals"
+    (let [register (pci/register (pbir/constantly-resolver ::x {}))]
+      (is (= (pci/reachable-attributes register {})
+             #{::x}))))
+
+  (testing "single dependency"
+    (let [register (pci/register (pbir/single-attr-resolver ::x ::y inc))]
+      (is (= (pci/reachable-attributes register {::x {}})
+             #{::x ::y}))))
+
+  (testing "multi dependency"
+    (let [register (pci/register (pco/resolver 'xyz
+                                   {::pco/input  [::x ::y]
+                                    ::pco/output [::z]}
+                                   (fn [_ _])))]
+      (is (= (pci/reachable-attributes register {::x {}
+                                                 ::y {}})
+             #{::x ::y ::z})))
+
+    (testing "extended dependency"
+      (let [register (pci/register
+                       [(pco/resolver 'xyz
+                          {::pco/input  [::x ::y]
+                           ::pco/output [::z]}
+                          (fn [_ _]))
+                        (pbir/alias-resolver ::z ::a)])]
+        (is (= (pci/reachable-attributes register {::x {}
+                                                   ::y {}})
+               #{::x ::y ::z ::a})))
+
+      (let [register (pci/register
+                       [(pco/resolver 'xyz
+                          {::pco/input  [::x ::y]
+                           ::pco/output [::z]}
+                          (fn [_ _]))
+                        (pbir/alias-resolver ::z ::a)
+                        (pco/resolver 'axc
+                          {::pco/input  [::a ::x]
+                           ::pco/output [::c]}
+                          (fn [_ _]))])]
+        (is (= (pci/reachable-attributes register {::x {}
+                                                   ::y {}})
+               #{::x ::y ::z ::a ::c}))))))
