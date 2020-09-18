@@ -152,7 +152,9 @@
 
 (>def ::nested-available-process
   "Which attributes need further processing due to sub-query requirements."
-  ::p.attr/attributes-set)
+  (s/coll-of (s/or :attr ::p.attr/attribute
+                   :ident ::eql/ident)
+             :kind set?))
 
 (>def ::plan-cache*
   "Atom containing the cache atom to support cached planning."
@@ -1211,6 +1213,9 @@
     (update graph ::nested-available-process misc/sconj key)
     graph))
 
+(defn add-ident-process [graph {:keys [key]}]
+  (update graph ::nested-available-process misc/sconj key))
+
 (defn compute-attribute-graph
   "Compute the run graph for a given attribute."
   [{::keys [unreachable-attrs] :as graph}
@@ -1221,6 +1226,9 @@
     :as        env}]
   (let [env (assoc env pc-attr attr)]
     (cond
+      (eql/ident? attr)
+      (add-ident-process graph ast)
+
       (contains? available-data attr)
       (mark-attribute-process-sub-query graph ast)
 
@@ -1243,7 +1251,7 @@
           (assoc env :edn-query-language.ast/node ast))
         graph))
     graph
-    (remove (comp eql/ident? :key) (:children (:edn-query-language.ast/node env)))))
+    (:children (:edn-query-language.ast/node env))))
 
 (>defn compute-run-graph
   "Generates a run plan for a given environment, the environment should contain the
