@@ -15,6 +15,10 @@
 
 (declare smart-map smart-map?)
 
+(>def ::keys-mode
+  #{::keys-mode-cached
+    ::keys-mode-reachable})
+
 (defn wrap-smart-map
   "If x is a composite data structure, return the data wrapped by smart maps."
   [env x]
@@ -83,8 +87,12 @@
 
 (defn sm-keys
   "Retrieve the keys in the smart map cache-tree."
-  [env]
-  (keys (p.ent/entity env)))
+  [{::keys [keys-mode] :as env}]
+  (case keys-mode
+    ::keys-mode-reachable
+    (pci/reachable-attributes env (p.ent/entity env))
+
+    (keys (p.ent/entity env))))
 
 (defn sm-contains?
   "Check if a property is present in the cache-tree."
@@ -110,6 +118,99 @@
     (misc/make-map-entry k (sm-get env k))))
 
 ; region type definition
+
+#?(:cljs
+   (deftype SmartMapEntry [env key]
+     Object
+     (indexOf [coll x]
+              (-indexOf coll x 0))
+     (indexOf [coll x start]
+              (-indexOf coll x start))
+     (lastIndexOf [coll x]
+                  (-lastIndexOf coll x (count coll)))
+     (lastIndexOf [coll x start]
+                  (-lastIndexOf coll x start))
+
+     IMapEntry
+     (-key [node] key)
+     (-val [node] (sm-get env key))
+
+     IEquiv
+     (-equiv [coll other] (equiv-sequential coll other))
+
+     IMeta
+     (-meta [node] nil)
+
+     IWithMeta
+     (-with-meta [node meta]
+                 (with-meta [key (-val node)] meta))
+
+     IStack
+     (-peek [node] (-val node))
+
+     (-pop [node] [key])
+
+     ICollection
+     (-conj [node o] [key val o])
+
+     IEmptyableCollection
+     (-empty [node] nil)
+
+     ISequential
+     ISeqable
+     (-seq [node] (IndexedSeq. #js [key (-val node)] 0 nil))
+
+     IReversible
+     (-rseq [node] (IndexedSeq. #js [(-val node) key] 0 nil))
+
+     ICounted
+     (-count [node] 2)
+
+     IIndexed
+     (-nth [node n]
+           (cond (== n 0) key
+                 (== n 1) (-val node)
+                 :else (throw (js/Error. "Index out of bounds"))))
+
+     (-nth [node n not-found]
+           (cond (== n 0) key
+                 (== n 1) (-val node)
+                 :else not-found))
+
+     ILookup
+     (-lookup [node k] (-nth node k nil))
+     (-lookup [node k not-found] (-nth node k not-found))
+
+     IAssociative
+     (-assoc [node k v]
+             (assoc [key (-val node)] k v))
+     (-contains-key? [node k]
+                     (or (== k 0) (== k 1)))
+
+     IFind
+     (-find [node k]
+            (case k
+              0 (MapEntry. 0 key nil)
+              1 (MapEntry. 1 (-val node) nil)
+              nil))
+
+     IVector
+     (-assoc-n [node n v]
+               (-assoc-n [key (-val node)] n v))
+
+     IReduce
+     (-reduce [node f]
+              (ci-reduce node f))
+
+     (-reduce [node f start]
+              (ci-reduce node f start))
+
+     IFn
+     (-invoke [node k]
+              (-nth node k))
+
+     (-invoke [node k not-found]
+              (-nth node k not-found))))
 
 #?(:clj
    (def-map-type SmartMap [env]
@@ -168,7 +269,10 @@
      (-hash [_] (hash (p.ent/entity env)))
 
      ISeqable
-     (-seq [_] (-seq (p.ent/entity env)))
+     (-seq [_]
+           (map
+             #(SmartMapEntry. env %)
+             (sm-keys env)))
 
      ICounted
      (-count [_] (count (p.ent/entity env)))
@@ -190,6 +294,11 @@
      IKVReduce
      (-kv-reduce [_ f init]
                  (reduce-kv (fn [cur k v] (f cur k (wrap-smart-map env v))) init (p.ent/entity env)))
+
+     IIterable
+     (-iterator [this]
+                (transformer-iterator (map #(SmartMapEntry. env %))
+                                      (-iterator (sm-keys env)) false))
 
      IReduce
      (-reduce [coll f] (iter-reduce coll f))
@@ -279,3 +388,20 @@
      (-> env
          (p.ent/with-entity context)
          (assoc ::source-context context)))))
+
+(>defn with-keys-mode
+  "Configure how the Smart Map should respond to `keys`.
+
+  Available modes:
+
+  ::keys-mode-cached (default): in this mode, keys will return only the keys that are
+  currently cached in the Smart Map. This is the safest mode, given it will only
+  read things from memory.
+
+  ::keys-mode-reachable: in this mode, keys will list all possible keys that Pathom can
+  reach given the current indexes and available data. Be careful with this mode, on large
+  graphs there is a risk that a scan operation may trigger a large amount of resolver
+  processing."
+  [env key-mode]
+  [map? ::keys-mode => map?]
+  (assoc env ::keys-mode key-mode))

@@ -146,8 +146,7 @@
 
 (defn as-entry? [x] (= :as (first x)))
 
-(>defn extract-destructure-map-keys-as-keywords [m]
-  [::map-destructure => (s/coll-of keyword? :kind vector?)]
+(defn extract-destructure-map-keys-as-keywords [m]
   (into []
         (comp
           (remove as-entry?)

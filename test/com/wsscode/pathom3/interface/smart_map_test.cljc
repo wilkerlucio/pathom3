@@ -99,18 +99,40 @@
       (is (= (:right sm) 8))
       (is (= (count sm) 7))))
 
-  (testing "keys, uses the count from cache-tree"
-    (let [sm (-> (pci/register registry)
-                 (psm/smart-map {:x 3 :width 5}))]
-      (is (= (:right sm) 8))
-      (is (= (into #{} (keys sm))
-             #{:x
-               :width
-               :right
-               ::geo/x
-               ::geo/left
-               ::geo/width
-               ::geo/right}))))
+  (testing "keys"
+    (testing "using cached keys"
+      (let [sm (-> (pci/register registry)
+                   (psm/smart-map {:x 3 :width 5}))]
+        (is (= (:right sm) 8))
+        (is (= (into #{} (keys sm))
+               #{:x
+                 :width
+                 :right
+                 ::geo/x
+                 ::geo/left
+                 ::geo/width
+                 ::geo/right}))))
+
+    (testing "using reachable keys"
+      (let [sm (-> (pci/register geo/full-registry)
+                   (psm/with-keys-mode ::psm/keys-mode-reachable)
+                   (psm/smart-map {:x 3}))]
+        (is (= (into #{} (keys sm))
+               #{:com.wsscode.pathom3.test.geometry-resolvers/x
+                 :com.wsscode.pathom3.test.geometry-resolvers/left
+                 :x
+                 :left}))
+
+        (testing "it should not realize the values just by asking the keys"
+          (is (= (-> sm psm/sm-env p.ent/entity)
+                 {:x 3})))
+
+        (testing "realizing via sequence"
+          (is (= (into {} sm)
+                 {:com.wsscode.pathom3.test.geometry-resolvers/left 3
+                  :com.wsscode.pathom3.test.geometry-resolvers/x    3
+                  :left                                             3
+                  :x                                                3}))))))
 
   (testing "find"
     (let [sm (-> (pci/register registry)
