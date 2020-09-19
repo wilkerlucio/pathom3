@@ -15,7 +15,9 @@
   (let [ent-tree* (get env ::p.ent/entity-tree* (atom {}))
         run-stats (pcr/run-graph! env ast ent-tree*)]
     (-> (p.ent/entity env)
-        (assoc ::pcr/run-stats (psm/smart-map pcrs/stats-index run-stats))
+        (assoc ::pcr/run-stats (psm/smart-map
+                                 (psm/with-keys-mode pcrs/stats-index
+                                                     ::psm/keys-mode-reachable) run-stats))
         (pf.eql/map-select-ast ast))))
 
 (>defn process

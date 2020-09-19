@@ -201,7 +201,7 @@
   "Discover which attributes are available, given an index and a data context."
   [{::keys [index-io] :as env} available-data]
   [(s/keys) map?
-   => ::p.attr/attributes-set]
+   => set?]
   (let [queue (-> #{}
                   (into (keys (get index-io #{})))
                   (into (keys available-data)))]

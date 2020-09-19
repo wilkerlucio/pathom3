@@ -19,6 +19,23 @@
   #{::keys-mode-cached
     ::keys-mode-reachable})
 
+(>defn with-keys-mode
+  "Configure how the Smart Map should respond to `keys`.
+
+  Available modes:
+
+  ::keys-mode-cached (default): in this mode, keys will return only the keys that are
+  currently cached in the Smart Map. This is the safest mode, given it will only
+  read things from memory.
+
+  ::keys-mode-reachable: in this mode, keys will list all possible keys that Pathom can
+  reach given the current indexes and available data. Be careful with this mode, on large
+  graphs there is a risk that a scan operation (like printing it) may trigger a large amount of resolver
+  processing."
+  [env key-mode]
+  [map? ::keys-mode => map?]
+  (assoc env ::keys-mode key-mode))
+
 (defn wrap-smart-map
   "If x is a composite data structure, return the data wrapped by smart maps."
   [env x]
@@ -329,7 +346,10 @@
          ast       {:type     :root
                     :children [{:type :prop, :dispatch-key k, :key k}]}
          run-stats (pcr/run-graph! env ast entity-tree*)]
-     {::pcr/run-stats (smart-map pcrs/stats-index run-stats)
+     {::pcr/run-stats (smart-map
+                        (with-keys-mode pcrs/stats-index
+                          ::keys-mode-reachable)
+                        run-stats)
       ::value         (wrap-smart-map env (get @entity-tree* k))})))
 
 (defn sm-assoc!
@@ -388,20 +408,3 @@
      (-> env
          (p.ent/with-entity context)
          (assoc ::source-context context)))))
-
-(>defn with-keys-mode
-  "Configure how the Smart Map should respond to `keys`.
-
-  Available modes:
-
-  ::keys-mode-cached (default): in this mode, keys will return only the keys that are
-  currently cached in the Smart Map. This is the safest mode, given it will only
-  read things from memory.
-
-  ::keys-mode-reachable: in this mode, keys will list all possible keys that Pathom can
-  reach given the current indexes and available data. Be careful with this mode, on large
-  graphs there is a risk that a scan operation may trigger a large amount of resolver
-  processing."
-  [env key-mode]
-  [map? ::keys-mode => map?]
-  (assoc env ::keys-mode key-mode))
