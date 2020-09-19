@@ -75,13 +75,21 @@
             val)
           val)))))
 
+(defn ast-contains-wildcard?
+  "Check if some of the AST children is the wildcard value, which is *."
+  [{:keys [children]}]
+  (boolean (some #{'*} (map :key children))))
+
 (>defn map-select-ast
   "Same as map-select, but using AST as source."
-  [source {:keys [children]}]
+  [source {:keys [children] :as ast}]
   [any? (s/keys :opt-un [:edn-query-language.ast/children])
    => any?]
   (if (map? source)
-    (into {} (keep #(map-select-entry source %)) children)
+    (let [start (if (ast-contains-wildcard? ast)
+                  source
+                  {})]
+      (into start (keep #(map-select-entry source %)) children))
     source))
 
 (>defn map-select

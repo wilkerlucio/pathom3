@@ -63,7 +63,11 @@
   (is (= (pf.eql/map-select {:foo #{{:a 1 :b 2}
                                     {:c 1 :b 1}}}
                             [{:foo [:b]}])
-         {:foo #{{:b 2} {:b 1}}})))
+         {:foo #{{:b 2} {:b 1}}}))
+
+  (testing "*"
+    (is (= (pf.eql/map-select {:foo 1 :bar 2} [:foo '*])
+           {:foo 1 :bar 2}))))
 
 (deftest data->query-test
   (is (= (pf.eql/data->query {}) []))
@@ -76,3 +80,7 @@
   (is (= (pf.eql/data->query {:foo [{:buz "baz"} "abc" {:it "nih"}]}) [{:foo [:buz :it]}]))
   (is (= (pf.eql/data->query {:z 10 :a 1 :b {:d 3 :e 4}}) [:z :a {:b [:d :e]}]))
   (is (= (pf.eql/data->query {:a {"foo" {:bar "baz"}}}) [:a])))
+
+(deftest ast-contains-wildcard?-test
+  (is (false? (pf.eql/ast-contains-wildcard? (eql/query->ast [:foo]))))
+  (is (true? (pf.eql/ast-contains-wildcard? (eql/query->ast [:foo '*])))))
