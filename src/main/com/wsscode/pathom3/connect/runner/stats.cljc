@@ -1,6 +1,5 @@
 (ns com.wsscode.pathom3.connect.runner.stats
   (:require
-    [com.wsscode.misc.core :as misc]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
@@ -9,38 +8,25 @@
 
 (pco/defresolver resolver-accumulated-duration
   [{::pcr/keys [node-run-stats]}]
-  ::resolver-accumulated-duration-ns
-  (transduce (map ::pcr/run-duration-ns) + 0 (vals node-run-stats)))
+  ::resolver-accumulated-duration-ms
+  (transduce (map ::pcr/run-duration-ms) + 0 (vals node-run-stats)))
 
 (pco/defresolver overhead-duration
-  [{::pcr/keys [graph-process-duration-ns]
-    ::keys     [resolver-accumulated-duration-ns]}]
-  ::overhead-duration-ns
-  (- graph-process-duration-ns resolver-accumulated-duration-ns))
+  [{::pcr/keys [graph-process-duration-ms]
+    ::keys     [resolver-accumulated-duration-ms]}]
+  ::overhead-duration-ms
+  (- graph-process-duration-ms resolver-accumulated-duration-ms))
 
 (pco/defresolver overhead-pct
-  [{::pcr/keys [graph-process-duration-ns]
-    ::keys     [overhead-duration-ns]}]
+  [{::pcr/keys [graph-process-duration-ms]
+    ::keys     [overhead-duration-ms]}]
   ::overhead-duration-percentage
-  (double (/ overhead-duration-ns graph-process-duration-ns)))
-
-(defn duration-extensions [attr]
-  (let [ns (namespace attr)
-        n  (name attr)
-        mk #(keyword ns (str n "-" %))]
-    [(pbir/single-attr-resolver (mk "ns") (mk "ms") #(misc/round (/ % 1000000)))
-     (pbir/single-attr-resolver (mk "ms") (mk "s") #(misc/round (/ % 1000)))
-     (pbir/single-attr-resolver (mk "s") (mk "mins") #(misc/round (/ % 60)))
-     (pbir/single-attr-resolver (mk "mins") (mk "hours") #(misc/round (/ % 60)))]))
+  (double (/ overhead-duration-ms graph-process-duration-ms)))
 
 (def stats-registry
   [resolver-accumulated-duration
    overhead-duration
    overhead-pct
-   (duration-extensions ::pcr/graph-process-duration)
-   (duration-extensions ::pcr/run-duration)
-   (duration-extensions ::resolver-accumulated-duration)
-   (duration-extensions ::overhead-duration)
    (pbir/attribute-table-resolver ::pcp/nodes ::pcp/node-id
                                   [::pco/op-name
                                    ::pcp/requires
@@ -52,7 +38,7 @@
                                    ::pcp/source-for-attrs
                                    ::pcp/after-nodes])
    (pbir/attribute-table-resolver ::pcr/node-run-stats ::pcp/node-id
-                                  [::pcr/run-duration-ns
+                                  [::pcr/run-duration-ms
                                    ::pcr/node-run-input])])
 
 (def stats-index (pci/register stats-registry))

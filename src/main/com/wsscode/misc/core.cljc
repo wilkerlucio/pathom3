@@ -145,9 +145,9 @@
   #?(:clj  (Math/round ^double x)
      :cljs (Math/round x)))
 
-(defn nano-now []
-  #?(:clj  (System/nanoTime)
-     :cljs (js/performance.now)))
+(defn now-ms []
+  #?(:clj  (/ (double (System/nanoTime)) 1000000.0)
+     :cljs (system-time)))
 
 (defn native-map? [x]
   #?(:clj  (or (instance? clojure.lang.PersistentArrayMap x)

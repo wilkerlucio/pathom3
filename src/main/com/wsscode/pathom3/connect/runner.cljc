@@ -132,12 +132,12 @@
         resolver   (pci/resolver env op-name)
         env        (assoc env ::pcp/node node)
         entity     (p.ent/entity env)
-        start      (misc/nano-now)
+        start      (misc/now-ms)
         input-data (select-keys entity input-keys)
         result     (pco.prot/-resolve resolver env input-data)
-        duration   (- (misc/nano-now) start)]
+        duration   (- (misc/now-ms) start)]
     (merge-node-stats env node
-                      {::run-duration-ns duration
+                      {::run-duration-ms duration
                        ::node-run-input  input-data})
     result))
 
@@ -199,7 +199,7 @@
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*])
    => (s/keys)]
-  (let [start (misc/nano-now)
+  (let [start (misc/now-ms)
         env   (assoc env ::node-run-stats* (atom ^::map-container? {}))]
 
     ; compute nested available fields
@@ -215,9 +215,9 @@
       (run-node! env root))
 
     ; compute minimal stats
-    (let [total-time (- (misc/nano-now) start)]
+    (let [total-time (- (misc/now-ms) start)]
       (assoc graph
-        ::graph-process-duration-ns total-time
+        ::graph-process-duration-ms total-time
         ::node-run-stats (some-> env ::node-run-stats* deref)))))
 
 (>defn run-graph!
