@@ -72,3 +72,8 @@
                                                              {::geo/left 20 ::geo/width 5}}}))
                           [{::coords [:right]}])
            {::coords #{{} {:right 25}}}))))
+
+(comment
+  (p.eql/process (-> (pci/register geo/full-registry)
+                     (p.ent/with-entity {:left 10}))
+    [::geo/x '*]))
