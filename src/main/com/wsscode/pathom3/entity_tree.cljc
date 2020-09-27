@@ -2,10 +2,10 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    [com.wsscode.misc.core :as misc]))
+    [com.wsscode.misc.refs :as refs]))
 
 (>def ::entity-tree map?)
-(>def ::entity-tree* misc/atom?)
+(>def ::entity-tree* refs/atom?)
 
 (>defn entity
   "Returns the entity tree value from env"

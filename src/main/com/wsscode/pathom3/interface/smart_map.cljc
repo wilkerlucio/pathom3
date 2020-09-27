@@ -5,7 +5,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    [com.wsscode.misc.core :as misc]
+    [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.stats :as pcrs]
@@ -40,7 +40,7 @@
   "If x is a composite data structure, return the data wrapped by smart maps."
   [env x]
   (cond
-    (misc/native-map? x)
+    (coll/native-map? x)
     (smart-map env x)
 
     (sequential? x)
@@ -132,7 +132,7 @@
   [env k]
   (if (or (sm-contains? env k)
           (pci/attribute-reachable? env (p.ent/entity env) k))
-    (misc/make-map-entry k (sm-get env k))))
+    (coll/make-map-entry k (sm-get env k))))
 
 ; region type definition
 

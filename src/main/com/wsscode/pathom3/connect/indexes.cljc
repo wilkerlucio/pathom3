@@ -2,7 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    [com.wsscode.misc.core :as misc]
+    [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as pfse]
@@ -32,7 +32,7 @@
   (merge-oir a b))
 
 (defmethod index-merger :default [_ a b]
-  (misc/merge-grow a b))
+  (coll/merge-grow a b))
 
 (>defn merge-indexes
   "Merge index ib in index ia."
@@ -55,7 +55,7 @@
       ; inputs
       (reduce
         (fn [idx in-attr]
-          (update idx in-attr (partial merge-with misc/merge-grow)
+          (update idx in-attr (partial merge-with coll/merge-grow)
             {::attr-id       in-attr
              ::attr-provides attr-provides
              ::attr-input-in op-group}))
@@ -69,7 +69,7 @@
       (if (> input-count 1)
         (reduce
           (fn [idx in-attr]
-            (update idx in-attr (partial merge-with misc/merge-grow)
+            (update idx in-attr (partial merge-with coll/merge-grow)
               {::attr-id           in-attr
                ::attr-combinations #{input}
                ::attr-input-in     op-group}))
@@ -81,12 +81,12 @@
       (reduce
         (fn [idx out-attr]
           (if (vector? out-attr)
-            (update idx (peek out-attr) (partial merge-with misc/merge-grow)
+            (update idx (peek out-attr) (partial merge-with coll/merge-grow)
               {::attr-id        (peek out-attr)
                ::attr-reach-via {(into [input] (pop out-attr)) op-group}
                ::attr-output-in op-group})
 
-            (update idx out-attr (partial merge-with misc/merge-grow)
+            (update idx out-attr (partial merge-with coll/merge-grow)
               {::attr-id        out-attr
                ::attr-reach-via {input op-group}
                ::attr-output-in op-group})))
@@ -98,7 +98,7 @@
           (fn [idx {:keys [key children]}]
             (cond-> idx
               key
-              (update key (partial merge-with misc/merge-grow)
+              (update key (partial merge-with coll/merge-grow)
                 {(if children ::attr-branch-in ::attr-leaf-in) op-group})))
           <>
           (if (map? output)
@@ -120,7 +120,7 @@
         ::index-oir        (reduce (fn [indexes out-attr]
                                      (cond-> indexes
                                        (not= #{out-attr} input')
-                                       (update-in [out-attr input'] misc/sconj op-name)))
+                                       (update-in [out-attr input'] coll/sconj op-name)))
                              {}
                              (pfse/query-root-properties output))}))))
 

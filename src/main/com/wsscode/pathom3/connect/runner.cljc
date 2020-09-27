@@ -2,7 +2,8 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    [com.wsscode.misc.core :as misc]
+    [com.wsscode.misc.coll :as coll]
+    [com.wsscode.misc.time :as time]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.operation.protocols :as pco.prot]
@@ -43,7 +44,7 @@
 (defn process-map-container-subquery
   "Build a new map where the values are replaced with the map process of the subquery."
   [env ast v]
-  (misc/map-vals #(process-map-subquery env ast %) v))
+  (coll/map-vals #(process-map-subquery env ast %) v))
 
 (defn process-map-container?
   "Check if the map should be processed as a map-container, this means the sub-query
@@ -132,10 +133,10 @@
         resolver   (pci/resolver env op-name)
         env        (assoc env ::pcp/node node)
         entity     (p.ent/entity env)
-        start      (misc/now-ms)
+        start      (time/now-ms)
         input-data (select-keys entity input-keys)
         result     (pco.prot/-resolve resolver env input-data)
-        duration   (- (misc/now-ms) start)]
+        duration   (- (time/now-ms) start)]
     (merge-node-stats env node
                       {::run-duration-ms duration
                        ::node-run-input  input-data})
@@ -199,7 +200,7 @@
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*])
    => (s/keys)]
-  (let [start (misc/now-ms)
+  (let [start (time/now-ms)
         env   (assoc env ::node-run-stats* (atom ^::map-container? {}))]
 
     ; compute nested available fields
@@ -215,7 +216,7 @@
       (run-node! env root))
 
     ; compute minimal stats
-    (let [total-time (- (misc/now-ms) start)]
+    (let [total-time (- (time/now-ms) start)]
       (assoc graph
         ::graph-process-duration-ms total-time
         ::node-run-stats (some-> env ::node-run-stats* deref)))))

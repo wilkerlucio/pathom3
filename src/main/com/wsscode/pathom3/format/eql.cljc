@@ -3,7 +3,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    [com.wsscode.misc.core :as misc]
+    [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.attribute :as p.attr]
     [edn-query-language.core :as eql]))
 
@@ -54,13 +54,13 @@
 (>defn index-ast [{:keys [children]}]
   [:edn-query-language.ast/node => ::prop->ast]
   ; TODO consider merging issues when key is repeated
-  (misc/index-by :key children))
+  (coll/index-by :key children))
 
 (defn map-select-entry
   [source {:keys [key children] :as ast}]
   (if-let [x (find source key)]
     (let [val (val x)]
-      (misc/make-map-entry
+      (coll/make-map-entry
         key
         (if children
           (cond

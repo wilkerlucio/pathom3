@@ -3,7 +3,8 @@
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>def >defn >fdef => | <- ?]]
-    [com.wsscode.misc.core :as misc]
+    [com.wsscode.misc.coll :as coll]
+    [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.cache :as p.cache]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -160,7 +161,7 @@
 
 (>def ::plan-cache*
   "Atom containing the cache atom to support cached planning."
-  misc/atom?)
+  refs/atom?)
 
 (def pc-sym ::pco/op-name)
 (def pc-dyn-sym ::pco/dynamic-name)
@@ -421,7 +422,7 @@
 
 (defn add-after-node [graph node-id after-node-id]
   (assert after-node-id "Tried to add after node with nil value")
-  (update-node graph node-id ::after-nodes misc/sconj after-node-id))
+  (update-node graph node-id ::after-nodes coll/sconj after-node-id))
 
 (defn set-after-node [graph node-id after-node-id]
   (assert after-node-id "Tried to set after node with nil value")
@@ -519,18 +520,18 @@
   "Merge requires from node into target-node-id."
   [graph target-node-id {::keys [requires]}]
   (if requires
-    (update-in graph [::nodes target-node-id ::requires] misc/merge-grow requires)
+    (update-in graph [::nodes target-node-id ::requires] coll/merge-grow requires)
     graph))
 
 (defn merge-node-input
   "Merge input from node into target-node-id."
   [graph target-node-id {::keys [input]}]
   (if input
-    (update-in graph [::nodes target-node-id ::input] misc/merge-grow input)
+    (update-in graph [::nodes target-node-id ::input] coll/merge-grow input)
     graph))
 
 (defn add-warning [graph warn]
-  (update graph ::warnings misc/vconj warn))
+  (update graph ::warnings coll/vconj warn))
 
 (defn params-conflicting-keys
   "Find conflicting keys between maps m1 and m2, same keys with same values are not
@@ -685,7 +686,7 @@
               (::run-and node))
             (remove-node node-id))
         (-> graph
-            (update-in [::nodes root branch-type] misc/sconj node-id)
+            (update-in [::nodes root branch-type] coll/sconj node-id)
             (add-after-node node-id root)
             (cond->
               (= branch-type ::run-and)
@@ -712,7 +713,7 @@
         (add-branch-node env node))))
 
 (defn branch-add-and-node [graph branch-node-id node-id]
-  (-> (update-in graph [::nodes branch-node-id ::run-and] misc/sconj node-id)
+  (-> (update-in graph [::nodes branch-node-id ::run-and] coll/sconj node-id)
       (add-after-node node-id branch-node-id)))
 
 (defn can-merge-and-nodes? [n1 n2]
@@ -827,7 +828,7 @@
           (fn [oir]
             (reduce
               (fn [oir attr]
-                (update-in oir [attr #{}] misc/sconj dynamic-base-provider-sym))
+                (update-in oir [attr #{}] coll/sconj dynamic-base-provider-sym))
               oir
               (keys nested-provides)))))))
 
@@ -864,8 +865,8 @@
                                    (map #(get-node nested-graph %))
                                    (keep ::input))
                              root-dyn-nodes)
-        dyn-requires   (reduce misc/merge-grow (keep ::requires root-dyn-nodes))
-        final-deps     (reduce misc/merge-grow (fsd/ast->shape-descriptor ast) nodes-inputs)
+        dyn-requires   (reduce coll/merge-grow (keep ::requires root-dyn-nodes))
+        final-deps     (reduce coll/merge-grow (fsd/ast->shape-descriptor ast) nodes-inputs)
         children-ast   (-> (first root-dyn-nodes) ::foreign-ast
                            (update :children #(filterv (comp final-deps :key) %))) ; TODO: fix me, consider all root dyn nodes
         ast'           {:type     :root
@@ -893,7 +894,7 @@
         ast-params (:params ast)]
     (if (= op-name (pc-sym next-node))
       (-> next-node
-          (update ::requires misc/merge-grow requires)
+          (update ::requires coll/merge-grow requires)
           (assoc ::input input))
       (cond->
         {pc-sym     op-name
@@ -921,7 +922,7 @@
         (assoc-in [::nodes node-id] node)
         (cond->
           sym
-          (update-in [::index-resolver->nodes sym] misc/sconj node-id)))))
+          (update-in [::index-resolver->nodes sym] coll/sconj node-id)))))
 
 (>defn direct-node-successors
   "Direct successors of node, branch nodes and run-next, in case of branch nodes the
@@ -976,7 +977,7 @@
   [graph node-id]
   [::graph ::node-id
    => (s/coll-of ::node-id :kind vector?)]
-  (loop [node-queue (misc/queue [node-id])
+  (loop [node-queue (coll/queue [node-id])
          ancestors  []]
     (if-let [node-id' (peek node-queue)]
       (let [{::keys [after-nodes]} (get-node graph node-id')]
@@ -1055,8 +1056,8 @@
             (dissoc graph ::root)
             (-> env
                 (dissoc pc-attr)
-                (update ::run-next-trail misc/sconj (::root graph))
-                (update ::attr-deps-trail misc/sconj (pc-attr env))
+                (update ::run-next-trail coll/sconj (::root graph))
+                (update ::attr-deps-trail coll/sconj (pc-attr env))
                 (assoc :edn-query-language.ast/node (eql/query->ast (vec missing)))))
           still-missing (remove (or index-attrs {}) missing)
           all-provided? (not (seq still-missing))]
@@ -1143,7 +1144,7 @@
   [graph {::p.attr/keys [attribute] :as env}]
   (if-let [node-id (node-for-attribute-in-chain graph env (::root graph))]
     (-> graph
-        (update-in [::nodes node-id ::source-for-attrs] misc/sconj attribute)
+        (update-in [::nodes node-id ::source-for-attrs] coll/sconj attribute)
         (update ::index-attrs assoc attribute (get-in graph [::index-attrs attribute] node-id)))
     graph))
 
@@ -1212,11 +1213,11 @@
   need to have the subquery processing done."
   [graph {:keys [key children]}]
   (if children
-    (update graph ::nested-available-process misc/sconj key)
+    (update graph ::nested-available-process coll/sconj key)
     graph))
 
 (defn add-ident-process [graph {:keys [key]}]
-  (update graph ::idents misc/sconj key))
+  (update graph ::idents coll/sconj key))
 
 (defn compute-attribute-graph
   "Compute the run graph for a given attribute."
@@ -1333,4 +1334,4 @@
 
 (>defn with-plan-cache
   ([env] [map? => map?] (with-plan-cache env (atom {})))
-  ([env cache*] [map? misc/atom? => map?] (assoc env ::plan-cache* cache*)))
+  ([env cache*] [map? refs/atom? => map?] (assoc env ::plan-cache* cache*)))

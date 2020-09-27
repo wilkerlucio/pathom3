@@ -1,7 +1,7 @@
 (ns com.wsscode.pathom3.error
   (:require
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    [com.wsscode.misc.core :as misc]))
+    [com.wsscode.misc.refs :as refs]))
 
 (>def ::errors map?)
-(>def ::errors* misc/atom?)
+(>def ::errors* refs/atom?)

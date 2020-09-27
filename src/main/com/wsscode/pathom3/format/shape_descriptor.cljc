@@ -6,7 +6,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    [com.wsscode.misc.core :as misc]
+    [com.wsscode.misc.coll :as coll]
     [edn-query-language.core :as eql]))
 
 (>def ::shape-descriptor
@@ -47,7 +47,7 @@
             (sequential? v)
             (let [shape (reduce
                           (fn [q x]
-                            (misc/merge-grow q (data->shape-descriptor x)))
+                            (coll/merge-grow q (data->shape-descriptor x)))
                           {}
                           v)]
               (if (seq shape)

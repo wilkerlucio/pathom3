@@ -4,7 +4,7 @@
     [#?(:clj  com.wsscode.async.async-clj
         :cljs com.wsscode.async.async-cljs)
      :refer [let-chan go-promise <? <?maybe <!maybe]]
-    [com.wsscode.misc.core :as misc]
+    [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
@@ -54,7 +54,7 @@
 (defn internalize-foreign-errors
   [{::p.path/keys [path]
     ::keys        [join-node]} errors]
-  (misc/map-keys #(into (pop path) (cond-> % join-node next)) errors))
+  (coll/map-keys #(into (pop path) (cond-> % join-node next)) errors))
 
 (defn call-foreign-parser [env parser]
   (let [{::keys [query join-node] :as foreign-call} (compute-foreign-query env)]

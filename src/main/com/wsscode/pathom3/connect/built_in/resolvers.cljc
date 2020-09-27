@@ -2,7 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    #?(:clj [com.wsscode.misc.core :as misc])
+    #?(:clj [com.wsscode.misc.coll :as coll])
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as pf.eql])
@@ -225,4 +225,4 @@
        (pco/resolver sym
          {::pco/output output}
          (fn [_ _]
-           (misc/map-keys #(keyword prefix %) (System/getenv)))))))
+           (coll/map-keys #(keyword prefix %) (System/getenv)))))))

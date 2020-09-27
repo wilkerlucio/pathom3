@@ -3,7 +3,7 @@
     #?(:clj [clojure.java.io :as io])
     [clojure.test :refer [deftest is are run-tests testing]]
     [clojure.walk :as walk]
-    [com.wsscode.misc.core :as misc]
+    [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -119,7 +119,7 @@
                                    (cond->
                                      (::pci/index-resolvers options)
                                      (update ::pci/index-resolvers
-                                       #(misc/map-vals pco/resolver %)))))
+                                       #(coll/map-vals pco/resolver %)))))
                   resolvers
                   (pci/merge-indexes (register-index resolvers))
 
