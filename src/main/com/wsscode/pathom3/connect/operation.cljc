@@ -254,7 +254,7 @@
   Note that similar to the way we define the resolver, we can also omit `env` (and even
   the input) when calling, the resolvers fns always support arity 0, 1 and 2.
   "
-  {:arglists '([name docstring? arglist options? output-prop? & body])}
+  {:arglists '([name docstring? arglist options? & body])}
   [& args]
   (let [{:keys [name arglist body] :as params}
         (-> (s/conform ::defresolver-args args)
