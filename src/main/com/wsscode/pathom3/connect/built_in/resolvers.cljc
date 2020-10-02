@@ -56,7 +56,7 @@
       (fn [_ input]
         {to (f (get input from))}))))
 
-(defn single-attr-resolver2
+(defn single-attr-with-env-resolver
   "Similar single-attr-resolver, but `f` receives two arguments, `env` and the input."
   [from to f]
   (let [resolver-name (symbol (str (attr-alias-resolver-name from to) "-single-attr-transform"))]

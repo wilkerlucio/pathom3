@@ -32,8 +32,8 @@
   (is (= ((pbir/single-attr-resolver :n :x inc) {:n 10})
          {:x 11})))
 
-(deftest single-attr-resolver2-test
-  (is (= ((pbir/single-attr-resolver2 :n :x #(+ (:add %1) %2))
+(deftest single-attr-with-env-resolver-test
+  (is (= ((pbir/single-attr-with-env-resolver :n :x #(+ (:add %1) %2))
           {:add 5}
           {:n 10})
          {:x 15})))
