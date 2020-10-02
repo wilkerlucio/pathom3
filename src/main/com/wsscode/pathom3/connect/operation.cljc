@@ -3,6 +3,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.pathom3.connect.operation.protocols :as pop]
+    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd])
   #?(:cljs
      (:require-macros
@@ -136,10 +137,9 @@
                 :docstring (s/? string?)
                 :arglist ::operation-args
                 :options (s/? map?)
-                :output-attr (s/? keyword?)
                 :body (s/+ any?))
-         (fn must-have-output-prop-or-options [{:keys [output-attr options]}]
-           (or output-attr options)))))
+         (fn must-have-output-visible-map-or-options [{:keys [body options]}]
+           (or (map? (last body)) options)))))
 
    :cljs
    (s/def ::defresolver-args any?))
@@ -156,11 +156,12 @@
                                  (namespace k)) (name %)) vals))))
         m))
 
-(defn params->resolver-options [{:keys [arglist options output-attr]}]
-  (let [[input-type input-arg] (last arglist)]
+(defn params->resolver-options [{:keys [arglist options body]}]
+  (let [[input-type input-arg] (last arglist)
+        last-expr (last body)]
     (cond-> options
-      output-attr
-      (assoc ::output [output-attr])
+      (and (map? last-expr) (not (::output options)))
+      (assoc ::output (pf.eql/data->query last-expr))
 
       (and (= :map input-type)
            (not (::input options)))
@@ -224,22 +225,14 @@
         {::pco/output [:acme.user/full-name]}
         {:acme.user/full-name (str first-name \" \" last-name)})
 
-  Now the special syntax, when the resolver outputs a single attribute, we can use
-  the following syntax:
+  Also, when the last expression of the defresolver is a map, it will infer the output
+  shape from it:
 
       (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}]
-        :acme.user/full-name
-        (str first-name \" \" last-name))
+        {:acme.user/full-name (str first-name \" \" last-name)})
 
-  Note that in this example we don't have to wrap the output with the map, the macro
-  will do that automatically.
-
-  In case you also want to provide options, add then after the output keyword:
-
-      (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}]
-        {::pco/params []}
-        :acme.user/full-name
-        (str first-name \" \" last-name))
+  You can always override the implicit input and output by setting on the configuration
+  map.
 
   Standard options:
 
@@ -263,7 +256,7 @@
   "
   {:arglists '([name docstring? arglist options? output-prop? & body])}
   [& args]
-  (let [{:keys [name arglist body output-attr] :as params}
+  (let [{:keys [name arglist body] :as params}
         (-> (s/conform ::defresolver-args args)
             (update :arglist normalize-arglist))
 
@@ -272,9 +265,7 @@
     `(def ~name
        (resolver '~fqsym ~(params->resolver-options params)
                  (fn ~name ~arglist'
-                   ~(if output-attr
-                      `{~output-attr (do ~@body)}
-                      `(do ~@body)))))))
+                   ~@body)))))
 
 (s/fdef defresolver
   :args ::defresolver-args

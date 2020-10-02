@@ -77,27 +77,11 @@
                 :options {::pco/output [:foo]}
                 :body    [{:foo "bar"}]})))
 
-     (testing "short keyword simple output form"
-       (is (= (s/conform ::pco/defresolver-args '[foo [env input] :foo "bar"])
-              '{:name        foo
-                :arglist     [[:sym env] [:sym input]]
-                :output-attr :foo
-                :body        ["bar"]})))
-
-     (testing "short keyword simple output form + options"
-       (is (= (s/conform ::pco/defresolver-args '[foo [env input] {::pco/input [:x]} :foo "bar"])
-              '{:name        foo
-                :arglist     [[:sym env] [:sym input]]
-                :output-attr :foo
-                :options     {::pco/input [:x]}
-                :body        ["bar"]}))
-
-       (is (= (s/conform ::pco/defresolver-args '[foo [env input] {::pco/output [{:foo [:bar]}]} :foo "bar"])
-              '{:name        foo
-                :arglist     [[:sym env] [:sym input]]
-                :output-attr :foo
-                :options     {::pco/output [{:foo [:bar]}]}
-                :body        ["bar"]})))
+     (testing "visible output shape"
+       (is (= (s/conform ::pco/defresolver-args '[foo [env input] {:foo "bar"}])
+              '{:name    foo
+                :arglist [[:sym env] [:sym input]]
+                :body    [{:foo "bar"}]})))
 
      (testing "argument destructuring"
        (is (= (s/conform ::pco/operation-argument 'foo)
@@ -119,13 +103,13 @@
          (is (= (s/conform ::pco/operation-argument '{:keys [:foo/bar]})
                 '[:map {:keys [:foo/bar]}]))))
 
-     (testing "fails without options or output"
+     (testing "fails without options or visible map"
        (is (= (s/explain-data ::pco/defresolver-args '[foo [env input] "bar"])
               '#:clojure.spec.alpha{:problems [{:path [],
                                                 :pred (clojure.core/fn
-                                                        must-have-output-prop-or-options
-                                                        [{:keys [output-attr options]}]
-                                                        (clojure.core/or output-attr options)),
+                                                        must-have-output-visible-map-or-options
+                                                        [{:keys [body options]}]
+                                                        (clojure.core/or (clojure.core/map? (clojure.core/last body)) options)),
                                                 :val  {:name    foo,
                                                        :arglist [[:sym env] [:sym input]],
                                                        :body    ["bar"]},
@@ -162,42 +146,50 @@
                :body    [{:foo "bar"}]})
            {::pco/output [:foo]})))
 
-  (testing "simple output attr"
-    (is (= (pco/params->resolver-options
-             '{:name        foo
-               :arglist     [[:sym env] [:sym input]]
-               :output-attr :foo
-               :body        ["bar"]})
-           {::pco/output [:foo]})))
-
-  (testing "output attr + options"
-    (is (= (pco/params->resolver-options
-             '{:name        foo
-               :arglist     [[:sym env] [:sym input]]
-               :output-attr :foo
-               :options     {::pco/input [:x]}
-               :body        ["bar"]})
-           {::pco/input  [:x]
-            ::pco/output [:foo]})))
-
   (testing "inferred input"
     (is (= (pco/params->resolver-options
-             '{:name        foo
-               :arglist     [[:sym env] [:map {:keys [dep]}]]
-               :output-attr :foo
-               :body        ["bar"]})
+             '{:name    foo
+               :arglist [[:sym env] [:map {:keys [dep]}]]
+               :body    [{:foo "bar"}]})
            {::pco/input  [:dep]
             ::pco/output [:foo]}))
 
     (testing "preserve user input when defined"
       (is (= (pco/params->resolver-options
-               '{:name        foo
-                 :arglist     [[:sym env] [:map {:keys [dep]}]]
-                 :options     {::pco/input [:dep :other]}
-                 :output-attr :foo
-                 :body        ["bar"]})
+               '{:name    foo
+                 :arglist [[:sym env] [:map {:keys [dep]}]]
+                 :options {::pco/input [:dep :other]}
+                 :body    [{:foo "bar"}]})
              {::pco/input  [:dep :other]
-              ::pco/output [:foo]})))))
+              ::pco/output [:foo]}))))
+
+  (testing "implicit output"
+    (is (= (pco/params->resolver-options
+             '{:name    foo
+               :arglist [[:sym env] [:sym input]]
+               :body    [nil {:foo "bar"}]})
+           {::pco/output [:foo]}))
+
+    (testing "nested body"
+      (is (= (pco/params->resolver-options
+               '{:name    foo
+                 :arglist [[:sym env] [:sym input]]
+                 :body    [{:foo  "bar"
+                            :buz  "baz"
+                            :deep {:nested (call-something)}
+                            :seq  [{:with "things"} {:around "here "}]}]})
+             {::pco/output [:foo
+                            :buz
+                            {:deep [:nested]}
+                            {:seq [:with :around]}]})))
+
+    (testing "preserve user output when defined"
+      (is (= (pco/params->resolver-options
+               '{:name    foo
+                 :arglist [[:sym env] [:sym input]]
+                 :options {::pco/output [:foo :bar]}
+                 :body    [{:foo "bar"}]})
+             {::pco/output [:foo :bar]})))))
 
 (deftest normalize-arglist-test
   (is (= (pco/normalize-arglist [])
@@ -211,14 +203,14 @@
 
 #?(:clj
    (deftest defresolver-test
-     (testing "single attribute resolver, no args capture"
+     (testing "implicit output resolver, no args capture"
        (is (= (macroexpand-1
-                `(pco/defresolver ~'foo ~'[] :sample "bar"))
+                `(pco/defresolver ~'foo ~'[] {:sample "bar"}))
               '(def foo
                  (com.wsscode.pathom3.connect.operation/resolver
                    'user/foo
                    #:com.wsscode.pathom3.connect.operation{:output [:sample]}
-                   (clojure.core/fn foo [_ _] {:sample (do "bar")}))))))
+                   (clojure.core/fn foo [_ _] {:sample "bar"}))))))
 
      (testing "explicit output, no args"
        (is (= (macroexpand-1
@@ -227,24 +219,24 @@
                  (com.wsscode.pathom3.connect.operation/resolver
                    'user/foo
                    #:com.wsscode.pathom3.connect.operation{:output [:foo]}
-                   (clojure.core/fn foo [_ _] (do {:foo "bar"})))))))
+                   (clojure.core/fn foo [_ _] {:foo "bar"}))))))
 
-     (testing "single attribute, including implicit import via destructuring"
+     (testing "implicit output, including implicit import via destructuring"
        (is (= (macroexpand-1
-                `(pco/defresolver ~'foo ~'[{:keys [dep]}] :sample "bar"))
+                `(pco/defresolver ~'foo ~'[{:keys [dep]}] {:sample "bar"}))
               '(def foo
                  (com.wsscode.pathom3.connect.operation/resolver
                    'user/foo
                    #:com.wsscode.pathom3.connect.operation{:output [:sample],
                                                            :input  [:dep]}
-                   (clojure.core/fn foo [_ {:keys [dep]}] {:sample (do "bar")}))))))
+                   (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
-     (testing "single attribute, including implicit import via destructuring"
+     (testing "implicit output, including implicit import via destructuring"
        (is (= (macroexpand-1
-                `(pco/defresolver ~'foo ~'[{:keys [dep]}] {::pco/output [{:sample [:thing]}]} :sample "bar"))
+                `(pco/defresolver ~'foo ~'[{:keys [dep]}] {::pco/output [{:sample [:thing]}]} {:sample "bar"}))
               '(def foo
                  (com.wsscode.pathom3.connect.operation/resolver
                    'user/foo
-                   #:com.wsscode.pathom3.connect.operation{:output [:sample],
+                   #:com.wsscode.pathom3.connect.operation{:output [{:sample [:thing]}],
                                                            :input  [:dep]}
-                   (clojure.core/fn foo [_ {:keys [dep]}] {:sample (do "bar")}))))))))
+                   (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))))
