@@ -19,6 +19,8 @@
   #{::keys-mode-cached
     ::keys-mode-reachable})
 
+(>def ::wrap-nested? boolean?)
+
 (>defn with-keys-mode
   "Configure how the Smart Map should respond to `keys`.
 
@@ -36,10 +38,20 @@
   [map? ::keys-mode => map?]
   (assoc env ::keys-mode key-mode))
 
+(defn with-wrap-nested?
+  "Configure smart map to enable or disable the automatic wrapping of nested structures."
+  [env wrap?]
+  (assoc env ::wrap-nested? wrap?))
+
 (defn wrap-smart-map
   "If x is a composite data structure, return the data wrapped by smart maps."
-  [env x]
+  [{::keys [wrap-nested?]
+    :or    {wrap-nested? true}
+    :as    env} x]
   (cond
+    (not wrap-nested?)
+    x
+
     (coll/native-map? x)
     (smart-map env x)
 
@@ -114,7 +126,8 @@
 (defn sm-contains?
   "Check if a property is present in the cache-tree."
   [env k]
-  (contains? (p.ent/entity env) k))
+  (let [ks (into #{} (sm-keys env))]
+    (contains? ks k)))
 
 (defn sm-meta
   "Returns meta data of smart map, which is the same as the meta data from context
@@ -373,7 +386,7 @@
   smart-map)
 
 (defn sm-touch-ast!
-  [smart-map ast]
+  [^SmartMap smart-map ast]
   (let [env (sm-env smart-map)]
     (pcr/run-graph! env ast (::p.ent/entity-tree* env))
     smart-map))
@@ -381,7 +394,7 @@
 (defn sm-touch!
   "Will pre-fetch data in a smart map, given the EQL request. Use this to optimize the
   load of data ahead of time, instead of pulling one by one lazily."
-  [smart-map eql]
+  [^SmartMap smart-map eql]
   (sm-touch-ast! smart-map (eql/query->ast eql)))
 
 (>defn ^SmartMap smart-map

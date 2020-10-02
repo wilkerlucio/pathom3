@@ -86,6 +86,16 @@
         (is (= (->> sm ::points-set first :left)
                3)))))
 
+  (testing "disable wrap nested"
+    (let [sm (psm/smart-map (-> (pci/register registry)
+                                (psm/with-wrap-nested? false))
+               {:x 10 :y 20})]
+      (is (= (-> sm ::geo/turn-point)
+             {::geo/bottom 20
+              ::geo/right  10}))
+      (is (= (-> sm ::geo/turn-point :right)
+             nil))))
+
   (testing "meta"
     (let [sm (-> (pci/register registry)
                  (psm/smart-map {:x 3 :width 5})
@@ -133,6 +143,23 @@
                   :com.wsscode.pathom3.test.geometry-resolvers/x    3
                   :left                                             3
                   :x                                                3}))))))
+
+  (testing "contains"
+    (testing "using cached keys"
+      (let [sm (-> (pci/register registry)
+                   (psm/smart-map {:x 3 :width 5}))]
+        (is (true? (contains? sm :x)))
+        (is (true? (contains? sm :width)))
+        (is (false? (contains? sm :wrong)))
+        (is (false? (contains? sm ::geo/x)))))
+
+    (testing "using reachable keys"
+      (let [sm (-> (pci/register registry)
+                   (psm/with-keys-mode ::psm/keys-mode-reachable)
+                   (psm/smart-map {:x 3 :width 5}))]
+        (is (true? (contains? sm :x)))
+        (is (true? (contains? sm :width)))
+        (is (true? (contains? sm ::geo/x))))))
 
   (testing "find"
     (let [sm (-> (pci/register registry)
