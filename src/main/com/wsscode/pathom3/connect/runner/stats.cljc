@@ -8,20 +8,20 @@
 
 (pco/defresolver resolver-accumulated-duration
   [{::pcr/keys [node-run-stats]}]
-  ::resolver-accumulated-duration-ms
-  (transduce (map ::pcr/run-duration-ms) + 0 (vals node-run-stats)))
+  {::resolver-accumulated-duration-ms
+   (transduce (map ::pcr/run-duration-ms) + 0 (vals node-run-stats))})
 
 (pco/defresolver overhead-duration
   [{::pcr/keys [graph-process-duration-ms]
     ::keys     [resolver-accumulated-duration-ms]}]
-  ::overhead-duration-ms
-  (- graph-process-duration-ms resolver-accumulated-duration-ms))
+  {::overhead-duration-ms
+   (- graph-process-duration-ms resolver-accumulated-duration-ms)})
 
 (pco/defresolver overhead-pct
   [{::pcr/keys [graph-process-duration-ms]
     ::keys     [overhead-duration-ms]}]
-  ::overhead-duration-percentage
-  (double (/ overhead-duration-ms graph-process-duration-ms)))
+  {::overhead-duration-percentage
+   (double (/ overhead-duration-ms graph-process-duration-ms))})
 
 (def stats-registry
   [resolver-accumulated-duration

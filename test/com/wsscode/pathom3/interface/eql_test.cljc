@@ -7,9 +7,10 @@
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]))
 
-(pco/defresolver coords [] ::coords
-  [{:x 10 :y 20}
-   {::geo/left 20 ::geo/width 5}])
+(pco/defresolver coords []
+  {::coords
+   [{:x 10 :y 20}
+    {::geo/left 20 ::geo/width 5}]})
 
 (def registry
   [geo/full-registry

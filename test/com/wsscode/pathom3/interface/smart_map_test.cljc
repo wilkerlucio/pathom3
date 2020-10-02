@@ -7,15 +7,17 @@
     [com.wsscode.pathom3.interface.smart-map :as psm]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]))
 
-(pco/defresolver points-vector [] ::points-vector
-  [{:x 1 :y 10}
-   {:x 3 :y 11}
-   {:x -10 :y 30}])
-
-(pco/defresolver points-set [] ::points-set
-  #{{:x 1 :y 10}
+(pco/defresolver points-vector []
+  {::points-vector
+   [{:x 1 :y 10}
     {:x 3 :y 11}
-    {:x -10 :y 30}})
+    {:x -10 :y 30}]})
+
+(pco/defresolver points-set []
+  {::points-set
+   #{{:x 1 :y 10}
+     {:x 3 :y 11}
+     {:x -10 :y 30}}})
 
 (def registry
   [geo/registry geo/geo->svg-registry
