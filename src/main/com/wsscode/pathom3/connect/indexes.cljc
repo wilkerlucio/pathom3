@@ -154,13 +154,13 @@
   ([indexes operation-or-operations-or-indexes]
    [::indexes ::operations => ::indexes]
    (cond
-     (sequential? operation-or-operations-or-indexes)
-     (reduce register indexes operation-or-operations-or-indexes)
-
      (pco/operation? operation-or-operations-or-indexes)
      (case (pco/operation-type operation-or-operations-or-indexes)
        ::pco/operation-type-resolver
        (register-resolver indexes operation-or-operations-or-indexes))
+
+     (sequential? operation-or-operations-or-indexes)
+     (reduce register indexes operation-or-operations-or-indexes)
 
      (map? operation-or-operations-or-indexes)
      (merge-indexes indexes operation-or-operations-or-indexes)
