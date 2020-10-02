@@ -198,7 +198,9 @@
   (into #{} (mapcat #(get-in index-attributes [% ::attr-combinations])) attrs))
 
 (>defn reachable-attributes
-  "Discover which attributes are available, given an index and a data context."
+  "Discover which attributes are available, given an index and a data context.
+
+  Also includes the attributes from available-data."
   [{::keys [index-io] :as env} available-data]
   [(s/keys) map?
    => set?]
