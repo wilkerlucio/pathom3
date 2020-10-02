@@ -19,7 +19,7 @@
   (symbol (str (attr-munge from) "->" (attr-munge to))))
 
 (defn alias-resolver
-  "Create a resolver that will convert property `from` to a property `to` with
+  "Create a resolver that will convert attribute `from` to a attribute `to` with
   the same value. This only creates the alias in one direction."
   [from to]
   (pco/resolver (attr-alias-resolver-name from to)
@@ -28,7 +28,7 @@
     (fn [_ input] {to (get input from)})))
 
 (defn equivalence-resolver
-  "Like alias-resolver, but returns a vector containing the alias in both directions."
+  "Make two attributes equivalent. It's like alias-resolver, but returns a vector containing the alias in both directions."
   [attribute-a attribute-b]
   [(alias-resolver attribute-a attribute-b)
    (alias-resolver attribute-b attribute-a)])
@@ -91,7 +91,7 @@
       ; => #:song{:id 1, :name \"Marchinha Psicotica de Dr. Soup\", :duration 280}
 
   In this example, we create two different tables that provides data about songs, the
-  entities are related by the keys on the table, the `attr-key` says what's the property
+  entities are related by the keys on the table, the `attr-key` says what's the attribute
   name to be used to related the data, in this case we use `:song/id` on both, so they
   get connected by it.
   "
@@ -191,7 +191,7 @@
            (select-keys sm [:my.system/port :my.system.user/name])
          ; => {:my.system/port 1234, :my.system.user/name \"Anne\"}
 
-     Note that the tables need to be a value of a top level property of the config, if
+     Note that the tables need to be a value of a top level attribute of the config, if
      its deeper inside it won't work."
      [file-path]
      (let [data          (read-string (slurp file-path))
