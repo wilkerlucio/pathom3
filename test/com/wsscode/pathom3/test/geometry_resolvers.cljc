@@ -88,22 +88,22 @@
    turn-point
    turn-point2
    diagonal
-   (pbir/alias-resolver2 ::x ::left)
-   (pbir/alias-resolver2 ::y ::top)])
+   (pbir/equivalence-resolver ::x ::left)
+   (pbir/equivalence-resolver ::y ::top)])
 
 (def geo->svg-registry
-  [(pbir/alias-resolver2 :left ::left)
-   (pbir/alias-resolver2 :right ::right)
-   (pbir/alias-resolver2 :top ::top)
-   (pbir/alias-resolver2 :bottom ::bottom)
-   (pbir/alias-resolver2 :x ::x)
-   (pbir/alias-resolver2 :y ::y)
-   (pbir/alias-resolver2 :width ::width)
-   (pbir/alias-resolver2 :height ::height)
-   (pbir/alias-resolver2 :cx ::center-x)
-   (pbir/alias-resolver2 :cy ::center-y)
-   (pbir/alias-resolver2 :rx ::half-width)
-   (pbir/alias-resolver2 :ry ::half-height)
+  [(pbir/equivalence-resolver :left ::left)
+   (pbir/equivalence-resolver :right ::right)
+   (pbir/equivalence-resolver :top ::top)
+   (pbir/equivalence-resolver :bottom ::bottom)
+   (pbir/equivalence-resolver :x ::x)
+   (pbir/equivalence-resolver :y ::y)
+   (pbir/equivalence-resolver :width ::width)
+   (pbir/equivalence-resolver :height ::height)
+   (pbir/equivalence-resolver :cx ::center-x)
+   (pbir/equivalence-resolver :cy ::center-y)
+   (pbir/equivalence-resolver :rx ::half-width)
+   (pbir/equivalence-resolver :ry ::half-height)
    (pbir/alias-resolver :rx :r)
    (pbir/alias-resolver :ry :r)])
 

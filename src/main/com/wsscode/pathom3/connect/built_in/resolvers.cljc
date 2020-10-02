@@ -27,7 +27,7 @@
      ::pco/output [to]}
     (fn [_ input] {to (get input from)})))
 
-(defn alias-resolver2
+(defn equivalence-resolver
   "Like alias-resolver, but returns a vector containing the alias in both directions."
   [attribute-a attribute-b]
   [(alias-resolver attribute-a attribute-b)
