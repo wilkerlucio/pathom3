@@ -207,8 +207,3 @@
               ::geo/turn-point {::geo/right  3
                                 ::geo/bottom 5
                                 :right       3}})))))
-
-(comment
-  (-> (psm/with-keys-mode (pci/register registry) ::psm/keys-mode-reachable)
-      (psm/smart-map {:x 3 :width 5})
-      keys))
