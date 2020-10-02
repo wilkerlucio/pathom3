@@ -22,10 +22,11 @@
   "Create a resolver that will convert attribute `from` to a attribute `to` with
   the same value. This only creates the alias in one direction."
   [from to]
-  (pco/resolver (symbol (str (attr-alias-resolver-name from to) "-alias"))
-    {::pco/input  [from]
-     ::pco/output [to]}
-    (fn [_ input] {to (get input from)})))
+  (let [resolver-name (symbol (str (attr-alias-resolver-name from to) "-alias"))]
+    (pco/resolver resolver-name
+      {::pco/input  [from]
+       ::pco/output [to]}
+      (fn [_ input] {to (get input from)}))))
 
 (defn equivalence-resolver
   "Make two attributes equivalent. It's like alias-resolver, but returns a vector containing the alias in both directions."
@@ -36,10 +37,7 @@
 (defn constantly-resolver
   "Create a simple resolver that always return `value` for `attribute`."
   ([attribute value]
-   (constantly-resolver {::attribute attribute
-                         :value      value}))
-  ([{::keys [attribute sym] :keys [value]}]
-   (let [resolver-name (or sym (symbol (str (munge (subs (str attribute) 1)) "-constant")))]
+   (let [resolver-name (symbol (str (attr-munge attribute) "-constant"))]
      (pco/resolver resolver-name
        {::pco/output [attribute]}
        (fn [_ _] {attribute value})))))
