@@ -22,7 +22,7 @@
   "Create a resolver that will convert attribute `from` to a attribute `to` with
   the same value. This only creates the alias in one direction."
   [from to]
-  (pco/resolver (attr-alias-resolver-name from to)
+  (pco/resolver (symbol (str (attr-alias-resolver-name from to) "-alias"))
     {::pco/input  [from]
      ::pco/output [to]}
     (fn [_ input] {to (get input from)})))
@@ -195,7 +195,7 @@
      its deeper inside it won't work."
      [file-path]
      (let [data          (read-string (slurp file-path))
-           resolver-name (symbol "edn-file-resolver" (munge file-path))
+           resolver-name (symbol "com.wsscode.pathom3.edn-file-resolver" (munge file-path))
            output        (pf.eql/data->query data)
            attr-tables   (edn-extract-attr-tables data)]
        `[(pco/resolver '~resolver-name
