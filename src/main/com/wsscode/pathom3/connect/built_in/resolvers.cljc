@@ -45,26 +45,26 @@
        (fn [_ _] {attribute value})))))
 
 (defn single-attr-resolver
-  "Apply fn `f` to input `from` and spits the result with the name `to`.
+  "Apply fn `f` to input `source` and spits the result with the name `target`.
 
-  `f` receives a single argument, which is the input value from `from`."
-  [from to f]
-  (let [resolver-name (symbol (str (attr-alias-resolver-name from to) "-single-attr-transform"))]
+  `f` receives a single argument, which is the attribute value from `source`."
+  [source target f]
+  (let [resolver-name (symbol (str (attr-alias-resolver-name source target) "-single-attr-transform"))]
     (pco/resolver resolver-name
-      {::pco/input  [from]
-       ::pco/output [to]}
+      {::pco/input  [source]
+       ::pco/output [target]}
       (fn [_ input]
-        {to (f (get input from))}))))
+        {target (f (get input source))}))))
 
 (defn single-attr-with-env-resolver
   "Similar single-attr-resolver, but `f` receives two arguments, `env` and the input."
-  [from to f]
-  (let [resolver-name (symbol (str (attr-alias-resolver-name from to) "-single-attr-transform"))]
+  [source target f]
+  (let [resolver-name (symbol (str (attr-alias-resolver-name source target) "-single-attr-transform"))]
     (pco/resolver resolver-name
-      {::pco/input  [from]
-       ::pco/output [to]}
+      {::pco/input  [source]
+       ::pco/output [target]}
       (fn [env input]
-        {to (f env (get input from))}))))
+        {target (f env (get input source))}))))
 
 (defn table-output
   "For a given static table, compute the accumulated output query of the entity values."
