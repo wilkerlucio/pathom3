@@ -2,7 +2,6 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
-    #?(:clj [com.wsscode.misc.coll :as coll])
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as pf.eql])
@@ -229,27 +228,3 @@
            {::pco/output ~output}
            (fn ~'[_ _] ~data))
          ~attr-tables])))
-
-#?(:clj
-   (defn system-env-resolver
-     "Create resolver that exposes data available in system environment.
-
-     Prefix will be used as the namespace for the environment variables, so for example
-     if you want to access the $PATH variable made available from this helper:
-
-        (let [m (psm/smart-map (pci/register (pbir/env-resolver \"env\")) {})]
-          (:env/PATH m))
-
-     Note that the exposed keys are the ones available when you call (system-env-resolver),
-     if new keys are add you need to generate the resolver again to make it available.
-
-     Clojure only."
-     ([domain-ns]
-      (let [sym    (symbol "env-resolver" domain-ns)
-            output (->> (System/getenv)
-                        (keys)
-                        (mapv #(keyword domain-ns %)))]
-        (pco/resolver sym
-          {::pco/output output}
-          (fn [_ _]
-            (coll/map-keys #(keyword domain-ns %) (System/getenv))))))))
