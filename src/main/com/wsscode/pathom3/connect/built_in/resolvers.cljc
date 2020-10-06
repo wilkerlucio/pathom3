@@ -104,6 +104,35 @@
         (let [id (get input attr-key)]
           (get table id))))))
 
+(>defn attribute-map
+  "This is like the static-table-resolver, but provides a single attribute on each
+  map entry.
+
+      (def registry
+        [(pbir/attribute-map :song/id :song/name
+           {1 \"Marchinha Psicotica de Dr. Soup\"
+            2 \"There's Enough\"})
+
+         (pbir/static-table-resolver `song-analysis :song/id
+           {1 {:song/duration 280 :song/tempo 98}
+            2 {:song/duration 150 :song/tempo 130}})])
+
+      (let [sm (psm/smart-map (pci/register registry)
+                 {:song/id 1})]
+        (select-keys sm [:song/id :song/name :song/duration]))
+      ; => #:song{:id 1, :name \"Marchinha Psicotica de Dr. Soup\", :duration 280}
+    "
+  [input output mapping]
+  [::p.attr/attribute ::p.attr/attribute map?
+   => ::pco/resolver]
+  (let [resolver-name (symbol (str (attr-alias-resolver-name input output) "-attribute-map"))]
+    (pco/resolver resolver-name
+      {::pco/input  [input]
+       ::pco/output [output]}
+      (fn [_ input-map]
+        (if-let [x (find mapping (get input-map input))]
+          {output (val x)})))))
+
 (>defn attribute-table-resolver
   "Similar to static-table-resolver, but instead of a static map, this will pull the
   table from another attribute in the system. Given in this case the values can be dynamic,
@@ -215,12 +244,12 @@
      if new keys are add you need to generate the resolver again to make it available.
 
      Clojure only."
-     [prefix]
-     (let [sym    (symbol "env-resolver" prefix)
-           output (->> (System/getenv)
-                       (keys)
-                       (mapv #(keyword prefix %)))]
-       (pco/resolver sym
-         {::pco/output output}
-         (fn [_ _]
-           (coll/map-keys #(keyword prefix %) (System/getenv)))))))
+     ([domain-ns]
+      (let [sym    (symbol "env-resolver" domain-ns)
+            output (->> (System/getenv)
+                        (keys)
+                        (mapv #(keyword domain-ns %)))]
+        (pco/resolver sym
+          {::pco/output output}
+          (fn [_ _]
+            (coll/map-keys #(keyword domain-ns %) (System/getenv))))))))
