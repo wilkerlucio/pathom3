@@ -50,10 +50,10 @@
     (is (= (::pco/output config)
            [::color]))))
 
-(deftest attribute-map-test
-  (let [resolver (pbir/attribute-map ::id ::color
-                                     {1 "Gray"
-                                      2 "Purple"})
+(deftest attribute-map-resolver-test
+  (let [resolver (pbir/attribute-map-resolver ::id ::color
+                                              {1 "Gray"
+                                               2 "Purple"})
         config   (pco/operation-config resolver)]
     (is (= (resolver {::id 2})
            {::color "Purple"}))

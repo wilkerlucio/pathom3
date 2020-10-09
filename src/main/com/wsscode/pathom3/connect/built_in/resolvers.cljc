@@ -103,7 +103,7 @@
         (let [id (get input attr-key)]
           (get table id))))))
 
-(>defn attribute-map
+(>defn attribute-map-resolver
   "This is like the static-table-resolver, but provides a single attribute on each
   map entry.
 
