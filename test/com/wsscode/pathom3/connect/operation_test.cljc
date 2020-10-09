@@ -203,6 +203,16 @@
 
 #?(:clj
    (deftest defresolver-test
+     (testing "docstring"
+       (is (= (macroexpand-1
+                `(pco/defresolver ~'foo "documentation" ~'[] {:sample "bar"}))
+              '(def foo
+                 "documentation"
+                 (com.wsscode.pathom3.connect.operation/resolver
+                   'user/foo
+                   #:com.wsscode.pathom3.connect.operation{:output [:sample]}
+                   (clojure.core/fn foo [_ _] {:sample "bar"}))))))
+
      (testing "implicit output resolver, no args capture"
        (is (= (macroexpand-1
                 `(pco/defresolver ~'foo ~'[] {:sample "bar"}))

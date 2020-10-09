@@ -256,13 +256,15 @@
   "
   {:arglists '([name docstring? arglist options? & body])}
   [& args]
-  (let [{:keys [name arglist body] :as params}
+  (let [{:keys [name arglist body docstring] :as params}
         (-> (s/conform ::defresolver-args args)
             (update :arglist normalize-arglist))
 
         arglist' (s/unform ::operation-args arglist)
-        fqsym    (full-symbol name (str *ns*))]
+        fqsym    (full-symbol name (str *ns*))
+        defdoc   (cond-> [] docstring (conj docstring))]
     `(def ~name
+       ~@defdoc
        (resolver '~fqsym ~(params->resolver-options params)
                  (fn ~name ~arglist'
                    ~@body)))))
