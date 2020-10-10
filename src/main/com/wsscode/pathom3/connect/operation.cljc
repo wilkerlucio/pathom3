@@ -121,6 +121,7 @@
        (s/every
          (s/or :simple-keys-binding ::simple-keys-binding
                :qualified-keys-bindings ::qualified-keys-binding
+               :named-extract (s/tuple ::operation-argument keyword?)
                :as ::as-binding)
          :kind map?))
 
@@ -151,9 +152,12 @@
         (comp
           (remove as-entry?)
           (mapcat
-            (fn [[k vals]]
-              (map #(keyword (or (namespace %)
-                                 (namespace k)) (name %)) vals))))
+            (fn [[k val]]
+              (if (and (keyword? k)
+                       (= "keys" (name k)))
+                (map #(keyword (or (namespace %)
+                                   (namespace k)) (name %)) val)
+                [val]))))
         m))
 
 (defn params->resolver-options [{:keys [arglist options body]}]

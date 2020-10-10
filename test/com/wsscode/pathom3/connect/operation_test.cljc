@@ -135,7 +135,19 @@
            '{:keys      [foo]
              :user/keys [id name]
              :as        user})
-         [:foo :user/id :user/name])))
+         [:foo :user/id :user/name]))
+
+  (is (= (pco/extract-destructure-map-keys-as-keywords
+           '{renamed :foo})
+         [:foo]))
+
+  (is (= (pco/extract-destructure-map-keys-as-keywords
+           '{{deep :value} :foo})
+         [:foo]))
+
+  (is (= (pco/extract-destructure-map-keys-as-keywords
+           '{{:keys [value]} :foo})
+         [:foo])))
 
 (deftest params->resolver-options-test
   (testing "classic case"
