@@ -14,7 +14,7 @@
   [(s/keys) :edn-query-language.ast/node => map?]
   (let [ent-tree* (get env ::p.ent/entity-tree* (atom {}))
         run-stats (pcr/run-graph! env ast ent-tree*)]
-    (-> (p.ent/entity env)
+    (-> @ent-tree*
         (assoc ::pcr/run-stats (psm/smart-map
                                  (psm/with-keys-mode pcrs/stats-index
                                                      ::psm/keys-mode-reachable) run-stats))

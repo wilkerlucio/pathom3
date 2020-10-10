@@ -18,6 +18,12 @@
 
 (deftest process-test
   (testing "simple read"
+    (is (= (p.eql/process (pci/register registry)
+                          [::coords])
+           {::coords
+            [{:x 10 :y 20}
+             {::geo/left 20 ::geo/width 5}]}))
+
     (is (= (p.eql/process (-> (pci/register geo/full-registry)
                               (p.ent/with-entity {:left 10}))
                           [::geo/x])
