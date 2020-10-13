@@ -214,6 +214,9 @@
          '[[:sym env] [:sym input]])))
 
 #?(:clj
+   (s/def ::or-thing (s/or :foo int? :bar string?)))
+
+#?(:clj
    (deftest defresolver-test
      (testing "docstring"
        (is (= (macroexpand-1
@@ -261,4 +264,14 @@
                    'user/foo
                    #:com.wsscode.pathom3.connect.operation{:output [{:sample [:thing]}],
                                                            :input  [:dep]}
-                   (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))))
+                   (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
+
+     (testing "unform options to retain data"
+       (is (= (macroexpand-1
+                `(pco/defresolver ~'foo ~'[] {::or-thing 3} {:sample "bar"}))
+              '(def foo
+                 (com.wsscode.pathom3.connect.operation/resolver
+                   'user/foo
+                   {::pco/output [:sample]
+                    ::or-thing   3}
+                   (clojure.core/fn foo [_ _] {:sample "bar"}))))))))
