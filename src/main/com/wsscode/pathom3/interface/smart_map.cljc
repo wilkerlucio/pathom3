@@ -351,19 +351,20 @@
   (.-env smart-map))
 
 (defn sm-get-debug
-  "Return the a map containing the value of the key requested, plus the graph running
-  analysis, use for debugging. Note that if the value is cached, there will be a blank
-  stats."
+  "Return the graph run analysis, use for debugging. You can find the get value return
+  in the ::psm/value key.
+
+  Note that if the value is cached, there will be a blank stats."
   ([^SmartMap sm k]
    (let [{::p.ent/keys [entity-tree*] :as env} (sm-env sm)
          ast       {:type     :root
                     :children [{:type :prop, :dispatch-key k, :key k}]}
          run-stats (pcr/run-graph! env ast entity-tree*)]
-     {::pcr/run-stats (smart-map
-                        (with-keys-mode pcrs/stats-index
-                          ::keys-mode-reachable)
-                        run-stats)
-      ::value         (wrap-smart-map env (get @entity-tree* k))})))
+     (smart-map
+       (with-keys-mode pcrs/stats-index
+         ::keys-mode-reachable)
+       (assoc run-stats ::value
+         (wrap-smart-map env (get @entity-tree* k)))))))
 
 (defn sm-assoc!
   "Assoc on the smart map in place, this function mutates the current cache and return
