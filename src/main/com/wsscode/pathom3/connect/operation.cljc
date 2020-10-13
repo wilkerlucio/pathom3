@@ -137,7 +137,7 @@
          (s/cat :name simple-symbol?
                 :docstring (s/? string?)
                 :arglist ::operation-args
-                :options (s/? map?)
+                :options (s/? (s/keys))
                 :body (s/+ any?))
          (fn must-have-output-visible-map-or-options [{:keys [body options]}]
            (or (map? (last body)) options)))))
@@ -184,97 +184,99 @@
     sym
     (symbol ns (name sym))))
 
-(defmacro defresolver
-  "Defines a new Pathom resolver.
+#?(:clj
+   (defmacro defresolver
+     "Defines a new Pathom resolver.
 
-  Resolvers are the central abstraction around Pathom, a resolver is a function
-  that contains some annotated information and follow a few rules:
+     Resolvers are the central abstraction around Pathom, a resolver is a function
+     that contains some annotated information and follow a few rules:
 
-  1. The resolver input must be a map, so the input information is labelled.
-  2. A resolver must return a map, so the output information is labelled.
-  3. A resolver also receives a separated map containing the environment information.
+     1. The resolver input must be a map, so the input information is labelled.
+     2. A resolver must return a map, so the output information is labelled.
+     3. A resolver also receives a separated map containing the environment information.
 
-  Here are some examples of how you can use the defresolver syntax to define resolvers:
+     Here are some examples of how you can use the defresolver syntax to define resolvers:
 
-  The verbose example:
+     The verbose example:
 
-      (pco/defresolver song-by-id [env {:acme.song/keys [id]}]
-        {::pco/input     [:acme.song/id]
-         ::pco/output    [:acme.song/title :acme.song/duration :acme.song/tone]
-         ::pco/params    []
-         ::pco/transform identity}
-        (fetch-song env id))
+         (pco/defresolver song-by-id [env {:acme.song/keys [id]}]
+           {::pco/input     [:acme.song/id]
+            ::pco/output    [:acme.song/title :acme.song/duration :acme.song/tone]
+            ::pco/params    []
+            ::pco/transform identity}
+           (fetch-song env id))
 
-  The previous example demonstrates the usage of the most common options in defresolver.
+     The previous example demonstrates the usage of the most common options in defresolver.
 
-  But we don't need to write all of that, for example, instead of manually saying
-  the ::pco/input, we can let the defresolver infer it from the param destructuring, so
-  the following code works the same (::pco/params and ::pco/transform also removed, since
-  they were no-ops in this example):
+     But we don't need to write all of that, for example, instead of manually saying
+     the ::pco/input, we can let the defresolver infer it from the param destructuring, so
+     the following code works the same (::pco/params and ::pco/transform also removed, since
+     they were no-ops in this example):
 
-      (pco/defresolver song-by-id [env {:acme.song/keys [id]}]
-        {::pco/output [:acme.song/title :acme.song/duration :acme.song/tone]}
-        (fetch-song env id))
+         (pco/defresolver song-by-id [env {:acme.song/keys [id]}]
+           {::pco/output [:acme.song/title :acme.song/duration :acme.song/tone]}
+           (fetch-song env id))
 
-  This makes for a cleaner write, now lets use this format and write a new example
-  resolver:
+     This makes for a cleaner write, now lets use this format and write a new example
+     resolver:
 
-      (pco/defresolver full-name [env {:acme.user/keys [first-name last-name]}]
-        {::pco/output [:acme.user/full-name]}
-        {:acme.user/full-name (str first-name \" \" last-name)})
+         (pco/defresolver full-name [env {:acme.user/keys [first-name last-name]}]
+           {::pco/output [:acme.user/full-name]}
+           {:acme.user/full-name (str first-name \" \" last-name)})
 
-  The first thing we see is that we don't use env, so we can omit it.
+     The first thing we see is that we don't use env, so we can omit it.
 
-      (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}]
-        {::pco/output [:acme.user/full-name]}
-        {:acme.user/full-name (str first-name \" \" last-name)})
+         (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}]
+           {::pco/output [:acme.user/full-name]}
+           {:acme.user/full-name (str first-name \" \" last-name)})
 
-  Also, when the last expression of the defresolver is a map, it will infer the output
-  shape from it:
+     Also, when the last expression of the defresolver is a map, it will infer the output
+     shape from it:
 
-      (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}]
-        {:acme.user/full-name (str first-name \" \" last-name)})
+         (pco/defresolver full-name [{:acme.user/keys [first-name last-name]}]
+           {:acme.user/full-name (str first-name \" \" last-name)})
 
-  You can always override the implicit input and output by setting on the configuration
-  map.
+     You can always override the implicit input and output by setting on the configuration
+     map.
 
-  Standard options:
+     Standard options:
 
-    ::pco/output - description of resolver output, in EQL format
-    ::pco/input - description of resolver input, in EQL format
-    ::pco/params - description of resolver parameters, in EQL format
-    ::pco/transform - a function to transform the resolver configuration before instantiating the resolver
+       ::pco/output - description of resolver output, in EQL format
+       ::pco/input - description of resolver input, in EQL format
+       ::pco/params - description of resolver parameters, in EQL format
+       ::pco/transform - a function to transform the resolver configuration before instantiating the resolver
 
-  Note that any other option that you send to the resolver config will be stored in the
-  index and can be read from it at any time.
+     Note that any other option that you send to the resolver config will be stored in the
+     index and can be read from it at any time.
 
-  The returned value is of the type Resolver, you can test your resolver by calling
-  directly:
+     The returned value is of the type Resolver, you can test your resolver by calling
+     directly:
 
-      (full-name {:acme.user/first-name \"Ada\"
-                  :acme.user/last-name  \"Lovelace\"})
-      => \"Ada Lovelace\"
+         (full-name {:acme.user/first-name \"Ada\"
+                     :acme.user/last-name  \"Lovelace\"})
+         => \"Ada Lovelace\"
 
-  Note that similar to the way we define the resolver, we can also omit `env` (and even
-  the input) when calling, the resolvers fns always support arity 0, 1 and 2.
-  "
-  {:arglists '([name docstring? arglist options? & body])}
-  [& args]
-  (let [{:keys [name arglist body docstring] :as params}
-        (-> (s/conform ::defresolver-args args)
-            (update :arglist normalize-arglist))
+     Note that similar to the way we define the resolver, we can also omit `env` (and even
+     the input) when calling, the resolvers fns always support arity 0, 1 and 2.
+     "
+     {:arglists '([name docstring? arglist options? & body])}
+     [& args]
+     (let [{:keys [name arglist body docstring] :as params}
+           (-> (s/conform ::defresolver-args args)
+               (update :arglist normalize-arglist))
 
-        arglist' (s/unform ::operation-args arglist)
-        fqsym    (full-symbol name (str *ns*))
-        defdoc   (cond-> [] docstring (conj docstring))]
-    `(def ~name
-       ~@defdoc
-       (resolver '~fqsym ~(params->resolver-options params)
-                 (fn ~name ~arglist'
-                   ~@body)))))
+           arglist' (s/unform ::operation-args arglist)
+           fqsym    (full-symbol name (str *ns*))
+           defdoc   (cond-> [] docstring (conj docstring))]
+       `(def ~name
+          ~@defdoc
+          (resolver '~fqsym ~(params->resolver-options params)
+                    (fn ~name ~arglist'
+                      ~@body))))))
 
-(s/fdef defresolver
-  :args ::defresolver-args
-  :ret any?)
+#?(:clj
+   (s/fdef defresolver
+     :args ::defresolver-args
+     :ret any?))
 
 ; endregion
