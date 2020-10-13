@@ -214,9 +214,6 @@
          '[[:sym env] [:sym input]])))
 
 #?(:clj
-   (s/def ::or-thing (s/or :foo int? :bar string?)))
-
-#?(:clj
    (deftest defresolver-test
      (testing "docstring"
        (is (= (macroexpand-1
@@ -267,6 +264,8 @@
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
      (testing "unform options to retain data"
+       (s/def ::or-thing (s/or :foo int? :bar string?))
+
        (is (= (macroexpand-1
                 `(pco/defresolver ~'foo ~'[] {::or-thing 3} {:sample "bar"}))
               '(def foo
