@@ -61,7 +61,8 @@
     :as        env} k v]
   [(s/keys :opt [:edn-query-language.ast/node]) ::p.path/path-entry any?
    => any?]
-  (let [ast (pcp/entry-ast graph k)]
+  (let [ast (pcp/entry-ast graph k)
+        env (p.path/append-path env k)]
     (if (:children ast)
       (cond
         (map? v)
@@ -201,7 +202,9 @@
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*])
    => (s/keys)]
   (let [start (time/now-ms)
-        env   (assoc env ::node-run-stats* (atom ^::map-container? {}))]
+        env   (-> env
+                  (coll/merge-defaults {::p.path/path []})
+                  (assoc ::node-run-stats* (atom ^::map-container? {})))]
 
     ; compute nested available fields
     (if-let [nested (::pcp/nested-available-process graph)]

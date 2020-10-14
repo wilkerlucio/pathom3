@@ -1,12 +1,14 @@
 (ns com.wsscode.pathom3.connect.runner-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
     [edn-query-language.core :as eql]))
 
@@ -33,8 +35,9 @@
 
   (testing "adds new data to cache tree"
     (is (= (-> (pcr/merge-resolver-response!
-                 (p.ent/with-entity {::pcp/graph {::pcp/nodes         {}
-                                                  ::pcp/index-ast {}}} {:foo "bar"})
+                 (p.ent/with-entity {::p.path/path []
+                                     ::pcp/graph   {::pcp/nodes     {}
+                                                    ::pcp/index-ast {}}} {:foo "bar"})
                  {:buz "baz"})
                ::p.ent/entity-tree* deref)
            {:foo "bar"
@@ -42,7 +45,7 @@
 
 (deftest run-node!-test
   (is (= (let [tree  {::geo/left 10 ::geo/width 30}
-               env   (p.ent/with-entity (pci/register {} geo/registry)
+               env   (p.ent/with-entity (pci/register {::p.path/path []} geo/registry)
                                         tree)
                graph (pcp/compute-run-graph
                        (-> env
@@ -76,6 +79,9 @@
 (defn coords-resolver [c]
   (pco/resolver 'coords-resolver {::pco/output [::coords]}
     (fn [_ _] {::coords c})))
+
+(pco/defresolver current-path [{::p.path/keys [path]} _]
+  {::p.path/path path})
 
 (deftest run-graph!-test
   (is (= (run-graph (pci/register geo/registry)
@@ -112,6 +118,19 @@
            {[::geo/x 10] {:random    "data"
                           ::geo/x    10
                           ::geo/left 10}})))
+
+  (testing "path"
+    (is (= (run-graph (pci/register [(pbir/constantly-resolver ::hold {})
+                                     (pbir/constantly-resolver ::sequence [{} {}])
+                                     current-path])
+                      {}
+                      [::p.path/path
+                       {::hold [::p.path/path]}
+                       {::sequence [::p.path/path]}])
+           {::p.path/path [],
+            ::sequence    [{::p.path/path [::sequence]}
+                           {::p.path/path [::sequence]}],
+            ::hold        {::p.path/path [::hold]}})))
 
   #_(testing "insufficient data"
       (is (= (run-graph (pci/register [(pco/resolver 'a {::pco/output [:a]
