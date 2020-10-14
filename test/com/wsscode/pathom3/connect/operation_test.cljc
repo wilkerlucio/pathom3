@@ -225,6 +225,21 @@
                    #:com.wsscode.pathom3.connect.operation{:output [:sample]}
                    (clojure.core/fn foo [_ _] {:sample "bar"}))))))
 
+     (testing "validates configuration map"
+       (try
+         (macroexpand-1
+           `(pco/defresolver ~'foo ~'[] {::pco/input #{:invalid}} {:sample "bar"}))
+         (catch #?(:clj Throwable :cljs :default) e
+           (is (= (-> (ex-cause e)
+                      (ex-data)
+                      (update :explain-data dissoc ::s/spec))
+                  {:explain-data #:clojure.spec.alpha{:problems [{:in   [:com.wsscode.pathom3.connect.operation/input]
+                                                                  :path [:com.wsscode.pathom3.connect.operation/input]
+                                                                  :pred 'clojure.core/vector?
+                                                                  :val  #{:invalid}
+                                                                  :via  [:com.wsscode.pathom3.connect.operation/input]}]
+                                                      :value    #:com.wsscode.pathom3.connect.operation{:input #{:invalid}}}})))))
+
      (testing "implicit output resolver, no args capture"
        (is (= (macroexpand-1
                 `(pco/defresolver ~'foo ~'[] {:sample "bar"}))
