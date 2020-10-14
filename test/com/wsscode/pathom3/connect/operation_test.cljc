@@ -232,7 +232,7 @@
          (catch #?(:clj Throwable :cljs :default) e
            (is (= (-> (ex-cause e)
                       (ex-data)
-                      (update :explain-data dissoc ::s/spec))
+                      (update :explain-data dissoc :clojure.spec.alpha/spec))
                   {:explain-data #:clojure.spec.alpha{:problems [{:in   [:com.wsscode.pathom3.connect.operation/input]
                                                                   :path [:com.wsscode.pathom3.connect.operation/input]
                                                                   :pred 'clojure.core/vector?
