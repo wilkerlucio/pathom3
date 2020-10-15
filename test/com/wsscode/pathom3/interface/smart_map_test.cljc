@@ -1,6 +1,7 @@
 (ns com.wsscode.pathom3.interface.smart-map-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.entity-tree :as p.ent]
@@ -180,6 +181,14 @@
                  (psm/smart-map {:x 3 :width 5}))]
       (is (= (find sm :right) [:right 8]))
       (is (= (find sm ::noop) nil)))))
+
+(deftest sm-update-env-test
+  (let [sm (-> (pci/register registry)
+               (psm/smart-map {:x 3 :width 5}))]
+    (is (= (:not-here sm) nil))
+    (is (= (-> sm
+               (psm/sm-update-env pci/register (pbir/constantly-resolver :not-here "now it is"))
+               :not-here) "now it is"))))
 
 (deftest sm-assoc!-test
   (testing "uses source context on the new smart map"
