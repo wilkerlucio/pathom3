@@ -29,7 +29,7 @@
    overhead-pct
    (pbir/attribute-table-resolver ::pcp/nodes ::pcp/node-id
                                   [::pco/op-name
-                                   ::pcp/requires
+                                   ::pcp/expects
                                    ::pcp/input
                                    ::pcp/run-and
                                    ::pcp/run-or

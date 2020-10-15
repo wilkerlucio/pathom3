@@ -14,15 +14,15 @@
 
 (deftest all-requires-ready?-test
   (is (= (pcr/all-requires-ready? (p.ent/with-entity {} {:a 1})
-           {::pcp/requires {}})
+           {::pcp/expects {}})
          true))
 
   (is (= (pcr/all-requires-ready? (p.ent/with-entity {} {:a 1})
-           {::pcp/requires {:a {}}})
+           {::pcp/expects {:a {}}})
          true))
 
   (is (= (pcr/all-requires-ready? (p.ent/with-entity {} {:a 1})
-           {::pcp/requires {:b {}}})
+           {::pcp/expects {:b {}}})
          false)))
 
 (deftest merge-resolver-response!-test

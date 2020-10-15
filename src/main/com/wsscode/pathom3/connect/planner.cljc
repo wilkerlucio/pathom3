@@ -81,7 +81,7 @@
 
 (>def ::node
   "Node."
-  (s/keys :opt [::node-id ::run-next ::after-nodes ::requires ::input]))
+  (s/keys :opt [::node-id ::run-next ::after-nodes ::expects ::input]))
 
 (>def ::nodes
   "The nodes index."
@@ -95,8 +95,8 @@
   "Graph before modifications, this is used to restore previous graph when some path ends up being unreachable."
   ::graph)
 
-(>def ::requires
-  "An data shape description of what is required from this execution node to return."
+(>def ::expects
+  "An data shape description of what is expected from this execution node to return."
   ::fsd/shape-descriptor)
 
 (>def ::root
@@ -518,9 +518,9 @@
 
 (defn merge-node-requires
   "Merge requires from node into target-node-id."
-  [graph target-node-id {::keys [requires]}]
-  (if requires
-    (update-in graph [::nodes target-node-id ::requires] coll/merge-grow requires)
+  [graph target-node-id {::keys [expects]}]
+  (if expects
+    (update-in graph [::nodes target-node-id ::expects] coll/merge-grow expects)
     graph))
 
 (defn merge-node-input
@@ -562,7 +562,7 @@
   attribute is already on the query, so this must be called before merging requires to
   get the correct behavior."
   [graph target-node-id {::keys [foreign-ast]}]
-  (let [requires (get-node graph target-node-id ::requires)]
+  (let [requires (get-node graph target-node-id ::expects)]
     (if foreign-ast
       ; TODO: in case of repeated props, merge params
       (update-in graph [::nodes target-node-id ::foreign-ast :children]
@@ -792,9 +792,9 @@
     graph
     (compute-root-branch graph (assoc env ::branch-type ::run-or) node
       (fn []
-        {::node-id  (next-node-id env)
-         ::requires {attribute {}}
-         ::run-or   #{(::root graph)}}))))
+        {::node-id (next-node-id env)
+         ::expects {attribute {}}
+         ::run-or  #{(::root graph)}}))))
 
 (defn compute-root-and
   [{::keys [root] :as graph} env {::keys [node-id] :as node}]
@@ -802,10 +802,10 @@
     graph
     (compute-root-branch graph (assoc env ::branch-type ::run-and) node
       (fn []
-        (let [{::keys [requires]} (get-root-node graph)]
-          {::node-id  (next-node-id env)
-           ::requires requires
-           ::run-and  #{(::root graph)}})))))
+        (let [{::keys [expects]} (get-root-node graph)]
+          {::node-id (next-node-id env)
+           ::expects expects
+           ::run-and #{(::root graph)}})))))
 
 (def dynamic-base-provider-sym `run-graph-base-provider)
 
@@ -865,7 +865,7 @@
                                    (map #(get-node nested-graph %))
                                    (keep ::input))
                              root-dyn-nodes)
-        dyn-requires   (reduce coll/merge-grow (keep ::requires root-dyn-nodes))
+        dyn-requires   (reduce coll/merge-grow (keep ::expects root-dyn-nodes))
         final-deps     (reduce coll/merge-grow (fsd/ast->shape-descriptor ast) nodes-inputs)
         children-ast   (-> (first root-dyn-nodes) ::foreign-ast
                            (update :children #(filterv (comp final-deps :key) %))) ; TODO: fix me, consider all root dyn nodes
@@ -873,7 +873,7 @@
                         :children [(assoc ast
                                      :query (eql/ast->query children-ast)
                                      :children (:children children-ast))]}]
-    {::requires    (select-keys dyn-requires (keys final-deps))
+    {::expects     (select-keys dyn-requires (keys final-deps))
      ::foreign-ast ast'}))
 
 (defn create-resolver-node
@@ -888,19 +888,19 @@
                             (dynamic-resolver? env op-name))
                      (compute-nested-node-details env))
         requires   (if nested
-                     {attribute (::requires nested)}
+                     {attribute (::expects nested)}
                      {attribute {}})
         next-node  (get-node graph run-next)
         ast-params (:params ast)]
     (if (= op-name (pc-sym next-node))
       (-> next-node
-          (update ::requires coll/merge-grow requires)
+          (update ::expects coll/merge-grow requires)
           (assoc ::input input))
       (cond->
-        {pc-sym     op-name
-         ::node-id  (next-node-id env)
-         ::requires requires
-         ::input    input}
+        {pc-sym    op-name
+         ::node-id (next-node-id env)
+         ::expects requires
+         ::input   input}
 
         (seq ast-params)
         (assoc ::params ast-params)
@@ -1001,9 +1001,9 @@
       (lazy-seq [node-id]))))
 
 (>defn resolver-node-requires-attribute?
-  [{::keys [requires sym]} attribute]
+  [{::keys [expects sym]} attribute]
   [::node ::p.attr/attribute => boolean?]
-  (boolean (and sym (contains? requires attribute))))
+  (boolean (and sym (contains? expects attribute))))
 
 (>defn find-attribute-resolver-in-successors
   "Find the nodes that get the data required for the require in the OR node."
@@ -1066,7 +1066,7 @@
           (assert ancestor "Error finding ancestor during missing chain computation")
           (cond-> (merge-nodes-run-next graph' env ancestor {::run-next (::root graph)})
             (::run-and (get-root-node graph'))
-            (merge-node-requires (::root graph') {::requires (zipmap missing (repeat {}))})))
+            (merge-node-requires (::root graph') {::expects (zipmap missing (repeat {}))})))
         (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
               unreachable-attrs (filter #(set/subset? (all-attribute-resolvers env %) unreachable-resolvers) still-missing)]
           (update out' ::unreachable-attrs into unreachable-attrs))))
@@ -1126,7 +1126,7 @@
    {::p.attr/keys [attribute] :as env}
    root]
   (loop [node-id root]
-    (let [{::keys [run-next requires run-and]} (get-node graph node-id)]
+    (let [{::keys [run-next expects run-and]} (get-node graph node-id)]
       (cond
         run-and
         (some #(node-for-attribute-in-chain graph env %)
@@ -1134,7 +1134,7 @@
             run-next
             (into [run-next])))
 
-        (contains? requires attribute)
+        (contains? expects attribute)
         node-id
 
         run-next

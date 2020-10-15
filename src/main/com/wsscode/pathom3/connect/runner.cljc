@@ -16,11 +16,11 @@
 
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
-  [env {::pcp/keys [requires]}]
-  [map? (s/keys :req [::pcp/requires])
+  [env {::pcp/keys [expects]}]
+  [map? (s/keys :req [::pcp/expects])
    => boolean?]
   (let [entity (p.ent/entity env)]
-    (every? #(contains? entity %) (keys requires))))
+    (every? #(contains? entity %) (keys expects))))
 
 (declare run-node! run-graph!)
 

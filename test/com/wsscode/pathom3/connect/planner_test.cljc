@@ -252,7 +252,7 @@
                 ::eql/query [:c :d]})
              '{::pcp/nodes                 {4 {::pco/op-name          d
                                                ::pcp/node-id          4
-                                               ::pcp/requires         {:d {}}
+                                               ::pcp/expects          {:d {}}
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:d}}}
                ::pcp/index-resolver->nodes {d #{4}}
@@ -306,7 +306,7 @@
               ::eql/query [:a]})
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
@@ -325,7 +325,7 @@
               ::eql/query [:a [:foo "bar"]]})
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
@@ -348,7 +348,7 @@
               ::eql/query [:a {[:foo "bar"] [:baz]}]})
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
@@ -415,20 +415,20 @@
                 ::eql/query     [:c :a]})
              '{::pcp/nodes                 {1 {::pco/op-name          c
                                                ::pcp/node-id          1
-                                               ::pcp/requires         {:c {}}
+                                               ::pcp/expects          {:c {}}
                                                ::pcp/input            {:b {}}
                                                ::pcp/after-nodes      #{2}
                                                ::pcp/source-for-attrs #{:c}}
                                             2 {::pco/op-name          b
                                                ::pcp/node-id          2
-                                               ::pcp/requires         {:b {}}
+                                               ::pcp/expects          {:b {}}
                                                ::pcp/input            {:a {}}
                                                ::pcp/run-next         1
                                                ::pcp/after-nodes      #{4}
                                                ::pcp/source-for-attrs #{:b}}
                                             4 {::pco/op-name          a1
                                                ::pcp/node-id          4
-                                               ::pcp/requires         {:a {}}
+                                               ::pcp/expects          {:a {}}
                                                ::pcp/input            {}
                                                ::pcp/run-next         2
                                                ::pcp/source-for-attrs #{:a}}}
@@ -452,7 +452,7 @@
               ::eql/query     [:a :b]})
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {} :b {}}
+                                             ::pcp/expects          {:a {} :b {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a :b}}}
              ::pcp/index-resolver->nodes {a #{1}}
@@ -475,19 +475,19 @@
               ::eql/query [:a :b :c]})
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {} :c {}}
+                                             ::pcp/expects          {:a {} :c {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:c :a}
                                              ::pcp/after-nodes      #{3}}
                                           2 {::pco/op-name          b
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:b}
                                              ::pcp/after-nodes      #{3}}
-                                          3 {::pcp/node-id  3
-                                             ::pcp/requires {:b {} :a {} :c {}}
-                                             ::pcp/run-and  #{2 1}}}
+                                          3 {::pcp/node-id 3
+                                             ::pcp/expects {:b {} :a {} :c {}}
+                                             ::pcp/run-and #{2 1}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2}}
              ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
@@ -512,16 +512,16 @@
               ::eql/query [:a]})
            '{::pcp/nodes                 {1 {::pco/op-name     a
                                              ::pcp/node-id     1
-                                             ::pcp/requires    {:a {}}
+                                             ::pcp/expects     {:a {}}
                                              ::pcp/input       {}
                                              ::pcp/after-nodes #{3}}
                                           2 {::pco/op-name     a2
                                              ::pcp/node-id     2
-                                             ::pcp/requires    {:a {}}
+                                             ::pcp/expects     {:a {}}
                                              ::pcp/input       {}
                                              ::pcp/after-nodes #{3}}
                                           3 {::pcp/node-id          3
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/run-or           #{1 2}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1} a2 #{2}}
@@ -542,19 +542,19 @@
               ::eql/query [:a :b]})
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a}
                                              ::pcp/after-nodes      #{3}}
                                           2 {::pco/op-name          b
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:b}
                                              ::pcp/after-nodes      #{3}}
-                                          3 {::pcp/node-id  3
-                                             ::pcp/requires {:b {} :a {}}
-                                             ::pcp/run-and  #{2 1}}}
+                                          3 {::pcp/node-id 3
+                                             ::pcp/expects {:b {} :a {}}
+                                             ::pcp/run-and #{2 1}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2}}
              ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
@@ -577,22 +577,22 @@
               ::eql/query [:a :b :c]})
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a}
                                              ::pcp/after-nodes      #{3}}
                                           2 {::pco/op-name          b
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:b}
                                              ::pcp/after-nodes      #{3}}
-                                          3 {::pcp/node-id  3
-                                             ::pcp/requires {:b {} :a {} :c {}}
-                                             ::pcp/run-and  #{2 1 4}}
+                                          3 {::pcp/node-id 3
+                                             ::pcp/expects {:b {} :a {} :c {}}
+                                             ::pcp/run-and #{2 1 4}}
                                           4 {::pco/op-name          c
                                              ::pcp/node-id          4
-                                             ::pcp/requires         {:c {}}
+                                             ::pcp/expects          {:c {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:c}
                                              ::pcp/after-nodes      #{3}}}
@@ -620,31 +620,31 @@
                ::eql/query     [:multi]})
            '{::pcp/nodes                 {1 {::pco/op-name          multi
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:multi {}}
+                                             ::pcp/expects          {:multi {}}
                                              ::pcp/input            {:direct {} :indirect {}}
                                              ::pcp/after-nodes      #{5}
                                              ::pcp/source-for-attrs #{:multi}}
                                           2 {::pco/op-name          direct
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:direct {}}
+                                             ::pcp/expects          {:direct {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:direct}
                                              ::pcp/after-nodes      #{5}}
                                           3 {::pco/op-name          indirect
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:indirect {}}
+                                             ::pcp/expects          {:indirect {}}
                                              ::pcp/input            {:dep {}}
                                              ::pcp/after-nodes      #{4}
                                              ::pcp/source-for-attrs #{:indirect}}
                                           4 {::pco/op-name          dep
                                              ::pcp/node-id          4
-                                             ::pcp/requires         {:dep {}}
+                                             ::pcp/expects          {:dep {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:dep}
                                              ::pcp/run-next         3
                                              ::pcp/after-nodes      #{5}}
                                           5 {::pcp/node-id  5
-                                             ::pcp/requires {:dep {} :direct {} :indirect {}}
+                                             ::pcp/expects  {:dep {} :direct {} :indirect {}}
                                              ::pcp/run-and  #{4 2}
                                              ::pcp/run-next 1}}
              ::pcp/index-resolver->nodes {multi #{1} direct #{2} indirect #{3} dep #{4}}
@@ -666,36 +666,36 @@
                ::eql/query     [:a]})
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {:c {} :b {} :d {}}
                                              ::pcp/after-nodes      #{5}
                                              ::pcp/source-for-attrs #{:a}}
                                           2 {::pco/op-name          c
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:c {}}
+                                             ::pcp/expects          {:c {}}
                                              ::pcp/input            {:e {}}
                                              ::pcp/after-nodes      #{3}
                                              ::pcp/source-for-attrs #{:c}}
                                           3 {::pco/op-name          e
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:e {}}
+                                             ::pcp/expects          {:e {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:e}
                                              ::pcp/run-next         2
                                              ::pcp/after-nodes      #{5}}
                                           4 {::pco/op-name          b
                                              ::pcp/node-id          4
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:b}
                                              ::pcp/after-nodes      #{5}}
                                           5 {::pcp/node-id  5
-                                             ::pcp/requires {:b {} :c {} :e {} :d {}}
+                                             ::pcp/expects  {:b {} :c {} :e {} :d {}}
                                              ::pcp/run-and  #{4 3 6}
                                              ::pcp/run-next 1}
                                           6 {::pco/op-name          d
                                              ::pcp/node-id          6
-                                             ::pcp/requires         {:d {}}
+                                             ::pcp/expects          {:d {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:d}
                                              ::pcp/after-nodes      #{5}}}
@@ -717,34 +717,34 @@
                ::eql/query     [:a :d]})
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {:c {} :b {}}
                                              ::pcp/after-nodes      #{7}
                                              ::pcp/source-for-attrs #{:a}}
                                           2 {::pco/op-name          c
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:c {}}
+                                             ::pcp/expects          {:c {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:c}
                                              ::pcp/after-nodes      #{6}}
                                           3 {::pco/op-name          b
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:b}
                                              ::pcp/after-nodes      #{6}}
                                           5 {::pco/op-name     d
                                              ::pcp/node-id     5
-                                             ::pcp/requires    {:d {}}
+                                             ::pcp/expects     {:d {}}
                                              ::pcp/input       {:c {} :b {}}
                                              ::pcp/after-nodes #{7}}
                                           6 {::pcp/node-id  6
-                                             ::pcp/requires {:b {} :c {}}
+                                             ::pcp/expects  {:b {} :c {}}
                                              ::pcp/run-and  #{3 2}
                                              ::pcp/run-next 7}
-                                          7 {::pcp/node-id  7
-                                             ::pcp/requires {:a {} :d {}}
-                                             ::pcp/run-and  #{1 5}}}
+                                          7 {::pcp/node-id 7
+                                             ::pcp/expects {:a {} :d {}}
+                                             ::pcp/run-and #{1 5}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5}}
              ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
@@ -765,19 +765,19 @@
                  ::eql/query     [:a]})
              '{::pcp/nodes                 {1 {::pco/op-name          a
                                                ::pcp/node-id          1
-                                               ::pcp/requires         {:a {}}
+                                               ::pcp/expects          {:a {}}
                                                ::pcp/input            {:c {} :b {}}
                                                ::pcp/after-nodes      #{3}
                                                ::pcp/source-for-attrs #{:a}}
                                             2 {::pco/op-name          c
                                                ::pcp/node-id          2
-                                               ::pcp/requires         {:c {}}
+                                               ::pcp/expects          {:c {}}
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:c}
                                                ::pcp/run-next         3}
                                             3 {::pco/op-name          b
                                                ::pcp/node-id          3
-                                               ::pcp/requires         {:b {}}
+                                               ::pcp/expects          {:b {}}
                                                ::pcp/input            {:c {}}
                                                ::pcp/after-nodes      #{2}
                                                ::pcp/source-for-attrs #{:b}
@@ -799,26 +799,26 @@
                  ::eql/query     [:a]})
              '{::pcp/nodes                 {1 {::pco/op-name          a
                                                ::pcp/node-id          1
-                                               ::pcp/requires         {:a {}}
+                                               ::pcp/expects          {:a {}}
                                                ::pcp/input            {:c {} :b {} :d {}}
                                                ::pcp/after-nodes      #{4}
                                                ::pcp/source-for-attrs #{:a}}
                                             2 {::pco/op-name          c
                                                ::pcp/node-id          2
-                                               ::pcp/requires         {:c {}}
+                                               ::pcp/expects          {:c {}}
                                                ::pcp/input            {:d {}}
                                                ::pcp/after-nodes      #{3}
                                                ::pcp/source-for-attrs #{:c}
                                                ::pcp/run-next         4}
                                             3 {::pco/op-name          d
                                                ::pcp/node-id          3
-                                               ::pcp/requires         {:d {}}
+                                               ::pcp/expects          {:d {}}
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:d}
                                                ::pcp/run-next         2}
                                             4 {::pco/op-name          b
                                                ::pcp/node-id          4
-                                               ::pcp/requires         {:b {}}
+                                               ::pcp/expects          {:b {}}
                                                ::pcp/input            {:c {} :d {}}
                                                ::pcp/after-nodes      #{2}
                                                ::pcp/source-for-attrs #{:b}
@@ -844,31 +844,31 @@
                ::eql/query     [:a :e]})
            '{::pcp/nodes                 {10 {::pco/op-name          a1
                                               ::pcp/node-id          10
-                                              ::pcp/requires         {:a {}}
+                                              ::pcp/expects          {:a {}}
                                               ::pcp/input            {:e {}}
                                               ::pcp/after-nodes      #{11}
                                               ::pcp/source-for-attrs #{:a}}
                                           11 {::pco/op-name          e
                                               ::pcp/node-id          11
-                                              ::pcp/requires         {:e {}}
+                                              ::pcp/expects          {:e {}}
                                               ::pcp/input            {:b {} :f {}}
                                               ::pcp/after-nodes      #{14}
                                               ::pcp/source-for-attrs #{:e}
                                               ::pcp/run-next         10}
                                           12 {::pco/op-name          b
                                               ::pcp/node-id          12
-                                              ::pcp/requires         {:b {}}
+                                              ::pcp/expects          {:b {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:b}
                                               ::pcp/after-nodes      #{14}}
                                           13 {::pco/op-name          f
                                               ::pcp/node-id          13
-                                              ::pcp/requires         {:f {}}
+                                              ::pcp/expects          {:f {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:f}
                                               ::pcp/after-nodes      #{14}}
                                           14 {::pcp/node-id  14
-                                              ::pcp/requires {:f {} :e {} :b {}}
+                                              ::pcp/expects  {:f {} :e {} :b {}}
                                               ::pcp/run-and  #{13 12}
                                               ::pcp/run-next 11}}
              ::pcp/index-resolver->nodes {a1 #{10} e #{11} b #{12} f #{13}}
@@ -891,54 +891,54 @@
                                 :e {#{:c :b :f} #{e}}
                                 :f {#{} #{f}}}
                ::eql/query     [:a :d :e]})
-           '{::pcp/nodes                 {7  {::pcp/node-id  7
-                                              ::pcp/requires {:a {} :d {}}
-                                              ::pcp/run-and  #{1 5}}
+           '{::pcp/nodes                 {7  {::pcp/node-id 7
+                                              ::pcp/expects {:a {} :d {}}
+                                              ::pcp/run-and #{1 5}}
                                           1  {::pco/op-name          a
                                               ::pcp/node-id          1
-                                              ::pcp/requires         {:a {}}
+                                              ::pcp/expects          {:a {}}
                                               ::pcp/input            {:c {} :b {}}
                                               ::pcp/after-nodes      #{7}
                                               ::pcp/source-for-attrs #{:a}}
                                           6  {::pcp/node-id     6
-                                              ::pcp/requires    {:b {} :c {}}
+                                              ::pcp/expects     {:b {} :c {}}
                                               ::pcp/run-and     #{3 2}
                                               ::pcp/run-next    7
                                               ::pcp/after-nodes #{11}}
                                           3  {::pco/op-name          b
                                               ::pcp/node-id          3
-                                              ::pcp/requires         {:b {}}
+                                              ::pcp/expects          {:b {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:b}
                                               ::pcp/after-nodes      #{6 9}}
                                           2  {::pco/op-name          c
                                               ::pcp/node-id          2
-                                              ::pcp/requires         {:c {}}
+                                              ::pcp/expects          {:c {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:c}
                                               ::pcp/after-nodes      #{6 9}}
-                                          11 {::pcp/node-id  11
-                                              ::pcp/requires {:b {} :c {} :f {}}
-                                              ::pcp/run-and  #{6 9}}
+                                          11 {::pcp/node-id 11
+                                              ::pcp/expects {:b {} :c {} :f {}}
+                                              ::pcp/run-and #{6 9}}
                                           9  {::pcp/node-id     9
-                                              ::pcp/requires    {:b {} :c {} :f {}}
+                                              ::pcp/expects     {:b {} :c {} :f {}}
                                               ::pcp/run-and     #{3 2 10}
                                               ::pcp/run-next    8
                                               ::pcp/after-nodes #{11}}
                                           5  {::pco/op-name     d
                                               ::pcp/node-id     5
-                                              ::pcp/requires    {:d {}}
+                                              ::pcp/expects     {:d {}}
                                               ::pcp/input       {:c {} :b {}}
                                               ::pcp/after-nodes #{7}}
                                           10 {::pco/op-name          f
                                               ::pcp/node-id          10
-                                              ::pcp/requires         {:f {}}
+                                              ::pcp/expects          {:f {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:f}
                                               ::pcp/after-nodes      #{9}}
                                           8  {::pco/op-name          e
                                               ::pcp/node-id          8
-                                              ::pcp/requires         {:e {}}
+                                              ::pcp/expects          {:e {}}
                                               ::pcp/input            {:c {} :b {} :f {}}
                                               ::pcp/after-nodes      #{9}
                                               ::pcp/source-for-attrs #{:e}}}
@@ -967,47 +967,47 @@
                ::eql/query     [:a :d]})
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {:c {} :b {}}
                                              ::pcp/after-nodes      #{4}
                                              ::pcp/source-for-attrs #{:a}}
                                           2 {::pco/op-name          c
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:c {}}
+                                             ::pcp/expects          {:c {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:c}
                                              ::pcp/after-nodes      #{4}}
                                           3 {::pco/op-name          b
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:b}
                                              ::pcp/after-nodes      #{7 4}}
                                           4 {::pcp/node-id     4
-                                             ::pcp/requires    {:b {} :c {}}
+                                             ::pcp/expects     {:b {} :c {}}
                                              ::pcp/run-and     #{3 2}
                                              ::pcp/run-next    1
                                              ::pcp/after-nodes #{8}}
                                           5 {::pco/op-name          d
                                              ::pcp/node-id          5
-                                             ::pcp/requires         {:d {}}
+                                             ::pcp/expects          {:d {}}
                                              ::pcp/input            {:e {} :b {}}
                                              ::pcp/after-nodes      #{7}
                                              ::pcp/source-for-attrs #{:d}}
                                           6 {::pco/op-name          e
                                              ::pcp/node-id          6
-                                             ::pcp/requires         {:e {}}
+                                             ::pcp/expects          {:e {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:e}
                                              ::pcp/after-nodes      #{7}}
                                           7 {::pcp/node-id     7
-                                             ::pcp/requires    {:b {} :e {}}
+                                             ::pcp/expects     {:b {} :e {}}
                                              ::pcp/run-and     #{3 6}
                                              ::pcp/run-next    5
                                              ::pcp/after-nodes #{8}}
-                                          8 {::pcp/node-id  8
-                                             ::pcp/requires {:b {} :e {} :c {}}
-                                             ::pcp/run-and  #{7 4}}}
+                                          8 {::pcp/node-id 8
+                                             ::pcp/expects {:b {} :e {} :c {}}
+                                             ::pcp/run-and #{7 4}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5} e #{6}}
              ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
@@ -1040,7 +1040,7 @@
                 ::eql/query     [:a :b]})
              '{::pcp/nodes                 {1 {::pco/op-name          a
                                                ::pcp/node-id          1
-                                               ::pcp/requires         {:a {} :b {}}
+                                               ::pcp/expects          {:a {} :b {}}
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:b :a}}}
                ::pcp/index-resolver->nodes {a #{1}}
@@ -1065,13 +1065,13 @@
               ::eql/query [:a :b]})
            '{::pcp/nodes                 {2 {::pco/op-name          z
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:z {}}
+                                             ::pcp/expects          {:z {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:z}
                                              ::pcp/run-next         3}
                                           3 {::pco/op-name          a
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:b {} :a {}}
+                                             ::pcp/expects          {:b {} :a {}}
                                              ::pcp/input            {:z {}}
                                              ::pcp/source-for-attrs #{:b :a}
                                              ::pcp/after-nodes      #{2}}}
@@ -1099,19 +1099,19 @@
               ::eql/query [:c :a]})
            '{::pcp/nodes                 {1 {::pco/op-name          c
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:c {}}
+                                             ::pcp/expects          {:c {}}
                                              ::pcp/input            {:b {}}
                                              ::pcp/after-nodes      #{4}
                                              ::pcp/source-for-attrs #{:c}}
                                           3 {::pco/op-name          z
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:z {}}
+                                             ::pcp/expects          {:z {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:z}
                                              ::pcp/run-next         4}
                                           4 {::pco/op-name          a
                                              ::pcp/node-id          4
-                                             ::pcp/requires         {:a {} :b {}}
+                                             ::pcp/expects          {:a {} :b {}}
                                              ::pcp/input            {:z {}}
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:b :a}
@@ -1138,13 +1138,13 @@
               ::eql/query [:b]})
            '{::pcp/nodes                 {1 {::pco/op-name          b
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {:a {}}
                                              ::pcp/after-nodes      #{2}
                                              ::pcp/source-for-attrs #{:b}}
                                           2 {::pco/op-name          a
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {}
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:a}}}
@@ -1169,23 +1169,23 @@
               ::eql/query [:a]})
            '{::pcp/nodes                 {1 {::pco/op-name     a
                                              ::pcp/node-id     1
-                                             ::pcp/requires    {:a {}}
+                                             ::pcp/expects     {:a {}}
                                              ::pcp/input       {}
                                              ::pcp/after-nodes #{4}}
                                           2 {::pco/op-name     a2
                                              ::pcp/node-id     2
-                                             ::pcp/requires    {:a {}}
+                                             ::pcp/expects     {:a {}}
                                              ::pcp/input       {:b {}}
                                              ::pcp/after-nodes #{3}}
                                           3 {::pco/op-name          b
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {}
                                              ::pcp/run-next         2
                                              ::pcp/source-for-attrs #{:b}
                                              ::pcp/after-nodes      #{4}}
                                           4 {::pcp/node-id          4
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/run-or           #{3 1}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1} a2 #{2} b #{3}}
@@ -1209,29 +1209,29 @@
                 ::eql/query [:a :b]})
              '{::pcp/nodes                 {1 {::pco/op-name     a
                                                ::pcp/node-id     1
-                                               ::pcp/requires    {:a {}}
+                                               ::pcp/expects     {:a {}}
                                                ::pcp/input       {}
                                                ::pcp/after-nodes #{4}}
                                             2 {::pco/op-name     a2
                                                ::pcp/node-id     2
-                                               ::pcp/requires    {:a {}}
+                                               ::pcp/expects     {:a {}}
                                                ::pcp/input       {:b {}}
                                                ::pcp/after-nodes #{3}}
                                             3 {::pco/op-name          b
                                                ::pcp/node-id          3
-                                               ::pcp/requires         {:b {}}
+                                               ::pcp/expects          {:b {}}
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:b}
                                                ::pcp/run-next         2
                                                ::pcp/after-nodes      #{4 5}}
                                             4 {::pcp/node-id          4
-                                               ::pcp/requires         {:a {}}
+                                               ::pcp/expects          {:a {}}
                                                ::pcp/run-or           #{1 3}
                                                ::pcp/source-for-attrs #{:a}
                                                ::pcp/after-nodes      #{5}}
-                                            5 {::pcp/node-id  5
-                                               ::pcp/requires {:b {} :a {}}
-                                               ::pcp/run-and  #{4 3}}}
+                                            5 {::pcp/node-id 5
+                                               ::pcp/expects {:b {} :a {}}
+                                               ::pcp/run-and #{4 3}}}
                ::pcp/index-resolver->nodes {a #{1} a2 #{2} b #{3}}
                ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
@@ -1254,13 +1254,13 @@
               ::eql/query [:b]})
            '{::pcp/nodes                 {1 {::pco/op-name          b
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {:a {}}
                                              ::pcp/after-nodes      #{2}
                                              ::pcp/source-for-attrs #{:b}}
                                           2 {::pco/op-name          a
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {}
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:a}}}
@@ -1286,20 +1286,20 @@
               ::eql/query [:c]})
            '{::pcp/nodes                 {1 {::pco/op-name          c
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:c {}}
+                                             ::pcp/expects          {:c {}}
                                              ::pcp/input            {:b {}}
                                              ::pcp/after-nodes      #{2}
                                              ::pcp/source-for-attrs #{:c}}
                                           2 {::pco/op-name          b
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {:a {}}
                                              ::pcp/run-next         1
                                              ::pcp/after-nodes      #{3}
                                              ::pcp/source-for-attrs #{:b}}
                                           3 {::pco/op-name          a
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {}
                                              ::pcp/run-next         2
                                              ::pcp/source-for-attrs #{:a}}}
@@ -1324,13 +1324,13 @@
               ::pcp/available-data {:a {}}})
            '{::pcp/nodes                 {1 {::pco/op-name          c
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:c {}}
+                                             ::pcp/expects          {:c {}}
                                              ::pcp/input            {:b {}}
                                              ::pcp/after-nodes      #{2}
                                              ::pcp/source-for-attrs #{:c}}
                                           2 {::pco/op-name          b
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {:a {}}
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:b}}}
@@ -1355,22 +1355,22 @@
               ::eql/query [:b]})
            '{::pcp/nodes                 {1 {::pco/op-name          b
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {:a {}}
                                              ::pcp/after-nodes      #{4}
                                              ::pcp/source-for-attrs #{:b}}
                                           2 {::pco/op-name     a
                                              ::pcp/node-id     2
-                                             ::pcp/requires    {:a {}}
+                                             ::pcp/expects     {:a {}}
                                              ::pcp/input       {}
                                              ::pcp/after-nodes #{4}}
                                           3 {::pco/op-name     a2
                                              ::pcp/node-id     3
-                                             ::pcp/requires    {:a {}}
+                                             ::pcp/expects     {:a {}}
                                              ::pcp/input       {}
                                              ::pcp/after-nodes #{4}}
                                           4 {::pcp/node-id          4
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/run-or           #{2 3}
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:a}}}
@@ -1397,22 +1397,22 @@
            #?(:clj
               '{::pcp/nodes                 {1 {::pco/op-name     b2
                                                 ::pcp/node-id     1
-                                                ::pcp/requires    {:b {}}
+                                                ::pcp/expects     {:b {}}
                                                 ::pcp/input       {:a {}}
                                                 ::pcp/after-nodes #{3}}
                                              2 {::pco/op-name     b
                                                 ::pcp/node-id     2
-                                                ::pcp/requires    {:b {}}
+                                                ::pcp/expects     {:b {}}
                                                 ::pcp/input       {:a {}}
                                                 ::pcp/after-nodes #{3}}
                                              3 {::pcp/node-id          3
-                                                ::pcp/requires         {:b {}}
+                                                ::pcp/expects          {:b {}}
                                                 ::pcp/run-or           #{1 2}
                                                 ::pcp/after-nodes      #{4}
                                                 ::pcp/source-for-attrs #{:b}}
                                              4 {::pco/op-name          a
                                                 ::pcp/node-id          4
-                                                ::pcp/requires         {:a {}}
+                                                ::pcp/expects          {:a {}}
                                                 ::pcp/input            {}
                                                 ::pcp/run-next         3
                                                 ::pcp/source-for-attrs #{:a}}}
@@ -1427,22 +1427,22 @@
               :cljs
               '{::pcp/nodes                 {1 {::pco/op-name     b
                                                 ::pcp/node-id     1
-                                                ::pcp/requires    {:b {}}
+                                                ::pcp/expects     {:b {}}
                                                 ::pcp/input       {:a {}}
                                                 ::pcp/after-nodes #{3}}
                                              2 {::pco/op-name     b2
                                                 ::pcp/node-id     2
-                                                ::pcp/requires    {:b {}}
+                                                ::pcp/expects     {:b {}}
                                                 ::pcp/input       {:a {}}
                                                 ::pcp/after-nodes #{3}}
                                              3 {::pcp/node-id          3
-                                                ::pcp/requires         {:b {}}
+                                                ::pcp/expects          {:b {}}
                                                 ::pcp/run-or           #{1 2}
                                                 ::pcp/after-nodes      #{4}
                                                 ::pcp/source-for-attrs #{:b}}
                                              4 {::pco/op-name          a
                                                 ::pcp/node-id          4
-                                                ::pcp/requires         {:a {}}
+                                                ::pcp/expects          {:a {}}
                                                 ::pcp/input            {}
                                                 ::pcp/run-next         3
                                                 ::pcp/source-for-attrs #{:a}}}
@@ -1468,24 +1468,24 @@
            #?(:clj
               '{::pcp/nodes                 {1 {::pco/op-name          c
                                                 ::pcp/node-id          1
-                                                ::pcp/requires         {:c {}}
+                                                ::pcp/expects          {:c {}}
                                                 ::pcp/input            {:b {} :a {}}
                                                 ::pcp/after-nodes      #{4}
                                                 ::pcp/source-for-attrs #{:c}}
                                              2 {::pco/op-name          b
                                                 ::pcp/node-id          2
-                                                ::pcp/requires         {:b {}}
+                                                ::pcp/expects          {:b {}}
                                                 ::pcp/input            {}
                                                 ::pcp/source-for-attrs #{:b}
                                                 ::pcp/after-nodes      #{4}}
                                              3 {::pco/op-name          a
                                                 ::pcp/node-id          3
-                                                ::pcp/requires         {:a {}}
+                                                ::pcp/expects          {:a {}}
                                                 ::pcp/input            {}
                                                 ::pcp/source-for-attrs #{:a}
                                                 ::pcp/after-nodes      #{4}}
                                              4 {::pcp/node-id  4
-                                                ::pcp/requires {:a {} :b {}}
+                                                ::pcp/expects  {:a {} :b {}}
                                                 ::pcp/run-and  #{3 2}
                                                 ::pcp/run-next 1}}
                 ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3}}
@@ -1499,25 +1499,25 @@
               :cljs
               '{::pcp/nodes                 {1 {::pco/op-name          c,
                                                 ::pcp/node-id          1,
-                                                ::pcp/requires         {:c {}},
+                                                ::pcp/expects          {:c {}},
                                                 ::pcp/input            {:a {},
                                                                         :b {}},
                                                 ::pcp/after-nodes      #{4},
                                                 ::pcp/source-for-attrs #{:c}},
                                              2 {::pco/op-name          a,
                                                 ::pcp/node-id          2,
-                                                ::pcp/requires         {:a {}},
+                                                ::pcp/expects          {:a {}},
                                                 ::pcp/input            {},
                                                 ::pcp/source-for-attrs #{:a},
                                                 ::pcp/after-nodes      #{4}},
                                              3 {::pco/op-name          b,
                                                 ::pcp/node-id          3,
-                                                ::pcp/requires         {:b {}},
+                                                ::pcp/expects          {:b {}},
                                                 ::pcp/input            {},
                                                 ::pcp/source-for-attrs #{:b},
                                                 ::pcp/after-nodes      #{4}},
                                              4 {::pcp/node-id  4,
-                                                ::pcp/requires {:b {},
+                                                ::pcp/expects  {:b {},
                                                                 :a {}},
                                                 ::pcp/run-and  #{3
                                                                  2},
@@ -1544,13 +1544,13 @@
               ::eql/query [:c]})
            '{::pcp/nodes                 {1 {::pco/op-name          c2
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:c {}}
+                                             ::pcp/expects          {:c {}}
                                              ::pcp/input            {:a {}}
                                              ::pcp/after-nodes      #{2}
                                              ::pcp/source-for-attrs #{:c}}
                                           2 {::pco/op-name          a
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {}
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:a}}}
@@ -1578,33 +1578,33 @@
            #?(:clj
               '{::pcp/nodes                 {1 {::pco/op-name          c
                                                 ::pcp/node-id          1
-                                                ::pcp/requires         {:c {}}
+                                                ::pcp/expects          {:c {}}
                                                 ::pcp/input            {:b {} :a {}}
                                                 ::pcp/after-nodes      #{6}
                                                 ::pcp/source-for-attrs #{:c}}
                                              2 {::pco/op-name          b
                                                 ::pcp/node-id          2
-                                                ::pcp/requires         {:b {}}
+                                                ::pcp/expects          {:b {}}
                                                 ::pcp/input            {}
                                                 ::pcp/source-for-attrs #{:b}
                                                 ::pcp/after-nodes      #{6}}
                                              3 {::pco/op-name     a
                                                 ::pcp/node-id     3
-                                                ::pcp/requires    {:a {}}
+                                                ::pcp/expects     {:a {}}
                                                 ::pcp/input       {}
                                                 ::pcp/after-nodes #{5}}
                                              4 {::pco/op-name     a1
                                                 ::pcp/node-id     4
-                                                ::pcp/requires    {:a {}}
+                                                ::pcp/expects     {:a {}}
                                                 ::pcp/input       {}
                                                 ::pcp/after-nodes #{5}}
                                              5 {::pcp/node-id          5
-                                                ::pcp/requires         {:a {}}
+                                                ::pcp/expects          {:a {}}
                                                 ::pcp/run-or           #{3 4}
                                                 ::pcp/source-for-attrs #{:a}
                                                 ::pcp/after-nodes      #{6}}
                                              6 {::pcp/node-id  6
-                                                ::pcp/requires {:a {} :b {}}
+                                                ::pcp/expects  {:a {} :b {}}
                                                 ::pcp/run-and  #{5 2}
                                                 ::pcp/run-next 1}}
                 ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3} a1 #{4}}
@@ -1619,35 +1619,35 @@
               :cljs
               '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name        c,
                                                                                 :com.wsscode.pathom3.connect.planner/node-id          1,
-                                                                                :com.wsscode.pathom3.connect.planner/requires         {:c {}},
+                                                                                ::pcp/expects                                         {:c {}},
                                                                                 :com.wsscode.pathom3.connect.planner/input            {:a {},
                                                                                                                                        :b {}},
                                                                                 :com.wsscode.pathom3.connect.planner/after-nodes      #{6},
                                                                                 :com.wsscode.pathom3.connect.planner/source-for-attrs #{:c}},
                                                                              2 {:com.wsscode.pathom3.connect.operation/op-name   a,
                                                                                 :com.wsscode.pathom3.connect.planner/node-id     2,
-                                                                                :com.wsscode.pathom3.connect.planner/requires    {:a {}},
+                                                                                ::pcp/expects                                    {:a {}},
                                                                                 :com.wsscode.pathom3.connect.planner/input       {},
                                                                                 :com.wsscode.pathom3.connect.planner/after-nodes #{4}},
                                                                              3 {:com.wsscode.pathom3.connect.operation/op-name   a1,
                                                                                 :com.wsscode.pathom3.connect.planner/node-id     3,
-                                                                                :com.wsscode.pathom3.connect.planner/requires    {:a {}},
+                                                                                ::pcp/expects                                    {:a {}},
                                                                                 :com.wsscode.pathom3.connect.planner/input       {},
                                                                                 :com.wsscode.pathom3.connect.planner/after-nodes #{4}},
                                                                              4 #:com.wsscode.pathom3.connect.planner{:node-id          4,
-                                                                                                                     :requires         {:a {}},
+                                                                                                                     :expects          {:a {}},
                                                                                                                      :run-or           #{3
                                                                                                                                          2},
                                                                                                                      :source-for-attrs #{:a},
                                                                                                                      :after-nodes      #{6}},
                                                                              5 {:com.wsscode.pathom3.connect.operation/op-name        b,
                                                                                 :com.wsscode.pathom3.connect.planner/node-id          5,
-                                                                                :com.wsscode.pathom3.connect.planner/requires         {:b {}},
+                                                                                ::pcp/expects                                         {:b {}},
                                                                                 :com.wsscode.pathom3.connect.planner/input            {},
                                                                                 :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
                                                                                 :com.wsscode.pathom3.connect.planner/after-nodes      #{6}},
                                                                              6 #:com.wsscode.pathom3.connect.planner{:node-id  6,
-                                                                                                                     :requires {:b {},
+                                                                                                                     :expects  {:b {},
                                                                                                                                 :a {}},
                                                                                                                      :run-and  #{4
                                                                                                                                  5},
@@ -1679,42 +1679,42 @@
               ::eql/query [:a :b]})
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {:c {}}
                                              ::pcp/after-nodes      #{2}
                                              ::pcp/source-for-attrs #{:a}}
                                           2 {::pco/op-name          cd
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:c {}}
+                                             ::pcp/expects          {:c {}}
                                              ::pcp/input            {}
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:c}
                                              ::pcp/after-nodes      #{7}}
                                           3 {::pco/op-name          b
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {:d {}}
                                              ::pcp/after-nodes      #{6}
                                              ::pcp/source-for-attrs #{:b}}
                                           4 {::pco/op-name     cd
                                              ::pcp/node-id     4
-                                             ::pcp/requires    {:d {}}
+                                             ::pcp/expects     {:d {}}
                                              ::pcp/input       {}
                                              ::pcp/after-nodes #{6}}
                                           5 {::pco/op-name     d
                                              ::pcp/node-id     5
-                                             ::pcp/requires    {:d {}}
+                                             ::pcp/expects     {:d {}}
                                              ::pcp/input       {}
                                              ::pcp/after-nodes #{6}}
                                           6 {::pcp/node-id          6
-                                             ::pcp/requires         {:d {}}
+                                             ::pcp/expects          {:d {}}
                                              ::pcp/run-or           #{4 5}
                                              ::pcp/run-next         3
                                              ::pcp/source-for-attrs #{:d}
                                              ::pcp/after-nodes      #{7}}
-                                          7 {::pcp/node-id  7
-                                             ::pcp/requires {:d {} :c {}}
-                                             ::pcp/run-and  #{6 2}}}
+                                          7 {::pcp/node-id 7
+                                             ::pcp/expects {:d {} :c {}}
+                                             ::pcp/run-and #{6 2}}}
              ::pcp/index-resolver->nodes {a #{1} cd #{4 2} b #{3} d #{5}}
              ::pcp/unreachable-resolvers #{}
              ::pcp/unreachable-attrs     #{}
@@ -1736,30 +1736,30 @@
                ::eql/query     [:d]})
            '{::pcp/nodes                 {1 {::pco/op-name          d
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:d {}}
+                                             ::pcp/expects          {:d {}}
                                              ::pcp/input            {:c {} :b {}}
                                              ::pcp/after-nodes      #{5}
                                              ::pcp/source-for-attrs #{:d}}
                                           2 {::pco/op-name          c
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:c {}}
+                                             ::pcp/expects          {:c {}}
                                              ::pcp/input            {:a {}}
                                              ::pcp/after-nodes      #{5}
                                              ::pcp/source-for-attrs #{:c}}
                                           3 {::pco/op-name          a
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a}
                                              ::pcp/run-next         5}
                                           4 {::pco/op-name          b
                                              ::pcp/node-id          4
-                                             ::pcp/requires         {:b {}}
+                                             ::pcp/expects          {:b {}}
                                              ::pcp/input            {:a {}}
                                              ::pcp/after-nodes      #{5}
                                              ::pcp/source-for-attrs #{:b}}
                                           5 {::pcp/node-id     5
-                                             ::pcp/requires    {:c {} :b {}}
+                                             ::pcp/expects     {:c {} :b {}}
                                              ::pcp/run-and     #{2 4}
                                              ::pcp/after-nodes #{3}
                                              ::pcp/run-next    1}}
@@ -1792,37 +1792,37 @@
            #?(:clj
               '{::pcp/nodes                 {1 {::pco/op-name          d
                                                 ::pcp/node-id          1
-                                                ::pcp/requires         {:d {}}
+                                                ::pcp/expects          {:d {}}
                                                 ::pcp/input            {:c {} :b {}}
                                                 ::pcp/after-nodes      #{6}
                                                 ::pcp/source-for-attrs #{:d}}
                                              2 {::pco/op-name          c
                                                 ::pcp/node-id          2
-                                                ::pcp/requires         {:c {}}
+                                                ::pcp/expects          {:c {}}
                                                 ::pcp/input            {:a {}}
                                                 ::pcp/after-nodes      #{6}
                                                 ::pcp/source-for-attrs #{:c}}
                                              3 {::pco/op-name          a
                                                 ::pcp/node-id          3
-                                                ::pcp/requires         {:a {}}
+                                                ::pcp/expects          {:a {}}
                                                 ::pcp/input            {:z {}}
                                                 ::pcp/after-nodes      #{4}
                                                 ::pcp/source-for-attrs #{:a}
                                                 ::pcp/run-next         6}
                                              4 {::pco/op-name          z
                                                 ::pcp/node-id          4
-                                                ::pcp/requires         {:z {}}
+                                                ::pcp/expects          {:z {}}
                                                 ::pcp/input            {}
                                                 ::pcp/source-for-attrs #{:z}
                                                 ::pcp/run-next         3}
                                              5 {::pco/op-name          b
                                                 ::pcp/node-id          5
-                                                ::pcp/requires         {:b {}}
+                                                ::pcp/expects          {:b {}}
                                                 ::pcp/input            {:a {}}
                                                 ::pcp/after-nodes      #{6}
                                                 ::pcp/source-for-attrs #{:b}}
                                              6 {::pcp/node-id     6
-                                                ::pcp/requires    {:c {} :b {}}
+                                                ::pcp/expects     {:c {} :b {}}
                                                 ::pcp/run-and     #{2 5}
                                                 ::pcp/after-nodes #{3}
                                                 ::pcp/run-next    1}}
@@ -1838,38 +1838,38 @@
               :cljs
               '{::pcp/nodes                 {1 {::pco/op-name          d,
                                                 ::pcp/node-id          1,
-                                                ::pcp/requires         {:d {}},
+                                                ::pcp/expects          {:d {}},
                                                 ::pcp/input            {:b {},
                                                                         :c {}},
                                                 ::pcp/after-nodes      #{6},
                                                 ::pcp/source-for-attrs #{:d}},
                                              2 {::pco/op-name          b,
                                                 ::pcp/node-id          2,
-                                                ::pcp/requires         {:b {}},
+                                                ::pcp/expects          {:b {}},
                                                 ::pcp/input            {:a {}},
                                                 ::pcp/after-nodes      #{6},
                                                 ::pcp/source-for-attrs #{:b}},
                                              3 {::pco/op-name          a,
                                                 ::pcp/node-id          3,
-                                                ::pcp/requires         {:a {}},
+                                                ::pcp/expects          {:a {}},
                                                 ::pcp/input            {:z {}},
                                                 ::pcp/after-nodes      #{4},
                                                 ::pcp/source-for-attrs #{:a},
                                                 ::pcp/run-next         6},
                                              4 {::pco/op-name          z,
                                                 ::pcp/node-id          4,
-                                                ::pcp/requires         {:z {}},
+                                                ::pcp/expects          {:z {}},
                                                 ::pcp/input            {},
                                                 ::pcp/source-for-attrs #{:z},
                                                 ::pcp/run-next         3},
                                              5 {::pco/op-name          c,
                                                 ::pcp/node-id          5,
-                                                ::pcp/requires         {:c {}},
+                                                ::pcp/expects          {:c {}},
                                                 ::pcp/input            {:a {}},
                                                 ::pcp/after-nodes      #{6},
                                                 ::pcp/source-for-attrs #{:c}},
                                              6 #::pcp{:node-id     6,
-                                                      :requires    {:b {},
+                                                      :expects     {:b {},
                                                                     :c {}},
                                                       :run-and     #{2
                                                                      5},
@@ -1904,31 +1904,31 @@
                                 ::pco/output  [:recur-dep]}]}))
            '{::pcp/nodes                 {1 {::pco/op-name          release-script
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:release/script {}}
+                                             ::pcp/expects          {:release/script {}}
                                              ::pcp/input            {:db/id {}}
                                              ::pcp/after-nodes      #{5}
                                              ::pcp/source-for-attrs #{:release/script}}
                                           2 {::pco/op-name          id
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:db/id {}}
+                                             ::pcp/expects          {:db/id {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:db/id}
                                              ::pcp/run-next         5}
                                           3 {::pco/op-name          recur-dep
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:recur-dep {}}
+                                             ::pcp/expects          {:recur-dep {}}
                                              ::pcp/input            {:label/type {}}
                                              ::pcp/after-nodes      #{4}
                                              ::pcp/source-for-attrs #{:recur-dep}}
                                           4 {::pco/op-name          label-type
                                              ::pcp/node-id          4
-                                             ::pcp/requires         {:label/type {}}
+                                             ::pcp/expects          {:label/type {}}
                                              ::pcp/input            {:db/id {}}
                                              ::pcp/after-nodes      #{5}
                                              ::pcp/source-for-attrs #{:label/type}
                                              ::pcp/run-next         3}
                                           5 {::pcp/node-id     5
-                                             ::pcp/requires    {:release/script {} :label/type {}}
+                                             ::pcp/expects     {:release/script {} :label/type {}}
                                              ::pcp/run-and     #{1 4}
                                              ::pcp/after-nodes #{2}}}
              ::pcp/index-resolver->nodes {release-script #{1}
@@ -1961,12 +1961,12 @@
                                          ::pco/output  [:id :name :other-id]}]}))
            '{::pcp/nodes                 {1 {::pco/op-name     from-other-id
                                              ::pcp/node-id     1
-                                             ::pcp/requires    {:name {}}
+                                             ::pcp/expects     {:name {}}
                                              ::pcp/input       {:other-id {}}
                                              ::pcp/after-nodes #{2}}
                                           2 {::pco/op-name          from-id
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:other-id {} :name {}}
+                                             ::pcp/expects          {:other-id {} :name {}}
                                              ::pcp/input            {:id {}}
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:name :other-id}}}
@@ -1993,18 +1993,18 @@
                                          ::pco/output  [:id :name :other]}]}))
            '{::pcp/nodes                 {1 {::pco/op-name          from-id
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:name {} :other-id {}}
+                                             ::pcp/expects          {:name {} :other-id {}}
                                              ::pcp/input            {:id {}}
                                              ::pcp/run-next         3
                                              ::pcp/source-for-attrs #{:name :other-id}}
                                           2 {::pco/op-name     from-other-id2
                                              ::pcp/node-id     2
-                                             ::pcp/requires    {:name {}}
+                                             ::pcp/expects     {:name {}}
                                              ::pcp/input       {:other-id2 {}}
                                              ::pcp/after-nodes #{3}}
                                           3 {::pco/op-name          from-other-id
                                              ::pcp/node-id          3
-                                             ::pcp/requires         {:other-id2 {}}
+                                             ::pcp/expects          {:other-id2 {}}
                                              ::pcp/input            {:other-id {}}
                                              ::pcp/run-next         2
                                              ::pcp/after-nodes      #{1}
@@ -2035,20 +2035,20 @@
                                            ::pco/output  [:id :name :other]}]}))
              '{::pcp/nodes                 {1 {::pco/op-name          from-id
                                                ::pcp/node-id          1
-                                               ::pcp/requires         {:name {} :other-id {}}
+                                               ::pcp/expects          {:name {} :other-id {}}
                                                ::pcp/input            {:id {}}
                                                ::pcp/run-next         3
                                                ::pcp/source-for-attrs #{:name :other-id}}
                                             3 {::pco/op-name          from-other-id
                                                ::pcp/node-id          3
-                                               ::pcp/requires         {:other-id2 {}}
+                                               ::pcp/expects          {:other-id2 {}}
                                                ::pcp/input            {:other-id {}}
                                                ::pcp/after-nodes      #{1}
                                                ::pcp/source-for-attrs #{:other-id2}
                                                ::pcp/run-next         5}
                                             5 {::pco/op-name          from-other-id2
                                                ::pcp/node-id          5
-                                               ::pcp/requires         {:other {} :name {}}
+                                               ::pcp/expects          {:other {} :name {}}
                                                ::pcp/input            {:other-id2 {}}
                                                ::pcp/after-nodes      #{3}
                                                ::pcp/source-for-attrs #{:other}}}
@@ -2081,7 +2081,7 @@
            '{::pcp/nodes                 {1 {::pco/op-name          a
                                              ::pcp/params           {:x "y"}
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:a {}}
+                                             ::pcp/expects          {:a {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
@@ -2103,7 +2103,7 @@
              '{::pcp/nodes                 {1 {::pco/op-name          a
                                                ::pcp/params           {:x 1}
                                                ::pcp/node-id          1
-                                               ::pcp/requires         {:a {} :b {}}
+                                               ::pcp/expects          {:a {} :b {}}
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
@@ -2127,7 +2127,7 @@
              '{::pcp/nodes                 {1 {::pco/op-name          a
                                                ::pcp/params           {:x 1}
                                                ::pcp/node-id          1
-                                               ::pcp/requires         {:a {} :b {}}
+                                               ::pcp/expects          {:a {} :b {}}
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
@@ -2152,7 +2152,7 @@
                                                ::pcp/params           {:x 1
                                                                        :y 2}
                                                ::pcp/node-id          1
-                                               ::pcp/requires         {:a {} :b {}}
+                                               ::pcp/expects          {:a {} :b {}}
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
@@ -2177,7 +2177,7 @@
              '{::pcp/nodes                 {1 {::pco/op-name          a
                                                ::pcp/params           {:x 2}
                                                ::pcp/node-id          1
-                                               ::pcp/requires         {:a {} :b {}}
+                                               ::pcp/expects          {:a {} :b {}}
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
@@ -2205,7 +2205,7 @@
              '{::pcp/nodes                 {1 {::pco/op-name          a
                                                ::pcp/params           {:x 1}
                                                ::pcp/node-id          1
-                                               ::pcp/requires         {:a {} :b {}}
+                                               ::pcp/expects          {:a {} :b {}}
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
@@ -2252,7 +2252,7 @@
 
            {::pcp/nodes                 {1 {::pco/op-name          'dynamic-resolver
                                             ::pcp/node-id          1
-                                            ::pcp/requires         {:release/script {}}
+                                            ::pcp/expects          {:release/script {}}
                                             ::pcp/input            {:db/id {}}
                                             ::pcp/source-for-attrs #{:release/script}
                                             ::pcp/foreign-ast      (eql/query->ast [:release/script])}}
@@ -2278,7 +2278,7 @@
 
              {::pcp/nodes                 {1 {::pco/op-name          'dynamic-resolver
                                               ::pcp/node-id          1
-                                              ::pcp/requires         {:release/script {}}
+                                              ::pcp/expects          {:release/script {}}
                                               ::pcp/input            {:db/id {}}
                                               ::pcp/source-for-attrs #{:release/script}
                                               ::pcp/params           {:foo "bar"}
@@ -2312,7 +2312,7 @@
 
            {::pcp/nodes                 {1 {::pco/op-name          'dynamic-resolver
                                             ::pcp/node-id          1
-                                            ::pcp/requires         {:release/script {} :label/type {}}
+                                            ::pcp/expects          {:release/script {} :label/type {}}
                                             ::pcp/input            {:db/id {}}
                                             ::pcp/source-for-attrs #{:release/script :label/type}
                                             ::pcp/foreign-ast      (eql/query->ast [:release/script :label/type])}}
@@ -2343,13 +2343,13 @@
 
            {::pcp/nodes                 {2 {::pco/op-name          'id
                                             ::pcp/node-id          2
-                                            ::pcp/requires         {:db/id {}}
+                                            ::pcp/expects          {:db/id {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:db/id}
                                             ::pcp/run-next         3}
                                          3 {::pco/op-name          'dynamic-resolver
                                             ::pcp/node-id          3
-                                            ::pcp/requires         {:label/type {} :release/script {}}
+                                            ::pcp/expects          {:label/type {} :release/script {}}
                                             ::pcp/input            {:db/id {}}
                                             ::pcp/source-for-attrs #{:release/script :label/type}
                                             ::pcp/after-nodes      #{2}
@@ -2379,7 +2379,7 @@
 
            {::pcp/nodes                 {2 {::pco/op-name          'dynamic-resolver
                                             ::pcp/node-id          2
-                                            ::pcp/requires         {:a {} :b {}}
+                                            ::pcp/expects          {:a {} :b {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:b :a}
                                             ::pcp/foreign-ast      (eql/query->ast [:a :b])}}
@@ -2405,7 +2405,7 @@
 
            {::pcp/nodes                 {3 {::pco/op-name          'dynamic-resolver
                                             ::pcp/node-id          3
-                                            ::pcp/requires         {:a {} :b {} :c {}}
+                                            ::pcp/expects          {:a {} :b {} :c {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:c :b :a}
                                             ::pcp/foreign-ast      (eql/query->ast [:a :b :c])}}
@@ -2432,14 +2432,14 @@
 
            {::pcp/nodes                 {2 {::pco/op-name          'dynamic-resolver
                                             ::pcp/node-id          2
-                                            ::pcp/requires         {:a {} :b {}}
+                                            ::pcp/expects          {:a {} :b {}}
                                             ::pcp/input            {:z {}}
                                             ::pcp/after-nodes      #{3}
                                             ::pcp/source-for-attrs #{:b :a}
                                             ::pcp/foreign-ast      (eql/query->ast [:a :b])}
                                          3 {::pco/op-name          'z
                                             ::pcp/node-id          3
-                                            ::pcp/requires         {:z {}}
+                                            ::pcp/expects          {:z {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:z}
                                             ::pcp/run-next         2}}
@@ -2468,13 +2468,13 @@
 
              {::pcp/nodes                 {1 {::pco/op-name          'z
                                               ::pcp/node-id          1
-                                              ::pcp/requires         {:z {}}
+                                              ::pcp/expects          {:z {}}
                                               ::pcp/input            {:b {}}
                                               ::pcp/after-nodes      #{3}
                                               ::pcp/source-for-attrs #{:z}}
                                            3 {::pco/op-name          'dynamic-resolver
                                               ::pcp/node-id          3
-                                              ::pcp/requires         {:a {} :b {}}
+                                              ::pcp/expects          {:a {} :b {}}
                                               ::pcp/input            {}
                                               ::pcp/source-for-attrs #{:b :a}
                                               ::pcp/run-next         1
@@ -2502,7 +2502,7 @@
 
            {::pcp/nodes                 {2 {::pco/op-name          'dynamic-resolver
                                             ::pcp/node-id          2
-                                            ::pcp/requires         {:c {} :b {} :a {}}
+                                            ::pcp/expects          {:c {} :b {} :a {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:c :b :a}
                                             ::pcp/foreign-ast      (eql/query->ast [:c :b :a])}}
@@ -2531,21 +2531,21 @@
 
            {::pcp/nodes                 {1 {::pco/op-name          'dynamic-resolver
                                             ::pcp/node-id          1
-                                            ::pcp/requires         {:c {}}
+                                            ::pcp/expects          {:c {}}
                                             ::pcp/input            {:b {}}
                                             ::pcp/after-nodes      #{2}
                                             ::pcp/source-for-attrs #{:c}
                                             ::pcp/foreign-ast      (eql/query->ast [:c])}
                                          2 {::pco/op-name          'b
                                             ::pcp/node-id          2
-                                            ::pcp/requires         {:b {}}
+                                            ::pcp/expects          {:b {}}
                                             ::pcp/input            {:a {}}
                                             ::pcp/run-next         1
                                             ::pcp/after-nodes      #{3}
                                             ::pcp/source-for-attrs #{:b}}
                                          3 {::pco/op-name          'dynamic-resolver
                                             ::pcp/node-id          3
-                                            ::pcp/requires         {:a {}}
+                                            ::pcp/expects          {:a {}}
                                             ::pcp/input            {}
                                             ::pcp/run-next         2
                                             ::pcp/source-for-attrs #{:a}
@@ -2577,19 +2577,19 @@
 
            {::pcp/nodes                 {2 {::pco/op-name          'id
                                             ::pcp/node-id          2
-                                            ::pcp/requires         {:db/id {}}
+                                            ::pcp/expects          {:db/id {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:db/id}
                                             ::pcp/run-next         4}
                                          3 {::pco/op-name          'complex
                                             ::pcp/node-id          3
-                                            ::pcp/requires         {:complex {}}
+                                            ::pcp/expects          {:complex {}}
                                             ::pcp/input            {:label/type {} :db/id {}}
                                             ::pcp/after-nodes      #{4}
                                             ::pcp/source-for-attrs #{:complex}}
                                          4 {::pco/op-name          'dynamic-resolver
                                             ::pcp/node-id          4
-                                            ::pcp/requires         {:label/type {} :release/script {}}
+                                            ::pcp/expects          {:label/type {} :release/script {}}
                                             ::pcp/input            {:db/id {}}
                                             ::pcp/source-for-attrs #{:release/script :label/type}
                                             ::pcp/after-nodes      #{2}
@@ -2630,7 +2630,7 @@
                     ::eql/query [:a :b]}))
              {::pcp/nodes                 {6 {::pco/op-name          'dyn
                                               ::pcp/node-id          6
-                                              ::pcp/requires         {:b {} :a {} :c {} :d {}}
+                                              ::pcp/expects          {:b {} :a {} :c {} :d {}}
                                               ::pcp/input            {}
                                               ::pcp/source-sym       'b
                                               ::pcp/source-for-attrs #{:c :b :d :a}
@@ -2655,26 +2655,26 @@
 
            {::pcp/nodes                 {1 {::pco/op-name          'dyn
                                             ::pcp/node-id          1
-                                            ::pcp/requires         {:d1 {}}
+                                            ::pcp/expects          {:d1 {}}
                                             ::pcp/input            {:d2 {} :l1 {}}
                                             ::pcp/after-nodes      #{4}
                                             ::pcp/source-for-attrs #{:d1}
                                             ::pcp/foreign-ast      (eql/query->ast [:d1])}
                                          2 {::pco/op-name          'dyn
                                             ::pcp/node-id          2
-                                            ::pcp/requires         {:d2 {}}
+                                            ::pcp/expects          {:d2 {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:d2}
                                             ::pcp/after-nodes      #{4}
                                             ::pcp/foreign-ast      (eql/query->ast [:d2])}
                                          3 {::pco/op-name          'l1
                                             ::pcp/node-id          3
-                                            ::pcp/requires         {:l1 {}}
+                                            ::pcp/expects          {:l1 {}}
                                             ::pcp/input            {}
                                             ::pcp/source-for-attrs #{:l1}
                                             ::pcp/after-nodes      #{4}}
                                          4 {::pcp/node-id  4
-                                            ::pcp/requires {:l1 {} :d2 {}}
+                                            ::pcp/expects  {:l1 {} :d2 {}}
                                             ::pcp/run-and  #{3 2}
                                             ::pcp/run-next 1}}
             ::pcp/index-resolver->nodes '{dyn #{1 2} l1 #{3}}
@@ -2703,7 +2703,7 @@
               ::eql/query           [{:a [:b]}]})
            {::pcp/nodes                 {1 {::pco/op-name          'dyn
                                             ::pcp/node-id          1
-                                            ::pcp/requires         {:a {:b {}}}
+                                            ::pcp/expects          {:a {:b {}}}
                                             ::pcp/input            {}
                                             ::pcp/source-sym       'a
                                             ::pcp/source-for-attrs #{:a}
@@ -2738,7 +2738,7 @@
               ::eql/query           [{:a [:c]}]})
            {::pcp/nodes                 {1 {::pco/op-name          'dyn
                                             ::pcp/node-id          1
-                                            ::pcp/requires         {:a {:b {}}}
+                                            ::pcp/expects          {:a {:b {}}}
                                             ::pcp/input            {}
                                             ::pcp/source-sym       'a
                                             ::pcp/source-for-attrs #{:a}
@@ -2781,13 +2781,13 @@
               ::eql/query           [:local :dynamic-2]})
            '{::pcp/nodes                 {1 {::pco/op-name          dynamic-1->local
                                              ::pcp/node-id          1
-                                             ::pcp/requires         {:local {}}
+                                             ::pcp/expects          {:local {}}
                                              ::pcp/input            {:dynamic-1 {}}
                                              ::pcp/source-for-attrs #{:local}
                                              ::pcp/after-nodes      #{2}}
                                           2 {::pco/op-name          dynamic-parser-42276
                                              ::pcp/node-id          2
-                                             ::pcp/requires         {:dynamic-1 {}
+                                             ::pcp/expects          {:dynamic-1 {}
                                                                      :dynamic-2 {}}
                                              ::pcp/input            {}
                                              ::pcp/foreign-ast      {:type     :root
@@ -2834,7 +2834,7 @@
                                             :c [:c]}}]})
              {::pcp/nodes                 {1 {::pco/op-name          'dyn
                                               ::pcp/node-id          1
-                                              ::pcp/requires         {:a {:b {}
+                                              ::pcp/expects          {:a {:b {}
                                                                           :c {}}}
                                               ::pcp/input            {}
                                               ::pcp/source-sym       'a
@@ -2885,7 +2885,7 @@
                                               :c [:c]}}]})
                {::pcp/nodes                 {1 {::pco/op-name          'dyn
                                                 ::pcp/node-id          1
-                                                ::pcp/requires         {:a {:b {}}}
+                                                ::pcp/expects          {:a {:b {}}}
                                                 ::pcp/input            {}
                                                 ::pcp/source-sym       'a
                                                 ::pcp/source-for-attrs #{:a}
@@ -2911,7 +2911,7 @@
               ::eql/query           [{:a [{:b [:c :d]}]}]})
            {::pcp/nodes                 {1 {::pco/op-name          'dyn
                                             ::pcp/node-id          1
-                                            ::pcp/requires         {:a {:b {:c {}}}}
+                                            ::pcp/expects          {:a {:b {:c {}}}}
                                             ::pcp/input            {}
                                             ::pcp/source-sym       'a
                                             ::pcp/source-for-attrs #{:a}
@@ -2951,7 +2951,7 @@
                 ::eql/query           [{:a [{:b [:d]}]}]})
              {::pcp/nodes                 {1 {::pco/op-name          'dyn
                                               ::pcp/node-id          1
-                                              ::pcp/requires         {:a {:b {:c {}}}}
+                                              ::pcp/expects          {:a {:b {:c {}}}}
                                               ::pcp/input            {}
                                               ::pcp/source-sym       'a
                                               ::pcp/source-for-attrs #{:a}
@@ -2993,7 +2993,7 @@
               ::eql/query           [{:a [:c]}]})
            {::pcp/nodes                 {1 {::pco/op-name          'dyn
                                             ::pcp/node-id          1
-                                            ::pcp/requires         {:a {:c {}}}
+                                            ::pcp/expects          {:a {:c {}}}
                                             ::pcp/input            {}
                                             ::pcp/source-sym       'a
                                             ::pcp/source-for-attrs #{:a}
@@ -3026,7 +3026,7 @@
               ::eql/query           [{:a [:c :d]}]})
            {::pcp/nodes                 {1 {::pco/op-name          'dyn
                                             ::pcp/node-id          1
-                                            ::pcp/requires         {:a {:b {}}}
+                                            ::pcp/expects          {:a {:b {}}}
                                             ::pcp/input            {}
                                             ::pcp/source-sym       'a
                                             ::pcp/source-for-attrs #{:a}
@@ -3064,7 +3064,7 @@
               ::eql/query           [{:a [:c :e]}]})
            {::pcp/nodes                 {1 {::pco/op-name          'dyn
                                             ::pcp/node-id          1
-                                            ::pcp/requires         {:a {:b {}}}
+                                            ::pcp/expects          {:a {:b {}}}
                                             ::pcp/input            {}
                                             ::pcp/source-sym       'a
                                             ::pcp/source-for-attrs #{:a}
@@ -3103,46 +3103,46 @@
 (deftest compute-root-branch-test
   (testing "set root when no root is the current"
     (is (= (pcp/compute-root-or
-             {::pcp/nodes {1 {::pcp/node-id  1
-                              ::pco/op-name  'a
-                              ::pcp/requires {:a {}}}}}
+             {::pcp/nodes {1 {::pcp/node-id 1
+                              ::pco/op-name 'a
+                              ::pcp/expects {:a {}}}}}
              (base-graph-env)
              {::pcp/node-id 1})
            {::pcp/root  1
-            ::pcp/nodes {1 {::pcp/node-id  1
-                            ::pco/op-name  'a
-                            ::pcp/requires {:a {}}}}})))
+            ::pcp/nodes {1 {::pcp/node-id 1
+                            ::pco/op-name 'a
+                            ::pcp/expects {:a {}}}}})))
 
   (testing "do nothing if there is no next node"
     (is (= (pcp/compute-root-or
-             {::pcp/nodes {1 {::pcp/node-id  1
-                              ::pco/op-name  'a
-                              ::pcp/requires {:a {}}}}
+             {::pcp/nodes {1 {::pcp/node-id 1
+                              ::pco/op-name 'a
+                              ::pcp/expects {:a {}}}}
               ::pcp/root  1}
              (base-graph-env)
              nil) ; nil node
 
            (pcp/compute-root-or
-             {::pcp/nodes {1 {::pcp/node-id  1
-                              ::pco/op-name  'a
-                              ::pcp/requires {:a {}}}}
+             {::pcp/nodes {1 {::pcp/node-id 1
+                              ::pco/op-name 'a
+                              ::pcp/expects {:a {}}}}
               ::pcp/root  1}
              (base-graph-env)
              {::pcp/node-id 2}) ; id not present
 
            {::pcp/root  1
-            ::pcp/nodes {1 {::pcp/node-id  1
-                            ::pco/op-name  'a
-                            ::pcp/requires {:a {}}}}})))
+            ::pcp/nodes {1 {::pcp/node-id 1
+                            ::pco/op-name 'a
+                            ::pcp/expects {:a {}}}}})))
 
   (testing "merge nodes with same sym"
     (is (= (pcp/compute-root-or
-             {::pcp/nodes                 {1 {::pcp/node-id  1
-                                              ::pco/op-name  'a
-                                              ::pcp/requires {:a {}}}
-                                           2 {::pcp/node-id  2
-                                              ::pco/op-name  'a
-                                              ::pcp/requires {:b {}}}}
+             {::pcp/nodes                 {1 {::pcp/node-id 1
+                                              ::pco/op-name 'a
+                                              ::pcp/expects {:a {}}}
+                                           2 {::pcp/node-id 2
+                                              ::pco/op-name 'a
+                                              ::pcp/expects {:b {}}}}
               ::pcp/index-resolver->nodes '{a #{1 2}}
               ::pcp/root                  2}
              (assoc (base-graph-env) ::pcp/id-counter (atom 2))
@@ -3150,20 +3150,20 @@
 
            '{::pcp/root                  1
              ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/nodes                 {1 {::pcp/node-id  1
-                                             ::pco/op-name  a
-                                             ::pcp/requires {:a {}
+             ::pcp/nodes                 {1 {::pcp/node-id 1
+                                             ::pco/op-name a
+                                             ::pcp/expects {:a  {}
                                                              :b {}}}}})))
 
   (testing "create new or runner"
     (is (= (pcp/compute-root-or
              {::pcp/root  1
-              ::pcp/nodes {1 {::pcp/node-id  1
-                              ::pco/op-name  'a
-                              ::pcp/requires {:a {}}}
-                           2 {::pcp/node-id  2
-                              ::pco/op-name  'a2
-                              ::pcp/requires {:a {}}}}}
+              ::pcp/nodes {1 {::pcp/node-id 1
+                              ::pco/op-name 'a
+                              ::pcp/expects {:a {}}}
+                           2 {::pcp/node-id 2
+                              ::pco/op-name 'a2
+                              ::pcp/expects {:a {}}}}}
              (assoc (base-graph-env) ::pcp/id-counter (atom 2)
                ::p.attr/attribute :a)
              {::pcp/node-id 2})
@@ -3171,25 +3171,25 @@
             ::pcp/nodes {1 {::pcp/node-id     1
                             ::pcp/after-nodes #{3}
                             ::pco/op-name     'a
-                            ::pcp/requires    {:a {}}}
+                            ::pcp/expects     {:a {}}}
                          2 {::pcp/node-id     2
                             ::pcp/after-nodes #{3}
                             ::pco/op-name     'a2
-                            ::pcp/requires    {:a {}}}
-                         3 {::pcp/node-id  3
-                            ::pcp/run-or   #{1 2}
-                            ::pcp/requires {:a {}}}}}))
+                            ::pcp/expects     {:a {}}}
+                         3 {::pcp/node-id 3
+                            ::pcp/run-or  #{1 2}
+                            ::pcp/expects {:a {}}}}}))
 
     (testing "with run-next"
       (is (= (pcp/compute-root-or
                {::pcp/root  2
                 ::pcp/nodes {2 {::pcp/node-id  2
                                 ::pco/op-name  'a
-                                ::pcp/requires {:a {}}
+                                ::pcp/expects  {:a {}}
                                 ::pcp/run-next 1}
                              3 {::pcp/node-id  3
                                 ::pco/op-name  'a2
-                                ::pcp/requires {:a {}}
+                                ::pcp/expects  {:a {}}
                                 ::pcp/run-next 1}}}
                (assoc (base-graph-env) ::pcp/id-counter (atom 3)
                  ::p.attr/attribute :a
@@ -3199,14 +3199,14 @@
              '{::pcp/root  4
                ::pcp/nodes {2 {::pcp/node-id     2
                                ::pco/op-name     a
-                               ::pcp/requires    {:a {}}
+                               ::pcp/expects     {:a {}}
                                ::pcp/after-nodes #{4}}
                             3 {::pcp/node-id     3
                                ::pco/op-name     a2
-                               ::pcp/requires    {:a {}}
+                               ::pcp/expects     {:a {}}
                                ::pcp/after-nodes #{4}}
                             4 {::pcp/node-id  4
-                               ::pcp/requires {:a {}}
+                               ::pcp/expects  {:a {}}
                                ::pcp/run-or   #{2 3}
                                ::pcp/run-next 1}}}))
 
@@ -3215,11 +3215,11 @@
                  {::pcp/root  2
                   ::pcp/nodes {2 {::pcp/node-id  2
                                   ::pco/op-name  'a
-                                  ::pcp/requires {:a {}}
+                                  ::pcp/expects  {:a {}}
                                   ::pcp/run-next 1}
                                3 {::pcp/node-id  3
                                   ::pco/op-name  'a2
-                                  ::pcp/requires {:a {}}
+                                  ::pcp/expects  {:a {}}
                                   ::pcp/run-next 10}}}
                  (assoc (base-graph-env) ::pcp/id-counter (atom 3)
                    ::p.attr/attribute :a)
@@ -3228,119 +3228,119 @@
                 ::pcp/nodes {2 {::pcp/node-id     2
                                 ::pcp/after-nodes #{4}
                                 ::pco/op-name     'a
-                                ::pcp/requires    {:a {}}
+                                ::pcp/expects     {:a {}}
                                 ::pcp/run-next    1}
                              3 {::pcp/node-id     3
                                 ::pcp/after-nodes #{4}
                                 ::pco/op-name     'a2
-                                ::pcp/requires    {:a {}}
+                                ::pcp/expects     {:a {}}
                                 ::pcp/run-next    10}
-                             4 {::pcp/node-id  4
-                                ::pcp/run-or   #{2 3}
-                                ::pcp/requires {:a {}}}}})))))
+                             4 {::pcp/node-id 4
+                                ::pcp/run-or  #{2 3}
+                                ::pcp/expects {:a {}}}}})))))
 
   (testing "add to the runner"
     (is (= (pcp/compute-root-or
              {::pcp/root  3
-              ::pcp/nodes {1 {::pcp/node-id  1
-                              ::pco/op-name  'a
-                              ::pcp/requires {:a {}}}
-                           2 {::pcp/node-id  2
-                              ::pco/op-name  'a2
-                              ::pcp/requires {:a {}}}
-                           3 {::pcp/node-id  3
-                              ::pcp/run-or   #{1 2}
-                              ::pcp/requires {:a {}}}
-                           4 {::pcp/node-id  4
-                              ::pco/op-name  'a3
-                              ::pcp/requires {:a {}}}}}
+              ::pcp/nodes {1 {::pcp/node-id 1
+                              ::pco/op-name 'a
+                              ::pcp/expects {:a {}}}
+                           2 {::pcp/node-id 2
+                              ::pco/op-name 'a2
+                              ::pcp/expects {:a {}}}
+                           3 {::pcp/node-id 3
+                              ::pcp/run-or  #{1 2}
+                              ::pcp/expects {:a {}}}
+                           4 {::pcp/node-id 4
+                              ::pco/op-name 'a3
+                              ::pcp/expects {:a {}}}}}
              (base-graph-env)
              {::pcp/node-id 4})
            {::pcp/root  3
-            ::pcp/nodes {1 {::pcp/node-id  1
-                            ::pco/op-name  'a
-                            ::pcp/requires {:a {}}}
-                         2 {::pcp/node-id  2
-                            ::pco/op-name  'a2
-                            ::pcp/requires {:a {}}}
-                         3 {::pcp/node-id  3
-                            ::pcp/run-or   #{1 2 4}
-                            ::pcp/requires {:a {}}}
+            ::pcp/nodes {1 {::pcp/node-id 1
+                            ::pco/op-name 'a
+                            ::pcp/expects {:a {}}}
+                         2 {::pcp/node-id 2
+                            ::pco/op-name 'a2
+                            ::pcp/expects {:a {}}}
+                         3 {::pcp/node-id 3
+                            ::pcp/run-or  #{1 2 4}
+                            ::pcp/expects {:a {}}}
                          4 {::pcp/node-id     4
                             ::pcp/after-nodes #{3}
                             ::pco/op-name     'a3
-                            ::pcp/requires    {:a {}}}}}))
+                            ::pcp/expects     {:a {}}}}}))
 
     (testing "collapse when symbol is already there"
       (is (= (pcp/compute-root-or
                {::pcp/root                  3
                 ::pcp/index-resolver->nodes {'a #{1 2 4}}
-                ::pcp/nodes                 {1 {::pcp/node-id  1
-                                                ::pco/op-name  'a
-                                                ::pcp/requires {:a {}}
+                ::pcp/nodes                 {1 {::pcp/node-id 1
+                                                ::pco/op-name 'a
+                                                ::pcp/expects {:a {}}
                                                 }
-                                             2 {::pcp/node-id  2
-                                                ::pco/op-name  'a2
-                                                ::pcp/requires {:a {}}}
-                                             3 {::pcp/node-id  3
-                                                ::pcp/run-or   #{1 2}
-                                                ::pcp/requires {:a {}}}
-                                             4 {::pcp/node-id  4
-                                                ::pco/op-name  'a
-                                                ::pcp/requires {:b {}}}}}
+                                             2 {::pcp/node-id 2
+                                                ::pco/op-name 'a2
+                                                ::pcp/expects {:a {}}}
+                                             3 {::pcp/node-id 3
+                                                ::pcp/run-or  #{1 2}
+                                                ::pcp/expects {:a {}}}
+                                             4 {::pcp/node-id 4
+                                                ::pco/op-name 'a
+                                                ::pcp/expects {:b {}}}}}
 
                (base-graph-env)
                {::pcp/node-id 4})
              '{::pcp/root                  3
                ::pcp/index-resolver->nodes {a #{1 2}}
                ::pcp/nodes                 {1
-                                            {::pcp/node-id  1
-                                             ::pco/op-name  a
-                                             ::pcp/requires {:a {} :b {}}}
+                                            {::pcp/node-id 1
+                                             ::pco/op-name a
+                                             ::pcp/expects {:a {} :b {}}}
                                             2
-                                            {::pcp/node-id  2
-                                             ::pco/op-name  a2
-                                             ::pcp/requires {:a {}}}
+                                            {::pcp/node-id 2
+                                             ::pco/op-name a2
+                                             ::pcp/expects {:a {}}}
                                             3
-                                            {::pcp/node-id  3
-                                             ::pcp/run-or   #{1 2}
-                                             ::pcp/requires {:a {}}}}})))
+                                            {::pcp/node-id 3
+                                             ::pcp/run-or  #{1 2}
+                                             ::pcp/expects {:a {}}}}})))
 
     (testing "with run context"
       (is (= (pcp/compute-root-or
                {::pcp/root  3
-                ::pcp/nodes {1 {::pcp/node-id  1
-                                ::pco/op-name  'a
-                                ::pcp/requires {:a {}}}
-                             2 {::pcp/node-id  2
-                                ::pco/op-name  'a2
-                                ::pcp/requires {:a {}}}
+                ::pcp/nodes {1 {::pcp/node-id 1
+                                ::pco/op-name 'a
+                                ::pcp/expects {:a {}}}
+                             2 {::pcp/node-id 2
+                                ::pco/op-name 'a2
+                                ::pcp/expects {:a {}}}
                              3 {::pcp/node-id  3
                                 ::pcp/run-or   #{1 2}
-                                ::pcp/requires {:a {}}
+                                ::pcp/expects  {:a {}}
                                 ::pcp/run-next 10}
                              4 {::pcp/node-id  4
                                 ::pco/op-name  'a3
-                                ::pcp/requires {:a {}}
+                                ::pcp/expects  {:a {}}
                                 ::pcp/run-next 10}}}
                (assoc (base-graph-env)
                  ::pci/index-resolvers {'a3 {::pco/provides {:a {}}}})
                {::pcp/node-id 4})
              {::pcp/root  3
-              ::pcp/nodes {1 {::pcp/node-id  1
-                              ::pco/op-name  'a
-                              ::pcp/requires {:a {}}}
-                           2 {::pcp/node-id  2
-                              ::pco/op-name  'a2
-                              ::pcp/requires {:a {}}}
+              ::pcp/nodes {1 {::pcp/node-id 1
+                              ::pco/op-name 'a
+                              ::pcp/expects {:a {}}}
+                           2 {::pcp/node-id 2
+                              ::pco/op-name 'a2
+                              ::pcp/expects {:a {}}}
                            3 {::pcp/node-id  3
                               ::pcp/run-or   #{1 2 4}
-                              ::pcp/requires {:a {}}
+                              ::pcp/expects  {:a {}}
                               ::pcp/run-next 10}
                            4 {::pcp/node-id     4
                               ::pcp/after-nodes #{3}
                               ::pco/op-name     'a3
-                              ::pcp/requires    {:a {}}}}})))))
+                              ::pcp/expects     {:a {}}}}})))))
 
 (deftest collapse-and-nodes-test
   (is (= (pcp/collapse-and-nodes
@@ -3707,11 +3707,11 @@
     (is (= (pcp/collapse-nodes-chain
              '{::pcp/nodes                 {1 {::pcp/node-id          1
                                                ::pco/op-name          a
-                                               ::pcp/requires         {:a {}}
+                                               ::pcp/expects          {:a {}}
                                                ::pcp/source-for-attrs #{:a}}
                                             2 {::pcp/node-id          2
                                                ::pco/op-name          a
-                                               ::pcp/requires         {:b {}}
+                                               ::pcp/expects          {:b {}}
                                                ::pcp/source-for-attrs #{:b}}}
                ::pcp/index-resolver->nodes {a #{1 2}}
                ::pcp/index-attrs           {:a 1 :b 2}}
@@ -3719,7 +3719,7 @@
            '{::pcp/nodes                 {1 {::pcp/node-id          1
                                              ::pco/op-name          a
                                              ::pcp/source-for-attrs #{:a :b}
-                                             ::pcp/requires         {:a {}
+                                             ::pcp/expects          {:a {}
                                                                      :b {}}}}
              ::pcp/index-resolver->nodes {a #{1}}
              ::pcp/index-attrs           {:a 1 :b 1}})))
@@ -3729,12 +3729,12 @@
              '{::pcp/nodes                 {1 {::pcp/node-id          1
                                                ::pco/op-name          a
                                                ::pcp/input            {:x {}}
-                                               ::pcp/requires         {:a {}}
+                                               ::pcp/expects          {:a {}}
                                                ::pcp/source-for-attrs #{:a}}
                                             2 {::pcp/node-id          2
                                                ::pco/op-name          a
                                                ::pcp/input            {:y {}}
-                                               ::pcp/requires         {:b {}}
+                                               ::pcp/expects          {:b {}}
                                                ::pcp/source-for-attrs #{:b}}}
                ::pcp/index-resolver->nodes {a #{1 2}}
                ::pcp/index-attrs           {:a 1 :b 2}}
@@ -3743,7 +3743,7 @@
                                              ::pco/op-name          a
                                              ::pcp/input            {:x {}}
                                              ::pcp/source-for-attrs #{:a :b}
-                                             ::pcp/requires         {:a {}
+                                             ::pcp/expects          {:a {}
                                                                      :b {}}}}
              ::pcp/index-resolver->nodes {a #{1}}
              ::pcp/index-attrs           {:a 1 :b 1}})))
