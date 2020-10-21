@@ -336,7 +336,11 @@
 
      IFn
      (-invoke [_ k] (sm-get env k))
-     (-invoke [_ k not-found] (sm-get env k not-found))))
+     (-invoke [_ k not-found] (sm-get env k not-found))
+
+     IPrintWithWriter
+     (-pr-writer [_ writer opts]
+                 (-pr-writer (p.ent/entity env) writer opts))))
 
 (defn smart-map? [x] (instance? SmartMap x))
 
