@@ -27,18 +27,26 @@
   [resolver-accumulated-duration
    overhead-duration
    overhead-pct
-   (pbir/attribute-table-resolver ::pcp/nodes ::pcp/node-id
-                                  [::pco/op-name
-                                   ::pcp/expects
-                                   ::pcp/input
-                                   ::pcp/run-and
-                                   ::pcp/run-or
-                                   ::pcp/run-next
-                                   ::pcp/foreign-ast
-                                   ::pcp/source-for-attrs
-                                   ::pcp/after-nodes])
-   (pbir/attribute-table-resolver ::pcr/node-run-stats ::pcp/node-id
-                                  [::pcr/run-duration-ms
-                                   ::pcr/node-run-input])])
+   (pbir/env-table-resolver ::pcp/nodes ::pcp/node-id
+                            [::pco/op-name
+                             ::pcp/expects
+                             ::pcp/input
+                             ::pcp/run-and
+                             ::pcp/run-or
+                             ::pcp/run-next
+                             ::pcp/foreign-ast
+                             ::pcp/source-for-attrs
+                             ::pcp/after-nodes])
+   (pbir/env-table-resolver ::pcr/node-run-stats ::pcp/node-id
+                            [::pcr/run-duration-ms
+                             ::pcr/node-run-input])])
 
 (def stats-index (pci/register stats-registry))
+
+(defn run-stats-env [{::pcp/keys [nodes]
+                      ::pcr/keys [node-run-stats]}]
+  (-> stats-index
+      (assoc
+        :com.wsscode.pathom3.interface.smart-map/keys-mode :com.wsscode.pathom3.interface.smart-map/keys-mode-reachable
+        ::pcp/nodes nodes
+        ::pcr/node-run-stats node-run-stats)))

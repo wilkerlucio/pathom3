@@ -16,8 +16,8 @@
         run-stats (pcr/run-graph! env ast ent-tree*)]
     (-> @ent-tree*
         (assoc ::pcr/run-stats (psm/smart-map
-                                 (psm/with-keys-mode pcrs/stats-index
-                                                     ::psm/keys-mode-reachable) run-stats))
+                                 (pcrs/run-stats-env run-stats)
+                                 run-stats))
         (pf.eql/map-select-ast ast))))
 
 (>defn process

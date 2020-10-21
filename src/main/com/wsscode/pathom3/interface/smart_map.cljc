@@ -371,8 +371,7 @@
                     :children [{:type :prop, :dispatch-key k, :key k}]}
          run-stats (pcr/run-graph! env ast entity-tree*)]
      (smart-map
-       (with-keys-mode pcrs/stats-index
-         ::keys-mode-reachable)
+       (pcrs/run-stats-env run-stats)
        (assoc run-stats ::value
          (wrap-smart-map env (get @entity-tree* k)))))))
 
