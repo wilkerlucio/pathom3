@@ -300,9 +300,8 @@
 
      ISeqable
      (-seq [_]
-           (map
-             #(SmartMapEntry. env %)
-             (sm-keys env)))
+           (some->> (seq (sm-keys env))
+                    (map #(SmartMapEntry. env %))))
 
      ICounted
      (-count [_] (count (p.ent/entity env)))

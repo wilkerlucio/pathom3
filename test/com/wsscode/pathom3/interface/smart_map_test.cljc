@@ -168,6 +168,16 @@
         (is (true? (contains? sm :width)))
         (is (true? (contains? sm ::geo/x))))))
 
+  (testing "seq"
+    (let [sm (-> (pci/register registry)
+                 (psm/smart-map {:x 3 :width 5}))]
+      (is (= (seq sm) [[:x 3] [:width 5]])))
+
+    (testing "nil when keys are empty"
+      (let [sm (-> (pci/register registry)
+                   (psm/smart-map {}))]
+        (is (nil? (seq sm))))))
+
   (testing "find"
     (let [sm (-> (pci/register registry)
                  (psm/smart-map {:x 3 :width 5}))]
