@@ -74,3 +74,16 @@
            [::id ::colors]))
     (is (= (::pco/output config)
            [::color]))))
+
+(deftest env-table-resolver-test
+  (let [resolver (pbir/env-table-resolver ::colors ::id [::color])
+        config   (pco/operation-config resolver)]
+    (is (= (resolver
+             {::colors {1 {::color "Gray"}
+                        2 {::color "Purple"}}}
+             {::id 2})
+           {::color "Purple"}))
+    (is (= (::pco/input config)
+           [::id]))
+    (is (= (::pco/output config)
+           [::color]))))

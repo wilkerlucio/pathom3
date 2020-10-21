@@ -167,6 +167,40 @@
               id    (get input attr-key)]
           (get table id))))))
 
+(>defn env-table-resolver
+  "Similar to attribute-table-resolver, but pulls table from env instead of other resolver.
+
+      (def registry
+        [(pbir/static-table-resolver `song-names :song/id
+           {1 {:song/name \"Marchinha Psicotica de Dr. Soup\"}
+            2 {:song/name \"There's Enough\"}})
+
+         (pbir/env-table-resolver ::song-analysis :song/id
+           [:song/duration :song/tempo])])
+
+      (def table
+        {::song-analysis
+          {1 {:song/duration 280 :song/tempo 98}
+           2 {:song/duration 150 :song/tempo 130}}})
+
+      ;                                          merge table into env
+      (let [sm (psm/smart-map (merge (pci/register registry) table)
+                 {:song/id 2})]
+        (select-keys sm [:song/id :song/name :song/duration]))
+      ; => #:song{:id 2, :name \"There's Enough\", :duration 150}
+  "
+  [table-name attr-key output]
+  [::p.attr/attribute ::p.attr/attribute ::pco/output
+   => ::pco/resolver]
+  (let [resolver-name (symbol (str (attr-munge attr-key) "-env-table-" (attr-munge table-name)))]
+    (pco/resolver resolver-name
+      {::pco/input  [attr-key]
+       ::pco/output output}
+      (fn [env input]
+        (let [table (get env table-name)
+              id    (get input attr-key)]
+          (get table id))))))
+
 #?(:clj
    (defn edn-extract-attr-tables
      [data]
