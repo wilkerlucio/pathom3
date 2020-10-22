@@ -2020,8 +2020,7 @@
                                      :h {#{:a :b} #{h}}}
                ::pcp/available-data {:d {}
                                      :e {}}
-               ::eql/query          [:h]
-               ::render-graphviz?   true})
+               ::eql/query          [:h]})
            '{:com.wsscode.pathom3.connect.planner/nodes                 {1
                                                                          {:com.wsscode.pathom3.connect.operation/op-name        h,
                                                                           :com.wsscode.pathom3.connect.planner/node-id          1,
