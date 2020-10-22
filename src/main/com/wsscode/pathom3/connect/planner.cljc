@@ -11,7 +11,10 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as fsd]
-    [edn-query-language.core :as eql]))
+    [edn-query-language.core :as eql])
+  #?(:cljs
+     (:require-macros
+       [com.wsscode.pathom3.connect.planner])))
 
 (>def ::node-id
   "ID for a execution node in the planner graph."
@@ -79,9 +82,12 @@
   "The chain depth relative to the current node."
   nat-int?)
 
+(defn ignore-nils [m]
+  (into {} (remove (fn [[_ v]] (nil? v))) m))
+
 (>def ::node
   "Node."
-  (s/keys :opt [::node-id ::run-next ::after-nodes ::expects ::input]))
+  (s/and (s/conformer ignore-nils) (s/keys :opt [::node-id ::run-next ::after-nodes ::expects ::input])))
 
 (>def ::nodes
   "The nodes index."
@@ -172,6 +178,12 @@
 
 (declare compute-run-graph* compute-root-and collapse-nodes-chain node-ancestors
          compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes)
+
+(defn add-graph-snapshot!
+  ([graph {::keys [snapshots*]} event-details]
+   (if snapshots*
+     (swap! snapshots* conj (merge graph event-details)))
+   graph))
 
 (defn base-graph []
   {::nodes                 {}
@@ -749,6 +761,8 @@
           next-node (get-node graph node-id)
           root-sym  (pc-sym root-node)
           next-sym  (pc-sym next-node)]
+      (add-graph-snapshot! graph env {::snapshot-event   ::snapshot-before-merge-root-branch
+                                      ::snapshot-message (str "Merging node as branch " node-id)})
       (cond
         ; skip, no next node
         (not next-node)
@@ -756,32 +770,42 @@
 
         ; skip, not root node
         (not root-node)
-        (set-root-node graph node-id)
+        (-> (set-root-node graph node-id)
+            (add-graph-snapshot! env {::snapshot-message (str "No root, use node " node-id)}))
 
         ; same node, collapse
         (and root-sym
              (= root-sym next-sym))
         (-> (collapse-nodes-branch graph env node-id root)
-            (set-root-node node-id))
+            (set-root-node node-id)
+            (add-graph-snapshot! env {::snapshot-message (str "Collapsed nodes " node-id " and " root " due to same resolver call.")}))
 
         ; merge ands
         (and (::run-and root-node)
              (::run-and next-node)
              (can-merge-and-nodes? root-node next-node))
-        (collapse-and-nodes graph root node-id)
+        (-> (collapse-and-nodes graph root node-id)
+            (add-graph-snapshot! env {::snapshot-message (str "Merged 2 AND nodes " node-id " with " root)}))
 
         ; next node is branch type
         (and (get next-node branch-type)
-             root-sym)
-        (add-branch-node (set-root-node graph node-id) env root-node)
+             root-sym
+             (= (::run-next root-node)
+                (::run-next next-node)))
+        (-> (add-branch-node (set-root-node graph node-id) env root-node)
+            (add-graph-snapshot! env {::snapshot-message (str "Next node is branch, adding a branch there")}))
 
         ; root node is branch type
         (and (get root-node branch-type)
-             next-sym)
-        (add-branch-node graph env next-node)
+             next-sym
+             (= (::run-next root-node)
+                (::run-next next-node)))
+        (-> (add-branch-node graph env next-node)
+            (add-graph-snapshot! env {::snapshot-message (str "Root node is branch, adding a branch there")}))
 
         :else
-        (create-branch-node graph env next-node (branch-node-factory))))
+        (-> (create-branch-node graph env next-node (branch-node-factory))
+            (add-graph-snapshot! env {::snapshot-message (str "Create new branch node for " node-id " and " root)}))))
     graph))
 
 (defn compute-root-or
@@ -916,13 +940,15 @@
 
 (defn include-node
   "Add new node to the graph, this add the node and the index of in ::index-syms."
-  [graph _env {::keys [node-id] :as node}]
+  [graph env {::keys [node-id] :as node}]
   (let [sym (pc-sym node)]
     (-> graph
         (assoc-in [::nodes node-id] node)
         (cond->
           sym
-          (update-in [::index-resolver->nodes sym] coll/sconj node-id)))))
+          (update-in [::index-resolver->nodes sym] coll/sconj node-id))
+        (add-graph-snapshot! env {::snapshot-event   ::snapshot-include-node
+                                  ::snapshot-message (str "Included node " sym)}))))
 
 (>defn direct-node-successors
   "Direct successors of node, branch nodes and run-next, in case of branch nodes the
@@ -1168,8 +1194,8 @@
             (conj chain node-id'))
           (conj chain node-id'))))))
 
-(defn find-first-ancestor
-  "Traverse node after-node chain and returns the most distant resolver ancestor node id.
+(defn find-furthest-ancestor
+  "Traverse node after-node chain and returns the most distant resolver ancestor of node id.
   This only walks though resolver nodes, branch nodes are removed."
   [graph node-id]
   (->> (node-direct-ancestor-chain graph node-id)
@@ -1178,7 +1204,12 @@
        first))
 
 (defn push-root-to-ancestor [graph node-id]
-  (set-root-node graph (find-first-ancestor graph node-id)))
+  (set-root-node graph (find-furthest-ancestor graph node-id)))
+
+(defn compute-and-unless-root-is-ancestor [{::keys [root] :as graph} env {::keys [node-id]}]
+  (if (= node-id (first (node-direct-ancestor-chain graph root)))
+    (set-root-node graph node-id)
+    (compute-root-and graph env {::node-id node-id})))
 
 (defn compute-attribute-graph*
   [{::keys [root] :as graph}
@@ -1189,13 +1220,19 @@
     (get-attribute-node graph attribute)
     (let [node-id (get-attribute-node graph attribute)]
       (-> graph
+          (add-graph-snapshot! env {::snapshot-event   ::snapshot-reuse-attribute
+                                    ::snapshot-message (str "Associating previous root to attribute " attribute " on node " node-id)})
           (merge-node-requires node-id {attribute {}})
           (push-root-to-ancestor node-id)
-          (compute-root-and env {::node-id root})))
+          (compute-and-unless-root-is-ancestor env {::node-id root})
+          (add-graph-snapshot! env {::snapshot-event   ::snapshot-reuse-attribute-merged
+                                    ::snapshot-message (str "Merged attribute " attribute " on node " node-id " with root " root)})))
 
     :else
     (let [graph'
           (as-> graph <>
+            (add-graph-snapshot! <> env {::snapshot-event   ::snapshot-process-attribute
+                                         ::snapshot-message (str "Process attribute " attribute)})
             (dissoc <> ::root)
             (reduce-kv
               (fn [graph inputs resolvers]
@@ -1230,10 +1267,14 @@
   (let [env (assoc env pc-attr attr)]
     (cond
       (eql/ident? attr)
-      (add-ident-process graph ast)
+      (-> (add-ident-process graph ast)
+          (add-graph-snapshot! env {::snapshot-event   ::snapshot-add-ident-proces
+                                    ::snapshot-message (str "Add ident process for " (pr-str attr))}))
 
       (contains? available-data attr)
-      (mark-attribute-process-sub-query graph ast)
+      (-> (mark-attribute-process-sub-query graph ast)
+          (add-graph-snapshot! env {::snapshot-event   ::snapshot-mark-process-sub-query
+                                    ::snapshot-message (str "Mark attribute " attr " to sub-process.")}))
 
       (or (contains? unreachable-attrs attr)
           (contains? attr-deps-trail attr))
@@ -1243,7 +1284,9 @@
       (compute-attribute-graph* graph env)
 
       :else
-      (add-unreachable-attr graph attr))))
+      (-> (add-unreachable-attr graph attr)
+          (add-graph-snapshot! env {::snapshot-event   ::snapshot-mark-attr-unreachable
+                                    ::snapshot-message (str "Mark attribute " attr " as unreachable.")})))))
 
 (defn compute-run-graph*
   [graph env]
@@ -1310,6 +1353,8 @@
             ::plan-cache*
             ::pci/index-resolvers])
     => ::graph]
+   (add-graph-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
+                                   ::snapshot-message "Start query plan"})
    (p.cache/cached ::plan-cache* env [(::available-data env)
                                       (:edn-query-language.ast/node env)]
      #(compute-run-graph*
