@@ -17,7 +17,7 @@
    coords])
 
 (deftest process-test
-  (testing "simple read"
+  (testing "read"
     (is (= (p.eql/process (pci/register registry)
                           [::coords])
            {::coords
@@ -27,7 +27,13 @@
     (is (= (p.eql/process (-> (pci/register geo/full-registry)
                               (p.ent/with-entity {:left 10}))
                           [::geo/x])
-           {::geo/x 10})))
+           {::geo/x 10}))
+
+    (testing "when not found, key is omitted"
+      (is (= (p.eql/process (-> (pci/register geo/full-registry)
+                                (p.ent/with-entity {:left 10}))
+                            [::geo/top])
+             {}))))
 
   (testing "reading with *"
     (is (= (-> (p.eql/process (-> (pci/register geo/full-registry)
