@@ -43,6 +43,9 @@
         [:eql :request])
 
   For more options around processing check the docs on the connect runner."
-  [env tx]
-  [(s/keys) ::eql/query => map?]
-  (process-ast env (eql/query->ast tx)))
+  ([env tx]
+   [(s/keys) ::eql/query => map?]
+   (process-ast env (eql/query->ast tx)))
+  ([env entity tx]
+   [(s/keys) map? ::eql/query => map?]
+   (process-ast (p.ent/with-entity env entity) (eql/query->ast tx))))
