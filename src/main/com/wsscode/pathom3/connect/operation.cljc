@@ -21,6 +21,7 @@
 (>def ::op-name "Name of the operation" symbol?)
 (>def ::input vector?)
 (>def ::output vector?)
+(>def ::params vector?)
 (>def ::resolve fn?)
 (>def ::operation-type #{::operation-type-resolver})
 (>def ::operation-config map?)
