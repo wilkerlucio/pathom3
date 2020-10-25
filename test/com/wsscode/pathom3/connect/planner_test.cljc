@@ -1086,6 +1086,7 @@
                                               :key          :d}}
              ::pcp/root                  8}))
 
+    ; TODO complex case
     #_(is (= (compute-run-graph
                '{::pci/index-oir {:a {#{:b} #{a}
                                       #{:e} #{a1}}
@@ -2085,6 +2086,7 @@
                                                                         {:c 4, :f 5, :g 3, :b 2, :a 7, :h 1},
              :com.wsscode.pathom3.connect.planner/root                  8})))
 
+  ; TODO: fix OR case
   #_
   (testing "or on multi dependency"
     (is (= (compute-run-graph
