@@ -1121,7 +1121,7 @@
                                                 :key          :b}}
                ::pcp/root                  1}))))
 
-  (testing "add requires to appropriated node"
+  (testing "add expects to appropriated node"
     (is (= (compute-run-graph
              {::resolvers [{::pco/op-name 'z
                             ::pco/output  [:z]}
@@ -2093,6 +2093,15 @@
                                 :c {#{:d} #{bc bc2}}
                                 :d {#{} #{d}}}
                ::eql/query     [:a]})
+           {}))
+
+    (is (= (compute-run-graph
+             '{::pci/index-oir {:a {#{:c :b} #{a}}
+                                :b {#{:d} #{bc bc2}}
+                                :c {#{:d} #{bc bc2}}
+                                :e {#{:d} #{bc bc2}}
+                                :d {#{} #{d}}}
+               ::eql/query     [:a :e]})
            {})))
 
   (testing "push interdependent paths back"

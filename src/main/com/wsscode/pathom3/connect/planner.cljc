@@ -528,7 +528,7 @@
         (remove-after-node run-next node-id)
         (update ::nodes dissoc node-id))))
 
-(defn merge-node-requires
+(defn merge-node-expects
   "Merge requires from node into target-node-id."
   [graph target-node-id {::keys [expects]}]
   (if expects
@@ -626,7 +626,7 @@
     (let [node (get-node graph node-id)]
       (-> graph
           (merge-nodes-foreign-ast target-node-id node)
-          (merge-node-requires target-node-id node)
+          (merge-node-expects target-node-id node)
           (merge-node-input target-node-id node)
           (merge-nodes-params target-node-id node)
           (merge-nodes-run-next env target-node-id node)
@@ -641,7 +641,7 @@
     (let [node (get-node graph node-id)]
       (-> graph
           (merge-nodes-foreign-ast target-node-id node)
-          (merge-node-requires target-node-id node)
+          (merge-node-expects target-node-id node)
           (merge-nodes-params target-node-id node)
           (merge-nodes-run-next env target-node-id node)
           (transfer-node-source-attrs target-node-id node)
@@ -660,7 +660,7 @@
     (let [node (get-node graph node-id)]
       (-> graph
           (merge-nodes-foreign-ast target-node-id node)
-          (merge-node-requires target-node-id node)
+          (merge-node-expects target-node-id node)
           (merge-nodes-params target-node-id node)
           (set-node-run-next target-node-id (::run-next node))
           (transfer-node-after-nodes target-node-id node)
@@ -681,7 +681,7 @@
       collapse-node-id
       (cond-> (collapse-nodes-branch graph env collapse-node-id node-id)
         (= branch-type ::run-and)
-        (merge-node-requires root (get-node graph node-id)))
+        (merge-node-expects root (get-node graph node-id)))
 
       (= (::run-next root-node) node-id)
       graph
@@ -702,7 +702,7 @@
             (add-after-node node-id root)
             (cond->
               (= branch-type ::run-and)
-              (merge-node-requires root node)
+              (merge-node-expects root node)
 
               (optimize-merge? graph node)
               (update-in [::nodes node-id] dissoc ::run-next)))))))
@@ -761,7 +761,7 @@
           next-node (get-node graph node-id)
           root-sym  (pc-sym root-node)
           next-sym  (pc-sym next-node)]
-      (add-snapshot! graph env {::snapshot-event         ::snapshot-before-merge-root-branch
+      (add-snapshot! graph env {::snapshot-event   ::snapshot-before-merge-root-branch
                                 ::snapshot-message (str "Merging node as branch " node-id)})
       (cond
         ; skip, no next node
@@ -947,7 +947,7 @@
         (cond->
           sym
           (update-in [::index-resolver->nodes sym] coll/sconj node-id))
-        (add-snapshot! env {::snapshot-event         ::snapshot-include-node
+        (add-snapshot! env {::snapshot-event   ::snapshot-include-node
                             ::snapshot-message (str "Included node " sym)}))))
 
 (>defn direct-node-successors
@@ -1092,7 +1092,7 @@
           (assert ancestor "Error finding ancestor during missing chain computation")
           (cond-> (merge-nodes-run-next graph' env ancestor {::run-next (::root graph)})
             (::run-and (get-root-node graph'))
-            (merge-node-requires (::root graph') {::expects (zipmap missing (repeat {}))})))
+            (merge-node-expects (::root graph') {::expects (zipmap missing (repeat {}))})))
         (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
               unreachable-attrs (filter #(set/subset? (all-attribute-resolvers env %) unreachable-resolvers) still-missing)]
           (update out' ::unreachable-attrs into unreachable-attrs))))
@@ -1105,6 +1105,20 @@
   (let [resolver (pci/resolver-config env resolver-name)]
     (or (pc-dyn-sym resolver)
         resolver-name)))
+
+(defn extend-resolver-node
+  [{::keys [index-resolver->nodes] :as graph}
+   {::p.attr/keys [attribute]
+    ast           :edn-query-language.ast/node}
+   resolver-sym]
+  (let [node-id    (first (get index-resolver->nodes resolver-sym))
+        ast-params (:params ast)]
+    (-> graph
+        (merge-node-expects node-id {::expects {attribute {}}})
+        (cond->
+          ast-params
+          (merge-nodes-params node-id {::params ast-params}))
+        (set-root-node node-id))))
 
 (defn compute-resolver-graph
   [{::keys [unreachable-resolvers] :as graph}
@@ -1220,18 +1234,18 @@
     (get-attribute-node graph attribute)
     (let [node-id (get-attribute-node graph attribute)]
       (-> graph
-          (add-snapshot! env {::snapshot-event         ::snapshot-reuse-attribute
+          (add-snapshot! env {::snapshot-event   ::snapshot-reuse-attribute
                               ::snapshot-message (str "Associating previous root to attribute " attribute " on node " node-id)})
-          (merge-node-requires node-id {attribute {}})
+          (merge-node-expects node-id {attribute {}})
           (push-root-to-ancestor node-id)
           (compute-and-unless-root-is-ancestor env {::node-id root})
-          (add-snapshot! env {::snapshot-event         ::snapshot-reuse-attribute-merged
+          (add-snapshot! env {::snapshot-event   ::snapshot-reuse-attribute-merged
                               ::snapshot-message (str "Merged attribute " attribute " on node " node-id " with root " root)})))
 
     :else
     (let [graph'
           (as-> graph <>
-            (add-snapshot! <> env {::snapshot-event         ::snapshot-process-attribute
+            (add-snapshot! <> env {::snapshot-event   ::snapshot-process-attribute
                                    ::snapshot-message (str "Process attribute " attribute)})
             (dissoc <> ::root)
             (reduce-kv
@@ -1268,12 +1282,12 @@
     (cond
       (eql/ident? attr)
       (-> (add-ident-process graph ast)
-          (add-snapshot! env {::snapshot-event         ::snapshot-add-ident-proces
+          (add-snapshot! env {::snapshot-event   ::snapshot-add-ident-proces
                               ::snapshot-message (str "Add ident process for " (pr-str attr))}))
 
       (contains? available-data attr)
       (-> (mark-attribute-process-sub-query graph ast)
-          (add-snapshot! env {::snapshot-event         ::snapshot-mark-process-sub-query
+          (add-snapshot! env {::snapshot-event   ::snapshot-mark-process-sub-query
                               ::snapshot-message (str "Mark attribute " attr " to sub-process.")}))
 
       (or (contains? unreachable-attrs attr)
@@ -1285,7 +1299,7 @@
 
       :else
       (-> (add-unreachable-attr graph attr)
-          (add-snapshot! env {::snapshot-event         ::snapshot-mark-attr-unreachable
+          (add-snapshot! env {::snapshot-event   ::snapshot-mark-attr-unreachable
                               ::snapshot-message (str "Mark attribute " attr " as unreachable.")})))))
 
 (defn compute-run-graph*
@@ -1353,7 +1367,7 @@
             ::plan-cache*
             ::pci/index-resolvers])
     => ::graph]
-   (add-snapshot! graph env {::snapshot-event         ::snapshot-start-graph
+   (add-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
                              ::snapshot-message "Start query plan"})
    (p.cache/cached ::plan-cache* env [(::available-data env)
                                       (:edn-query-language.ast/node env)]
