@@ -135,4 +135,5 @@
                out))
            []
            data)
+         (sort-by (comp pr-str #(if (map? %) (ffirst %) %))) ; sort results
          vec)))

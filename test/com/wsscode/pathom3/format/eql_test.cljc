@@ -72,13 +72,14 @@
 (deftest data->query-test
   (is (= (pf.eql/data->query {}) []))
   (is (= (pf.eql/data->query {:foo "bar"}) [:foo]))
+  (is (= (pf.eql/data->query {:b 2 :a 1}) [:a :b]))
   (is (= (pf.eql/data->query {:foo {:buz "bar"}}) [{:foo [:buz]}]))
   (is (= (pf.eql/data->query {:foo [{:buz "bar"}]}) [{:foo [:buz]}]))
   (is (= (pf.eql/data->query {:other "key" [:complex "key"] "value"}) [:other [:complex "key"]]))
   (is (= (pf.eql/data->query {:foo ["abc"]}) [:foo]))
   (is (= (pf.eql/data->query {:foo [{:buz "baz"} {:it "nih"}]}) [{:foo [:buz :it]}]))
   (is (= (pf.eql/data->query {:foo [{:buz "baz"} "abc" {:it "nih"}]}) [{:foo [:buz :it]}]))
-  (is (= (pf.eql/data->query {:z 10 :a 1 :b {:d 3 :e 4}}) [:z :a {:b [:d :e]}]))
+  (is (= (pf.eql/data->query {:z 10 :a 1 :b {:d 3 :e 4}}) [:a {:b [:d :e]} :z]))
   (is (= (pf.eql/data->query {:a {"foo" {:bar "baz"}}}) [:a])))
 
 (deftest ast-contains-wildcard?-test
