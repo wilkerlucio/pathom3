@@ -761,8 +761,6 @@
           next-node (get-node graph node-id)
           root-sym  (pc-sym root-node)
           next-sym  (pc-sym next-node)]
-      (add-snapshot! graph env {::snapshot-event   ::snapshot-before-merge-root-branch
-                                ::snapshot-message (str "Merging node as branch " node-id)})
       (cond
         ; skip, no next node
         (not next-node)
@@ -771,7 +769,7 @@
         ; skip, not root node
         (not root-node)
         (-> (set-root-node graph node-id)
-            (add-snapshot! env {::snapshot-message (str "No root, use node " node-id)}))
+            (add-snapshot! env {::snapshot-message (str "Set " node-id " as root")}))
 
         ; same node, collapse
         (and root-sym
@@ -785,7 +783,7 @@
              (::run-and next-node)
              (can-merge-and-nodes? root-node next-node))
         (-> (collapse-and-nodes graph root node-id)
-            (add-snapshot! env {::snapshot-message (str "Merged 2 AND nodes " node-id " with " root)}))
+            (add-snapshot! env {::snapshot-message (str "Merged AND nodes " node-id " with " root)}))
 
         ; next node is branch type
         (and (get next-node branch-type)
@@ -991,6 +989,7 @@
   (let [syms (->> (collect-syms graph env (get-root-node graph))
                   (into unreachable-resolvers)
                   (into (::unreachable-resolvers previous-graph)))]
+    (add-snapshot! graph env {::snapshot-message (str "Mark node unreachable, resolvers " (pr-str syms) ", attrs" unreachable-attrs)})
     (cond-> (assoc previous-graph
               ::unreachable-resolvers syms
               ::unreachable-attrs unreachable-attrs)
@@ -1077,7 +1076,8 @@
     [::graph (s/keys :req [::graph-before-missing-chain]) (s/coll-of ::eql/property :kind set?)
      => ::graph])
   (if (seq missing)
-    (let [{::keys [index-attrs] :as graph'}
+    (let [_             (add-snapshot! graph env {::snapshot-message (str "Computing " (pr-str missing) " dependencies for " (pc-attr env))})
+          {::keys [index-attrs] :as graph'}
           (compute-run-graph*
             (dissoc graph ::root)
             (-> env
@@ -1092,7 +1092,10 @@
           (assert ancestor "Error finding ancestor during missing chain computation")
           (cond-> (merge-nodes-run-next graph' env ancestor {::run-next (::root graph)})
             (::run-and (get-root-node graph'))
-            (merge-node-expects (::root graph') {::expects (zipmap missing (repeat {}))})))
+            (merge-node-expects (::root graph') {::expects (zipmap missing (repeat {}))})
+
+            true
+            (add-snapshot! env {::snapshot-message (str "Chaining dependencies for " (pc-attr env) ", set node " (::root graph) " as next to ancestor " ancestor)})))
         (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
               unreachable-attrs (filter #(set/subset? (all-attribute-resolvers env %) unreachable-resolvers) still-missing)]
           (update out' ::unreachable-attrs into unreachable-attrs))))
