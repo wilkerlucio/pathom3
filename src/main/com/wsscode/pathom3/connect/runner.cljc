@@ -13,6 +13,8 @@
     [com.wsscode.pathom3.path :as p.path]))
 
 (>def ::map-container? boolean?)
+(>def ::merge-attribute fn?)
+(>def ::node-error any?)
 
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
@@ -23,8 +25,6 @@
     (every? #(contains? entity %) (keys expects))))
 
 (declare run-node! run-graph!)
-
-(>def ::merge-attribute fn?)
 
 (defn process-map-subquery
   [env ast v]
