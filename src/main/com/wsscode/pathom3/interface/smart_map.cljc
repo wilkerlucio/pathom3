@@ -38,9 +38,10 @@
   [map? ::keys-mode => map?]
   (assoc env ::keys-mode key-mode))
 
-(defn with-wrap-nested?
+(>defn with-wrap-nested?
   "Configure smart map to enable or disable the automatic wrapping of nested structures."
   [env wrap?]
+  [map? ::wrap-nested? => map?]
   (assoc env ::wrap-nested? wrap?))
 
 (defn wrap-smart-map
@@ -360,12 +361,13 @@
   (let [env (apply f (sm-env sm) args)]
     (smart-map env (::source-context env))))
 
-(defn sm-get-debug
+(>defn sm-get-debug
   "Return the graph run analysis, use for debugging. You can find the get value return
   in the ::psm/value key.
 
   Note that if the value is cached, there will be a blank stats."
   ([^SmartMap sm k]
+   [::smart-map any? => any?]
    (let [{::p.ent/keys [entity-tree*] :as env} (sm-env sm)
          ast       {:type     :root
                     :children [{:type :prop, :dispatch-key k, :key k}]}
@@ -375,36 +377,42 @@
        (assoc run-stats ::value
          (wrap-smart-map env (get @entity-tree* k)))))))
 
-(defn sm-assoc!
+(>defn sm-assoc!
   "Assoc on the smart map in place, this function mutates the current cache and return
   the same instance of smart map.
 
   You should use this only in cases where the optimization is required, try starting
   with the immutable versions first, given this has side effects and so more error phone."
   [^SmartMap smart-map k v]
+  [::smart-map any? any? => ::smart-map]
   (swap! (-> smart-map sm-env ::p.ent/entity-tree*) assoc k v)
   smart-map)
 
-(defn sm-dissoc!
+(>defn sm-dissoc!
   "Dissoc on the smart map in place, this function mutates the current cache and return
   the same instance of smart map.
 
   You should use this only in cases where the optimization is required, try starting
   with the immutable versions first, given this has side effects and so more error phone."
   [^SmartMap smart-map k]
+  [::smart-map any? => ::smart-map]
   (swap! (-> smart-map sm-env ::p.ent/entity-tree*) dissoc k)
   smart-map)
 
-(defn sm-touch-ast!
+(>defn sm-touch-ast!
   [^SmartMap smart-map ast]
+  [::smart-map :edn-query-language.ast/node
+   => ::smart-map]
   (let [env (sm-env smart-map)]
     (pcr/run-graph! env ast (::p.ent/entity-tree* env))
     smart-map))
 
-(defn sm-touch!
+(>defn sm-touch!
   "Will pre-fetch data in a smart map, given the EQL request. Use this to optimize the
   load of data ahead of time, instead of pulling one by one lazily."
   [^SmartMap smart-map eql]
+  [::smart-map ::eql/query
+   => ::smart-map]
   (sm-touch-ast! smart-map (eql/query->ast eql)))
 
 (>defn ^SmartMap smart-map
