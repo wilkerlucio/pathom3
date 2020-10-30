@@ -190,9 +190,9 @@
                             :buz  "baz"
                             :deep {:nested (call-something)}
                             :seq  [{:with "things"} {:around "here "}]}]})
-             {::pco/output [:foo
-                            :buz
+             {::pco/output [:buz
                             {:deep [:nested]}
+                            :foo
                             {:seq [:with :around]}]})))
 
     (testing "preserve user output when defined"
