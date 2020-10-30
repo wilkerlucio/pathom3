@@ -39,7 +39,8 @@
                              ::pcp/after-nodes])
    (pbir/env-table-resolver ::pcr/node-run-stats ::pcp/node-id
                             [::pcr/run-duration-ms
-                             ::pcr/node-run-input])])
+                             ::pcr/node-run-input
+                             ::pcr/node-error])])
 
 (def stats-index (pci/register stats-registry))
 

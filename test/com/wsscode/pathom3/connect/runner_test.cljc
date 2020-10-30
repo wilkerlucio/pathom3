@@ -64,17 +64,17 @@
           ::geo/center-x   25})))
 
 (defn run-graph [env tree query]
-  (let [env   (-> env
-                  (p.ent/with-entity tree))
-        ast   (eql/query->ast query)
-        graph (pcp/compute-run-graph
-                (-> env
-                    (assoc
-                      ::pcp/available-data (pfsd/data->shape-descriptor tree)
-                      :edn-query-language.ast/node ast)))]
-    (pcr/run-graph!* (assoc env ::pcp/graph graph
-                       ::pcr/node-run-stats* (atom {})))
-    @(::p.ent/entity-tree* env)))
+  (let [env       (-> env
+                      (p.ent/with-entity tree))
+        ast       (eql/query->ast query)
+        graph     (pcp/compute-run-graph
+                    (-> env
+                        (assoc
+                          ::pcp/available-data (pfsd/data->shape-descriptor tree)
+                          :edn-query-language.ast/node ast)))
+        run-stats (pcr/run-graph!* (assoc env ::pcp/graph graph
+                                     ::pcr/node-run-stats* (atom {})))]
+    (with-meta @(::p.ent/entity-tree* env) {::pcr/run-stats run-stats})))
 
 (defn coords-resolver [c]
   (pco/resolver 'coords-resolver {::pco/output [::coords]}
@@ -132,16 +132,28 @@
                            {::p.path/path [::sequence]}],
             ::hold        {::p.path/path [::hold]}})))
 
-  #_(testing "insufficient data"
-      (is (= (run-graph (pci/register [(pco/resolver 'a {::pco/output [:a]
-                                                         ::pco/input  [:b]}
-                                         (fn [_ _] {:a "a"}))
-                                       (pco/resolver 'b {::pco/output [:b]}
-                                         (fn [_ _] {}))])
-               {}
-               [:a])
-             {::coords [{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
-                        {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}]})))
+  (testing "insufficient data"
+    (let [res (run-graph (pci/register [(pco/resolver 'a {::pco/output [:a]
+                                                          ::pco/input  [:b]}
+                                          (fn [_ _] {:a "a"}))
+                                        (pco/resolver 'b {::pco/output [:b]}
+                                          (fn [_ _] {}))])
+                         {}
+                         [:a])]
+      (is (= res {}))
+      (is (= (-> res meta ::pcr/run-stats
+                 ::pcr/node-run-stats
+                 (get 1)
+                 ::pcr/node-error
+                 ex-message)
+             "Insufficient data"))
+      (is (= (-> res meta ::pcr/run-stats
+                 ::pcr/node-run-stats
+                 (get 1)
+                 ::pcr/node-error
+                 ex-data)
+             {:available nil
+              :required  [:b]}))))
 
   (testing "processing sequence of consistent elements"
     (is (= (run-graph (pci/register [geo/full-registry
@@ -184,6 +196,37 @@
              {::coords {:a {::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
                         :b {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))))
 
+  (testing "processing OR nodes"
+    (testing "return the first option that works, don't call the others"
+      (let [spy (atom 0)]
+        (is (= (run-graph (pci/register [(pco/resolver `value
+                                           {::pco/output [:error]}
+                                           (fn [_ _]
+                                             (swap! spy inc)
+                                             {:error 1}))
+                                         (pco/resolver `value2
+                                           {::pco/output [:error]}
+                                           (fn [_ _]
+                                             (swap! spy inc)
+                                             {:error 1}))])
+                          {}
+                          [:error])
+               {:error 1}))
+        (is (= @spy 1))))
+
+    (testing "one option fail, one succeed"
+      (let [spy (atom 0)]
+        (is (= (run-graph (pci/register [(pco/resolver `error-long-touch
+                                           {::pco/output [:error]}
+                                           (fn [_ _]
+                                             (swap! spy inc)
+                                             (throw (ex-info "Error" {}))))
+                                         (pbir/constantly-resolver :error "value")])
+                          {}
+                          [:error])
+               {:error "value"}))
+        (is (= @spy 1)))))
+
   (testing "processing sequence of inconsistent maps"
     (is (= (run-graph (pci/register geo/full-registry)
                       {::coords [{::geo/x 7 ::geo/y 9}
@@ -216,5 +259,5 @@
                               (fn [_ _] (throw error))))
                  {}
                  [:error])
-               {:error       ::pcr/resolver-error
-                ::pcr/errors {[:error] error}})))))
+               {:error           ::pcr/node-error
+                ::pcr/node-error {[:error] error}})))))

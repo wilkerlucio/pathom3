@@ -41,6 +41,14 @@
        {::pco/output [attribute]}
        (fn [_ _] {attribute value})))))
 
+(defn constantly-fn-resolver
+  "Create a simple resolver that always calls value-fn and return its value."
+  ([attribute value-fn]
+   (let [resolver-name (symbol (str (attr-munge attribute) "-constant"))]
+     (pco/resolver resolver-name
+       {::pco/output [attribute]}
+       (fn [_ _] {attribute (value-fn)})))))
+
 (defn single-attr-resolver
   "Apply fn `f` to input `source` and spits the result with the name `target`.
 

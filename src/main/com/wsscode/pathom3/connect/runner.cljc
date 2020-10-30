@@ -112,12 +112,19 @@
   (if run-next
     (run-node! env (pcp/get-node graph run-next))))
 
-(defn merge-node-stats
+(defn merge-node-stats!
   [{::keys [node-run-stats*]}
    {::pcp/keys [node-id]}
    data]
   (if node-run-stats*
     (swap! node-run-stats* update node-id merge data)))
+
+(defn mark-resolver-error
+  [{::keys [node-run-stats*]}
+   {::pcp/keys [node-id]}
+   error]
+  (if node-run-stats*
+    (swap! node-run-stats* assoc-in [node-id ::node-error] error)))
 
 (defn call-resolver-from-node
   "Evaluates a resolver using node information.
@@ -134,13 +141,21 @@
         resolver   (pci/resolver env op-name)
         env        (assoc env ::pcp/node node)
         entity     (p.ent/entity env)
-        start      (time/now-ms)
         input-data (select-keys entity input-keys)
-        result     (pco.prot/-resolve resolver env input-data)
+        start      (time/now-ms)
+        result     (try
+                     (if (< (count input-data) (count input-keys))
+                       (throw (ex-info "Insufficient data" {:required  input-keys
+                                                            :available (keys input-data)}))
+                       (pco.prot/-resolve resolver env input-data))
+                     (catch #?(:clj Throwable :cljs :default) e
+                       (mark-resolver-error env node e)
+                       ::node-error))
         duration   (- (time/now-ms) start)]
-    (merge-node-stats env node
-                      {::run-duration-ms duration
-                       ::node-run-input  input-data})
+    (merge-node-stats! env node
+                       {::run-duration-ms duration
+                        ::node-run-input  input-data
+                        ::node-run-output result})
     result))
 
 (defn run-resolver-node!
@@ -152,8 +167,9 @@
   (if (all-requires-ready? env node)
     (run-next-node! env node)
     (let [response (call-resolver-from-node env node)]
-      (merge-resolver-response! env response)
-      (run-next-node! env node))))
+      (when (not= ::node-error response)
+        (merge-resolver-response! env response)
+        (run-next-node! env node)))))
 
 (>defn run-or-node!
   [{::pcp/keys [graph] :as env} {::pcp/keys [run-or] :as or-node}]
