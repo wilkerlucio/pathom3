@@ -782,7 +782,8 @@
         (and (::run-and root-node)
              (::run-and next-node)
              (can-merge-and-nodes? root-node next-node))
-        (-> (collapse-and-nodes graph root node-id)
+        (-> (collapse-and-nodes graph node-id root)
+            (set-root-node node-id)
             (add-snapshot! env {::snapshot-message (str "Merged AND nodes " node-id " with " root)}))
 
         ; next node is branch type
@@ -1095,7 +1096,7 @@
             (merge-node-expects (::root graph') {::expects (zipmap missing (repeat {}))})
 
             true
-            (add-snapshot! env {::snapshot-message (str "Chaining dependencies for " (pc-attr env) ", set node " (::root graph) " as next to ancestor " ancestor)})))
+            (add-snapshot! env {::snapshot-message (str "Chaining dependencies for " (pc-attr env) ", set node " (::root graph) " to run after node " ancestor)})))
         (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
               unreachable-attrs (filter #(set/subset? (all-attribute-resolvers env %) unreachable-resolvers) still-missing)]
           (update out' ::unreachable-attrs into unreachable-attrs))))

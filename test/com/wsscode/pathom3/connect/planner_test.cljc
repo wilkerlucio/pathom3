@@ -726,23 +726,24 @@
                                              ::pcp/expects          {:c {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:c}
-                                             ::pcp/after-nodes      #{6}}
+                                             ::pcp/after-nodes      #{4}}
                                           3 {::pco/op-name          b
                                              ::pcp/node-id          3
                                              ::pcp/expects          {:b {}}
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:b}
-                                             ::pcp/after-nodes      #{6}}
+                                             ::pcp/after-nodes      #{4}}
+                                          4 {::pcp/node-id  4
+                                             ::pcp/expects  {:b {} :c {}}
+                                             ::pcp/run-and  #{3 2}
+                                             ::pcp/run-next 7}
                                           5 {::pco/op-name     d
                                              ::pcp/node-id     5
                                              ::pcp/expects     {:d {}}
                                              ::pcp/input       {:c {} :b {}}
                                              ::pcp/after-nodes #{7}}
-                                          6 {::pcp/node-id  6
-                                             ::pcp/expects  {:b {} :c {}}
-                                             ::pcp/run-and  #{3 2}
-                                             ::pcp/run-next 7}
-                                          7 {::pcp/node-id 7
+                                          7 {::pcp/after-nodes #{4}
+                                             ::pcp/node-id 7
                                              ::pcp/expects {:a {} :d {}}
                                              ::pcp/run-and #{1 5}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5}}
@@ -755,7 +756,7 @@
                                           :d {:type         :prop,
                                               :dispatch-key :d,
                                               :key          :d}}
-             ::pcp/root                  6}))
+             ::pcp/root                  4}))
 
     (testing "chain with recursive deps"
       (is (= (compute-run-graph
@@ -947,81 +948,79 @@
                                 :f {#{} #{f}}}
                ::eql/query     [:a :d :e]})
            '{:com.wsscode.pathom3.connect.planner/nodes
-             {7
-              {:com.wsscode.pathom3.connect.planner/node-id 7,
-               :com.wsscode.pathom3.connect.planner/expects {:a {}, :d {}},
-               :com.wsscode.pathom3.connect.planner/run-and #{1 5}},
-              1
-              {:com.wsscode.pathom3.connect.operation/op-name        a,
-               :com.wsscode.pathom3.connect.planner/node-id          1,
-               :com.wsscode.pathom3.connect.planner/expects          {:a {}},
-               :com.wsscode.pathom3.connect.planner/input            {:c {}, :b {}},
-               :com.wsscode.pathom3.connect.planner/after-nodes      #{7},
-               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}},
-              6
-              {:com.wsscode.pathom3.connect.planner/node-id     6,
-               :com.wsscode.pathom3.connect.planner/expects     {:b {}, :c {}},
-               :com.wsscode.pathom3.connect.planner/run-and     #{3 2},
-               :com.wsscode.pathom3.connect.planner/run-next    7,
-               :com.wsscode.pathom3.connect.planner/after-nodes #{11}},
-              3
-              {:com.wsscode.pathom3.connect.operation/op-name        b,
-               :com.wsscode.pathom3.connect.planner/node-id          3,
-               :com.wsscode.pathom3.connect.planner/expects          {:b {}},
-               :com.wsscode.pathom3.connect.planner/input            {},
-               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
-               :com.wsscode.pathom3.connect.planner/after-nodes      #{6 9}},
-              2
-              {:com.wsscode.pathom3.connect.operation/op-name        c,
-               :com.wsscode.pathom3.connect.planner/node-id          2,
-               :com.wsscode.pathom3.connect.planner/expects          {:c {}},
-               :com.wsscode.pathom3.connect.planner/input            {},
-               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:c},
-               :com.wsscode.pathom3.connect.planner/after-nodes      #{6 9}},
-              11
-              {:com.wsscode.pathom3.connect.planner/node-id 11,
-               :com.wsscode.pathom3.connect.planner/expects {:b {}, :c {}, :f {}},
-               :com.wsscode.pathom3.connect.planner/run-and #{6 9}},
-              9
-              {:com.wsscode.pathom3.connect.planner/node-id     9,
-               :com.wsscode.pathom3.connect.planner/expects     {:b {}, :c {}, :f {}},
-               :com.wsscode.pathom3.connect.planner/run-and     #{3 2 10},
-               :com.wsscode.pathom3.connect.planner/run-next    8,
-               :com.wsscode.pathom3.connect.planner/after-nodes #{11}},
-              5
-              {:com.wsscode.pathom3.connect.operation/op-name   d,
-               :com.wsscode.pathom3.connect.planner/node-id     5,
-               :com.wsscode.pathom3.connect.planner/expects     {:d {}},
-               :com.wsscode.pathom3.connect.planner/input       {:c {}, :b {}},
-               :com.wsscode.pathom3.connect.planner/after-nodes #{7}},
-              10
-              {:com.wsscode.pathom3.connect.operation/op-name        f,
-               :com.wsscode.pathom3.connect.planner/node-id          10,
-               :com.wsscode.pathom3.connect.planner/expects          {:f {}},
-               :com.wsscode.pathom3.connect.planner/input            {},
-               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:f},
-               :com.wsscode.pathom3.connect.planner/after-nodes      #{9}},
-              8
-              {:com.wsscode.pathom3.connect.operation/op-name        e,
-               :com.wsscode.pathom3.connect.planner/node-id          8,
-               :com.wsscode.pathom3.connect.planner/expects          {:e {}},
-               :com.wsscode.pathom3.connect.planner/input            {:c {}, :b {}, :f {}},
-               :com.wsscode.pathom3.connect.planner/after-nodes      #{9},
-               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:e}}},
+                                                                        {7
+                                                                         {:com.wsscode.pathom3.connect.planner/node-id 7,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:a {}, :d {}},
+                                                                          :com.wsscode.pathom3.connect.planner/run-and #{1 5},
+                                                                          :com.wsscode.pathom3.connect.planner/after-nodes #{4}},
+                                                                         1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input {:c {}, :b {}},
+                                                                          :com.wsscode.pathom3.connect.planner/after-nodes #{7},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}},
+                                                                         4
+                                                                         {:com.wsscode.pathom3.connect.planner/node-id 4,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}, :c {}},
+                                                                          :com.wsscode.pathom3.connect.planner/run-and #{3 2},
+                                                                          :com.wsscode.pathom3.connect.planner/run-next 7,
+                                                                          :com.wsscode.pathom3.connect.planner/after-nodes #{11}},
+                                                                         3
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name b,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                                          :com.wsscode.pathom3.connect.planner/after-nodes #{4 9}},
+                                                                         2
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name c,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:c {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:c},
+                                                                          :com.wsscode.pathom3.connect.planner/after-nodes #{4 9}},
+                                                                         11
+                                                                         {:com.wsscode.pathom3.connect.planner/node-id 11,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}, :c {}, :f {}},
+                                                                          :com.wsscode.pathom3.connect.planner/run-and #{4 9}},
+                                                                         9
+                                                                         {:com.wsscode.pathom3.connect.planner/node-id 9,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}, :c {}, :f {}},
+                                                                          :com.wsscode.pathom3.connect.planner/run-and #{3 2 10},
+                                                                          :com.wsscode.pathom3.connect.planner/run-next 8,
+                                                                          :com.wsscode.pathom3.connect.planner/after-nodes #{11}},
+                                                                         5
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name d,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id 5,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:d {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input {:c {}, :b {}},
+                                                                          :com.wsscode.pathom3.connect.planner/after-nodes #{7}},
+                                                                         10
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name f,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id 10,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:f {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:f},
+                                                                          :com.wsscode.pathom3.connect.planner/after-nodes #{9}},
+                                                                         8
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name e,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id 8,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:e {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input {:c {}, :b {}, :f {}},
+                                                                          :com.wsscode.pathom3.connect.planner/after-nodes #{9},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:e}}},
              :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-             {a #{1}, c #{2}, b #{3}, d #{5}, e #{8}, f #{10}},
-             :com.wsscode.pathom3.connect.planner/unreachable-resolvers
-             #{},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs
-             #{},
+                                                                        {a #{1}, c #{2}, b #{3}, d #{5}, e #{8}, f #{10}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs #{},
              :com.wsscode.pathom3.connect.planner/index-ast
-             {:a {:type :prop, :dispatch-key :a, :key :a},
-              :d {:type :prop, :dispatch-key :d, :key :d},
-              :e {:type :prop, :dispatch-key :e, :key :e}},
+                                                                        {:a {:type :prop, :dispatch-key :a, :key :a},
+                                                                         :d {:type :prop, :dispatch-key :d, :key :d},
+                                                                         :e {:type :prop, :dispatch-key :e, :key :e}},
              :com.wsscode.pathom3.connect.planner/index-attrs
-             {:c 2, :b 3, :a 1, :f 10, :e 8},
-             :com.wsscode.pathom3.connect.planner/root
-             11}))
+                                                                        {:c 2, :b 3, :a 1, :f 10, :e 8},
+             :com.wsscode.pathom3.connect.planner/root 11}))
 
     (is (= (compute-run-graph
              '{::pci/index-oir {:a {#{:c :b} #{a}}
