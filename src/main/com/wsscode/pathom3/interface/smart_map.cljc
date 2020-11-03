@@ -374,8 +374,9 @@
          run-stats (pcr/run-graph! env ast entity-tree*)]
      (smart-map
        (pcrs/run-stats-env run-stats)
-       (assoc run-stats ::value
-         (wrap-smart-map env (get @entity-tree* k)))))))
+       (-> run-stats
+           (dissoc ::pcr/node-run-stats)
+           (assoc ::value (wrap-smart-map env (get @entity-tree* k))))))))
 
 (>defn sm-assoc!
   "Assoc on the smart map in place, this function mutates the current cache and return

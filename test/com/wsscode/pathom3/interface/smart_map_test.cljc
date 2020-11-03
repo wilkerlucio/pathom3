@@ -192,6 +192,17 @@
       (is (= (find sm :right) [:right 8]))
       (is (= (find sm ::noop) nil)))))
 
+(pco/defresolver error-resolver []
+  {:error (throw (ex-info "Error" {}))})
+
+(deftest smart-map-errors-test
+  (let [sm (-> (pci/register error-resolver)
+               (psm/smart-map))]
+    (is (= (:error sm) nil))
+    (is (= (-> sm
+               (psm/sm-update-env pci/register (pbir/constantly-resolver :not-here "now it is"))
+               :not-here) "now it is"))))
+
 (deftest sm-update-env-test
   (let [sm (-> (pci/register registry)
                (psm/smart-map {:x 3 :width 5}))]
