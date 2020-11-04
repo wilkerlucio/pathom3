@@ -361,7 +361,7 @@
   (let [env (apply f (sm-env sm) args)]
     (smart-map env (::source-context env))))
 
-(>defn sm-get-debug
+(>defn sm-get-with-stats
   "Return the graph run analysis, use for debugging. You can find the get value return
   in the ::psm/value key.
 
