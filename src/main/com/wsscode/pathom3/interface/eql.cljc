@@ -17,7 +17,8 @@
     (-> @ent-tree*
         (assoc ::pcr/run-stats (psm/smart-map
                                  (pcrs/run-stats-env run-stats)
-                                 run-stats))
+                                 (-> run-stats
+                                     (dissoc ::pcr/node-run-stats))))
         (pf.eql/map-select-ast ast))))
 
 (>defn process
