@@ -1,9 +1,0 @@
-= Pathom 3
-
-image:resources/pathom-banner-padded.png[Pathom Logo]
-
-Logic engine for attribute processing for Clojure and Clojurescript.
-
-Pathom3 is a redesign of Pathom, this is a new library and uses different namespaces.
-
-Work in progress.
