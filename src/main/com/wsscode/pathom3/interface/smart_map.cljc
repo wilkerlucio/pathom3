@@ -250,6 +250,7 @@
      (dissoc [_ k] (sm-dissoc env k))
      (keys [_] (sm-keys env))
      (meta [_] (sm-meta env))
+     (empty [_] (smart-map env (with-meta {} (sm-meta env))))
      (with-meta [_ new-meta] (sm-with-meta env new-meta))
      (entryAt [_ k] (sm-find env k)))
 

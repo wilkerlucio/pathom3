@@ -106,6 +106,17 @@
       (is (= (:right sm) 8))
       (is (= (meta sm) {:foo "bar"}))))
 
+  (testing "empty"
+    (testing "retains meta"
+      (let [sm (-> (pci/register registry)
+                   (psm/smart-map {:x 3 :width 5})
+                   (with-meta {:foo "bar"})
+                   (empty))]
+        (is (= sm {}))
+        (is (= (-> sm (assoc :x 10)
+                   ::geo/x) 10))
+        (is (= (meta sm) {:foo "bar"})))))
+
   (testing "count, uses the count from cache-tree"
     (let [sm (-> (pci/register registry)
                  (psm/smart-map {:x 3 :width 5}))]
