@@ -28,6 +28,10 @@
   (is (= ((pbir/constantly-resolver :foo "bar"))
          {:foo "bar"})))
 
+(deftest constantly-fn-resolver-test
+  (is (= ((pbir/constantly-fn-resolver :foo (fn [_] "bar")))
+         {:foo "bar"})))
+
 (deftest single-attr-resolver-test
   (is (= ((pbir/single-attr-resolver :n :x inc) {:n 10})
          {:x 11})))

@@ -47,7 +47,7 @@
    (let [resolver-name (symbol (str (attr-munge attribute) "-constant"))]
      (pco/resolver resolver-name
        {::pco/output [attribute]}
-       (fn [_ _] {attribute (value-fn)})))))
+       (fn [env _] {attribute (value-fn env)})))))
 
 (defn single-attr-resolver
   "Apply fn `f` to input `source` and spits the result with the name `target`.
