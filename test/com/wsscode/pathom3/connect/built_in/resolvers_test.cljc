@@ -10,20 +10,6 @@
   (is (= ((pbir/alias-resolver :foo :bar) {} {:foo 3})
          {:bar 3})))
 
-(deftest edn-file-resolver-test
-  (let [[resolver :as resolvers] (pbir/edn-file-resolver "resources/sample-config.edn")]
-    (is (= (::pco/output (pco/operation-config resolver))
-           [:my.system/generic-db :my.system/initial-path :my.system/port]))
-
-    (is (= (resolver {} {})
-           #:my.system{:initial-path "/tmp/system"
-                       :port         1234
-                       :generic-db   {4 {:my.system.user/name "Anne"}
-                                      2 {:my.system.user/name "Fred"}}}))
-
-    (let [sm (psm/smart-map (pci/register resolvers) {:my.system/user-id 4})]
-      (is (= (:my.system.user/name sm) "Anne")))))
-
 (deftest constantly-resolver-test
   (is (= ((pbir/constantly-resolver :foo "bar"))
          {:foo "bar"})))
@@ -91,3 +77,41 @@
            [::id]))
     (is (= (::pco/output config)
            [::color]))))
+
+(deftest edn-file-resolver-test
+  (let [[resolver :as resolvers] (pbir/edn-file-resolver "resources/sample-config.edn")]
+    (is (= (::pco/output (pco/operation-config resolver))
+           [:my.system/generic-db :my.system/initial-path :my.system/port]))
+
+    (is (= (resolver {} {})
+           #:my.system{:initial-path "/tmp/system"
+                       :port         1234
+                       :generic-db   {4 {:my.system.user/name "Anne"}
+                                      2 {:my.system.user/name "Fred"}}}))
+
+    (let [sm (psm/smart-map (pci/register resolvers) {:my.system/user-id 4})]
+      (is (= (:my.system.user/name sm) "Anne")))))
+
+(deftest global-data-resolver-test
+  (let [[resolver :as resolvers] (pbir/global-data-resolver
+                                   {:my.system/port
+                                    1234
+
+                                    :my.system/initial-path
+                                    "/tmp/system"
+
+                                    :my.system/generic-db
+                                    ^{:com.wsscode.pathom3/entity-table :my.system/user-id}
+                                    {4 {:my.system.user/name "Anne"}
+                                     2 {:my.system.user/name "Fred"}}})]
+    (is (= (::pco/output (pco/operation-config resolver))
+           [:my.system/generic-db :my.system/initial-path :my.system/port]))
+
+    (is (= (resolver {} {})
+           #:my.system{:initial-path "/tmp/system"
+                       :port         1234
+                       :generic-db   {4 {:my.system.user/name "Anne"}
+                                      2 {:my.system.user/name "Fred"}}}))
+
+    (let [sm (psm/smart-map (pci/register resolvers) {:my.system/user-id 4})]
+      (is (= (:my.system.user/name sm) "Anne")))))

@@ -270,3 +270,27 @@
            {::pco/output ~output}
            (fn ~'[_ _] ~data))
          ~attr-tables])))
+
+(defn extract-attr-tables
+  [data]
+  (into []
+        (keep
+          (fn [[k v]]
+            (if-let [attr-key (and (map? v)
+                                   (:com.wsscode.pathom3/entity-table (meta v)))]
+              (attribute-table-resolver k attr-key (table-output v)))))
+        data))
+
+(defn global-data-resolver
+  "Expose data as a resolver, note this data will be available everywhere in the parser.
+
+  Works the same as edn-file-resolver, but uses the data directly instead of reading
+  from a file. This also applies for the attribute tables inside the data."
+  [data]
+  (let [resolver-name (symbol "com.wsscode.pathom3.global-data-resolver" (str (hash data)))
+        output        (pf.eql/data->query data)
+        attr-tables   (extract-attr-tables data)]
+    [(pco/resolver resolver-name
+       {::pco/output output}
+       (fn global-data-resolver-fn [_ _] data))
+     attr-tables]))
