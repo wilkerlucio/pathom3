@@ -75,6 +75,6 @@
 (def stats-index (pci/register stats-registry))
 
 (defn run-stats-env [stats]
-  (-> stats-index
-      (assoc :com.wsscode.pathom3.interface.smart-map/keys-mode :com.wsscode.pathom3.interface.smart-map/keys-mode-reachable)
-      (merge stats)))
+  (-> stats
+      (merge stats-index)
+      (assoc :com.wsscode.pathom3.interface.smart-map/keys-mode :com.wsscode.pathom3.interface.smart-map/keys-mode-reachable)))
