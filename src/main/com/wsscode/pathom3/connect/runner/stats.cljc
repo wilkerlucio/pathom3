@@ -30,11 +30,6 @@
 
 ; region errors
 
-(pco/defresolver attribute-node
-  [{::pcp/keys [index-attrs]}
-   {::p.attr/keys [attribute]}]
-  {::pcp/node-id (get index-attrs attribute)})
-
 (pco/defresolver attribute-error
   "Find the error for a node, it first try to find the error in the node itself, but
   also walks up the graph to collect errors on previous nodes."
@@ -59,8 +54,9 @@
   [resolver-accumulated-duration
    overhead-duration
    overhead-pct
-   attribute-node
    attribute-error
+   (pbir/single-attr-with-env-resolver ::p.attr/attribute ::pcp/node-id
+                                       #(get (::pcp/index-attrs %) %2 ::pcr/unknown-value))
    (pbir/env-table-resolver ::pcp/nodes ::pcp/node-id
      [::pco/op-name
       ::pcp/expects
