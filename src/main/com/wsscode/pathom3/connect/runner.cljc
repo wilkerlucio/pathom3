@@ -3,6 +3,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.coll :as coll]
+    [com.wsscode.misc.refs :as refs]
     [com.wsscode.misc.time :as time]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
@@ -84,7 +85,10 @@
   [(s/keys :opt [::merge-attribute]) ::p.ent/entity-tree ::p.ent/entity-tree
    => ::p.ent/entity-tree]
   (reduce-kv
-    (fn [out k v] (assoc out k (process-attr-subquery env k v)))
+    (fn [out k v]
+      (if (refs/kw-identical? v ::unknown-value)
+        out
+        (assoc out k (process-attr-subquery env k v))))
     entity
     new-data))
 
