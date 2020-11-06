@@ -6,7 +6,11 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.interface.smart-map :as psm]
-    [com.wsscode.pathom3.test.geometry-resolvers :as geo]))
+    [com.wsscode.pathom3.test.geometry-resolvers :as geo])
+  #?(:clj
+     (:import
+       (clojure.lang
+         ExceptionInfo))))
 
 (pco/defresolver points-vector []
   {::points-vector
@@ -207,12 +211,21 @@
   {:error (throw (ex-info "Error" {}))})
 
 (deftest smart-map-errors-test
-  (let [sm (-> (pci/register error-resolver)
-               (psm/smart-map))]
-    (is (= (:error sm) nil))
-    (is (= (-> sm
-               (psm/sm-update-env pci/register (pbir/constantly-resolver :not-here "now it is"))
-               :not-here) "now it is"))))
+  (testing "quiet mode (default)"
+    (let [sm (-> (pci/register error-resolver)
+                 (psm/smart-map))]
+      (is (= (:error sm) nil))
+      (is (= (-> sm
+                 (psm/sm-update-env pci/register (pbir/constantly-resolver :not-here "now it is"))
+                 :not-here) "now it is"))))
+
+  (testing "loud mode"
+    (let [sm (-> (pci/register error-resolver)
+                 (psm/with-error-mode ::psm/error-mode-loud)
+                 (psm/smart-map))]
+      (is (thrown?
+            #?(:clj ExceptionInfo :cljs js/Error)
+            (:error sm))))))
 
 (deftest sm-update-env-test
   (let [sm (-> (pci/register registry)

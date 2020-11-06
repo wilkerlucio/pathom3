@@ -6,6 +6,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.coll :as coll]
+    [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.stats :as pcrs]
@@ -15,11 +16,27 @@
 
 (declare smart-map smart-map?)
 
+(>def ::error-mode
+  #{::error-mode-silent
+    ::error-mode-loud})
+
 (>def ::keys-mode
   #{::keys-mode-cached
     ::keys-mode-reachable})
 
 (>def ::wrap-nested? boolean?)
+
+(>defn with-error-mode
+  "This configures what happens when some error occur during the Pathom process to
+  provide more data to the Smart Map.
+
+  Available modes:
+
+  ::error-mode-silent (default): Return `nil` as the value, don't throw errors.
+  ::error-mode-loud: Throw the errors on read."
+  [env error-mode]
+  [map? ::error-mode => map?]
+  (assoc env ::error-mode error-mode))
 
 (>defn with-keys-mode
   "Configure how the Smart Map should respond to `keys`.
@@ -82,9 +99,17 @@
    (let [ent-tree @entity-tree*]
      (if-let [x (find ent-tree k)]
        (wrap-smart-map env (val x))
-       (let [ast {:type     :root
-                  :children [{:type :prop, :dispatch-key k, :key k}]}]
-         (pcr/run-graph! env ast entity-tree*)
+       (let [ast   {:type     :root
+                    :children [{:type :prop, :dispatch-key k, :key k}]}
+             stats (pcr/run-graph! env ast entity-tree*)]
+         (when-let [error (and (refs/kw-identical? (get env ::error-mode) ::error-mode-loud)
+                               (-> stats
+                                   (pcrs/attribute-error
+                                     {:com.wsscode.pathom3.connect.planner/node-id
+                                      (get-in stats [:com.wsscode.pathom3.connect.planner/index-attrs k])})
+                                   ::pcrs/attribute-error
+                                   ::pcr/node-error))]
+           (throw error))
          (wrap-smart-map env (get @entity-tree* k default-value)))))))
 
 (defn sm-assoc
