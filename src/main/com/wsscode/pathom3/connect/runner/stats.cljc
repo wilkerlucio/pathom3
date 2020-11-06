@@ -70,7 +70,7 @@
       ::pcp/run-next
       ::pcp/foreign-ast
       ::pcp/source-for-attrs
-      ::pcp/after-nodes])
+      ::pcp/node-parents])
    (pbir/env-table-resolver ::pcr/node-run-stats ::pcp/node-id
      [::pcr/run-duration-ms
       ::pcr/node-run-input

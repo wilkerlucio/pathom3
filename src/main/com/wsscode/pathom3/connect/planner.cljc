@@ -32,7 +32,7 @@
   "An shape descriptor declaring which data is already available when the planner starts."
   ::fsd/shape-descriptor)
 
-(>def ::after-nodes
+(>def ::node-parents
   "A set of node-ids that points to the nodes before the current node.
   In regular execution nodes, this is the reverse of ::run-next, but in case of
   immediate children of branch nodes, this points to the branch node."
@@ -87,7 +87,7 @@
 
 (>def ::node
   "Node."
-  (s/and (s/conformer ignore-nils) (s/keys :opt [::node-id ::run-next ::after-nodes ::expects ::input])))
+  (s/and (s/conformer ignore-nils) (s/keys :opt [::node-id ::run-next ::node-parents ::expects ::input])))
 
 (>def ::nodes
   "The nodes index."
@@ -367,15 +367,15 @@
   are also calculated and set, this makes it efficient to scan the list calculating
   the depths, given each node will be visited at max once."
   [graph node-id]
-  (let [{::keys [after-nodes node-depth]} (get-node graph node-id)]
+  (let [{::keys [node-parents node-depth]} (get-node graph node-id)]
     (cond
       node-depth
       graph
 
-      after-nodes
+      node-parents
       (let [graph' (reduce #(-> (compute-branch-node-chain-depth % %2)
-                                (compute-node-depth %2)) graph after-nodes)
-            depth  (-> (apply max (mapv #(previous-node-depth graph' node-id %) after-nodes))
+                                (compute-node-depth %2)) graph node-parents)
+            depth  (-> (apply max (mapv #(previous-node-depth graph' node-id %) node-parents))
                        inc)]
         (assoc-node graph' node-id ::node-depth depth))
 
@@ -434,19 +434,19 @@
 
 (defn add-after-node [graph node-id after-node-id]
   (assert after-node-id "Tried to add after node with nil value")
-  (update-node graph node-id ::after-nodes coll/sconj after-node-id))
+  (update-node graph node-id ::node-parents coll/sconj after-node-id))
 
 (defn set-after-node [graph node-id after-node-id]
   (assert after-node-id "Tried to set after node with nil value")
-  (assoc-node graph node-id ::after-nodes #{after-node-id}))
+  (assoc-node graph node-id ::node-parents #{after-node-id}))
 
 (defn remove-after-node [graph node-id after-node-id]
   (let [node         (get-node graph node-id)
-        after-nodes' (disj (::after-nodes node #{}) after-node-id)]
+        after-nodes' (disj (::node-parents node #{}) after-node-id)]
     (if (seq after-nodes')
-      (assoc-node graph node-id ::after-nodes after-nodes')
+      (assoc-node graph node-id ::node-parents after-nodes')
       (if node
-        (update-in graph [::nodes node-id] dissoc ::after-nodes)
+        (update-in graph [::nodes node-id] dissoc ::node-parents)
         graph))))
 
 (>defn same-resolver?
@@ -513,10 +513,10 @@
   "Remove a node from the graph. In case of resolver nodes it also removes them
   from the ::index-syms and after node references."
   [graph node-id]
-  (let [{::keys [run-next after-nodes] :as node} (get-node graph node-id)]
-    (assert (if after-nodes
+  (let [{::keys [run-next node-parents] :as node} (get-node graph node-id)]
+    (assert (if node-parents
               (every? #(not= node-id (-> (get-node graph %) ::run-next))
-                after-nodes)
+                node-parents)
               true)
       "Tried to remove node that still contains references pointing to it. Move
       the run-next references from the pointer nodes before removing it.")
@@ -611,12 +611,12 @@
 
 (defn transfer-node-after-nodes
   "Set the run next for each after node to be target-node-id."
-  [graph target-node-id {::keys [after-nodes]}]
-  (if (seq after-nodes)
+  [graph target-node-id {::keys [node-parents]}]
+  (if (seq node-parents)
     (reduce
       #(set-node-run-next % %2 target-node-id)
       graph
-      after-nodes)
+      node-parents)
     graph))
 
 (defn collapse-nodes-branch
@@ -1006,9 +1006,9 @@
   (loop [node-queue (coll/queue [node-id])
          ancestors  []]
     (if-let [node-id' (peek node-queue)]
-      (let [{::keys [after-nodes]} (get-node graph node-id')]
+      (let [{::keys [node-parents]} (get-node graph node-id')]
         (recur
-          (into (pop node-queue) after-nodes)
+          (into (pop node-queue) node-parents)
           (conj ancestors node-id')))
       ancestors)))
 
@@ -1203,9 +1203,9 @@
       (do
         (println "Ancestors Cycle detected" visited node-id')
         chain)
-      (let [{::keys [after-nodes]} (get-node graph node-id')
-            next-id (first after-nodes)]
-        (if (= 1 (count after-nodes))
+      (let [{::keys [node-parents]} (get-node graph node-id')
+            next-id (first node-parents)]
+        (if (= 1 (count node-parents))
           (recur
             next-id
             (conj visited node-id')
