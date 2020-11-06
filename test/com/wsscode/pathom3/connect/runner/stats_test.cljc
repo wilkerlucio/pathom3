@@ -1,8 +1,11 @@
 (ns com.wsscode.pathom3.connect.runner.stats-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
+    [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.runner :as pcr]
-    [com.wsscode.pathom3.connect.runner.stats :as pcrs]))
+    [com.wsscode.pathom3.connect.runner.stats :as pcrs]
+    [com.wsscode.pathom3.interface.smart-map :as psm]))
 
 (deftest resolver-accumulated-duration-test
   (is (= (pcrs/resolver-accumulated-duration
@@ -21,3 +24,28 @@
   (is (= (pcrs/overhead-pct {::pcr/graph-process-duration-ms 100
                              ::pcrs/overhead-duration-ms     20})
          {::pcrs/overhead-duration-percentage 0.2})))
+
+(def err (ex-info "Error" {}))
+
+(defn error-resolver [attr]
+  (pbir/constantly-fn-resolver attr (fn [_] (throw err))))
+
+(deftest find-error-for-attribute-test
+  (is (= (let [stats (-> (psm/smart-map
+                           (pci/register (error-resolver :a)))
+                         (psm/sm-get-with-stats :a))]
+           (-> stats empty
+               (assoc :com.wsscode.pathom3.attribute/attribute :a)
+               ::pcrs/attribute-error))
+         {::pcrs/node-error-type ::pcrs/node-error-type-direct
+          ::pcr/node-error       err}))
+
+  (is (= (let [stats (-> (psm/smart-map
+                           (pci/register [(error-resolver :a)
+                                          (pbir/single-attr-resolver :a :b inc)]))
+                         (psm/sm-get-with-stats :b))]
+           (-> stats empty
+               (assoc :com.wsscode.pathom3.attribute/attribute :b)
+               ::pcrs/attribute-error))
+         {::pcrs/node-error-type ::pcrs/node-error-type-ancestor
+          ::pcr/node-error       err})))
