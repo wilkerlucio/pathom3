@@ -148,6 +148,11 @@
           (pci/attribute-reachable? env (p.ent/entity env) k))
     (coll/make-map-entry k (sm-get env k))))
 
+(defn sm-empty
+  "Return a new smart map with the same environment and an empty map context."
+  [env]
+  (smart-map env (with-meta {} (sm-meta env))))
+
 ; region type definition
 
 #?(:cljs
@@ -250,7 +255,7 @@
      (dissoc [_ k] (sm-dissoc env k))
      (keys [_] (sm-keys env))
      (meta [_] (sm-meta env))
-     (empty [_] (smart-map env (with-meta {} (sm-meta env))))
+     (empty [_] (sm-empty env))
      (with-meta [_ new-meta] (sm-with-meta env new-meta))
      (entryAt [_ k] (sm-find env k)))
 
@@ -292,7 +297,7 @@
                       (throw (js/Error. "conj on a map takes map entries or seqables of map entries"))))))))
 
      IEmptyableCollection
-     (-empty [_] (-with-meta (smart-map env {}) meta))
+     (-empty [_] (sm-empty env))
 
      IEquiv
      (-equiv [_ other] (-equiv (p.ent/entity env) other))
