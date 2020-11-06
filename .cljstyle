@@ -24,6 +24,7 @@
                          mapv                    [[:inner 0]]
                          p.cache/cached          [[:inner 0]]
                          p/cached-async          [[:inner 0]]
+                         pbir/env-table-resolver [[:inner 0]]
                          pc/defmutation          [[:inner 0]]
                          pc/defresolver          [[:inner 0]]
                          pc/mutation             [[:inner 0]]
