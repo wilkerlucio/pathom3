@@ -33,7 +33,7 @@
   ::fsd/shape-descriptor)
 
 (>def ::node-parents
-  "A set of node-ids that points to the nodes before the current node.
+  "A set of node-ids containing the direct parents of the current node.
   In regular execution nodes, this is the reverse of ::run-next, but in case of
   immediate children of branch nodes, this points to the branch node."
   ::node-id-set)
