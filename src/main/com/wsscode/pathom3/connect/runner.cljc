@@ -107,8 +107,8 @@
   [env idents]
   (doseq [k idents]
     (p.ent/swap-entity! env
-                        #(assoc % k (process-attr-subquery env k
-                                                           (assoc (get % k) (first k) (second k)))))))
+      #(assoc % k (process-attr-subquery env k
+                                         (assoc (get % k) (first k) (second k)))))))
 
 (defn run-next-node!
   "Runs the next node associated with the node, in case it exists."
