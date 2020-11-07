@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.connect.operation.protocols :as pop]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd])
@@ -146,7 +147,7 @@
    :cljs
    (s/def ::defresolver-args any?))
 
-(defn as-entry? [x] (= :as (first x)))
+(defn as-entry? [x] (refs/kw-identical? :as (first x)))
 
 (defn extract-destructure-map-keys-as-keywords [m]
   (into []
@@ -168,7 +169,7 @@
       (and (map? last-expr) (not (::output options)))
       (assoc ::output (pf.eql/data->query last-expr))
 
-      (and (= :map input-type)
+      (and (refs/kw-identical? :map input-type)
            (not (::input options)))
       (assoc ::input (extract-destructure-map-keys-as-keywords input-arg)))))
 

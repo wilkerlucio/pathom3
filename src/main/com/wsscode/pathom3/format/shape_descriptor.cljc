@@ -7,6 +7,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.coll :as coll]
+    [com.wsscode.misc.refs :as refs]
     [edn-query-language.core :as eql]))
 
 (>def ::shape-descriptor
@@ -65,7 +66,7 @@
   [:edn-query-language.ast/node => ::shape-descriptor]
   (reduce
     (fn [m {:keys [key type children] :as node}]
-      (if (= :union type)
+      (if (refs/kw-identical? :union type)
         (let [unions (into [] (map ast->shape-descriptor) children)]
           (reduce merge-shapes m unions))
         (assoc m key (ast->shape-descriptor node))))

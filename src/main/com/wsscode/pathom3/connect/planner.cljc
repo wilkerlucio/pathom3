@@ -680,14 +680,14 @@
     (cond
       collapse-node-id
       (cond-> (collapse-nodes-branch graph env collapse-node-id node-id)
-        (= branch-type ::run-and)
+        (refs/kw-identical? branch-type ::run-and)
         (merge-node-expects root (get-node graph node-id)))
 
       (= (::run-next root-node) node-id)
       graph
 
       :else
-      (if (and (= branch-type ::run-and)
+      (if (and (refs/kw-identical? branch-type ::run-and)
                (::run-and node)
                (= (::run-next node)
                   (::run-next root-node)))
@@ -701,7 +701,7 @@
             (update-in [::nodes root branch-type] coll/sconj node-id)
             (add-after-node node-id root)
             (cond->
-              (= branch-type ::run-and)
+              (refs/kw-identical? branch-type ::run-and)
               (merge-node-expects root node)
 
               (optimize-merge? graph node)

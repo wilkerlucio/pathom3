@@ -4,6 +4,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.coll :as coll]
+    [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.attribute :as p.attr]
     [edn-query-language.core :as eql]))
 
@@ -32,7 +33,7 @@
 (defn union-children?
   "Given an AST point, check if the children is a union query type."
   [ast]
-  (= :union (some-> ast :children first :type)))
+  (refs/kw-identical? :union (some-> ast :children first :type)))
 
 (defn maybe-merge-union-ast
   "Check if AST entry is a union, if so it computes a new AST entry by combining
