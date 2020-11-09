@@ -1077,7 +1077,7 @@
     [::graph (s/keys :req [::graph-before-missing-chain]) (s/coll-of ::eql/property :kind set?)
      => ::graph])
   (if (seq missing)
-    (let [_             (add-snapshot! graph env {::snapshot-message (str "Computing " (pr-str missing) " dependencies for " (pc-attr env))})
+    (let [_             (add-snapshot! graph env {::snapshot-message (str "Computing " (pc-attr env) " dependencies: " (pr-str missing))})
           {::keys [index-attrs] :as graph'}
           (compute-run-graph*
             (dissoc graph ::root)
