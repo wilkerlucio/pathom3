@@ -245,6 +245,8 @@
         ::node-run-stats (some-> env ::node-run-stats* deref)))))
 
 (>defn run-graph!
+  "Plan and execute a request, given an environment (with indexes), the request AST
+  and the entity-tree*."
   [env ast entity-tree*]
   [(s/keys) :edn-query-language.ast/node ::p.ent/entity-tree*
    => (s/keys)]
