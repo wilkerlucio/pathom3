@@ -14,6 +14,7 @@
 
 (defn operation? [x] (satisfies? pop/IOperation x))
 (defn resolver? [x] (satisfies? pop/IResolver x))
+(defn mutation? [x] (satisfies? pop/IMutation x))
 
 ; endregion
 
@@ -24,10 +25,12 @@
 (>def ::output vector?)
 (>def ::params vector?)
 (>def ::resolve fn?)
-(>def ::operation-type #{::operation-type-resolver})
+(>def ::mutate fn?)
+(>def ::operation-type #{::operation-type-resolver ::operation-type-mutation})
 (>def ::operation-config map?)
 (>def ::operation operation?)
 (>def ::resolver resolver?)
+(>def ::mutation mutation?)
 (>def ::provides ::pfsd/shape-descriptor)
 (>def ::dynamic-name ::op-name)
 (>def ::dynamic-resolver? boolean?)
@@ -54,6 +57,24 @@
   #?(:cljs (-invoke [this] (resolve {} {})))
   #?(:cljs (-invoke [this input] (resolve {} input)))
   #?(:cljs (-invoke [this env input] (resolve env input))))
+
+(defrecord Mutation [config mutate]
+  pop/IOperation
+  (-operation-config [_] config)
+  (-operation-type [_] ::operation-type-mutation)
+
+  pop/IMutation
+  (-mutate [_ env input] (mutate env input))
+
+  #?(:clj clojure.lang.IFn)
+  #?(:clj (invoke [this] (mutate {} {})))
+  #?(:clj (invoke [this input] (mutate {} input)))
+  #?(:clj (invoke [this env input] (mutate env input)))
+
+  #?(:cljs IFn)
+  #?(:cljs (-invoke [this] (mutate {} {})))
+  #?(:cljs (-invoke [this input] (mutate {} input)))
+  #?(:cljs (-invoke [this env input] (mutate env input))))
 
 ; endregion
 
@@ -85,13 +106,13 @@
   Returns an instance of the Resolver type.
   "
   ([op-name config resolve]
-   [::op-name (s/keys :opt [::output]) ::resolve => ::resolver]
+   [::op-name (s/keys :opt [::output ::params]) ::resolve => ::resolver]
    (resolver (assoc config ::op-name op-name ::resolve resolve)))
   ([{::keys [transform] :as config}]
    [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve ::transform])
           :resolver ::resolver)
     => ::resolver]
-   (if (satisfies? pop/IResolver config)
+   (if (resolver? config)
      config
      (let [{::keys [resolve output] :as config} (cond-> config transform transform)
            defaults (if output
@@ -101,6 +122,39 @@
            config'  (-> (merge defaults config)
                         (dissoc ::resolve ::transform))]
        (->Resolver config' (or resolve (fn [_ _])))))))
+
+(>defn mutation
+  "Helper to create a mutation. A mutation must have a name and the mutate function.
+
+  You can create a mutation using a map:
+
+      (mutation
+        {::op-name 'foo
+         ::output  [:foo]
+         ::mutate  (fn [env params] ...)})
+
+  Or with the helper syntax:
+
+      (mutation 'foo {} (fn [env params] ...))
+
+  Returns an instance of the Mutation type.
+  "
+  ([op-name config resolve]
+   [::op-name (s/keys :opt [::output ::params]) ::mutate => ::mutation]
+   (mutation (assoc config ::op-name op-name ::mutate resolve)))
+  ([{::keys [transform] :as config}]
+   [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve ::transform])
+          :mutation ::mutation)
+    => ::mutation]
+   (if (mutation? config)
+     config
+     (let [{::keys [mutate output] :as config} (cond-> config transform transform)
+           defaults (if output
+                      {::provides (pfsd/query->shape-descriptor output)}
+                      {})
+           config'  (-> (merge defaults config)
+                        (dissoc ::mutate ::transform))]
+       (->Mutation config' (or mutate (fn [_ _])))))))
 
 ; endregion
 
@@ -142,7 +196,15 @@
                 :options (s/? map?)
                 :body (s/+ any?))
          (fn must-have-output-visible-map-or-options [{:keys [body options]}]
-           (or (map? (last body)) options)))))
+           (or (map? (last body)) options))))
+
+     (s/def ::defmutation-args
+       (s/and
+         (s/cat :name simple-symbol?
+                :docstring (s/? string?)
+                :arglist ::operation-args
+                :options (s/? map?)
+                :body (s/+ any?)))))
 
    :cljs
    (s/def ::defresolver-args any?))
@@ -172,6 +234,17 @@
       (and (refs/kw-identical? :map input-type)
            (not (::input options)))
       (assoc ::input (extract-destructure-map-keys-as-keywords input-arg)))))
+
+(defn params->mutation-options [{:keys [arglist options body]}]
+  (let [[input-type params-arg] (last arglist)
+        last-expr (last body)]
+    (cond-> options
+      (and (map? last-expr) (not (::output options)))
+      (assoc ::output (pf.eql/data->query last-expr))
+
+      (and (refs/kw-identical? :map input-type)
+           (not (::params options)))
+      (assoc ::params (extract-destructure-map-keys-as-keywords params-arg)))))
 
 (defn normalize-arglist
   "Ensures arglist contains two elements."
@@ -273,7 +346,7 @@
            defdoc   (cond-> [] docstring (conj docstring))]
        (when (and options (not (s/valid? (s/keys) options)))
          (s/explain (s/keys) options)
-         (throw (ex-info (str "Invalid options on defresolver of " name)
+         (throw (ex-info (str "Invalid options on defresolver " name)
                          {:explain-data (s/explain-data (s/keys) options)})))
        `(def ~name
           ~@defdoc
@@ -284,6 +357,33 @@
 #?(:clj
    (s/fdef defresolver
      :args ::defresolver-args
+     :ret any?))
+
+#?(:clj
+   (defmacro defmutation
+     "Defines a new Pathom mutation."
+     {:arglists '([name docstring? arglist options? & body])}
+     [& args]
+     (let [{:keys [name docstring arglist options body] :as params}
+           (-> (s/conform ::defmutation-args args)
+               (update :arglist normalize-arglist))
+
+           arglist' (s/unform ::operation-args arglist)
+           fqsym    (full-symbol name (str *ns*))
+           defdoc   (cond-> [] docstring (conj docstring))]
+       (when (and options (not (s/valid? (s/keys) options)))
+         (s/explain (s/keys) options)
+         (throw (ex-info (str "Invalid options on defmutation " name)
+                         {:explain-data (s/explain-data (s/keys) options)})))
+       `(def ~name
+          ~@defdoc
+          (mutation '~fqsym ~(params->mutation-options params)
+                    (fn ~name ~arglist'
+                      ~@body))))))
+
+#?(:clj
+   (s/fdef defmutation
+     :args ::defmutation-args
      :ret any?))
 
 ; endregion
