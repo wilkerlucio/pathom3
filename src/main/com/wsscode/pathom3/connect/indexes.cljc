@@ -18,6 +18,15 @@
         :indexes ::indexes
         :many (s/coll-of ::operations)))
 
+(def op-set (s/coll-of ::pco/op-name :kind set?))
+
+(>def ::attr-id ::p.attr/attribute)
+(>def ::attr-combinations (s/coll-of ::pco/input :kind set?))
+(>def ::attr-input-in op-set)
+(>def ::attr-output-in op-set)
+(>def ::attr-mutation-output-in op-set)
+(>def ::attr-mutation-param-in op-set)
+
 (defn merge-oir
   "Merge ::index-oir maps."
   [a b]
@@ -124,6 +133,30 @@
                              {}
                              (pfse/query-root-properties output))}))))
 
+(defn- register-mutation
+  "Low level function to add a mutation to the index. For mutations, the index-mutations
+  and the index-attributes are affected."
+  ([indexes mutation]
+   (let [{::pco/keys [op-name params output]} (pco/operation-config mutation)]
+     (merge-indexes indexes
+       {::index-mutations  {op-name mutation}
+        ::index-attributes (as-> {} <>
+                             (reduce
+                               (fn [idx attribute]
+                                 (update idx attribute (partial merge-with coll/merge-grow)
+                                   {::attr-id           attribute
+                                    ::attr-mutation-param-in #{op-name}}))
+                               <>
+                               (some-> params pfse/query-root-properties))
+
+                             (reduce
+                               (fn [idx attribute]
+                                 (update idx attribute (partial merge-with coll/merge-grow)
+                                   {::attr-id            attribute
+                                    ::attr-mutation-output-in #{op-name}}))
+                               <>
+                               (some-> output pfse/query-root-properties)))}))))
+
 (>defn resolver
   [{::keys [index-resolvers]} resolver-name]
   [(s/keys :opt [::index-resolvers]) ::pco/op-name
@@ -157,7 +190,10 @@
      (pco/operation? operation-or-operations-or-indexes)
      (case (pco/operation-type operation-or-operations-or-indexes)
        ::pco/operation-type-resolver
-       (register-resolver indexes operation-or-operations-or-indexes))
+       (register-resolver indexes operation-or-operations-or-indexes)
+
+       ::pco/operation-type-mutation
+       (register-mutation indexes operation-or-operations-or-indexes))
 
      (sequential? operation-or-operations-or-indexes)
      (reduce register indexes operation-or-operations-or-indexes)

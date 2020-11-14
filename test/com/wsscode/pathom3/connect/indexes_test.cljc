@@ -42,7 +42,7 @@
                                                       :attr-output-in #{x}}}))))
 
 (deftest register-test
-  (testing "global resolver"
+  (testing "resolver"
     (let [resolver (pco/resolver 'r {::pco/output [:foo]}
                      (fn [_ _] {:foo 42}))]
       (is (= (pci/register resolver)
@@ -55,6 +55,17 @@
                                                    :attr-reach-via {#{} #{r}}}}
               ::pci/index-io         {#{} {:foo {}}}
               ::pci/index-oir        {:foo {#{} #{'r}}}}))))
+
+  (testing "mutation"
+    (let [mutation (pco/mutation 'r {::pco/output [:foo]
+                                     ::pco/params [:bla]}
+                                 (fn [_ _] {:foo 42}))]
+      (is (= (pci/register mutation)
+             {::pci/index-mutations  {'r mutation}
+              ::pci/index-attributes {:bla {::pci/attr-id                :bla
+                                            ::pci/attr-mutation-param-in #{'r}}
+                                      :foo {::pci/attr-id                 :foo
+                                            ::pci/attr-mutation-output-in #{'r}}}}))))
 
   (testing "multiple globals"
     (let [r1 (pco/resolver 'r {::pco/output [:foo]}
