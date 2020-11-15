@@ -1323,9 +1323,15 @@
   [graph env]
   (reduce
     (fn [graph ast]
-      (if (contains? #{:prop :join} (:type ast))
+      (cond
+        (contains? #{:prop :join} (:type ast))
         (compute-attribute-graph graph
           (assoc env :edn-query-language.ast/node ast))
+
+        (refs/kw-identical? (:type ast) :call)
+        (update graph ::mutations coll/sconj (:key ast))
+
+        :else
         graph))
     graph
     (:children (:edn-query-language.ast/node env))))
@@ -1368,21 +1374,24 @@
   "
   ([env]
    [(s/keys
-      :req [:edn-query-language.ast/node
-            ::pci/index-oir]
+      :req [:edn-query-language.ast/node]
       :opt [::available-data
-            ::pci/index-resolvers])
+            ::pci/index-mutations
+            ::pci/index-oir
+            ::pci/index-resolvers
+            ::plan-cache*])
     => ::graph]
    (compute-run-graph {} env))
 
   ([graph env]
    [(? (s/keys))
     (s/keys
-      :req [:edn-query-language.ast/node
-            ::pci/index-oir]
+      :req [:edn-query-language.ast/node]
       :opt [::available-data
-            ::plan-cache*
-            ::pci/index-resolvers])
+            ::pci/index-mutations
+            ::pci/index-oir
+            ::pci/index-resolvers
+            ::plan-cache*])
     => ::graph]
    (add-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
                              ::snapshot-message "Start query plan"})

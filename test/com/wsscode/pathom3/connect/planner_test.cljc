@@ -155,7 +155,7 @@
                                              :key          :a
                                              :type         :prop}}}))
 
-    (testing "ignore mutations"
+    (testing "mutations"
       (is (= (compute-run-graph
                {::pci/index-oir '{}
                 ::eql/query     [(list 'foo {})]})
@@ -163,6 +163,7 @@
                ::pcp/index-resolver->nodes {}
                ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
+               ::pcp/mutations             #{foo}
                ::pcp/index-ast             {foo {:dispatch-key foo
                                                  :key          foo
                                                  :params       {}
