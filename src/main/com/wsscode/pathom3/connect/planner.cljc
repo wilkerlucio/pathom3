@@ -1329,7 +1329,7 @@
           (assoc env :edn-query-language.ast/node ast))
 
         (refs/kw-identical? (:type ast) :call)
-        (update graph ::mutations coll/sconj (:key ast))
+        (update graph ::mutations coll/vconj ast)
 
         :else
         graph))

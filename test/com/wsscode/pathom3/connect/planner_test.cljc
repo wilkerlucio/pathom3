@@ -163,7 +163,10 @@
                ::pcp/index-resolver->nodes {}
                ::pcp/unreachable-resolvers #{}
                ::pcp/unreachable-attrs     #{}
-               ::pcp/mutations             #{foo}
+               ::pcp/mutations             [{:dispatch-key foo
+                                             :key          foo
+                                             :params       {}
+                                             :type         :call}]
                ::pcp/index-ast             {foo {:dispatch-key foo
                                                  :key          foo
                                                  :params       {}
