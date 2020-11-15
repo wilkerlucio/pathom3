@@ -6,8 +6,10 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
+    [com.wsscode.pathom3.connect.runner.stats :as pcrs]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [com.wsscode.pathom3.interface.smart-map :as psm]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
     [edn-query-language.core :as eql]))
@@ -261,12 +263,16 @@
                        :left      7}
                       20]})))
 
-  #_(testing "errors"
-      (let [error (ex-info "Error" {})]
-        (is (= (run-graph (pci/register
-                            (pco/resolver 'error {::pco/output [:error]}
-                              (fn [_ _] (throw error))))
-                 {}
-                 [:error])
-               {:error           ::pcr/node-error
-                ::pcr/node-error {[:error] error}})))))
+  (testing "errors"
+    (let [error (ex-info "Error" {})
+          stats (-> (run-graph (pci/register
+                                 (pco/resolver 'error {::pco/output [:error]}
+                                   (fn [_ _] (throw error))))
+                               {}
+                               [:error])
+                    meta ::pcr/run-stats)
+          env   (pcrs/run-stats-env stats)]
+      (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
+                 ::pcrs/attribute-error)
+             {::pcr/node-error       error
+              ::pcrs/node-error-type ::pcrs/node-error-type-direct})))))
