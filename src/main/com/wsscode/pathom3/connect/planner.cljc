@@ -163,7 +163,7 @@
 
 (>def ::placeholders
   "Placeholder items to nest in."
-  (s/coll-of ::p.attr/attribute))
+  ::p.attr/attributes-set)
 
 (>def ::idents
   "Idents collected while scanning query"
@@ -1282,7 +1282,7 @@
   (= (namespace attr) ">"))
 
 (defn add-placeholder-entry [graph attr]
-  (update graph ::placeholders coll/vconj attr))
+  (update graph ::placeholders coll/sconj attr))
 
 (defn compute-attribute-graph
   "Compute the run graph for a given attribute."

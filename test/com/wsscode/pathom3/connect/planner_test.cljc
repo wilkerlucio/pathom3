@@ -2245,7 +2245,7 @@
                                                                           :key          :>/p1,
                                                                           :query        [:a],
                                                                           :children     [{:type :prop, :dispatch-key :a, :key :a}]}},
-             :com.wsscode.pathom3.connect.planner/placeholders          [:>/p1]
+             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1}
              :com.wsscode.pathom3.connect.planner/root                  1,
              :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1}})))
 
@@ -2288,7 +2288,7 @@
                                                                              :query        [:b],
                                                                              :children     [{:type :prop, :dispatch-key :b, :key :b}]}},
              :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1, :b 2},
-             :com.wsscode.pathom3.connect.planner/placeholders          [:>/p1],
+             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1},
              :com.wsscode.pathom3.connect.planner/root                  3})))
 
   (testing "multiple placeholders repeating"
@@ -2319,7 +2319,7 @@
                                                                           :key          :>/p2,
                                                                           :query        [:a],
                                                                           :children     [{:type :prop, :dispatch-key :a, :key :a}]}},
-             :com.wsscode.pathom3.connect.planner/placeholders          [:>/p1 :>/p2],
+             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1 :>/p2},
              :com.wsscode.pathom3.connect.planner/root                  1,
              :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1}})))
 
@@ -2366,7 +2366,7 @@
                                                                                           :key          :>/p2,
                                                                                           :query        [:b],
                                                                                           :children     [{:type :prop, :dispatch-key :b, :key :b}]}]}},
-             :com.wsscode.pathom3.connect.planner/placeholders          [:>/p1 :>/p2],
+             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1 :>/p2},
              :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1, :b 2},
              :com.wsscode.pathom3.connect.planner/root                  3})))
 
