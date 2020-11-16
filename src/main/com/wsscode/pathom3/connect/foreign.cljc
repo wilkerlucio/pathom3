@@ -8,6 +8,7 @@
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
+    [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.error :as p.err]
     [com.wsscode.pathom3.format.eql :as pf.eql]
@@ -76,7 +77,7 @@
                    resolvers)))
          (assoc-in [::pci/index-resolvers index-source-id]
            (pco/resolver index-source-id
-             {::pco/cache?            false
+             {::pcr/cache?            false
               ::pco/dynamic-resolver? true}
              (fn [env _] (call-foreign-parser env parser))))
          (dissoc ::pci/index-source-id)))))

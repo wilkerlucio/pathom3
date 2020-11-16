@@ -288,7 +288,18 @@
            {}
            [:y])
          {:x 10
-          :y 30})))
+          :y 30}))
+
+  (is (= (run-graph
+           (-> (pci/register
+                 [(pbir/constantly-resolver :x 10)
+                  (assoc-in (pbir/single-attr-resolver :x :y #(* 2 %))
+                    [:config ::pcr/cache?] false)])
+               (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10}] {:y 30}})))
+           {}
+           [:y])
+         {:x 10
+          :y 20})))
 
 (deftest run-graph!-placeholders-test
   (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))

@@ -144,7 +144,9 @@
     :as        node}]
   (let [input-keys (keys input)
         resolver   (pci/resolver env op-name)
-        {::pco/keys [op-name]} (pco/operation-config resolver)
+        {::pco/keys [op-name]
+         ::keys     [cache?]
+         :or        {cache? true}} (pco/operation-config resolver)
         env        (assoc env ::pcp/node node)
         entity     (p.ent/entity env)
         input-data (select-keys entity input-keys)
@@ -153,9 +155,11 @@
                      (if (< (count input-data) (count input-keys))
                        (throw (ex-info "Insufficient data" {:required  input-keys
                                                             :available (keys input-data)}))
-                       (p.cache/cached ::resolver-cache* env
-                         [op-name input-data]
-                         #(pco.prot/-resolve resolver env input-data)))
+                       (if cache?
+                         (p.cache/cached ::resolver-cache* env
+                           [op-name input-data]
+                           #(pco.prot/-resolve resolver env input-data))
+                         (pco.prot/-resolve resolver env input-data)))
                      (catch #?(:clj Throwable :cljs :default) e
                        (mark-resolver-error env node e)
                        ::node-error))
