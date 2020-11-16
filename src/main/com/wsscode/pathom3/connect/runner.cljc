@@ -223,6 +223,22 @@
 
     nil))
 
+(defn placeholder-merge-entity
+  "Create an entity to process the placeholder demands. This consider if the placeholder
+  has params, params in placeholders means that you want some specific data at that
+  point."
+  [{::pcp/keys [graph] :as env} source-ent]
+  (let [entity (p.ent/entity env)]
+    (reduce
+      (fn [out ph]
+        (let [data (:params (pcp/entry-ast graph ph))]
+          (assoc out ph
+            (if (seq data)
+              (merge source-ent data)
+              entity))))
+      {}
+      (::pcp/placeholders graph))))
+
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the
   entity cache tree."
@@ -247,14 +263,7 @@
     (if-let [root (pcp/get-root-node graph)]
       (run-node! env root))
 
-    (if-let [placeholders (::pcp/placeholders graph)]
-      (merge-resolver-response! env
-                                (reduce
-                                  (fn [out ph]
-                                    (let [data (:params (pcp/entry-ast graph ph))]
-                                      (assoc out ph (merge source-ent data))))
-                                  {}
-                                  placeholders)))
+    (merge-resolver-response! env (placeholder-merge-entity env source-ent))
 
     ; compute minimal stats
     (let [total-time (- (time/now-ms) start)]

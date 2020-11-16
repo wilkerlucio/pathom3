@@ -356,3 +356,25 @@
                ::pcrs/attribute-error)
            {::pcr/node-error       error
             ::pcrs/node-error-type ::pcrs/node-error-type-direct}))))
+
+(deftest placeholder-merge-entity-test
+  (testing "forward current entity data"
+    (is (= (pcr/placeholder-merge-entity
+             {::pcp/graph          {::pcp/nodes        {}
+                                    ::pcp/placeholders #{:>/p1}
+                                    ::pcp/index-ast    {:>/p1 {:key          :>/p1
+                                                               :dispatch-key :>/p1}}}
+              ::p.ent/entity-tree* (atom {:foo "bar"})}
+             {})
+           {:>/p1 {:foo "bar"}})))
+
+  (testing "override with source when params are provided"
+    (is (= (pcr/placeholder-merge-entity
+             {::pcp/graph          {::pcp/nodes        {}
+                                    ::pcp/placeholders #{:>/p1}
+                                    ::pcp/index-ast    {:>/p1 {:key          :>/p1
+                                                               :dispatch-key :>/p1
+                                                               :params       {:x 10}}}}
+              ::p.ent/entity-tree* (atom {:x 20 :y 40 :z true})}
+             {:z true})
+           {:>/p1 {:z true :x 10}}))))
