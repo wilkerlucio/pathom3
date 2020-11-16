@@ -239,7 +239,9 @@
       {}
       (::pcp/placeholders graph))))
 
-(defn invoke-mutation! [env {:keys [key params]}]
+(defn invoke-mutation!
+  "Run mutation from AST."
+  [env {:keys [key params]}]
   (let [mutation (pci/mutation env key)
         result   (try
                    (pco.prot/-mutate mutation env params)
