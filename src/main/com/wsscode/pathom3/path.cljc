@@ -8,7 +8,8 @@
 (>def ::path-entry
   (s/or :attr ::p.attr/attribute
         :ident ::eql/ident
-        :index nat-int?))
+        :index nat-int?
+        :call symbol?))
 
 (>def ::path (s/coll-of ::path-entry :kind vector?))
 
