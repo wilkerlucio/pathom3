@@ -94,6 +94,8 @@
 (pco/defresolver current-path [{::p.path/keys [path]} _]
   {::p.path/path path})
 
+(def full-env (pci/register [geo/full-registry]))
+
 (deftest run-graph!-test
   (is (= (run-graph (pci/register geo/registry)
                     {::geo/left 10 ::geo/width 30}
@@ -104,7 +106,7 @@
           ::geo/half-width 15
           ::geo/center-x   25}))
 
-  (is (= (run-graph (pci/register [geo/full-registry])
+  (is (= (run-graph full-env
                     {:data {::geo/x 10}}
                     [{:data [:left]}])
          {:data {::geo/x    10
@@ -112,18 +114,18 @@
                  :left      10}}))
 
   (testing "ident"
-    (is (= (run-graph (pci/register [geo/full-registry])
+    (is (= (run-graph full-env
                       {}
                       [[::geo/x 10]])
            {[::geo/x 10] {::geo/x 10}}))
 
-    (is (= (run-graph (pci/register [geo/full-registry])
+    (is (= (run-graph full-env
                       {}
                       [{[::geo/x 10] [::geo/left]}])
            {[::geo/x 10] {::geo/x    10
                           ::geo/left 10}}))
 
-    (is (= (run-graph (pci/register [geo/full-registry])
+    (is (= (run-graph full-env
                       {[::geo/x 10] {:random "data"}}
                       [{[::geo/x 10] [::geo/left]}])
            {[::geo/x 10] {:random    "data"
@@ -262,6 +264,48 @@
                        ::geo/left 7
                        :left      7}
                       20]})))
+
+  (testing "placeholders"
+    (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
+                      {}
+                      [{:>/path [:foo]}])
+           {:foo    "bar"
+            :>/path {:foo "bar"}}))
+
+    (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
+                      {:foo "baz"}
+                      [{:>/path [:foo]}])
+           {:foo    "baz"
+            :>/path {:foo "baz"}}))
+
+    (testing "modified data"
+      (is (= (run-graph (pci/register
+                          [(pbir/single-attr-resolver :x :y #(* 2 %))])
+                        {}
+                        '[{(:>/path {:x 20}) [:y]}])
+             {:>/path {:x 20
+                       :y 40}}))
+
+      (is (= (run-graph (pci/register
+                          [(pbir/constantly-resolver :x 10)
+                           (pbir/single-attr-resolver :x :y #(* 2 %))])
+                        {}
+                        '[{(:>/path {:x 20}) [:y]}])
+             {:x      10
+              :y      20
+              :>/path {:x 20
+                       :y 40}}))
+
+      (is (= (run-graph (pci/register
+                          [(pbir/constantly-resolver :x 10)
+                           (pbir/single-attr-resolver :x :y #(* 2 %))])
+                        {}
+                        '[:x
+                          {(:>/path {:x 20}) [:y]}])
+             {:x      10
+              :y      20
+              :>/path {:x 20
+                       :y 40}}))))
 
   (testing "errors"
     (let [error (ex-info "Error" {})

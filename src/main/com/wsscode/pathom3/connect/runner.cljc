@@ -221,10 +221,11 @@
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*])
    => (s/keys)]
-  (let [start (time/now-ms)
-        env   (-> env
-                  (coll/merge-defaults {::p.path/path []})
-                  (assoc ::node-run-stats* (atom ^::map-container? {})))]
+  (let [start      (time/now-ms)
+        source-ent (p.ent/entity env)
+        env        (-> env
+                       (coll/merge-defaults {::p.path/path []})
+                       (assoc ::node-run-stats* (atom ^::map-container? {})))]
 
     ; compute nested available fields
     (if-let [nested (::pcp/nested-available-process graph)]
@@ -237,6 +238,15 @@
     ; now run the nodes
     (if-let [root (pcp/get-root-node graph)]
       (run-node! env root))
+
+    (if-let [placeholders (::pcp/placeholders graph)]
+      (merge-resolver-response! env
+                                (reduce
+                                  (fn [out ph]
+                                    (let [data (:params (pcp/entry-ast graph ph))]
+                                      (assoc out ph (merge source-ent data))))
+                                  {}
+                                  placeholders)))
 
     ; compute minimal stats
     (let [total-time (- (time/now-ms) start)]
