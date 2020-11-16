@@ -179,6 +179,20 @@
   (-> (resolver-config env resolver-sym)
       ::pco/provides))
 
+(>defn mutation
+  [{::keys [index-mutations]} mutation-name]
+  [(s/keys :opt [::index-mutations]) ::pco/op-name
+   => (? ::pco/mutation)]
+  (get index-mutations mutation-name))
+
+(>defn mutation-config
+  "Given a indexes map and a mutation sym, returns the mutation configuration map."
+  [{::keys [index-mutations]} mutation-name]
+  [(s/keys :opt [::index-mutations]) ::pco/op-name
+   => (? ::pco/operation-config)]
+  (some-> (get index-mutations mutation-name)
+          (pco/operation-config)))
+
 (>defn register
   "Add an operation to the indexes. The operation can be either a Resolver or a Mutation."
   ([operation-or-operations]
