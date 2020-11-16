@@ -247,6 +247,7 @@
        ::pco/input - description of resolver input, in EQL format
        ::pco/params - description of resolver parameters, in EQL format
        ::pco/transform - a function to transform the resolver configuration before instantiating the resolver
+       ::pcr/cache? - true by default, set to false to disable caching for the resolver
 
      Note that any other option that you send to the resolver config will be stored in the
      index and can be read from it at any time.

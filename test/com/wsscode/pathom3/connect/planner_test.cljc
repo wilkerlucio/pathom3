@@ -9,6 +9,7 @@
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
+    [com.wsscode.pathom3.connect.runner :as pcr]
     [edn-query-language.core :as eql]
     #?(:clj [tangle.core :as tangle])))
 
@@ -2222,11 +2223,159 @@
                                                     :key          :other}}
                ::pcp/root                  1})))))
 
-#_(deftest compute-run-graph-placeholders-test
-    [{:>/p1 [:a]}
-     {:>/p2 [:a
-             {:b [:x]}]}
-     {:>/p3 [:c]}])
+(deftest compute-run-graph-placeholders-test
+  (testing "just placeholder"
+    (is (= (compute-run-graph
+             {::pci/index-oir '{:a {#{} #{a}}}
+              ::eql/query     [{:>/p1 [:a]}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                                        {1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs     #{},
+             :com.wsscode.pathom3.connect.planner/index-ast
+                                                                        {:>/p1
+                                                                         {:type         :join,
+                                                                          :dispatch-key :>/p1,
+                                                                          :key          :>/p1,
+                                                                          :query        [:a],
+                                                                          :children     [{:type :prop, :dispatch-key :a, :key :a}]}},
+             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1}
+             :com.wsscode.pathom3.connect.planner/root                  1,
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1}})))
+
+
+  (testing "placeholder + external"
+    (is (= (compute-run-graph
+             {::pci/index-oir '{:a {#{} #{a}}
+                                :b {#{} #{b}}}
+              ::eql/query     [:a
+                               {:>/p1 [:b]}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                                        {1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                         2
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        b,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:b {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                         3
+                                                                         {:com.wsscode.pathom3.connect.planner/node-id 3,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}, :a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/run-and #{1 2}}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
+                                                                        {a #{1}, b #{2}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs     #{},
+             :com.wsscode.pathom3.connect.planner/index-ast
+                                                                        {:a {:type :prop, :dispatch-key :a, :key :a},
+                                                                         :>/p1
+                                                                            {:type         :join,
+                                                                             :dispatch-key :>/p1,
+                                                                             :key          :>/p1,
+                                                                             :query        [:b],
+                                                                             :children     [{:type :prop, :dispatch-key :b, :key :b}]}},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1, :b 2},
+             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1},
+             :com.wsscode.pathom3.connect.planner/root                  3})))
+
+  (testing "multiple placeholders repeating"
+    (is (= (compute-run-graph
+             {::pci/index-oir '{:a {#{} #{a}}}
+              ::eql/query     [{:>/p1 [:a]}
+                               {:>/p2 [:a]}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                                        {1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs     #{},
+             :com.wsscode.pathom3.connect.planner/index-ast
+                                                                        {:>/p1
+                                                                         {:type         :join,
+                                                                          :dispatch-key :>/p1,
+                                                                          :key          :>/p1,
+                                                                          :query        [:a],
+                                                                          :children     [{:type :prop, :dispatch-key :a, :key :a}]},
+                                                                         :>/p2
+                                                                         {:type         :join,
+                                                                          :dispatch-key :>/p2,
+                                                                          :key          :>/p2,
+                                                                          :query        [:a],
+                                                                          :children     [{:type :prop, :dispatch-key :a, :key :a}]}},
+             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1 :>/p2},
+             :com.wsscode.pathom3.connect.planner/root                  1,
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1}})))
+
+  (testing "nested placeholders"
+    (is (= (compute-run-graph
+             {::pci/index-oir '{:a {#{} #{a}}
+                                :b {#{} #{b}}}
+              ::eql/query     [{:>/p1
+                                [:a
+                                 {:>/p2 [:b]}]}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                                        {1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                         2
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        b,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:b {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                         3
+                                                                         {:com.wsscode.pathom3.connect.planner/node-id 3,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}, :a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/run-and #{1 2}}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
+                                                                        {a #{1}, b #{2}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs     #{},
+             :com.wsscode.pathom3.connect.planner/index-ast
+                                                                        {:>/p1
+                                                                         {:type         :join,
+                                                                          :dispatch-key :>/p1,
+                                                                          :key          :>/p1,
+                                                                          :query        [:a {:>/p2 [:b]}],
+                                                                          :children
+                                                                                        [{:type :prop, :dispatch-key :a, :key :a}
+                                                                                         {:type         :join,
+                                                                                          :dispatch-key :>/p2,
+                                                                                          :key          :>/p2,
+                                                                                          :query        [:b],
+                                                                                          :children     [{:type :prop, :dispatch-key :b, :key :b}]}]}},
+             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1 :>/p2},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1, :b 2},
+             :com.wsscode.pathom3.connect.planner/root                  3})))
+
+  #_(testing "conflict between params"
+      (is (= (compute-run-graph
+               {::pci/index-oir '{:a {#{} #{a}}}
+                ::eql/query     '[(:a {:foo "bar"})
+                                  {:>/p1 [(:a {:foo "baz"})]}]})
+             {}))))
 
 (deftest compute-run-graph-params-test
   (testing "add params to resolver call"
@@ -2382,7 +2531,7 @@
   (testing "unreachable"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dynamic-resolver {::pco/op-name           'dynamic-resolver
-                                                        ::pco/cache?            false
+                                                        ::pcr/cache?            false
                                                         ::pco/dynamic-resolver? true
                                                         ::pco/resolve           (fn [_ _])}}
               ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
@@ -2399,7 +2548,7 @@
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dynamic-resolver
                                      {::pco/op-name           'dynamic-resolver
-                                      ::pco/cache?            false
+                                      ::pcr/cache?            false
                                       ::pco/dynamic-resolver? true
                                       ::pco/resolve           (fn [_ _])}}
               ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
@@ -2425,7 +2574,7 @@
       (is (= (compute-run-graph
                {::pci/index-resolvers {'dynamic-resolver
                                        {::pco/op-name           'dynamic-resolver
-                                        ::pco/cache?            false
+                                        ::pcr/cache?            false
                                         ::pco/dynamic-resolver? true
                                         ::pco/resolve           (fn [_ _])}}
                 ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
@@ -2458,7 +2607,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pco/cache?            false
+                                          ::pcr/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
@@ -2488,7 +2637,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pco/cache?            false
+                                          ::pcr/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
@@ -2526,7 +2675,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pco/cache?            false
+                                          ::pcr/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:a {#{} #{'dynamic-resolver}}
@@ -2551,7 +2700,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pco/cache?            false
+                                          ::pcr/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:a {#{} #{'dynamic-resolver}}
@@ -2577,7 +2726,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pco/cache?            false
+                                          ::pcr/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::resolvers           [{::pco/op-name 'z
@@ -2612,7 +2761,7 @@
       (is (= (compute-run-graph
                (-> {::pci/index-resolvers {'dynamic-resolver
                                            {::pco/op-name           'dynamic-resolver
-                                            ::pco/cache?            false
+                                            ::pcr/cache?            false
                                             ::pco/dynamic-resolver? true
                                             ::pco/resolve           (fn [_ _])}}
                     ::resolvers           [{::pco/op-name 'z
@@ -2648,7 +2797,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pco/cache?            false
+                                          ::pcr/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:a {#{:b :c} #{'dynamic-resolver}}
@@ -2675,7 +2824,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pco/cache?            false
+                                          ::pcr/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::resolvers           [{::pco/op-name 'b
@@ -2719,7 +2868,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pco/cache?            false
+                                          ::pcr/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
@@ -2800,7 +2949,7 @@
   (testing "dynamic dependency input on local dependency and dynamic dependency"
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                               ::pco/cache?            false
+                                               ::pcr/cache?            false
                                                ::pco/dynamic-resolver? true
                                                ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:d1 {#{:d2 :l1} #{'dyn}}
@@ -2846,7 +2995,7 @@
   (testing "simple nested query"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pco/cache?            false
+                                           ::pcr/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a
@@ -2880,7 +3029,7 @@
   (testing "nested dependency"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pco/cache?            false
+                                           ::pcr/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a
@@ -2932,7 +3081,7 @@
                                                             ::pco/output       [:dynamic-2]
                                                             ::pco/dynamic-name dynamic-parser-42276}
                                       dynamic-parser-42276 {::pco/op-name           dynamic-parser-42276
-                                                            ::pco/cache?            false
+                                                            ::pcr/cache?            false
                                                             ::pco/dynamic-resolver? true}}
               ::eql/query           [:local :dynamic-2]})
            '{::pcp/nodes                 {1 {::pco/op-name          dynamic-1->local
@@ -2976,7 +3125,7 @@
     (testing "resolver has simple output"
       (is (= (compute-run-graph
                {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                             ::pco/cache?            false
+                                             ::pcr/cache?            false
                                              ::pco/dynamic-resolver? true
                                              ::pco/resolve           (fn [_ _])}
                                        'a   {::pco/op-name      'a
@@ -3024,7 +3173,7 @@
     #_(testing "resolver has union output"
         (is (= (compute-run-graph
                  {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                               ::pco/cache?            false
+                                               ::pcr/cache?            false
                                                ::pco/dynamic-resolver? true
                                                ::pco/resolve           (fn [_ _])}
                                          'a   {::pco/op-name      'a
@@ -3056,7 +3205,7 @@
   (testing "deep nesting"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pco/cache?            false
+                                           ::pcr/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a
@@ -3095,7 +3244,7 @@
     (testing "with dependency"
       (is (= (compute-run-graph
                {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                             ::pco/cache?            false
+                                             ::pcr/cache?            false
                                              ::pco/dynamic-resolver? true
                                              ::pco/resolve           (fn [_ _])}
                                        'a   {::pco/op-name      'a
@@ -3132,7 +3281,7 @@
   (testing "only returns the deps from the dynamic resolver in the child requirements"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pco/cache?            false
+                                           ::pcr/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a
@@ -3169,7 +3318,7 @@
 
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pco/cache?            false
+                                           ::pcr/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a
@@ -3206,7 +3355,7 @@
   (testing "indirect dependencies don't need to be in the query"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pco/cache?            false
+                                           ::pcr/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a

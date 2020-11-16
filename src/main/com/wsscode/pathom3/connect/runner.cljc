@@ -5,6 +5,7 @@
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.misc.time :as time]
+    [com.wsscode.pathom3.cache :as p.cache]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.operation.protocols :as pco.prot]
@@ -143,6 +144,9 @@
     :as        node}]
   (let [input-keys (keys input)
         resolver   (pci/resolver env op-name)
+        {::pco/keys [op-name]
+         ::keys     [cache?]
+         :or        {cache? true}} (pco/operation-config resolver)
         env        (assoc env ::pcp/node node)
         entity     (p.ent/entity env)
         input-data (select-keys entity input-keys)
@@ -151,7 +155,11 @@
                      (if (< (count input-data) (count input-keys))
                        (throw (ex-info "Insufficient data" {:required  input-keys
                                                             :available (keys input-data)}))
-                       (pco.prot/-resolve resolver env input-data))
+                       (if cache?
+                         (p.cache/cached ::resolver-cache* env
+                           [op-name input-data]
+                           #(pco.prot/-resolve resolver env input-data))
+                         (pco.prot/-resolve resolver env input-data)))
                      (catch #?(:clj Throwable :cljs :default) e
                        (mark-resolver-error env node e)
                        ::node-error))
@@ -215,16 +223,33 @@
 
     nil))
 
+(defn placeholder-merge-entity
+  "Create an entity to process the placeholder demands. This consider if the placeholder
+  has params, params in placeholders means that you want some specific data at that
+  point."
+  [{::pcp/keys [graph] :as env} source-ent]
+  (let [entity (p.ent/entity env)]
+    (reduce
+      (fn [out ph]
+        (let [data (:params (pcp/entry-ast graph ph))]
+          (assoc out ph
+            (if (seq data)
+              (merge source-ent data)
+              entity))))
+      {}
+      (::pcp/placeholders graph))))
+
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the
   entity cache tree."
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*])
    => (s/keys)]
-  (let [start (time/now-ms)
-        env   (-> env
-                  (coll/merge-defaults {::p.path/path []})
-                  (assoc ::node-run-stats* (atom ^::map-container? {})))]
+  (let [start      (time/now-ms)
+        source-ent (p.ent/entity env)
+        env        (-> env
+                       (coll/merge-defaults {::p.path/path []})
+                       (assoc ::node-run-stats* (atom ^::map-container? {})))]
 
     ; compute nested available fields
     (if-let [nested (::pcp/nested-available-process graph)]
@@ -237,6 +262,8 @@
     ; now run the nodes
     (if-let [root (pcp/get-root-node graph)]
       (run-node! env root))
+
+    (merge-resolver-response! env (placeholder-merge-entity env source-ent))
 
     ; compute minimal stats
     (let [total-time (- (time/now-ms) start)]
@@ -254,6 +281,10 @@
                 (assoc env
                   :edn-query-language.ast/node ast
                   ::pcp/available-data (pfsd/data->shape-descriptor @entity-tree*)))]
-    (run-graph!* (assoc env
-                   ::pcp/graph graph
-                   ::p.ent/entity-tree* entity-tree*))))
+    (run-graph!*
+      (-> env
+          (coll/merge-defaults
+            {::resolver-cache* (atom {})})
+          (assoc
+            ::pcp/graph graph
+            ::p.ent/entity-tree* entity-tree*)))))

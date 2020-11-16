@@ -6,8 +6,10 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
+    [com.wsscode.pathom3.connect.runner.stats :as pcrs]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [com.wsscode.pathom3.interface.smart-map :as psm]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
     [edn-query-language.core :as eql]))
@@ -92,6 +94,8 @@
 (pco/defresolver current-path [{::p.path/keys [path]} _]
   {::p.path/path path})
 
+(def full-env (pci/register [geo/full-registry]))
+
 (deftest run-graph!-test
   (is (= (run-graph (pci/register geo/registry)
                     {::geo/left 10 ::geo/width 30}
@@ -102,7 +106,7 @@
           ::geo/half-width 15
           ::geo/center-x   25}))
 
-  (is (= (run-graph (pci/register [geo/full-registry])
+  (is (= (run-graph full-env
                     {:data {::geo/x 10}}
                     [{:data [:left]}])
          {:data {::geo/x    10
@@ -110,18 +114,18 @@
                  :left      10}}))
 
   (testing "ident"
-    (is (= (run-graph (pci/register [geo/full-registry])
+    (is (= (run-graph full-env
                       {}
                       [[::geo/x 10]])
            {[::geo/x 10] {::geo/x 10}}))
 
-    (is (= (run-graph (pci/register [geo/full-registry])
+    (is (= (run-graph full-env
                       {}
                       [{[::geo/x 10] [::geo/left]}])
            {[::geo/x 10] {::geo/x    10
                           ::geo/left 10}}))
 
-    (is (= (run-graph (pci/register [geo/full-registry])
+    (is (= (run-graph full-env
                       {[::geo/x 10] {:random "data"}}
                       [{[::geo/x 10] [::geo/left]}])
            {[::geo/x 10] {:random    "data"
@@ -259,14 +263,118 @@
                        ::geo/y    9
                        ::geo/left 7
                        :left      7}
-                      20]})))
+                      20]}))))
 
-  #_(testing "errors"
-      (let [error (ex-info "Error" {})]
-        (is (= (run-graph (pci/register
-                            (pco/resolver 'error {::pco/output [:error]}
-                              (fn [_ _] (throw error))))
-                 {}
-                 [:error])
-               {:error           ::pcr/node-error
-                ::pcr/node-error {[:error] error}})))))
+(deftest run-graph!-cache-test
+  (let [cache* (atom {})]
+    (is (= (run-graph
+             (-> (pci/register
+                   [(pbir/constantly-resolver :x 10)
+                    (pbir/single-attr-resolver :x :y #(* 2 %))])
+                 (assoc ::pcr/resolver-cache* cache*))
+             {}
+             [:y])
+           {:x 10
+            :y 20}))
+    (is (= @cache*
+           '{[x->y-single-attr-transform {:x 10}] {:y 20}
+             [x-constant {}]                      {:x 10}})))
+
+  (is (= (run-graph
+           (-> (pci/register
+                 [(pbir/constantly-resolver :x 10)
+                  (pbir/single-attr-resolver :x :y #(* 2 %))])
+               (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10}] {:y 30}})))
+           {}
+           [:y])
+         {:x 10
+          :y 30}))
+
+  (is (= (run-graph
+           (-> (pci/register
+                 [(pbir/constantly-resolver :x 10)
+                  (assoc-in (pbir/single-attr-resolver :x :y #(* 2 %))
+                    [:config ::pcr/cache?] false)])
+               (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10}] {:y 30}})))
+           {}
+           [:y])
+         {:x 10
+          :y 20})))
+
+(deftest run-graph!-placeholders-test
+  (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
+                    {}
+                    [{:>/path [:foo]}])
+         {:foo    "bar"
+          :>/path {:foo "bar"}}))
+
+  (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
+                    {:foo "baz"}
+                    [{:>/path [:foo]}])
+         {:foo    "baz"
+          :>/path {:foo "baz"}}))
+
+  (testing "modified data"
+    (is (= (run-graph (pci/register
+                        [(pbir/single-attr-resolver :x :y #(* 2 %))])
+                      {}
+                      '[{(:>/path {:x 20}) [:y]}])
+           {:>/path {:x 20
+                     :y 40}}))
+
+    (is (= (run-graph (pci/register
+                        [(pbir/constantly-resolver :x 10)
+                         (pbir/single-attr-resolver :x :y #(* 2 %))])
+                      {}
+                      '[{(:>/path {:x 20}) [:y]}])
+           {:x      10
+            :y      20
+            :>/path {:x 20
+                     :y 40}}))
+
+    (is (= (run-graph (pci/register
+                        [(pbir/constantly-resolver :x 10)
+                         (pbir/single-attr-resolver :x :y #(* 2 %))])
+                      {}
+                      '[:x
+                        {(:>/path {:x 20}) [:y]}])
+           {:x      10
+            :y      20
+            :>/path {:x 20
+                     :y 40}}))))
+
+(deftest run-graph!-errors-test
+  (let [error (ex-info "Error" {})
+        stats (-> (run-graph (pci/register
+                               (pco/resolver 'error {::pco/output [:error]}
+                                 (fn [_ _] (throw error))))
+                             {}
+                             [:error])
+                  meta ::pcr/run-stats)
+        env   (pcrs/run-stats-env stats)]
+    (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
+               ::pcrs/attribute-error)
+           {::pcr/node-error       error
+            ::pcrs/node-error-type ::pcrs/node-error-type-direct}))))
+
+(deftest placeholder-merge-entity-test
+  (testing "forward current entity data"
+    (is (= (pcr/placeholder-merge-entity
+             {::pcp/graph          {::pcp/nodes        {}
+                                    ::pcp/placeholders #{:>/p1}
+                                    ::pcp/index-ast    {:>/p1 {:key          :>/p1
+                                                               :dispatch-key :>/p1}}}
+              ::p.ent/entity-tree* (atom {:foo "bar"})}
+             {})
+           {:>/p1 {:foo "bar"}})))
+
+  (testing "override with source when params are provided"
+    (is (= (pcr/placeholder-merge-entity
+             {::pcp/graph          {::pcp/nodes        {}
+                                    ::pcp/placeholders #{:>/p1}
+                                    ::pcp/index-ast    {:>/p1 {:key          :>/p1
+                                                               :dispatch-key :>/p1
+                                                               :params       {:x 10}}}}
+              ::p.ent/entity-tree* (atom {:x 20 :y 40 :z true})}
+             {:z true})
+           {:>/p1 {:z true :x 10}}))))
