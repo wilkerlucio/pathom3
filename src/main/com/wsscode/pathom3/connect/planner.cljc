@@ -11,6 +11,7 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as fsd]
+    [com.wsscode.pathom3.placeholder :as pph]
     [edn-query-language.core :as eql])
   #?(:cljs
      (:require-macros
@@ -1278,9 +1279,6 @@
 (defn add-ident-process [graph {:keys [key]}]
   (update graph ::idents coll/sconj key))
 
-(defn placeholder-attr? [_env attr]
-  (= (namespace attr) ">"))
-
 (defn add-placeholder-entry [graph attr]
   (update graph ::placeholders coll/sconj attr))
 
@@ -1311,7 +1309,7 @@
       (contains? index-oir attr)
       (compute-attribute-graph* graph env)
 
-      (placeholder-attr? env attr)
+      (pph/placeholder-key? env attr)
       (compute-run-graph* (add-placeholder-entry graph attr) env)
 
       :else
