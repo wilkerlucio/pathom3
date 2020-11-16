@@ -263,60 +263,85 @@
                        ::geo/y    9
                        ::geo/left 7
                        :left      7}
-                      20]})))
+                      20]}))))
 
-  (testing "placeholders"
-    (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
+(deftest run-graph!-cache-test
+  (let [cache* (atom {})]
+    (is (= (run-graph
+             (-> (pci/register
+                   [(pbir/constantly-resolver :x 10)
+                    (pbir/single-attr-resolver :x :y #(* 2 %))])
+                 (assoc ::pcr/resolver-cache* cache*))
+             {}
+             [:y])
+           {:x 10
+            :y 20}))
+    (is (= @cache*
+           '{[x->y-single-attr-transform {:x 10}] {:y 20}
+             [x-constant {}]                      {:x 10}})))
+
+  (is (= (run-graph
+           (-> (pci/register
+                 [(pbir/constantly-resolver :x 10)
+                  (pbir/single-attr-resolver :x :y #(* 2 %))])
+               (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10}] {:y 30}})))
+           {}
+           [:y])
+         {:x 10
+          :y 30})))
+
+(deftest run-graph!-placeholders-test
+  (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
+                    {}
+                    [{:>/path [:foo]}])
+         {:foo    "bar"
+          :>/path {:foo "bar"}}))
+
+  (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
+                    {:foo "baz"}
+                    [{:>/path [:foo]}])
+         {:foo    "baz"
+          :>/path {:foo "baz"}}))
+
+  (testing "modified data"
+    (is (= (run-graph (pci/register
+                        [(pbir/single-attr-resolver :x :y #(* 2 %))])
                       {}
-                      [{:>/path [:foo]}])
-           {:foo    "bar"
-            :>/path {:foo "bar"}}))
+                      '[{(:>/path {:x 20}) [:y]}])
+           {:>/path {:x 20
+                     :y 40}}))
 
-    (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
-                      {:foo "baz"}
-                      [{:>/path [:foo]}])
-           {:foo    "baz"
-            :>/path {:foo "baz"}}))
+    (is (= (run-graph (pci/register
+                        [(pbir/constantly-resolver :x 10)
+                         (pbir/single-attr-resolver :x :y #(* 2 %))])
+                      {}
+                      '[{(:>/path {:x 20}) [:y]}])
+           {:x      10
+            :y      20
+            :>/path {:x 20
+                     :y 40}}))
 
-    (testing "modified data"
-      (is (= (run-graph (pci/register
-                          [(pbir/single-attr-resolver :x :y #(* 2 %))])
-                        {}
-                        '[{(:>/path {:x 20}) [:y]}])
-             {:>/path {:x 20
-                       :y 40}}))
+    (is (= (run-graph (pci/register
+                        [(pbir/constantly-resolver :x 10)
+                         (pbir/single-attr-resolver :x :y #(* 2 %))])
+                      {}
+                      '[:x
+                        {(:>/path {:x 20}) [:y]}])
+           {:x      10
+            :y      20
+            :>/path {:x 20
+                     :y 40}}))))
 
-      (is (= (run-graph (pci/register
-                          [(pbir/constantly-resolver :x 10)
-                           (pbir/single-attr-resolver :x :y #(* 2 %))])
-                        {}
-                        '[{(:>/path {:x 20}) [:y]}])
-             {:x      10
-              :y      20
-              :>/path {:x 20
-                       :y 40}}))
-
-      (is (= (run-graph (pci/register
-                          [(pbir/constantly-resolver :x 10)
-                           (pbir/single-attr-resolver :x :y #(* 2 %))])
-                        {}
-                        '[:x
-                          {(:>/path {:x 20}) [:y]}])
-             {:x      10
-              :y      20
-              :>/path {:x 20
-                       :y 40}}))))
-
-  (testing "errors"
-    (let [error (ex-info "Error" {})
-          stats (-> (run-graph (pci/register
-                                 (pco/resolver 'error {::pco/output [:error]}
-                                   (fn [_ _] (throw error))))
-                               {}
-                               [:error])
-                    meta ::pcr/run-stats)
-          env   (pcrs/run-stats-env stats)]
-      (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
-                 ::pcrs/attribute-error)
-             {::pcr/node-error       error
-              ::pcrs/node-error-type ::pcrs/node-error-type-direct})))))
+(deftest run-graph!-errors-test
+  (let [error (ex-info "Error" {})
+        stats (-> (run-graph (pci/register
+                               (pco/resolver 'error {::pco/output [:error]}
+                                 (fn [_ _] (throw error))))
+                             {}
+                             [:error])
+                  meta ::pcr/run-stats)
+        env   (pcrs/run-stats-env stats)]
+    (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
+               ::pcrs/attribute-error)
+           {::pcr/node-error       error
+            ::pcrs/node-error-type ::pcrs/node-error-type-direct}))))

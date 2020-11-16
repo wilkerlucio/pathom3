@@ -5,6 +5,7 @@
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.misc.time :as time]
+    [com.wsscode.pathom3.cache :as p.cache]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.operation.protocols :as pco.prot]
@@ -143,6 +144,7 @@
     :as        node}]
   (let [input-keys (keys input)
         resolver   (pci/resolver env op-name)
+        {::pco/keys [op-name]} (pco/operation-config resolver)
         env        (assoc env ::pcp/node node)
         entity     (p.ent/entity env)
         input-data (select-keys entity input-keys)
@@ -151,7 +153,9 @@
                      (if (< (count input-data) (count input-keys))
                        (throw (ex-info "Insufficient data" {:required  input-keys
                                                             :available (keys input-data)}))
-                       (pco.prot/-resolve resolver env input-data))
+                       (p.cache/cached ::resolver-cache* env
+                         [op-name input-data]
+                         #(pco.prot/-resolve resolver env input-data)))
                      (catch #?(:clj Throwable :cljs :default) e
                        (mark-resolver-error env node e)
                        ::node-error))
@@ -264,6 +268,10 @@
                 (assoc env
                   :edn-query-language.ast/node ast
                   ::pcp/available-data (pfsd/data->shape-descriptor @entity-tree*)))]
-    (run-graph!* (assoc env
-                   ::pcp/graph graph
-                   ::p.ent/entity-tree* entity-tree*))))
+    (run-graph!*
+      (-> env
+          (coll/merge-defaults
+            {::resolver-cache* (atom {})})
+          (assoc
+            ::pcp/graph graph
+            ::p.ent/entity-tree* entity-tree*)))))
