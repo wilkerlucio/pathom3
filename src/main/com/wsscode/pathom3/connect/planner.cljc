@@ -161,6 +161,10 @@
   "Which attributes need further processing due to sub-query requirements."
   ::p.attr/attributes-set)
 
+(>def ::placeholders
+  "Placeholder items to nest in."
+  (s/coll-of ::p.attr/attribute))
+
 (>def ::idents
   "Idents collected while scanning query"
   (s/coll-of ::eql/ident :kind set?))
@@ -1274,6 +1278,12 @@
 (defn add-ident-process [graph {:keys [key]}]
   (update graph ::idents coll/sconj key))
 
+(defn placeholder-attr? [_env attr]
+  (= (namespace attr) ">"))
+
+(defn add-placeholder-entry [graph attr]
+  (update graph ::placeholders coll/vconj attr))
+
 (defn compute-attribute-graph
   "Compute the run graph for a given attribute."
   [{::keys [unreachable-attrs] :as graph}
@@ -1286,7 +1296,7 @@
     (cond
       (eql/ident? attr)
       (-> (add-ident-process graph ast)
-          (add-snapshot! env {::snapshot-event   ::snapshot-add-ident-proces
+          (add-snapshot! env {::snapshot-event   ::snapshot-add-ident-process
                               ::snapshot-message (str "Add ident process for " (pr-str attr))}))
 
       (contains? available-data attr)
@@ -1300,6 +1310,9 @@
 
       (contains? index-oir attr)
       (compute-attribute-graph* graph env)
+
+      (placeholder-attr? env attr)
+      (compute-run-graph* (add-placeholder-entry graph attr) env)
 
       :else
       (-> (add-unreachable-attr graph attr)

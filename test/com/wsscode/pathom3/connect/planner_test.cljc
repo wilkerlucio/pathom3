@@ -2222,11 +2222,159 @@
                                                     :key          :other}}
                ::pcp/root                  1})))))
 
-#_(deftest compute-run-graph-placeholders-test
-    [{:>/p1 [:a]}
-     {:>/p2 [:a
-             {:b [:x]}]}
-     {:>/p3 [:c]}])
+(deftest compute-run-graph-placeholders-test
+  (testing "just placeholder"
+    (is (= (compute-run-graph
+             {::pci/index-oir '{:a {#{} #{a}}}
+              ::eql/query     [{:>/p1 [:a]}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                                        {1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs     #{},
+             :com.wsscode.pathom3.connect.planner/index-ast
+                                                                        {:>/p1
+                                                                         {:type         :join,
+                                                                          :dispatch-key :>/p1,
+                                                                          :key          :>/p1,
+                                                                          :query        [:a],
+                                                                          :children     [{:type :prop, :dispatch-key :a, :key :a}]}},
+             :com.wsscode.pathom3.connect.planner/placeholders          [:>/p1]
+             :com.wsscode.pathom3.connect.planner/root                  1,
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1}})))
+
+
+  (testing "placeholder + external"
+    (is (= (compute-run-graph
+             {::pci/index-oir '{:a {#{} #{a}}
+                                :b {#{} #{b}}}
+              ::eql/query     [:a
+                               {:>/p1 [:b]}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                                        {1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                         2
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        b,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:b {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                         3
+                                                                         {:com.wsscode.pathom3.connect.planner/node-id 3,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}, :a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/run-and #{1 2}}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
+                                                                        {a #{1}, b #{2}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs     #{},
+             :com.wsscode.pathom3.connect.planner/index-ast
+                                                                        {:a {:type :prop, :dispatch-key :a, :key :a},
+                                                                         :>/p1
+                                                                            {:type         :join,
+                                                                             :dispatch-key :>/p1,
+                                                                             :key          :>/p1,
+                                                                             :query        [:b],
+                                                                             :children     [{:type :prop, :dispatch-key :b, :key :b}]}},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1, :b 2},
+             :com.wsscode.pathom3.connect.planner/placeholders          [:>/p1],
+             :com.wsscode.pathom3.connect.planner/root                  3})))
+
+  (testing "multiple placeholders repeating"
+    (is (= (compute-run-graph
+             {::pci/index-oir '{:a {#{} #{a}}}
+              ::eql/query     [{:>/p1 [:a]}
+                               {:>/p2 [:a]}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                                        {1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs     #{},
+             :com.wsscode.pathom3.connect.planner/index-ast
+                                                                        {:>/p1
+                                                                         {:type         :join,
+                                                                          :dispatch-key :>/p1,
+                                                                          :key          :>/p1,
+                                                                          :query        [:a],
+                                                                          :children     [{:type :prop, :dispatch-key :a, :key :a}]},
+                                                                         :>/p2
+                                                                         {:type         :join,
+                                                                          :dispatch-key :>/p2,
+                                                                          :key          :>/p2,
+                                                                          :query        [:a],
+                                                                          :children     [{:type :prop, :dispatch-key :a, :key :a}]}},
+             :com.wsscode.pathom3.connect.planner/placeholders          [:>/p1 :>/p2],
+             :com.wsscode.pathom3.connect.planner/root                  1,
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1}})))
+
+  (testing "nested placeholders"
+    (is (= (compute-run-graph
+             {::pci/index-oir '{:a {#{} #{a}}
+                                :b {#{} #{b}}}
+              ::eql/query     [{:>/p1
+                                [:a
+                                 {:>/p2 [:b]}]}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                                        {1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                         2
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        b,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:b {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                         3
+                                                                         {:com.wsscode.pathom3.connect.planner/node-id 3,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}, :a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/run-and #{1 2}}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
+                                                                        {a #{1}, b #{2}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs     #{},
+             :com.wsscode.pathom3.connect.planner/index-ast
+                                                                        {:>/p1
+                                                                         {:type         :join,
+                                                                          :dispatch-key :>/p1,
+                                                                          :key          :>/p1,
+                                                                          :query        [:a {:>/p2 [:b]}],
+                                                                          :children
+                                                                                        [{:type :prop, :dispatch-key :a, :key :a}
+                                                                                         {:type         :join,
+                                                                                          :dispatch-key :>/p2,
+                                                                                          :key          :>/p2,
+                                                                                          :query        [:b],
+                                                                                          :children     [{:type :prop, :dispatch-key :b, :key :b}]}]}},
+             :com.wsscode.pathom3.connect.planner/placeholders          [:>/p1 :>/p2],
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1, :b 2},
+             :com.wsscode.pathom3.connect.planner/root                  3})))
+
+  #_(testing "conflict between params"
+      (is (= (compute-run-graph
+               {::pci/index-oir '{:a {#{} #{a}}}
+                ::eql/query     '[(:a {:foo "bar"})
+                                  {:>/p1 [(:a {:foo "baz"})]}]})
+             {}))))
 
 (deftest compute-run-graph-params-test
   (testing "add params to resolver call"
