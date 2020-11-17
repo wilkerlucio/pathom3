@@ -361,7 +361,8 @@
 
 #?(:clj
    (defmacro defmutation
-     "Defines a new Pathom mutation."
+     "Defines a new Pathom mutation. The syntax of this macro is similar to defresolver,
+     But where `defresolver` takes input, `defmutation` uses as ::params."
      {:arglists '([name docstring? arglist options? & body])}
      [& args]
      (let [{:keys [name docstring arglist options body] :as params}
