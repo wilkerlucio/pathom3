@@ -265,6 +265,46 @@
                        :left      7}
                       20]}))))
 
+(def mock-todos-db
+  [{::todo-message "Write demo on params"
+    ::todo-done?   true}
+   {::todo-message "Pathom in Rust"
+    ::todo-done?   false}])
+
+(defn filter-params-match [env coll]
+  (let [params     (pco/params env)
+        param-keys (keys params)]
+    (if (seq params)
+      (filter
+        #(= params
+            (select-keys % param-keys))
+        coll)
+      coll)))
+
+(pco/defresolver todos-resolver [env _]
+  {::pco/output
+   [{::todos
+     [::todo-message
+      ::todo-done?]}]}
+  {::todos (filter-params-match env mock-todos-db)})
+
+(deftest run-graph!-params-test
+  (is (= (run-graph
+           (pci/register todos-resolver)
+           {}
+           [::todos])
+         {::todos [{::todo-message "Write demo on params"
+                    ::todo-done?   true}
+                   {::todo-message "Pathom in Rust"
+                    ::todo-done?   false}]}))
+
+  (is (= (run-graph
+           (pci/register todos-resolver)
+           {}
+           '[(::todos {::todo-done? true})])
+         {::todos [{::todo-message "Write demo on params"
+                    ::todo-done?   true}]})))
+
 (deftest run-graph!-cache-test
   (let [cache* (atom {})]
     (is (= (run-graph

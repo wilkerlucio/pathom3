@@ -156,6 +156,13 @@
                         (dissoc ::mutate ::transform))]
        (->Mutation config' (or mutate (fn [_ _])))))))
 
+(>defn params
+  "Pull parameters from environment"
+  [env]
+  [map? => (? map?)]
+  (get-in env [:com.wsscode.pathom3.connect.planner/node
+               :com.wsscode.pathom3.connect.planner/params]))
+
 ; endregion
 
 ; region macros
