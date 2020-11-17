@@ -343,6 +343,36 @@
             :>/path {:x 20
                      :y 40}}))))
 
+(deftest run-graph!-mutations-test
+  (testing "simple call"
+    (is (= (run-graph (pci/register (pco/mutation 'call {}
+                                                  (fn [_ {:keys [this]}] {:result this})))
+                      {}
+                      '[(call {:this "thing"})])
+           '{call {:result "thing"}})))
+
+  (testing "mutation join"
+    (is (= (run-graph
+             (pci/register
+               [(pbir/alias-resolver :result :other)
+                (pco/mutation 'call {}
+                              (fn [_ {:keys [this]}] {:result this}))])
+             {}
+             '[{(call {:this "thing"}) [:other]}])
+           '{call {:result "thing"
+                   :other  "thing"}})))
+
+  (testing "mutation error"
+    (let [err (ex-info "Error" {})]
+      (is (= (run-graph
+               (pci/register
+                 [(pbir/alias-resolver :result :other)
+                  (pco/mutation 'call {}
+                                (fn [_ _] (throw err)))])
+               {}
+               '[{(call {:this "thing"}) [:other]}])
+             {'call {::pcr/mutation-error err}})))))
+
 (deftest run-graph!-errors-test
   (let [error (ex-info "Error" {})
         stats (-> (run-graph (pci/register

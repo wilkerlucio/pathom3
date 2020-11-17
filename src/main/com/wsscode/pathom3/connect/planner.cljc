@@ -11,6 +11,7 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as fsd]
+    [com.wsscode.pathom3.placeholder :as pph]
     [edn-query-language.core :as eql])
   #?(:cljs
      (:require-macros
@@ -1278,9 +1279,6 @@
 (defn add-ident-process [graph {:keys [key]}]
   (update graph ::idents coll/sconj key))
 
-(defn placeholder-attr? [_env attr]
-  (= (namespace attr) ">"))
-
 (defn add-placeholder-entry [graph attr]
   (update graph ::placeholders coll/sconj attr))
 
@@ -1311,7 +1309,7 @@
       (contains? index-oir attr)
       (compute-attribute-graph* graph env)
 
-      (placeholder-attr? env attr)
+      (pph/placeholder-key? env attr)
       (compute-run-graph* (add-placeholder-entry graph attr) env)
 
       :else
@@ -1323,9 +1321,15 @@
   [graph env]
   (reduce
     (fn [graph ast]
-      (if (contains? #{:prop :join} (:type ast))
+      (cond
+        (contains? #{:prop :join} (:type ast))
         (compute-attribute-graph graph
           (assoc env :edn-query-language.ast/node ast))
+
+        (refs/kw-identical? (:type ast) :call)
+        (update graph ::mutations coll/vconj ast)
+
+        :else
         graph))
     graph
     (:children (:edn-query-language.ast/node env))))
@@ -1368,21 +1372,24 @@
   "
   ([env]
    [(s/keys
-      :req [:edn-query-language.ast/node
-            ::pci/index-oir]
+      :req [:edn-query-language.ast/node]
       :opt [::available-data
-            ::pci/index-resolvers])
+            ::pci/index-mutations
+            ::pci/index-oir
+            ::pci/index-resolvers
+            ::plan-cache*])
     => ::graph]
    (compute-run-graph {} env))
 
   ([graph env]
    [(? (s/keys))
     (s/keys
-      :req [:edn-query-language.ast/node
-            ::pci/index-oir]
+      :req [:edn-query-language.ast/node]
       :opt [::available-data
-            ::plan-cache*
-            ::pci/index-resolvers])
+            ::pci/index-mutations
+            ::pci/index-oir
+            ::pci/index-resolvers
+            ::plan-cache*])
     => ::graph]
    (add-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
                              ::snapshot-message "Start query plan"})

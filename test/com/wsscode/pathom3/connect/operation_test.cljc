@@ -66,6 +66,67 @@
               ::pco/input    []
               ::pco/provides {:foo {}}})))))
 
+(deftest mutation-test
+  (testing "creating mutations"
+    (let [mutation (pco/mutation 'foo {::pco/output [:foo]} (fn [_ _] {:foo "bar"}))]
+      (is (= (mutation)
+             {:foo "bar"}))
+
+      (is (= (pco/operation-config mutation)
+             {::pco/op-name  'foo
+              ::pco/provides {:foo {}}
+              ::pco/output   [:foo]}))))
+
+  (testing "creating resolver from pure maps"
+    (let [resolver (pco/resolver {::pco/op-name 'foo
+                                  ::pco/output  [:foo]
+                                  ::pco/resolve (fn [_ _] "bar")})]
+      (is (= (resolver nil nil)
+             "bar"))
+
+      (is (= (pco/operation-config resolver)
+             {::pco/op-name  'foo
+              ::pco/output   [:foo]
+              ::pco/input    []
+              ::pco/provides {:foo {}}}))))
+
+  (testing "dynamic resolver"
+    (let [resolver (pco/resolver {::pco/op-name           'foo
+                                  ::pco/dynamic-resolver? true
+                                  ::pco/resolve           (fn [_ _] "bar")})]
+
+      (is (= (pco/operation-config resolver)
+             {::pco/op-name           'foo
+              ::pco/dynamic-resolver? true}))))
+
+  (testing "transform"
+    (let [resolver (pco/resolver 'foo {::pco/output    [:foo]
+                                       ::pco/transform (fn [config]
+                                                         (assoc config ::other "bar"))}
+                     (fn [_ _] {:foo "bar"}))]
+      (is (= (pco/operation-config resolver)
+             {::pco/op-name  'foo
+              ::other        "bar"
+              ::pco/output   [:foo]
+              ::pco/input    []
+              ::pco/provides {:foo {}}}))))
+
+  (testing "noop when called with a resolver"
+    (let [resolver (-> {::pco/op-name 'foo
+                        ::pco/output  [:foo]
+                        ::pco/resolve (fn [_ _] "bar")}
+                       (pco/resolver)
+                       (pco/resolver)
+                       (pco/resolver))]
+      (is (= (resolver nil nil)
+             "bar"))
+
+      (is (= (pco/operation-config resolver)
+             {::pco/op-name  'foo
+              ::pco/output   [:foo]
+              ::pco/input    []
+              ::pco/provides {:foo {}}})))))
+
 #?(:clj
    (deftest defresolver-syntax-test
      (testing "classic form"
@@ -203,6 +264,60 @@
                  :body    [{:foo "bar"}]})
              {::pco/output [:foo :bar]})))))
 
+(deftest params->mutation-options-test
+  (testing "classic case"
+    (is (= (pco/params->mutation-options
+             '{:name    foo
+               :arglist [[:name env] [:name input]]
+               :options {::pco/output [:foo]}
+               :body    [{:foo "bar"}]})
+           {::pco/output [:foo]})))
+
+  (testing "inferred params"
+    (is (= (pco/params->mutation-options
+             '{:name    foo
+               :arglist [[:sym env] [:map {:keys [dep]}]]
+               :body    [{:foo "bar"}]})
+           {::pco/params [:dep]
+            ::pco/output [:foo]}))
+
+    (testing "preserve user params when defined"
+      (is (= (pco/params->mutation-options
+               '{:name    foo
+                 :arglist [[:sym env] [:map {:keys [dep]}]]
+                 :options {::pco/params [:dep :other]}
+                 :body    [{:foo "bar"}]})
+             {::pco/params [:dep :other]
+              ::pco/output [:foo]}))))
+
+  (testing "implicit output"
+    (is (= (pco/params->mutation-options
+             '{:name    foo
+               :arglist [[:sym env] [:sym params]]
+               :body    [nil {:foo "bar"}]})
+           {::pco/output [:foo]}))
+
+    (testing "nested body"
+      (is (= (pco/params->mutation-options
+               '{:name    foo
+                 :arglist [[:sym env] [:sym params]]
+                 :body    [{:foo  "bar"
+                            :buz  "baz"
+                            :deep {:nested (call-something)}
+                            :seq  [{:with "things"} {:around "here "}]}]})
+             {::pco/output [:buz
+                            {:deep [:nested]}
+                            :foo
+                            {:seq [:with :around]}]})))
+
+    (testing "preserve user output when defined"
+      (is (= (pco/params->mutation-options
+               '{:name    foo
+                 :arglist [[:sym env] [:sym params]]
+                 :options {::pco/output [:foo :bar]}
+                 :body    [{:foo "bar"}]})
+             {::pco/output [:foo :bar]})))))
+
 (deftest normalize-arglist-test
   (is (= (pco/normalize-arglist [])
          '[[:sym _] [:sym _]]))
@@ -258,7 +373,7 @@
                    #:com.wsscode.pathom3.connect.operation{:output [:foo]}
                    (clojure.core/fn foo [_ _] {:foo "bar"}))))))
 
-     (testing "implicit output, including implicit import via destructuring"
+     (testing "implicit output, including implicit inputs via destructuring"
        (is (= (macroexpand-1
                 `(pco/defresolver ~'foo ~'[{:keys [dep]}] {:sample "bar"}))
               '(def foo
@@ -268,7 +383,7 @@
                                                            :input  [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
-     (testing "implicit output, including implicit import via destructuring"
+     (testing "implicit output, including implicit inputs via destructuring"
        (is (= (macroexpand-1
                 `(pco/defresolver ~'foo ~'[{:keys [dep]}] {::pco/output [{:sample [:thing]}]} {:sample "bar"}))
               '(def foo
@@ -285,6 +400,83 @@
                 `(pco/defresolver ~'foo ~'[] {::or-thing 3} {:sample "bar"}))
               '(def foo
                  (com.wsscode.pathom3.connect.operation/resolver
+                   'user/foo
+                   {::pco/output [:sample]
+                    ::or-thing   3}
+                   (clojure.core/fn foo [_ _] {:sample "bar"}))))))))
+
+#?(:clj
+   (deftest defmutation-test
+     (testing "docstring"
+       (is (= (macroexpand-1
+                `(pco/defmutation ~'foo "documentation" ~'[] {:sample "bar"}))
+              '(def foo
+                 "documentation"
+                 (com.wsscode.pathom3.connect.operation/mutation
+                   'user/foo
+                   #:com.wsscode.pathom3.connect.operation{:output [:sample]}
+                   (clojure.core/fn foo [_ _] {:sample "bar"}))))))
+
+     (testing "validates configuration map"
+       (try
+         (macroexpand-1
+           `(pco/defmutation ~'foo ~'[] {::pco/input #{:invalid}} {:sample "bar"}))
+         (catch #?(:clj Throwable :cljs :default) e
+           (is (= (-> (ex-cause e)
+                      (ex-data)
+                      (update :explain-data dissoc :clojure.spec.alpha/spec))
+                  {:explain-data #:clojure.spec.alpha{:problems [{:in   [:com.wsscode.pathom3.connect.operation/input]
+                                                                  :path [:com.wsscode.pathom3.connect.operation/input]
+                                                                  :pred 'clojure.core/vector?
+                                                                  :val  #{:invalid}
+                                                                  :via  [:com.wsscode.pathom3.connect.operation/input]}]
+                                                      :value    #:com.wsscode.pathom3.connect.operation{:input #{:invalid}}}})))))
+
+     (testing "implicit output resolver, no args capture"
+       (is (= (macroexpand-1
+                `(pco/defmutation ~'foo ~'[] {:sample "bar"}))
+              '(def foo
+                 (com.wsscode.pathom3.connect.operation/mutation
+                   'user/foo
+                   #:com.wsscode.pathom3.connect.operation{:output [:sample]}
+                   (clojure.core/fn foo [_ _] {:sample "bar"}))))))
+
+     (testing "explicit output, no args"
+       (is (= (macroexpand-1
+                `(pco/defmutation ~'foo ~'[] {::pco/output [:foo]} {:foo "bar"}))
+              '(def foo
+                 (com.wsscode.pathom3.connect.operation/mutation
+                   'user/foo
+                   #:com.wsscode.pathom3.connect.operation{:output [:foo]}
+                   (clojure.core/fn foo [_ _] {:foo "bar"}))))))
+
+     (testing "implicit output, including implicit params via destructuring"
+       (is (= (macroexpand-1
+                `(pco/defmutation ~'foo ~'[{:keys [dep]}] {:sample "bar"}))
+              '(def foo
+                 (com.wsscode.pathom3.connect.operation/mutation
+                   'user/foo
+                   #:com.wsscode.pathom3.connect.operation{:output [:sample],
+                                                           :params  [:dep]}
+                   (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
+
+     (testing "implicit output, including implicit params via destructuring"
+       (is (= (macroexpand-1
+                `(pco/defmutation ~'foo ~'[{:keys [dep]}] {::pco/output [{:sample [:thing]}]} {:sample "bar"}))
+              '(def foo
+                 (com.wsscode.pathom3.connect.operation/mutation
+                   'user/foo
+                   #:com.wsscode.pathom3.connect.operation{:output [{:sample [:thing]}],
+                                                           :params  [:dep]}
+                   (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
+
+     (testing "unform options to retain data"
+       (s/def ::or-thing (s/or :foo int? :bar string?))
+
+       (is (= (macroexpand-1
+                `(pco/defmutation ~'foo ~'[] {::or-thing 3} {:sample "bar"}))
+              '(def foo
+                 (com.wsscode.pathom3.connect.operation/mutation
                    'user/foo
                    {::pco/output [:sample]
                     ::or-thing   3}

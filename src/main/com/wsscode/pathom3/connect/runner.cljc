@@ -131,7 +131,7 @@
   (if node-run-stats*
     (swap! node-run-stats* assoc-in [node-id ::node-error] error)))
 
-(defn call-resolver-from-node
+(defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
   When this function runs the resolver, if filters the data to only include the keys
@@ -178,7 +178,7 @@
   [env node]
   (if (all-requires-ready? env node)
     (run-next-node! env node)
-    (let [response (call-resolver-from-node env node)]
+    (let [response (invoke-resolver-from-node env node)]
       (when (not= ::node-error response)
         (merge-resolver-response! env response)
         (run-next-node! env node)))))
@@ -239,6 +239,23 @@
       {}
       (::pcp/placeholders graph))))
 
+(defn invoke-mutation!
+  "Run mutation from AST."
+  [env {:keys [key params]}]
+  (let [mutation (pci/mutation env key)
+        result   (try
+                   (pco.prot/-mutate mutation env params)
+                   (catch #?(:clj Throwable :cljs :default) e
+                     {::mutation-error e}))]
+    (p.ent/swap-entity! env assoc key
+      (process-attr-subquery env key result))))
+
+(defn process-mutations!
+  "Runs the mutations gathered by the planner."
+  [{::pcp/keys [graph] :as env}]
+  (doseq [ast (::pcp/mutations graph)]
+    (invoke-mutation! env ast)))
+
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the
   entity cache tree."
@@ -263,7 +280,11 @@
     (if-let [root (pcp/get-root-node graph)]
       (run-node! env root))
 
+    ; placeholders
     (merge-resolver-response! env (placeholder-merge-entity env source-ent))
+
+    ; mutations
+    (process-mutations! env)
 
     ; compute minimal stats
     (let [total-time (- (time/now-ms) start)]
