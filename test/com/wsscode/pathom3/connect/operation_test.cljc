@@ -273,7 +273,7 @@
                :body    [{:foo "bar"}]})
            {::pco/output [:foo]})))
 
-  (testing "inferred input"
+  (testing "inferred params"
     (is (= (pco/params->mutation-options
              '{:name    foo
                :arglist [[:sym env] [:map {:keys [dep]}]]
@@ -281,7 +281,7 @@
            {::pco/params [:dep]
             ::pco/output [:foo]}))
 
-    (testing "preserve user input when defined"
+    (testing "preserve user params when defined"
       (is (= (pco/params->mutation-options
                '{:name    foo
                  :arglist [[:sym env] [:map {:keys [dep]}]]
@@ -293,14 +293,14 @@
   (testing "implicit output"
     (is (= (pco/params->mutation-options
              '{:name    foo
-               :arglist [[:sym env] [:sym input]]
+               :arglist [[:sym env] [:sym params]]
                :body    [nil {:foo "bar"}]})
            {::pco/output [:foo]}))
 
     (testing "nested body"
       (is (= (pco/params->mutation-options
                '{:name    foo
-                 :arglist [[:sym env] [:sym input]]
+                 :arglist [[:sym env] [:sym params]]
                  :body    [{:foo  "bar"
                             :buz  "baz"
                             :deep {:nested (call-something)}
@@ -313,7 +313,7 @@
     (testing "preserve user output when defined"
       (is (= (pco/params->mutation-options
                '{:name    foo
-                 :arglist [[:sym env] [:sym input]]
+                 :arglist [[:sym env] [:sym params]]
                  :options {::pco/output [:foo :bar]}
                  :body    [{:foo "bar"}]})
              {::pco/output [:foo :bar]})))))
@@ -373,7 +373,7 @@
                    #:com.wsscode.pathom3.connect.operation{:output [:foo]}
                    (clojure.core/fn foo [_ _] {:foo "bar"}))))))
 
-     (testing "implicit output, including implicit import via destructuring"
+     (testing "implicit output, including implicit inputs via destructuring"
        (is (= (macroexpand-1
                 `(pco/defresolver ~'foo ~'[{:keys [dep]}] {:sample "bar"}))
               '(def foo
@@ -383,7 +383,7 @@
                                                            :input  [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
-     (testing "implicit output, including implicit import via destructuring"
+     (testing "implicit output, including implicit inputs via destructuring"
        (is (= (macroexpand-1
                 `(pco/defresolver ~'foo ~'[{:keys [dep]}] {::pco/output [{:sample [:thing]}]} {:sample "bar"}))
               '(def foo
@@ -450,7 +450,7 @@
                    #:com.wsscode.pathom3.connect.operation{:output [:foo]}
                    (clojure.core/fn foo [_ _] {:foo "bar"}))))))
 
-     (testing "implicit output, including implicit import via destructuring"
+     (testing "implicit output, including implicit params via destructuring"
        (is (= (macroexpand-1
                 `(pco/defmutation ~'foo ~'[{:keys [dep]}] {:sample "bar"}))
               '(def foo
@@ -460,7 +460,7 @@
                                                            :params  [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
-     (testing "implicit output, including implicit import via destructuring"
+     (testing "implicit output, including implicit params via destructuring"
        (is (= (macroexpand-1
                 `(pco/defmutation ~'foo ~'[{:keys [dep]}] {::pco/output [{:sample [:thing]}]} {:sample "bar"}))
               '(def foo
