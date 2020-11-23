@@ -163,6 +163,20 @@
   (get-in env [:com.wsscode.pathom3.connect.planner/node
                :com.wsscode.pathom3.connect.planner/params]))
 
+(>defn with-node-params
+  "Set current node params to params."
+  ([params]
+   [map? => map?]
+   {:com.wsscode.pathom3.connect.planner/node
+    {:com.wsscode.pathom3.connect.planner/params
+     params}})
+
+  ([env params]
+   [map? map? => map?]
+   (assoc-in env [:com.wsscode.pathom3.connect.planner/node
+                  :com.wsscode.pathom3.connect.planner/params]
+     params)))
+
 ; endregion
 
 ; region macros

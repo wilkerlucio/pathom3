@@ -481,3 +481,16 @@
                    {::pco/output [:sample]
                     ::or-thing   3}
                    (clojure.core/fn foo [_ _] {:sample "bar"}))))))))
+
+(deftest with-node-params-test
+  (is (= (pco/with-node-params {:foo "bar"})
+         {:com.wsscode.pathom3.connect.planner/node
+          {:com.wsscode.pathom3.connect.planner/params
+           {:foo "bar"}}}))
+
+  (is (= (pco/with-node-params {:env "data"} {:foo "bar"})
+         {:env
+          "data"
+          :com.wsscode.pathom3.connect.planner/node
+          {:com.wsscode.pathom3.connect.planner/params
+           {:foo "bar"}}})))
