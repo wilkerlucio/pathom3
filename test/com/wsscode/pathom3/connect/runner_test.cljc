@@ -416,7 +416,25 @@
            {:x      10
             :y      20
             :>/path {:x 20
-                     :y 40}}))))
+                     :y 40}}))
+
+    (testing "different parameters"
+      (is (= (run-graph (pci/register
+                          [(pbir/constantly-resolver :x 10)
+                           (pbir/single-attr-with-env-resolver :x :y #(* (:m (pco/params %) 2) %2))])
+                        {}
+                        '[:x
+                          {:>/m2 [(:y)]}
+                          {:>/m3 [(:y {:m 3})]}
+                          {:>/m4 [(:y {:m 4})]}])
+             {:x    10
+              :y    20
+              :>/m2 {:x 10
+                     :y 20}
+              :>/m3 {:x 10
+                     :y 30}
+              :>/m4 {:x 10
+                     :y 40}})))))
 
 (deftest run-graph!-mutations-test
   (testing "simple call"
@@ -463,6 +481,8 @@
             ::pcrs/node-error-type ::pcrs/node-error-type-direct}))))
 
 (deftest placeholder-merge-entity-test
+  ; TODO: currently not possible, need to handle conflicts before
+  #_
   (testing "forward current entity data"
     (is (= (pcr/placeholder-merge-entity
              {::pcp/graph          {::pcp/nodes        {}

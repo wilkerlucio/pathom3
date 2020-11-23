@@ -228,17 +228,16 @@
   "Create an entity to process the placeholder demands. This consider if the placeholder
   has params, params in placeholders means that you want some specific data at that
   point."
-  [{::pcp/keys [graph] :as env} source-ent]
-  (let [entity (p.ent/entity env)]
-    (reduce
-      (fn [out ph]
-        (let [data (:params (pcp/entry-ast graph ph))]
-          (assoc out ph
-            (if (seq data)
-              (merge source-ent data)
-              entity))))
-      {}
-      (::pcp/placeholders graph))))
+  [{::pcp/keys [graph]} source-ent]
+  (reduce
+    (fn [out ph]
+      (let [data (:params (pcp/entry-ast graph ph))]
+        (assoc out ph
+          ; TODO maybe check for possible optimization when there are no conflicts
+          ; between different placeholder levels
+          (merge source-ent data))))
+    {}
+    (::pcp/placeholders graph)))
 
 (defn invoke-mutation!
   "Run mutation from AST."
