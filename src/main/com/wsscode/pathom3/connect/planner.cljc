@@ -1221,10 +1221,11 @@
   "Traverse node after-node chain and returns the most distant resolver ancestor of node id.
   This only walks though resolver nodes, branch nodes are removed."
   [graph node-id]
-  (->> (node-direct-ancestor-chain graph node-id)
-       (remove (comp ::run-and #(get-node graph %)))
-       (remove (comp ::run-or #(get-node graph %)))
-       first))
+  (or (->> (node-direct-ancestor-chain graph node-id)
+           (remove (comp ::run-and #(get-node graph %)))
+           (remove (comp ::run-or #(get-node graph %)))
+           first)
+      node-id))
 
 (defn push-root-to-ancestor [graph node-id]
   (set-root-node graph (find-furthest-ancestor graph node-id)))
