@@ -494,3 +494,9 @@
           :com.wsscode.pathom3.connect.planner/node
           {:com.wsscode.pathom3.connect.planner/params
            {:foo "bar"}}})))
+
+(deftest params-test
+  (is (= (pco/params {})
+         {}))
+  (is (= (pco/params (pco/with-node-params {:foo "bar"}))
+         {:foo "bar"})))

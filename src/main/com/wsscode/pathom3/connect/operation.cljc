@@ -157,11 +157,12 @@
        (->Mutation config' (or mutate (fn [_ _])))))))
 
 (>defn params
-  "Pull parameters from environment"
+  "Pull parameters from environment. Always returns a map."
   [env]
-  [map? => (? map?)]
-  (get-in env [:com.wsscode.pathom3.connect.planner/node
-               :com.wsscode.pathom3.connect.planner/params]))
+  [map? => map?]
+  (or (get-in env [:com.wsscode.pathom3.connect.planner/node
+                   :com.wsscode.pathom3.connect.planner/params])
+      {}))
 
 (>defn with-node-params
   "Set current node params to params."

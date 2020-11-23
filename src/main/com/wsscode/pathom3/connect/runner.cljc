@@ -150,6 +150,7 @@
         env        (assoc env ::pcp/node node)
         entity     (p.ent/entity env)
         input-data (select-keys entity input-keys)
+        params     (pco/params env)
         start      (time/now-ms)
         result     (try
                      (if (< (count input-data) (count input-keys))
@@ -157,7 +158,7 @@
                                                             :available (keys input-data)}))
                        (if cache?
                          (p.cache/cached ::resolver-cache* env
-                           [op-name input-data]
+                           [op-name input-data params]
                            #(pco.prot/-resolve resolver env input-data))
                          (pco.prot/-resolve resolver env input-data)))
                      (catch #?(:clj Throwable :cljs :default) e

@@ -306,40 +306,75 @@
                     ::todo-done?   true}]})))
 
 (deftest run-graph!-cache-test
-  (let [cache* (atom {})]
+  (testing "store result in cache"
+    (let [cache* (atom {})]
+      (is (= (run-graph
+               (-> (pci/register
+                     [(pbir/constantly-resolver :x 10)
+                      (pbir/single-attr-resolver :x :y #(* 2 %))])
+                   (assoc ::pcr/resolver-cache* cache*))
+               {}
+               [:y])
+             {:x 10
+              :y 20}))
+      (is (= @cache*
+             '{[x->y-single-attr-transform {:x 10} {}] {:y 20}
+               [x-constant {} {}]                      {:x 10}})))
+
+    (testing "with params"
+      (let [cache* (atom {})]
+        (is (= (run-graph
+                 (-> (pci/register
+                       [(pbir/constantly-resolver :x 10)
+                        (pbir/single-attr-resolver :x :y #(* 2 %))])
+                     (assoc ::pcr/resolver-cache* cache*))
+                 {}
+                 ['(:y {:foo "bar"})])
+               {:x 10
+                :y 20}))
+        (is (= @cache*
+               '{[x->y-single-attr-transform {:x 10} {:foo "bar"}] {:y 20}
+                 [x-constant {} {}]                                {:x 10}})))))
+
+  (testing "cache hit"
     (is (= (run-graph
              (-> (pci/register
                    [(pbir/constantly-resolver :x 10)
                     (pbir/single-attr-resolver :x :y #(* 2 %))])
-                 (assoc ::pcr/resolver-cache* cache*))
+                 (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10} {}] {:y 30}})))
              {}
              [:y])
            {:x 10
-            :y 20}))
-    (is (= @cache*
-           '{[x->y-single-attr-transform {:x 10}] {:y 20}
-             [x-constant {}]                      {:x 10}})))
+            :y 30})))
 
-  (is (= (run-graph
-           (-> (pci/register
-                 [(pbir/constantly-resolver :x 10)
-                  (pbir/single-attr-resolver :x :y #(* 2 %))])
-               (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10}] {:y 30}})))
-           {}
-           [:y])
-         {:x 10
-          :y 30}))
+  (testing "cache don't hit with different params"
+    (let [cache* (atom {'[x->y-single-attr-transform {:x 10} {}] {:y 30}})]
+      (is (= (run-graph
+               (-> (pci/register
+                     [(pbir/constantly-resolver :x 10)
+                      (pbir/single-attr-resolver :x :y #(* 2 %))])
+                   (assoc ::pcr/resolver-cache* cache*))
+               {}
+               ['(:y {:z 42})])
+             {:x 10
+              :y 20}))
 
-  (is (= (run-graph
-           (-> (pci/register
-                 [(pbir/constantly-resolver :x 10)
-                  (assoc-in (pbir/single-attr-resolver :x :y #(* 2 %))
-                    [:config ::pcr/cache?] false)])
-               (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10}] {:y 30}})))
-           {}
-           [:y])
-         {:x 10
-          :y 20})))
+      (is (= @cache*
+             {'[x->y-single-attr-transform {:x 10} {}]      {:y 30}
+              '[x->y-single-attr-transform {:x 10} {:z 42}] {:y 20}
+              '[x-constant {} {}]                           {:x 10}}))))
+
+  (testing "resolver with cache disabled"
+    (is (= (run-graph
+             (-> (pci/register
+                   [(pbir/constantly-resolver :x 10)
+                    (assoc-in (pbir/single-attr-resolver :x :y #(* 2 %))
+                      [:config ::pcr/cache?] false)])
+                 (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10}] {:y 30}})))
+             {}
+             [:y])
+           {:x 10
+            :y 20}))))
 
 (deftest run-graph!-placeholders-test
   (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
