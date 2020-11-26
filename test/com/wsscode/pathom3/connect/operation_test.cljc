@@ -29,6 +29,20 @@
               ::pco/input    []
               ::pco/provides {:foo {}}}))))
 
+  (testing "validates configuration map"
+    (try
+      (pco/resolver 'foo {::pco/input #{:invalid}} (fn [_ _] {:sample "bar"}))
+      (catch #?(:clj Throwable :cljs :default) e
+        (is (= (-> e
+                   (ex-data)
+                   #?(:clj  (update :explain-data dissoc :clojure.spec.alpha/spec :clojure.spec.alpha/value)
+                      :cljs (update :explain-data dissoc :cljs.spec.alpha/spec :cljs.spec.alpha/value)))
+               {:explain-data #:clojure.spec.alpha{:problems [{:in   [:com.wsscode.pathom3.connect.operation/input]
+                                                               :path [:com.wsscode.pathom3.connect.operation/input]
+                                                               :pred 'clojure.core/vector?
+                                                               :val  #{:invalid}
+                                                               :via  [:com.wsscode.pathom3.connect.operation/input]}]}})))))
+
   (testing "name config overrides syntax name"
     (let [resolver (pco/resolver 'foo {::pco/op-name 'bar
                                        ::pco/resolve (fn [_ _] {})}
@@ -102,7 +116,8 @@
       (catch #?(:clj Throwable :cljs :default) e
         (is (= (-> e
                    (ex-data)
-                   (update :explain-data dissoc :clojure.spec.alpha/spec :clojure.spec.alpha/value))
+                   #?(:clj  (update :explain-data dissoc :clojure.spec.alpha/spec :clojure.spec.alpha/value)
+                      :cljs (update :explain-data dissoc :cljs.spec.alpha/spec :cljs.spec.alpha/value)))
                {:explain-data #:clojure.spec.alpha{:problems [{:in   [:com.wsscode.pathom3.connect.operation/input]
                                                                :path [:com.wsscode.pathom3.connect.operation/input]
                                                                :pred 'clojure.core/vector?
