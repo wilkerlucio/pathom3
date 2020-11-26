@@ -37,11 +37,12 @@
                    (ex-data)
                    #?(:clj  (update :explain-data dissoc :clojure.spec.alpha/spec :clojure.spec.alpha/value)
                       :cljs (update :explain-data dissoc :cljs.spec.alpha/spec :cljs.spec.alpha/value)))
-               {:explain-data #:clojure.spec.alpha{:problems [{:in   [:com.wsscode.pathom3.connect.operation/input]
-                                                               :path [:com.wsscode.pathom3.connect.operation/input]
-                                                               :pred 'clojure.core/vector?
-                                                               :val  #{:invalid}
-                                                               :via  [:com.wsscode.pathom3.connect.operation/input]}]}})))))
+               {:explain-data {#?(:clj  :clojure.spec.alpha/problems
+                                  :cljs :cljs.spec.alpha/problems) [{:in   [:com.wsscode.pathom3.connect.operation/input]
+                                                                     :path [:com.wsscode.pathom3.connect.operation/input]
+                                                                     :pred 'clojure.core/vector?
+                                                                     :val  #{:invalid}
+                                                                     :via  [:com.wsscode.pathom3.connect.operation/input]}]}})))))
 
   (testing "name config overrides syntax name"
     (let [resolver (pco/resolver 'foo {::pco/op-name 'bar
@@ -118,11 +119,12 @@
                    (ex-data)
                    #?(:clj  (update :explain-data dissoc :clojure.spec.alpha/spec :clojure.spec.alpha/value)
                       :cljs (update :explain-data dissoc :cljs.spec.alpha/spec :cljs.spec.alpha/value)))
-               {:explain-data #:clojure.spec.alpha{:problems [{:in   [:com.wsscode.pathom3.connect.operation/input]
-                                                               :path [:com.wsscode.pathom3.connect.operation/input]
-                                                               :pred 'clojure.core/vector?
-                                                               :val  #{:invalid}
-                                                               :via  [:com.wsscode.pathom3.connect.operation/input]}]}})))))
+               {:explain-data {#?(:clj  :clojure.spec.alpha/problems
+                                  :cljs :cljs.spec.alpha/problems) [{:in   [:com.wsscode.pathom3.connect.operation/input]
+                                                                     :path [:com.wsscode.pathom3.connect.operation/input]
+                                                                     :pred 'clojure.core/vector?
+                                                                     :val  #{:invalid}
+                                                                     :via  [:com.wsscode.pathom3.connect.operation/input]}]}})))))
 
   (testing "name config overrides syntax name"
     (let [mutation (pco/mutation 'foo {::pco/op-name 'bar
