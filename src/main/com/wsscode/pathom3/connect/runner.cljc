@@ -11,6 +11,7 @@
     [com.wsscode.pathom3.connect.operation.protocols :as pco.prot]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]))
 
@@ -28,25 +29,40 @@
 
 (declare run-node! run-graph!)
 
+(defn union-key-on-data? [{:keys [union-key]} m]
+  (contains? m union-key))
+
+(defn pick-union-entry
+  "Check if ast children is a union type. If so, makes a decision to choose a path and
+  return that AST."
+  [ast m]
+  (if (pf.eql/union-children? ast)
+    (some (fn [ast']
+            (if (union-key-on-data? ast' m)
+              (pf.eql/union->root ast')))
+      (pf.eql/union-children ast))
+    ast))
+
 (defn process-map-subquery
-  [env ast v]
-  (if (map? v)
-    (let [cache-tree* (atom v)]
+  [env ast m]
+  (if (map? m)
+    (let [cache-tree* (atom m)
+          ast         (pick-union-entry ast m)]
       (run-graph! env ast cache-tree*)
       @cache-tree*)
-    v))
+    m))
 
 (defn process-sequence-subquery
-  [env ast v]
+  [env ast s]
   (into
-    (empty v)
+    (empty s)
     (map #(process-map-subquery env ast %))
-    v))
+    s))
 
 (defn process-map-container-subquery
   "Build a new map where the values are replaced with the map process of the subquery."
-  [env ast v]
-  (coll/map-vals #(process-map-subquery env ast %) v))
+  [env ast m]
+  (coll/map-vals #(process-map-subquery env ast %) m))
 
 (defn process-map-container?
   "Check if the map should be processed as a map-container, this means the sub-query

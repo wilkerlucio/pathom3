@@ -265,6 +265,24 @@
                        :left      7}
                       20]}))))
 
+(deftest run-graph!-unions-test
+  (is (= (run-graph
+           (pci/register
+             [(pbir/constantly-resolver :list
+                                        [{:user/id 123}
+                                         {:video/id 2}])
+              (pbir/attribute-map-resolver :user/id :user/name
+                                           {123 "U"})
+              (pbir/attribute-map-resolver :video/id :video/title
+                                           {2 "V"})])
+           {}
+           [{:list
+             {:user/id  [:user/name]
+              :video/id [:video/title]}}])
+         {:list
+          [{:user/id 123 :user/name "U"}
+           {:video/id 2 :video/title "V"}]})))
+
 (def mock-todos-db
   [{::todo-message "Write demo on params"
     ::todo-done?   true}

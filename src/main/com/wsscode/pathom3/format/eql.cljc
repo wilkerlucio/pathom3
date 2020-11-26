@@ -35,6 +35,31 @@
   [ast]
   (refs/kw-identical? :union (some-> ast :children first :type)))
 
+(defn union-children
+  "Get union children when its an union, otherwise return nil."
+  [ast]
+  (if (union-children? ast)
+    (-> ast :children first :children)))
+
+(defn union->root
+  "Convert a union entry to a root."
+  [ast]
+  (-> ast (assoc :type :root) (dissoc :union-key :query)))
+
+(defn union-key-on-data? [{:keys [union-key]} m]
+  (contains? m union-key))
+
+(defn pick-union-entry
+  "Check if ast children is a union type. If so, makes a decision to choose a path and
+  return that AST."
+  [ast m]
+  (if (union-children? ast)
+    (some (fn [ast']
+            (if (union-key-on-data? ast' m)
+              (union->root ast')))
+      (union-children ast))
+    ast))
+
 (defn maybe-merge-union-ast
   "Check if AST entry is a union, if so it computes a new AST entry by combining
   all union paths as a single entry."
@@ -83,14 +108,17 @@
 
 (>defn map-select-ast
   "Same as map-select, but using AST as source."
-  [source {:keys [children] :as ast}]
+  [source ast]
   [any? (s/keys :opt-un [:edn-query-language.ast/children])
    => any?]
   (if (map? source)
     (let [start (if (ast-contains-wildcard? ast)
                   source
                   {})]
-      (into start (keep #(map-select-entry source %)) children))
+      (into start (keep #(map-select-entry source %))
+            (-> ast
+                (pick-union-entry source)
+                :children)))
     source))
 
 (>defn map-select
