@@ -1,7 +1,7 @@
 {:deps   {:aliases [:provided :test-cljs]}
  :nrepl  {:port 59121}
  :builds {:test {:target           :browser-test
-                 :test-dir         "resources/public/js/test"
+                 :test-dir         "web/public/js/test"
                  :ns-regexp        "-test$"
                  :compiler-options {:static-fns      false
                                     :external-config {:guardrails {:throw? true :emit-spec? true}}}
