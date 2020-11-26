@@ -40,7 +40,8 @@
                {:explain-data {#?(:clj  :clojure.spec.alpha/problems
                                   :cljs :cljs.spec.alpha/problems) [{:in   [:com.wsscode.pathom3.connect.operation/input]
                                                                      :path [:com.wsscode.pathom3.connect.operation/input]
-                                                                     :pred 'clojure.core/vector?
+                                                                     :pred #?(:clj  'clojure.core/vector?
+                                                                              :cljs 'cljs.core/vector?)
                                                                      :val  #{:invalid}
                                                                      :via  [:com.wsscode.pathom3.connect.operation/input]}]}})))))
 
@@ -122,7 +123,8 @@
                {:explain-data {#?(:clj  :clojure.spec.alpha/problems
                                   :cljs :cljs.spec.alpha/problems) [{:in   [:com.wsscode.pathom3.connect.operation/input]
                                                                      :path [:com.wsscode.pathom3.connect.operation/input]
-                                                                     :pred 'clojure.core/vector?
+                                                                     :pred #?(:clj  'clojure.core/vector?
+                                                                              :cljs 'cljs.core/vector?)
                                                                      :val  #{:invalid}
                                                                      :via  [:com.wsscode.pathom3.connect.operation/input]}]}})))))
 
