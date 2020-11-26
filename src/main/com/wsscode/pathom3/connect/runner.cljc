@@ -268,6 +268,9 @@
                        (coll/merge-defaults {::p.path/path []})
                        (assoc ::node-run-stats* (atom ^::map-container? {})))]
 
+    ; mutations
+    (process-mutations! env)
+
     ; compute nested available fields
     (if-let [nested (::pcp/nested-available-process graph)]
       (merge-resolver-response! env (select-keys (p.ent/entity env) nested)))
@@ -282,9 +285,6 @@
 
     ; placeholders
     (merge-resolver-response! env (placeholder-merge-entity env source-ent))
-
-    ; mutations
-    (process-mutations! env)
 
     ; compute minimal stats
     (let [total-time (- (time/now-ms) start)]

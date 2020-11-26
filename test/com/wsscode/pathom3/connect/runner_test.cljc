@@ -464,7 +464,19 @@
                                 (fn [_ _] (throw err)))])
                {}
                '[{(call {:this "thing"}) [:other]}])
-             {'call {::pcr/mutation-error err}})))))
+             {'call {::pcr/mutation-error err}}))))
+
+  (testing "mutations run before anything else"
+    (is (= (run-graph
+             (-> (pci/register
+                   [(pbir/constantly-fn-resolver ::env-var (comp deref ::env-var))
+                    (pco/mutation 'call {} (fn [{::keys [env-var]} _] (swap! env-var inc)))])
+                 (assoc ::env-var (atom 0)))
+             {}
+             '[::env-var
+               (call)])
+           {::env-var 1
+            'call     1}))))
 
 (deftest run-graph!-errors-test
   (let [error (ex-info "Error" {})
