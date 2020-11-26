@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.connect.operation.protocols :as pop]
     [com.wsscode.pathom3.format.eql :as pf.eql]
@@ -107,11 +108,17 @@
   "
   ([op-name config resolve]
    [::op-name (s/keys :opt [::output ::params]) ::resolve => ::resolver]
-   (resolver (assoc config ::op-name op-name ::resolve resolve)))
+   (resolver (-> config
+                 (coll/merge-defaults {::op-name op-name})
+                 (assoc ::resolve resolve))))
   ([{::keys [transform] :as config}]
    [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve ::transform])
           :resolver ::resolver)
     => ::resolver]
+   (when-not (s/valid? (s/keys) config)
+     (s/explain (s/keys) config)
+     (throw (ex-info (str "Invalid config on defresolver " name)
+                     {:explain-data (s/explain-data (s/keys) config)})))
    (if (resolver? config)
      config
      (let [{::keys [resolve output] :as config} (cond-> config transform transform)
@@ -139,13 +146,19 @@
 
   Returns an instance of the Mutation type.
   "
-  ([op-name config resolve]
+  ([op-name config mutate]
    [::op-name (s/keys :opt [::output ::params]) ::mutate => ::mutation]
-   (mutation (assoc config ::op-name op-name ::mutate resolve)))
+   (mutation (-> config
+                 (coll/merge-defaults {::op-name op-name})
+                 (assoc ::mutate mutate))))
   ([{::keys [transform] :as config}]
    [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve ::transform])
           :mutation ::mutation)
     => ::mutation]
+   (when-not (s/valid? (s/keys) config)
+     (s/explain (s/keys) config)
+     (throw (ex-info (str "Invalid config on mutation " name)
+                     {:explain-data (s/explain-data (s/keys) config)})))
    (if (mutation? config)
      config
      (let [{::keys [mutate output] :as config} (cond-> config transform transform)
@@ -359,17 +372,13 @@
      "
      {:arglists '([name docstring? arglist options? & body])}
      [& args]
-     (let [{:keys [name docstring arglist options body] :as params}
+     (let [{:keys [name docstring arglist body] :as params}
            (-> (s/conform ::defresolver-args args)
                (update :arglist normalize-arglist))
 
            arglist' (s/unform ::operation-args arglist)
            fqsym    (full-symbol name (str *ns*))
            defdoc   (cond-> [] docstring (conj docstring))]
-       (when (and options (not (s/valid? (s/keys) options)))
-         (s/explain (s/keys) options)
-         (throw (ex-info (str "Invalid options on defresolver " name)
-                         {:explain-data (s/explain-data (s/keys) options)})))
        `(def ~name
           ~@defdoc
           (resolver '~fqsym ~(params->resolver-options params)
@@ -387,17 +396,13 @@
      But where `defresolver` takes input, `defmutation` uses as ::params."
      {:arglists '([name docstring? arglist options? & body])}
      [& args]
-     (let [{:keys [name docstring arglist options body] :as params}
+     (let [{:keys [name docstring arglist body] :as params}
            (-> (s/conform ::defmutation-args args)
                (update :arglist normalize-arglist))
 
            arglist' (s/unform ::operation-args arglist)
            fqsym    (full-symbol name (str *ns*))
            defdoc   (cond-> [] docstring (conj docstring))]
-       (when (and options (not (s/valid? (s/keys) options)))
-         (s/explain (s/keys) options)
-         (throw (ex-info (str "Invalid options on defmutation " name)
-                         {:explain-data (s/explain-data (s/keys) options)})))
        `(def ~name
           ~@defdoc
           (mutation '~fqsym ~(params->mutation-options params)

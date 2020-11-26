@@ -29,6 +29,13 @@
               ::pco/input    []
               ::pco/provides {:foo {}}}))))
 
+  (testing "name config overrides syntax name"
+    (let [resolver (pco/resolver 'foo {::pco/op-name 'bar
+                                       ::pco/resolve (fn [_ _] {})}
+                     (fn [_ _] {:foo "bar"}))]
+      (is (= (pco/operation-config resolver)
+             {::pco/op-name 'bar}))))
+
   (testing "dynamic resolver"
     (let [resolver (pco/resolver {::pco/op-name           'foo
                                   ::pco/dynamic-resolver? true
@@ -77,54 +84,62 @@
               ::pco/provides {:foo {}}
               ::pco/output   [:foo]}))))
 
-  (testing "creating resolver from pure maps"
-    (let [resolver (pco/resolver {::pco/op-name 'foo
+  (testing "creating mutation from pure maps"
+    (let [mutation (pco/mutation {::pco/op-name 'foo
                                   ::pco/output  [:foo]
-                                  ::pco/resolve (fn [_ _] "bar")})]
-      (is (= (resolver nil nil)
-             "bar"))
+                                  ::pco/mutate  (fn [_ _] {:foo "bar"})})]
+      (is (= (mutation nil nil)
+             {:foo "bar"}))
 
-      (is (= (pco/operation-config resolver)
+      (is (= (pco/operation-config mutation)
              {::pco/op-name  'foo
               ::pco/output   [:foo]
-              ::pco/input    []
               ::pco/provides {:foo {}}}))))
 
-  (testing "dynamic resolver"
-    (let [resolver (pco/resolver {::pco/op-name           'foo
-                                  ::pco/dynamic-resolver? true
-                                  ::pco/resolve           (fn [_ _] "bar")})]
+  (testing "validates configuration map"
+    (try
+      (pco/mutation 'foo {::pco/input #{:invalid}} (fn [_ _] {:sample "bar"}))
+      (catch #?(:clj Throwable :cljs :default) e
+        (is (= (-> e
+                   (ex-data)
+                   (update :explain-data dissoc :clojure.spec.alpha/spec :clojure.spec.alpha/value))
+               {:explain-data #:clojure.spec.alpha{:problems [{:in   [:com.wsscode.pathom3.connect.operation/input]
+                                                               :path [:com.wsscode.pathom3.connect.operation/input]
+                                                               :pred 'clojure.core/vector?
+                                                               :val  #{:invalid}
+                                                               :via  [:com.wsscode.pathom3.connect.operation/input]}]}})))))
 
-      (is (= (pco/operation-config resolver)
-             {::pco/op-name           'foo
-              ::pco/dynamic-resolver? true}))))
+  (testing "name config overrides syntax name"
+    (let [mutation (pco/mutation 'foo {::pco/op-name 'bar
+                                       ::pco/mutate  (fn [_ _] {})}
+                                 (fn [_ _] {:foo "bar"}))]
+      (is (= (pco/operation-config mutation)
+             {::pco/op-name 'bar}))))
 
   (testing "transform"
-    (let [resolver (pco/resolver 'foo {::pco/output    [:foo]
+    (let [mutation (pco/mutation 'foo {::pco/output    [:foo]
                                        ::pco/transform (fn [config]
                                                          (assoc config ::other "bar"))}
-                     (fn [_ _] {:foo "bar"}))]
-      (is (= (pco/operation-config resolver)
+                                 (fn [_ _] {:foo "bar"}))]
+      (is (= (pco/operation-config mutation)
              {::pco/op-name  'foo
               ::other        "bar"
               ::pco/output   [:foo]
-              ::pco/input    []
               ::pco/provides {:foo {}}}))))
 
-  (testing "noop when called with a resolver"
-    (let [resolver (-> {::pco/op-name 'foo
+  (testing "noop when called with a mutation"
+    (let [mutation (-> {::pco/op-name 'foo
                         ::pco/output  [:foo]
-                        ::pco/resolve (fn [_ _] "bar")}
-                       (pco/resolver)
-                       (pco/resolver)
-                       (pco/resolver))]
-      (is (= (resolver nil nil)
-             "bar"))
+                        ::pco/mutate  (fn [_ _] {:data "bar"})}
+                       (pco/mutation)
+                       (pco/mutation)
+                       (pco/mutation))]
+      (is (= (mutation nil nil)
+             {:data "bar"}))
 
-      (is (= (pco/operation-config resolver)
+      (is (= (pco/operation-config mutation)
              {::pco/op-name  'foo
               ::pco/output   [:foo]
-              ::pco/input    []
               ::pco/provides {:foo {}}})))))
 
 #?(:clj
@@ -416,21 +431,6 @@
                    'user/foo
                    #:com.wsscode.pathom3.connect.operation{:output [:sample]}
                    (clojure.core/fn foo [_ _] {:sample "bar"}))))))
-
-     (testing "validates configuration map"
-       (try
-         (macroexpand-1
-           `(pco/defmutation ~'foo ~'[] {::pco/input #{:invalid}} {:sample "bar"}))
-         (catch #?(:clj Throwable :cljs :default) e
-           (is (= (-> (ex-cause e)
-                      (ex-data)
-                      (update :explain-data dissoc :clojure.spec.alpha/spec))
-                  {:explain-data #:clojure.spec.alpha{:problems [{:in   [:com.wsscode.pathom3.connect.operation/input]
-                                                                  :path [:com.wsscode.pathom3.connect.operation/input]
-                                                                  :pred 'clojure.core/vector?
-                                                                  :val  #{:invalid}
-                                                                  :via  [:com.wsscode.pathom3.connect.operation/input]}]
-                                                      :value    #:com.wsscode.pathom3.connect.operation{:input #{:invalid}}}})))))
 
      (testing "implicit output resolver, no args capture"
        (is (= (macroexpand-1
