@@ -46,7 +46,8 @@
   ([attribute value-fn]
    (let [resolver-name (symbol (str (attr-munge attribute) "-constant"))]
      (pco/resolver resolver-name
-       {::pco/output [attribute]}
+       {::pco/output                               [attribute]
+        :com.wsscode.pathom3.connect.runner/cache? false}
        (fn [env _] {attribute (value-fn env)})))))
 
 (defn single-attr-resolver
