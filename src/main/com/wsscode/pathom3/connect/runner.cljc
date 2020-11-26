@@ -311,17 +311,21 @@
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
   and the entity-tree*."
-  [env ast entity-tree*]
-  [(s/keys) :edn-query-language.ast/node ::p.ent/entity-tree*
-   => (s/keys)]
-  (let [graph (pcp/compute-run-graph
-                (assoc env
-                  :edn-query-language.ast/node ast
-                  ::pcp/available-data (pfsd/data->shape-descriptor @entity-tree*)))]
-    (run-graph!*
-      (-> env
-          (coll/merge-defaults
-            {::resolver-cache* (atom {})})
-          (assoc
-            ::pcp/graph graph
-            ::p.ent/entity-tree* entity-tree*)))))
+  ([env ast-or-graph entity-tree*]
+   [(s/keys) (s/or :ast :edn-query-language.ast/node
+                   :graph ::pcp/graph) ::p.ent/entity-tree*
+    => (s/keys)]
+   (let [env (coll/merge-defaults env {::pcp/plan-cache* (atom {})})
+         graph (if (::pcp/nodes ast-or-graph)
+                 ast-or-graph
+                 (pcp/compute-run-graph
+                   (assoc env
+                     :edn-query-language.ast/node ast-or-graph
+                     ::pcp/available-data (pfsd/data->shape-descriptor @entity-tree*))))]
+     (run-graph!*
+       (-> env
+           (coll/merge-defaults
+             {::resolver-cache* (atom {})})
+           (assoc
+             ::pcp/graph graph
+             ::p.ent/entity-tree* entity-tree*))))))
