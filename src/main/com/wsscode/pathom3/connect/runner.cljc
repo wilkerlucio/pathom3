@@ -48,7 +48,7 @@
   (if (map? m)
     (let [cache-tree* (atom m)
           ast         (pick-union-entry ast m)]
-      (plan-and-run! env ast cache-tree*)
+      (run-graph! env ast cache-tree*)
       @cache-tree*)
     m))
 
