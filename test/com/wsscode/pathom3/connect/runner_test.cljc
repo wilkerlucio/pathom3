@@ -435,30 +435,6 @@
 
     (testing "partial error")))
 
-(defonce plan-cache* (atom {}))
-(defonce plan-cache2* (atom {}))
-
-(comment
-  (let [items (into [] (map #(hash-map :id %)) (range 1000))
-        env (pci/register
-              {::pcp/plan-cache* plan-cache2*}
-              [(pbir/single-attr-resolver :id :v #(* 10 %))
-               (pbir/constantly-resolver :list items)])]
-    (time
-      (do (run-graph
-         env
-         {}
-         [{:list [:v]}])
-          nil)))
-
-  (let [items (into [] (map #(hash-map :id %)) (range 1000))
-        env (pci/register
-              {::pcp/plan-cache* plan-cache*}
-              [batch-fetch
-               (pbir/constantly-resolver :list items)])]
-    (time
-      (do (run-graph env {} [{:list [:v]}]) nil))))
-
 (def mock-todos-db
   [{::todo-message "Write demo on params"
     ::todo-done?   true}
