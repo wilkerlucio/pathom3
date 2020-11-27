@@ -176,6 +176,7 @@
                          batch?
                          {::batch-hold {::pco/op-name    op-name
                                         ::pcp/node       node
+                                        ::cache?         cache?
                                         ::node-run-input input-data}}
 
                          cache?
@@ -294,12 +295,7 @@
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*])
    => (s/keys)]
-  (let [start      (time/now-ms)
-        source-ent (p.ent/entity env)
-        env        (-> env
-                       (coll/merge-defaults {::p.path/path []})
-                       (assoc ::node-run-stats* (atom ^::map-container? {})))]
-
+  (let [source-ent (p.ent/entity env)]
     ; mutations
     (process-mutations! env)
 
@@ -318,11 +314,7 @@
     ; placeholders
     (merge-resolver-response! env (placeholder-merge-entity env source-ent))
 
-    ; compute minimal stats
-    (let [total-time (- (time/now-ms) start)]
-      (assoc graph
-        ::graph-process-duration-ms total-time
-        ::node-run-stats (some-> env ::node-run-stats* deref)))))
+    graph))
 
 (defn plan-and-run!
   [env ast-or-graph entity-tree*]
@@ -351,18 +343,32 @@
     (doseq [[batch-op batch-items] batches]
       (let [inputs    (mapv ::node-run-input batch-items)
             resolver  (pci/resolver env batch-op)
-            responses (pco.prot/-resolve resolver env inputs)]
+            start     (time/now-ms)
+            responses (try
+                        (pco.prot/-resolve resolver env inputs)
+                        (catch #?(:clj Throwable :cljs :default) e
+                          (doseq [{env'       ::env
+                                   ::pcp/keys [node]} batch-items]
+                            (mark-resolver-error env' node (ex-info "Batch error" {} e)))
+                          ::node-error))
+            duration  (- (time/now-ms) start)]
 
-        (if (not= (count inputs) (count responses))
-          (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
+        (when-not (refs/kw-identical? ::node-error responses)
+          (if (not= (count inputs) (count responses))
+            (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
 
-        (doseq [[{env' ::env ::keys [node-run-input] ::pcp/keys [node] :as batch-item} response] (map vector batch-items responses)]
-          (p.cache/cached ::resolver-cache* env'
-            [batch-op node-run-input (pco/params batch-item)]
-            (fn [] response))
-          (merge-resolver-response! env' response)
-          (run-next-node! env' node)
-          (p.ent/swap-entity! env assoc-in (::p.path/path env') (p.ent/entity env')))))))
+          (doseq [[{env'       ::env
+                    ::keys     [node-run-input cache?]
+                    ::pcp/keys [node]
+                    :as        batch-item} response] (map vector batch-items responses)]
+            (if cache?
+              (p.cache/cached ::resolver-cache* env'
+                [batch-op node-run-input (pco/params batch-item)]
+                (fn [] response)))
+            (merge-node-stats! env' node {::batch-run-duration-ms duration})
+            (merge-resolver-response! env' response)
+            (run-next-node! env' node)
+            (p.ent/swap-entity! env assoc-in (::p.path/path env') (p.ent/entity env'))))))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
@@ -371,10 +377,20 @@
   [(s/keys) (s/or :ast :edn-query-language.ast/node
                   :graph ::pcp/graph) ::p.ent/entity-tree*
    => (s/keys)]
-  (let [env (-> env
-                (coll/merge-defaults {::batch-pending* (atom {})})
-                (assoc ::p.ent/entity-tree* entity-tree*))
-        res (plan-and-run! env ast-or-graph entity-tree*)]
+  (let [start (time/now-ms)
+        env   (-> env
+                  (coll/merge-defaults {::batch-pending* (atom {})
+                                        ::p.path/path    []})
+                  (assoc
+                    ::p.ent/entity-tree* entity-tree*
+                    ::node-run-stats* (atom ^::map-container? {})))
+        plan  (plan-and-run! env ast-or-graph entity-tree*)]
+
     (while (seq @(::batch-pending* env))
       (run-batches! env))
-    res))
+
+    ; compute minimal stats
+    (let [total-time (- (time/now-ms) start)]
+      (assoc plan
+        ::graph-process-duration-ms total-time
+        ::node-run-stats (some-> env ::node-run-stats* deref)))))

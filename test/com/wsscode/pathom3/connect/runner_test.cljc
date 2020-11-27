@@ -76,7 +76,9 @@
 
 (defn run-graph [env tree query]
   (let [ent*      (atom tree)
-        env       (-> env (p.ent/with-entity tree))
+        env       (-> env
+                      (p.ent/with-entity tree)
+                      (assoc ::pcr/node-run-stats* (atom {})))
         ast       (eql/query->ast query)
         run-stats (pcr/run-graph! env ast ent*)]
     (with-meta @ent* {::pcr/run-stats run-stats})))
@@ -280,6 +282,12 @@
    ::pco/batch? true}
   (mapv #(hash-map :v (* 10 (:id %))) items))
 
+(pco/defresolver batch-fetch-error []
+  {::pco/input  [:id]
+   ::pco/output [:v]
+   ::pco/batch? true}
+  (throw (ex-info "Batch error" {})))
+
 (pco/defresolver batch-fetch-nested [items]
   {::pco/input  [:id]
    ::pco/output [{:n [:pre-id]}]
@@ -412,7 +420,44 @@
                    {:items [{:id 3, :v 30} {:id 4, :v 40}]}
                    {:items [{:id 5, :v 50} {:id 6, :v 60}]}]})))
 
-  (testing "errors"))
+  (testing "errors"
+    (let [res (run-graph
+                (pci/register
+                  [batch-fetch-error
+                   (pbir/constantly-resolver :list
+                                             [{:id 1}
+                                              {:id 2}
+                                              {:id 3}])])
+                {:id 1}
+                [:v])]
+      (is (= res
+             {:id 1})))
+
+    (testing "partial error")))
+
+(defonce plan-cache* (atom {}))
+(defonce plan-cache2* (atom {}))
+
+(comment
+  (let [items (into [] (map #(hash-map :id %)) (range 1000))
+        env (pci/register
+              {::pcp/plan-cache* plan-cache2*}
+              [(pbir/single-attr-resolver :id :v #(* 10 %))
+               (pbir/constantly-resolver :list items)])]
+    (time
+      (do (run-graph
+         env
+         {}
+         [{:list [:v]}])
+          nil)))
+
+  (let [items (into [] (map #(hash-map :id %)) (range 1000))
+        env (pci/register
+              {::pcp/plan-cache* plan-cache*}
+              [batch-fetch
+               (pbir/constantly-resolver :list items)])]
+    (time
+      (do (run-graph env {} [{:list [:v]}]) nil))))
 
 (def mock-todos-db
   [{::todo-message "Write demo on params"
