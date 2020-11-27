@@ -75,24 +75,15 @@
           ::geo/center-x   25})))
 
 (defn run-graph [env tree query]
-  (let [env       (-> env
-                      (p.ent/with-entity tree))
+  (let [ent*      (atom tree)
+        env       (-> env (p.ent/with-entity tree))
         ast       (eql/query->ast query)
-        graph     (pcp/compute-run-graph
-                    (-> env
-                        (assoc
-                          ::pcp/available-data (pfsd/data->shape-descriptor tree)
-                          :edn-query-language.ast/node ast)))
-        run-stats (pcr/run-graph!* (assoc env ::pcp/graph graph
-                                     ::pcr/node-run-stats* (atom {})))]
-    (with-meta @(::p.ent/entity-tree* env) {::pcr/run-stats run-stats})))
+        run-stats (pcr/run-graph! env ast ent*)]
+    (with-meta @ent* {::pcr/run-stats run-stats})))
 
 (defn coords-resolver [c]
   (pco/resolver 'coords-resolver {::pco/output [::coords]}
     (fn [_ _] {::coords c})))
-
-(pco/defresolver current-path [{::p.path/keys [path]} _]
-  {::p.path/path path})
 
 (def full-env (pci/register [geo/full-registry]))
 
@@ -135,14 +126,14 @@
   (testing "path"
     (is (= (run-graph (pci/register [(pbir/constantly-resolver ::hold {})
                                      (pbir/constantly-resolver ::sequence [{} {}])
-                                     current-path])
+                                     (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
                       {}
                       [::p.path/path
                        {::hold [::p.path/path]}
                        {::sequence [::p.path/path]}])
            {::p.path/path [],
-            ::sequence    [{::p.path/path [::sequence]}
-                           {::p.path/path [::sequence]}],
+            ::sequence    [{::p.path/path [::sequence 0]}
+                           {::p.path/path [::sequence 1]}],
             ::hold        {::p.path/path [::hold]}})))
 
   (testing "insufficient data"
@@ -282,6 +273,146 @@
          {:list
           [{:user/id 123 :user/name "U"}
            {:video/id 2 :video/title "V"}]})))
+
+(pco/defresolver batch-fetch [items]
+  {::pco/input  [:id]
+   ::pco/output [:v]
+   ::pco/batch? true}
+  (mapv #(hash-map :v (* 10 (:id %))) items))
+
+(pco/defresolver batch-fetch-nested [items]
+  {::pco/input  [:id]
+   ::pco/output [{:n [:pre-id]}]
+   ::pco/batch? true}
+  (mapv #(hash-map :n {:pre-id (* 10 (:id %))}) items))
+
+(pco/defresolver batch-pre-id [items]
+  {::pco/input  [:pre-id]
+   ::pco/output [:id]
+   ::pco/batch? true}
+  (mapv #(hash-map :id (inc (:pre-id %))) items))
+
+(pco/defresolver pre-idc [items]
+  {::pco/input  [:id]
+   ::pco/output [:v]
+   ::pco/batch? true}
+  (mapv #(hash-map :v (* 10 (:id %))) items))
+
+(deftest run-graph!-batch-test
+  (testing "simple batching"
+    (is (= (run-graph
+             (pci/register
+               [batch-fetch
+                (pbir/constantly-resolver :list
+                                          [{:id 1}
+                                           {:id 2}
+                                           {:id 3}])])
+             {}
+             [{:list [:v]}])
+           {:list
+            [{:id 1 :v 10}
+             {:id 2 :v 20}
+             {:id 3 :v 30}]})))
+
+  (testing "different plan"
+    (is (= (run-graph
+             (pci/register
+               [batch-fetch
+                (pbir/constantly-resolver :list
+                                          [{:id 1}
+                                           {:id 2 :v 200}
+                                           {:id 3}])])
+             {}
+             [{:list [:v]}])
+           {:list
+            [{:id 1 :v 10}
+             {:id 2 :v 200}
+             {:id 3 :v 30}]})))
+
+  (testing "multiple batches"
+    (is (= (run-graph
+             (pci/register
+               [batch-fetch
+                batch-pre-id
+                (pbir/constantly-resolver :list
+                                          [{:pre-id 1}
+                                           {:pre-id 2}
+                                           {:id 3}])])
+             {}
+             [{:list [:v]}])
+           {:list
+            [{:pre-id 1 :id 2 :v 20}
+             {:pre-id 2 :id 3 :v 30}
+             {:id 3 :v 30}]})))
+
+  (testing "non batching dependency"
+    (is (= (run-graph
+             (pci/register
+               [batch-fetch
+                (pbir/single-attr-resolver :pre-id :id inc)
+                (pbir/constantly-resolver :list
+                                          [{:pre-id 1}
+                                           {:pre-id 2}
+                                           {:pre-id 3}])])
+             {}
+             [{:list [:v]}])
+           {:list
+            [{:pre-id 1 :id 2 :v 20}
+             {:pre-id 2 :id 3 :v 30}
+             {:pre-id 3 :id 4 :v 40}]})))
+
+  (testing "process after batch"
+    (testing "deep process"
+      (is (= (run-graph
+               (pci/register
+                 [batch-fetch
+                  batch-fetch-nested
+                  (pbir/single-attr-resolver :pre-id :id inc)
+                  (pbir/constantly-resolver :list
+                                            [{:id 1}
+                                             {:id 2}
+                                             {:id 3}])])
+               {}
+               [{:list [{:n [:v]}]}])
+             {:list
+              [{:id 1, :n {:pre-id 10 :id 11 :v 110}}
+               {:id 2, :n {:pre-id 20 :id 21 :v 210}}
+               {:id 3, :n {:pre-id 30 :id 31 :v 310}}]})))
+
+    (testing "node sequence"
+      (is (= (run-graph
+               (pci/register
+                 [batch-fetch
+                  (pbir/single-attr-resolver :v :x #(* 100 %))
+                  (pbir/constantly-resolver :list
+                                            [{:id 1}
+                                             {:id 2}
+                                             {:id 3}])])
+               {}
+               [{:list [:x]}])
+             {:list
+              [{:id 1 :v 10 :x 1000}
+               {:id 2 :v 20 :x 2000}
+               {:id 3 :v 30 :x 3000}]}))))
+
+  (testing "deep batching"
+    (is (= (run-graph
+             (pci/register
+               [batch-fetch
+                (pbir/constantly-resolver :list
+                                          [{:items [{:id 1}
+                                                    {:id 2}]}
+                                           {:items [{:id 3}
+                                                    {:id 4}]}
+                                           {:items [{:id 5}
+                                                    {:id 6}]}])])
+             {}
+             [{:list [{:items [:v]}]}])
+           {:list [{:items [{:id 1, :v 10} {:id 2, :v 20}]}
+                   {:items [{:id 3, :v 30} {:id 4, :v 40}]}
+                   {:items [{:id 5, :v 50} {:id 6, :v 60}]}]})))
+
+  (testing "errors"))
 
 (def mock-todos-db
   [{::todo-message "Write demo on params"

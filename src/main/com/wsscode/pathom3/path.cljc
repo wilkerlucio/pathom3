@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.attribute :as p.attr]
     [edn-query-language.core :as eql]))
 
@@ -17,4 +18,4 @@
   [env path-entry]
   [(s/keys :req [::path]) ::path-entry
    => map?]
-  (update env ::path conj path-entry))
+  (update env ::path coll/vconj path-entry))

@@ -27,7 +27,7 @@
   (let [entity (p.ent/entity env)]
     (every? #(contains? entity %) (keys expects))))
 
-(declare run-node! run-graph!)
+(declare run-node! run-graph! plan-and-run!)
 
 (defn union-key-on-data? [{:keys [union-key]} m]
   (contains? m union-key))
@@ -48,7 +48,7 @@
   (if (map? m)
     (let [cache-tree* (atom m)
           ast         (pick-union-entry ast m)]
-      (run-graph! env ast cache-tree*)
+      (plan-and-run! env ast cache-tree*)
       @cache-tree*)
     m))
 
@@ -56,7 +56,7 @@
   [env ast s]
   (into
     (empty s)
-    (map #(process-map-subquery env ast %))
+    (map-indexed #(process-map-subquery (p.path/append-path env %) ast %2))
     s))
 
 (defn process-map-container-subquery
@@ -160,7 +160,7 @@
     :as        node}]
   (let [input-keys (keys input)
         resolver   (pci/resolver env op-name)
-        {::pco/keys [op-name]
+        {::pco/keys [op-name batch?]
          ::keys     [cache?]
          :or        {cache? true}} (pco/operation-config resolver)
         env        (assoc env ::pcp/node node)
@@ -172,10 +172,18 @@
                      (if (< (count input-data) (count input-keys))
                        (throw (ex-info "Insufficient data" {:required  input-keys
                                                             :available (keys input-data)}))
-                       (if cache?
+                       (cond
+                         batch?
+                         {::batch-hold {::pco/op-name    op-name
+                                        ::pcp/node       node
+                                        ::node-run-input input-data}}
+
+                         cache?
                          (p.cache/cached ::resolver-cache* env
                            [op-name input-data params]
                            #(pco.prot/-resolve resolver env input-data))
+
+                         :else
                          (pco.prot/-resolve resolver env input-data)))
                      (catch #?(:clj Throwable :cljs :default) e
                        (mark-resolver-error env node e)
@@ -195,10 +203,18 @@
   [env node]
   (if (all-requires-ready? env node)
     (run-next-node! env node)
-    (let [response (invoke-resolver-from-node env node)]
-      (when (not= ::node-error response)
-        (merge-resolver-response! env response)
-        (run-next-node! env node)))))
+    (let [{::keys [batch-hold] :as response} (invoke-resolver-from-node env node)]
+      (cond
+        batch-hold
+        (let [batch-pending (::batch-pending* env)]
+          (swap! batch-pending update (::pco/op-name batch-hold) coll/vconj
+            (assoc batch-hold ::env env))
+          nil)
+
+        (not (refs/kw-identical? ::node-error response))
+        (do
+          (merge-resolver-response! env response)
+          (run-next-node! env node))))))
 
 (>defn run-or-node!
   [{::pcp/keys [graph] :as env} {::pcp/keys [run-or] :as or-node}]
@@ -308,24 +324,57 @@
         ::graph-process-duration-ms total-time
         ::node-run-stats (some-> env ::node-run-stats* deref)))))
 
+(defn plan-and-run!
+  [env ast-or-graph entity-tree*]
+  [(s/keys) (s/or :ast :edn-query-language.ast/node
+                  :graph ::pcp/graph) ::p.ent/entity-tree*
+   => (s/keys)]
+  (let [env   (coll/merge-defaults env {::pcp/plan-cache* (atom {})})
+        graph (if (::pcp/nodes ast-or-graph)
+                ast-or-graph
+                (pcp/compute-run-graph
+                  (assoc env
+                    :edn-query-language.ast/node ast-or-graph
+                    ::pcp/available-data (pfsd/data->shape-descriptor @entity-tree*))))]
+    (run-graph!*
+      (-> env
+          (coll/merge-defaults
+            {::resolver-cache* (atom {})})
+          (assoc
+            ::pcp/graph graph
+            ::p.ent/entity-tree* entity-tree*)))))
+
+(defn run-batches! [env]
+  (let [batches* (-> env ::batch-pending*)
+        batches  @batches*]
+    (reset! batches* {})
+    (doseq [[batch-op batch-items] batches]
+      (let [inputs    (mapv ::node-run-input batch-items)
+            resolver  (pci/resolver env batch-op)
+            responses (pco.prot/-resolve resolver env inputs)]
+
+        (if (not= (count inputs) (count responses))
+          (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
+
+        (doseq [[{env' ::env ::keys [node-run-input] ::pcp/keys [node] :as batch-item} response] (map vector batch-items responses)]
+          (p.cache/cached ::resolver-cache* env'
+            [batch-op node-run-input (pco/params batch-item)]
+            (fn [] response))
+          (merge-resolver-response! env' response)
+          (run-next-node! env' node)
+          (p.ent/swap-entity! env assoc-in (::p.path/path env') (p.ent/entity env')))))))
+
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
   and the entity-tree*."
-  ([env ast-or-graph entity-tree*]
-   [(s/keys) (s/or :ast :edn-query-language.ast/node
-                   :graph ::pcp/graph) ::p.ent/entity-tree*
-    => (s/keys)]
-   (let [env (coll/merge-defaults env {::pcp/plan-cache* (atom {})})
-         graph (if (::pcp/nodes ast-or-graph)
-                 ast-or-graph
-                 (pcp/compute-run-graph
-                   (assoc env
-                     :edn-query-language.ast/node ast-or-graph
-                     ::pcp/available-data (pfsd/data->shape-descriptor @entity-tree*))))]
-     (run-graph!*
-       (-> env
-           (coll/merge-defaults
-             {::resolver-cache* (atom {})})
-           (assoc
-             ::pcp/graph graph
-             ::p.ent/entity-tree* entity-tree*))))))
+  [env ast-or-graph entity-tree*]
+  [(s/keys) (s/or :ast :edn-query-language.ast/node
+                  :graph ::pcp/graph) ::p.ent/entity-tree*
+   => (s/keys)]
+  (let [env (-> env
+                (coll/merge-defaults {::batch-pending* (atom {})})
+                (assoc ::p.ent/entity-tree* entity-tree*))
+        res (plan-and-run! env ast-or-graph entity-tree*)]
+    (while (seq @(::batch-pending* env))
+      (run-batches! env))
+    res))
