@@ -27,7 +27,7 @@
   (let [entity (p.ent/entity env)]
     (every? #(contains? entity %) (keys expects))))
 
-(declare run-node! run-graph! plan-and-run!)
+(declare run-node! run-graph!)
 
 (defn union-key-on-data? [{:keys [union-key]} m]
   (contains? m union-key))
@@ -62,7 +62,12 @@
 (defn process-map-container-subquery
   "Build a new map where the values are replaced with the map process of the subquery."
   [env ast m]
-  (coll/map-vals #(process-map-subquery env ast %) m))
+  (into {}
+        (map (fn [x]
+               (coll/make-map-entry
+                 (key x)
+                 (process-map-subquery (p.path/append-path env (key x)) ast (val x)))))
+        m))
 
 (defn process-map-container?
   "Check if the map should be processed as a map-container, this means the sub-query
@@ -321,8 +326,7 @@
   [(s/keys) (s/or :ast :edn-query-language.ast/node
                   :graph ::pcp/graph) ::p.ent/entity-tree*
    => (s/keys)]
-  (let [env   (coll/merge-defaults env {::pcp/plan-cache* (atom {})})
-        graph (if (::pcp/nodes ast-or-graph)
+  (let [graph (if (::pcp/nodes ast-or-graph)
                 ast-or-graph
                 (pcp/compute-run-graph
                   (assoc env
@@ -379,15 +383,18 @@
    => (s/keys)]
   (let [start (time/now-ms)
         env   (-> env
-                  (coll/merge-defaults {::batch-pending* (atom {})
-                                        ::p.path/path    []})
+                  (coll/merge-defaults {::pcp/plan-cache* (atom {})
+                                        ::batch-pending*  (atom {})
+                                        ::p.path/path     []})
                   (assoc
                     ::p.ent/entity-tree* entity-tree*
                     ::node-run-stats* (atom ^::map-container? {})))
         plan  (plan-and-run! env ast-or-graph entity-tree*)]
 
-    (while (seq @(::batch-pending* env))
-      (run-batches! env))
+    ; run batches on root path only
+    (if-not (seq (::p.path/path env))
+      (while (seq @(::batch-pending* env))
+        (run-batches! env)))
 
     ; compute minimal stats
     (let [total-time (- (time/now-ms) start)]

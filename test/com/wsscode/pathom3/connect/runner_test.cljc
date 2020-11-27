@@ -129,14 +129,22 @@
     (is (= (run-graph (pci/register [(pbir/constantly-resolver ::hold {})
                                      (pbir/constantly-resolver ::sequence [{} {}])
                                      (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
-                      {}
-                      [::p.path/path
-                       {::hold [::p.path/path]}
-                       {::sequence [::p.path/path]}])
+             {}
+             [::p.path/path
+              {::hold [::p.path/path]}
+              {::sequence [::p.path/path]}])
            {::p.path/path [],
             ::sequence    [{::p.path/path [::sequence 0]}
                            {::p.path/path [::sequence 1]}],
-            ::hold        {::p.path/path [::hold]}})))
+            ::hold        {::p.path/path [::hold]}}))
+
+    (testing "map container path"
+      (is (= (run-graph (pci/register [(pbir/constantly-resolver ::map-container
+                                         ^::pcr/map-container? {:foo {}})
+                                       (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
+               {}
+               [{::map-container [::p.path/path]}])
+             {::map-container {:foo {::p.path/path [::map-container :foo]}}}))))
 
   (testing "insufficient data"
     (let [res (run-graph (pci/register [(pco/resolver 'a {::pco/output [:a]
