@@ -65,7 +65,7 @@
                              :edn-query-language.ast/node (eql/query->ast [::geo/right
                                                                            ::geo/center-x]))))
                env   (assoc env ::pcp/graph graph
-                       ::pcr/node-run-stats* (atom {}))]
+                       ::pcr/node-run-stats* (volatile! ^::map-container? {}))]
            (pcr/run-node! env (pcp/get-root-node graph))
            @(::p.ent/entity-tree* env))
          {::geo/left       10
@@ -78,7 +78,7 @@
   (let [ent*      (atom tree)
         env       (-> env
                       (p.ent/with-entity tree)
-                      (assoc ::pcr/node-run-stats* (atom {})))
+                      (assoc ::pcr/node-run-stats* (volatile! ^::map-container? {})))
         ast       (eql/query->ast query)
         run-stats (pcr/run-graph! env ast ent*)]
     (with-meta @ent* {::pcr/run-stats run-stats})))
@@ -129,10 +129,10 @@
     (is (= (run-graph (pci/register [(pbir/constantly-resolver ::hold {})
                                      (pbir/constantly-resolver ::sequence [{} {}])
                                      (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
-             {}
-             [::p.path/path
-              {::hold [::p.path/path]}
-              {::sequence [::p.path/path]}])
+                      {}
+                      [::p.path/path
+                       {::hold [::p.path/path]}
+                       {::sequence [::p.path/path]}])
            {::p.path/path [],
             ::sequence    [{::p.path/path [::sequence 0]}
                            {::p.path/path [::sequence 1]}],
@@ -140,10 +140,10 @@
 
     (testing "map container path"
       (is (= (run-graph (pci/register [(pbir/constantly-resolver ::map-container
-                                         ^::pcr/map-container? {:foo {}})
+                                                                 ^::pcr/map-container? {:foo {}})
                                        (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
-               {}
-               [{::map-container [::p.path/path]}])
+                        {}
+                        [{::map-container [::p.path/path]}])
              {::map-container {:foo {::p.path/path [::map-container :foo]}}}))))
 
   (testing "insufficient data"

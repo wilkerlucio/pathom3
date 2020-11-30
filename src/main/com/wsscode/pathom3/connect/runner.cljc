@@ -143,14 +143,14 @@
    {::pcp/keys [node-id]}
    data]
   (if node-run-stats*
-    (swap! node-run-stats* update node-id merge data)))
+    (vswap! node-run-stats* update node-id merge data)))
 
 (defn mark-resolver-error
   [{::keys [node-run-stats*]}
    {::pcp/keys [node-id]}
    error]
   (if node-run-stats*
-    (swap! node-run-stats* assoc-in [node-id ::node-error] error)))
+    (vswap! node-run-stats* assoc-in [node-id ::node-error] error)))
 
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
@@ -388,7 +388,7 @@
                                         ::p.path/path     []})
                   (assoc
                     ::p.ent/entity-tree* entity-tree*
-                    ::node-run-stats* (atom ^::map-container? {})))
+                    ::node-run-stats* (volatile! ^::map-container? {})))
         plan  (plan-and-run! env ast-or-graph entity-tree*)]
 
     ; run batches on root path only
