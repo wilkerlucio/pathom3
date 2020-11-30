@@ -16,42 +16,47 @@
 
 (deftest compute-foreign-query-test
   (testing "no inputs"
-    (is (= (pcf/compute-foreign-query {::pcp/node           {::pcp/foreign-ast (eql/query->ast [:a])}
-                                       ::p.ent/entity-tree* (atom {})})
+    (is (= (pcf/compute-foreign-query
+             (-> {::pcp/node {::pcp/foreign-ast (eql/query->ast [:a])}}
+                 (p.ent/with-entity {})))
            {::pcf/base-query [:a]
             ::pcf/query      [:a]})))
 
   (testing "inputs, but no parent ident, single attribute always goes as ident"
-    (is (= (pcf/compute-foreign-query {::pcp/node           {::pcp/foreign-ast (eql/query->ast [:a])
-                                                             ::pcp/input       {:z {}}}
-                                       ::p.ent/entity-tree* (atom {:z "bar"})})
+    (is (= (pcf/compute-foreign-query
+             (-> {::pcp/node {::pcp/foreign-ast (eql/query->ast [:a])
+                              ::pcp/input       {:z {}}}}
+                 (p.ent/with-entity {:z "bar"})))
            {::pcf/base-query [:a]
             ::pcf/query      '[{([:z "bar"] {:pathom/context {}}) [:a]}]
             ::pcf/join-node  [:z "bar"]})))
 
   (testing "inputs, with parent ident"
-    (is (= (pcf/compute-foreign-query {::pcp/node           {::pcp/foreign-ast (eql/query->ast [:a])
-                                                             ::pcp/input       {:z {}}}
-                                       ::p.ent/entity-tree* (atom {:z "bar"})})
+    (is (= (pcf/compute-foreign-query
+             (-> {::pcp/node {::pcp/foreign-ast (eql/query->ast [:a])
+                              ::pcp/input       {:z {}}}}
+                 (p.ent/with-entity {:z "bar"})))
            {::pcf/base-query [:a]
             ::pcf/query      '[{([:z "bar"] {:pathom/context {}}) [:a]}]
             ::pcf/join-node  [:z "bar"]})))
 
   (testing "inputs, with parent ident"
-    (is (= (pcf/compute-foreign-query {::pcp/node           {::pcp/foreign-ast (eql/query->ast [:a])
-                                                             ::pcp/input       {:z {}}}
-                                       ::p.ent/entity-tree* (atom {:z "bar"})})
+    (is (= (pcf/compute-foreign-query
+             (-> {::pcp/node {::pcp/foreign-ast (eql/query->ast [:a])
+                              ::pcp/input       {:z {}}}}
+                 (p.ent/with-entity {:z "bar"})))
            {::pcf/base-query [:a]
             ::pcf/query      '[{([:z "bar"] {:pathom/context {}}) [:a]}]
             ::pcf/join-node  [:z "bar"]}))
 
     (testing "with multiple inputs"
-      (is (= (pcf/compute-foreign-query {::pcp/node           {::pcp/foreign-ast (eql/query->ast [:a])
-                                                               ::pcp/input       {:x {}
-                                                                                  :z {}}}
-                                         ::p.path/path        [[:z "bar"] :a]
-                                         ::p.ent/entity-tree* (atom {:x "foo"
-                                                                     :z "bar"})})
+      (is (= (pcf/compute-foreign-query
+               (-> {::pcp/node    {::pcp/foreign-ast (eql/query->ast [:a])
+                                   ::pcp/input       {:x {}
+                                                      :z {}}}
+                    ::p.path/path [[:z "bar"] :a]}
+                   (p.ent/with-entity {:x "foo"
+                                       :z "bar"})))
              {::pcf/base-query [:a]
               ::pcf/query      '[{([:z "bar"] {:pathom/context {:x "foo"}}) [:a]}]
               ::pcf/join-node  [:z "bar"]})))))
