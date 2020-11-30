@@ -213,8 +213,8 @@
       (cond
         batch-hold
         (let [batch-pending (::batch-pending* env)]
-          (swap! batch-pending update (::pco/op-name batch-hold) coll/vconj
-            (assoc batch-hold ::env env))
+          (vswap! batch-pending update (::pco/op-name batch-hold) coll/vconj
+                  (assoc batch-hold ::env env))
           nil)
 
         (not (refs/kw-identical? ::node-error response))
@@ -343,7 +343,7 @@
 (defn run-batches! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
-    (reset! batches* {})
+    (vreset! batches* {})
     (doseq [[batch-op batch-items] batches]
       (let [inputs    (mapv ::node-run-input batch-items)
             resolver  (pci/resolver env batch-op)
@@ -384,7 +384,7 @@
   (let [start (time/now-ms)
         env   (-> env
                   (coll/merge-defaults {::pcp/plan-cache* (atom {})
-                                        ::batch-pending*  (atom {})
+                                        ::batch-pending*  (volatile! {})
                                         ::p.path/path     []})
                   (assoc
                     ::p.ent/entity-tree* entity-tree*
