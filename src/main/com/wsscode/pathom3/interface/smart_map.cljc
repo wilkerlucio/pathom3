@@ -417,7 +417,7 @@
   with the immutable versions first, given this has side effects and so more error phone."
   [^SmartMap smart-map k v]
   [::smart-map any? any? => ::smart-map]
-  (swap! (-> smart-map sm-env ::p.ent/entity-tree*) assoc k v)
+  (vswap! (-> smart-map sm-env ::p.ent/entity-tree*) assoc k v)
   smart-map)
 
 (>defn sm-dissoc!
@@ -428,7 +428,7 @@
   with the immutable versions first, given this has side effects and so more error phone."
   [^SmartMap smart-map k]
   [::smart-map any? => ::smart-map]
-  (swap! (-> smart-map sm-env ::p.ent/entity-tree*) dissoc k)
+  (vswap! (-> smart-map sm-env ::p.ent/entity-tree*) dissoc k)
   smart-map)
 
 (>defn sm-touch-ast!

@@ -12,7 +12,7 @@
 (>defn process-ast
   [env ast]
   [(s/keys) :edn-query-language.ast/node => map?]
-  (let [ent-tree* (get env ::p.ent/entity-tree* (atom {}))
+  (let [ent-tree* (get env ::p.ent/entity-tree* (volatile! {}))
         run-stats (pcr/run-graph! env ast ent-tree*)]
     (-> @ent-tree*
         (assoc ::pcr/run-stats (psm/smart-map

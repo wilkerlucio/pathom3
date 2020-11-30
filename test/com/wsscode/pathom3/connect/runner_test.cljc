@@ -75,7 +75,7 @@
           ::geo/center-x   25})))
 
 (defn run-graph [env tree query]
-  (let [ent*      (atom tree)
+  (let [ent*      (volatile! tree)
         env       (-> env
                       (p.ent/with-entity tree)
                       (assoc ::pcr/node-run-stats* (volatile! ^::map-container? {})))
@@ -679,7 +679,7 @@
                                     ::pcp/placeholders #{:>/p1}
                                     ::pcp/index-ast    {:>/p1 {:key          :>/p1
                                                                :dispatch-key :>/p1}}}
-              ::p.ent/entity-tree* (atom {:foo "bar"})}
+              ::p.ent/entity-tree* (volatile! {:foo "bar"})}
              {})
            {:>/p1 {:foo "bar"}})))
 
@@ -690,6 +690,6 @@
                                     ::pcp/index-ast    {:>/p1 {:key          :>/p1
                                                                :dispatch-key :>/p1
                                                                :params       {:x 10}}}}
-              ::p.ent/entity-tree* (atom {:x 20 :y 40 :z true})}
+              ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})}
              {:z true})
            {:>/p1 {:z true :x 10}}))))

@@ -46,7 +46,7 @@
 (defn process-map-subquery
   [env ast m]
   (if (map? m)
-    (let [cache-tree* (atom m)
+    (let [cache-tree* (volatile! m)
           ast         (pick-union-entry ast m)]
       (run-graph! env ast cache-tree*)
       @cache-tree*)
@@ -119,7 +119,7 @@
   current cache-tree."
   [env response]
   (if (map? response)
-    (p.ent/swap-entity! env #(merge-entity-data env % %2) response))
+    (p.ent/vswap-entity! env #(merge-entity-data env % %2) response))
   env)
 
 (defn process-idents!
@@ -128,9 +128,9 @@
   If there is ident data already, it gets merged with the ident value."
   [env idents]
   (doseq [k idents]
-    (p.ent/swap-entity! env
-      #(assoc % k (process-attr-subquery env k
-                                         (assoc (get % k) (first k) (second k)))))))
+    (p.ent/vswap-entity! env
+                         #(assoc % k (process-attr-subquery env k
+                                                            (assoc (get % k) (first k) (second k)))))))
 
 (defn run-next-node!
   "Runs the next node associated with the node, in case it exists."
@@ -285,8 +285,8 @@
                    (pco.prot/-mutate mutation env params)
                    (catch #?(:clj Throwable :cljs :default) e
                      {::mutation-error e}))]
-    (p.ent/swap-entity! env assoc key
-      (process-attr-subquery env key result))))
+    (p.ent/vswap-entity! env assoc key
+                         (process-attr-subquery env key result))))
 
 (defn process-mutations!
   "Runs the mutations gathered by the planner."
@@ -372,7 +372,7 @@
             (merge-node-stats! env' node {::batch-run-duration-ms duration})
             (merge-resolver-response! env' response)
             (run-next-node! env' node)
-            (p.ent/swap-entity! env assoc-in (::p.path/path env') (p.ent/entity env'))))))))
+            (p.ent/vswap-entity! env assoc-in (::p.path/path env') (p.ent/entity env'))))))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
