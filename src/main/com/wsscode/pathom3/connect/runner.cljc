@@ -333,12 +333,9 @@
                     :edn-query-language.ast/node ast-or-graph
                     ::pcp/available-data (pfsd/data->shape-descriptor @entity-tree*))))]
     (run-graph!*
-      (-> env
-          (coll/merge-defaults
-            {::resolver-cache* (atom {})})
-          (assoc
-            ::pcp/graph graph
-            ::p.ent/entity-tree* entity-tree*)))))
+      (assoc env
+        ::pcp/graph graph
+        ::p.ent/entity-tree* entity-tree*))))
 
 (defn run-batches! [env]
   (let [batches* (-> env ::batch-pending*)
@@ -383,8 +380,9 @@
    => (s/keys)]
   (let [start (time/now-ms)
         env   (-> env
-                  (coll/merge-defaults {::pcp/plan-cache* (atom {})
+                  (coll/merge-defaults {::pcp/plan-cache* (volatile! {})
                                         ::batch-pending*  (volatile! {})
+                                        ::resolver-cache* (volatile! {})
                                         ::p.path/path     []})
                   (assoc
                     ::p.ent/entity-tree* entity-tree*
