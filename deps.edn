@@ -6,6 +6,7 @@
   com.wsscode/async          {:mvn/version "1.0.12"}
   com.wsscode/cljc-misc      {:mvn/version "0.0.5"}
   edn-query-language/eql     {:mvn/version "1.0.0"}
+  org.clojure/core.cache     {:mvn/version "1.0.207"}
   potemkin/potemkin          {:mvn/version "0.4.5"}}
 
  :aliases

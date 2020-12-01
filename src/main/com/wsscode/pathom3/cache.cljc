@@ -1,5 +1,6 @@
 (ns com.wsscode.pathom3.cache
   (:require
+    [clojure.core.cache.wrapped :as cache]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]])
   #?(:clj
      (:import
@@ -8,17 +9,34 @@
          Volatile))))
 
 (defprotocol CacheStore
-  (-cache-get [this cache-key])
-  (-cache-set! [this cache-key x]))
+  (-cache-lookup-or-miss [this cache-key f]))
+
+(defrecord CoreCache [cache*]
+  CacheStore
+  (-cache-lookup-or-miss [_ cache-key f]
+                         (cache/lookup-or-miss cache* cache-key f)))
+
+(defn lru-cache [initial max-elements]
+  (->CoreCache (cache/lru-cache-factory initial :threshold max-elements)))
 
 (extend-protocol CacheStore
   Atom
-  (-cache-get [this cache-key] (get @this cache-key))
-  (-cache-set! [this cache-key x] (swap! this assoc cache-key x))
+  (-cache-lookup-or-miss [this cache-key f]
+    (let [cache @this]
+      (if-let [entry (find cache cache-key)]
+        (.val entry)
+        (let [res (f)]
+          (swap! this assoc cache-key res)
+          res))))
 
   Volatile
-  (-cache-get [this cache-key] (get @this cache-key))
-  (-cache-set! [this cache-key x] (vswap! this assoc cache-key x)))
+  (-cache-lookup-or-miss [this cache-key f]
+    (let [cache @this]
+      (if-let [entry (find cache cache-key)]
+        (.val entry)
+        (let [res (f)]
+          (vswap! this assoc cache-key res)
+          res)))))
 
 (>defn cached
   "Try to read some value from a cache, otherwise run and cache it.
@@ -39,9 +57,5 @@
   [cache-container env cache-key f]
   [keyword? map? any? fn? => any?]
   (if-let [cache* (get env cache-container)]
-    (if-let [cached-value (-cache-get cache* cache-key)]
-      cached-value
-      (let [res (f)]
-        (-cache-set! cache* cache-key res)
-        res))
+    (-cache-lookup-or-miss cache* cache-key f)
     (f)))
