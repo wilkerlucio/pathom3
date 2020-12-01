@@ -52,7 +52,20 @@
                                                       ::pcp/index-ast {}}} {:foo "bar"})
                    {:buz ::pcr/unknown-value})
                  ::p.ent/entity-tree* deref)
-             {:foo "bar"})))))
+             {:foo "bar"})))
+
+    (testing "dont override current data"
+      (is (= (-> (pcr/merge-resolver-response!
+                   (p.ent/with-entity
+                     {::p.path/path []
+                      ::pcp/graph   {::pcp/nodes     {}
+                                     ::pcp/index-ast {}}}
+                     {:foo "bar"})
+                   {:foo "other"
+                    :buz "baz"})
+                 ::p.ent/entity-tree* deref)
+             {:foo "bar"
+              :buz "baz"})))))
 
 (deftest run-node!-test
   (is (= (let [tree  {::geo/left 10 ::geo/width 30}

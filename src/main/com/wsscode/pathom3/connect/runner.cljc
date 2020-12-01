@@ -81,8 +81,8 @@
 
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
-    :as        env} k v]
-  [(s/keys :opt [:edn-query-language.ast/node]) ::p.path/path-entry any?
+    :as        env} entity k v]
+  [(s/keys :opt [:edn-query-language.ast/node]) map? ::p.path/path-entry any?
    => any?]
   (let [ast (pcp/entry-ast graph k)
         env (p.path/append-path env k)]
@@ -99,7 +99,9 @@
 
         :else
         v)
-      v)))
+      (if-let [x (find entity k)]
+        (.val x)
+        v))))
 
 (>defn merge-entity-data
   "Specialized merge versions that work on entity data."
@@ -110,7 +112,7 @@
     (fn [out k v]
       (if (refs/kw-identical? v ::unknown-value)
         out
-        (assoc out k (process-attr-subquery env k v))))
+        (assoc out k (process-attr-subquery env entity k v))))
     entity
     new-data))
 
@@ -129,7 +131,7 @@
   [env idents]
   (doseq [k idents]
     (p.ent/vswap-entity! env
-                         #(assoc % k (process-attr-subquery env k
+                         #(assoc % k (process-attr-subquery env {} k
                                                             (assoc (get % k) (first k) (second k)))))))
 
 (defn run-next-node!
@@ -286,7 +288,7 @@
                    (catch #?(:clj Throwable :cljs :default) e
                      {::mutation-error e}))]
     (p.ent/vswap-entity! env assoc key
-                         (process-attr-subquery env key result))))
+                         (process-attr-subquery env {} key result))))
 
 (defn process-mutations!
   "Runs the mutations gathered by the planner."
