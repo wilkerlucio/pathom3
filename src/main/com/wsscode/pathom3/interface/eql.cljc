@@ -36,11 +36,11 @@
       (p.eql/process (pci/register some-resolvers)
         [:eql :request])
 
-  By default the process will start with a blank entity tree, you can override it by
-  changing sending a entity tree in the environment:
+  By default, processing will start with a blank entity tree. You can override this by
+  sending an entity tree as the second argument in the 3-arity version of this fn:
 
-      (p.eql/process (-> (pci/register some-resolvers)
-                         (p.ent/with-cache-tree {:eql \"initial data\"}))
+      (p.eql/process (pci/register some-resolvers)
+        {:eql \"initial data\"}
         [:eql :request])
 
   For more options around processing check the docs on the connect runner."
