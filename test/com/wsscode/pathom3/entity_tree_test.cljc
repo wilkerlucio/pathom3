@@ -9,11 +9,11 @@
            {:buz "baz" :a 2 :b 3})
          {:foo "bar", :a 2, :buz "baz", :b 3})))
 
-(deftest with-cache-tree-test
+(deftest with-entity-test
   (is (= @(::p.e/entity-tree* (p.e/with-entity {} {:foo "bar"}))
          {:foo "bar"})))
 
-(deftest swap-entity!-test
+(deftest vswap-entity!-test
   (let [tree* (volatile! {})]
     (is (= (p.e/vswap-entity! {::p.e/entity-tree* tree*}
                               assoc :foo "bar")
