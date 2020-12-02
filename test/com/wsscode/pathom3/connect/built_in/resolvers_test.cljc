@@ -29,8 +29,8 @@
          {:x 15})))
 
 (deftest map-table-resolver-test
-  (let [resolver (pbir/static-table-resolver 'table ::id {1 {::color "Gray"}
-                                                          2 {::color "Purple"}})
+  (let [resolver (pbir/static-table-resolver ::id {1 {::color "Gray"}
+                                                   2 {::color "Purple"}})
         config   (pco/operation-config resolver)]
     (is (= (resolver {::id 2})
            {::color "Purple"}))
