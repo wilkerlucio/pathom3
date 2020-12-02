@@ -83,10 +83,11 @@
   data for entities using simple Clojure maps. Example:
 
       (def registry
-        [(pbir/static-table-resolver `song-names :song/id
+        [(pbir/static-table-resolver :song/id
            {1 {:song/name \"Marchinha Psicotica de Dr. Soup\"}
             2 {:song/name \"There's Enough\"}})
 
+         ; you can provide a name for the resolver, if so, prefer fully qualified symbols
          (pbir/static-table-resolver `song-analysis :song/id
            {1 {:song/duration 280 :song/tempo 98}
             2 {:song/duration 150 :song/tempo 130}})])
