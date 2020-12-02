@@ -101,16 +101,21 @@
   name to be used to related the data, in this case we use `:song/id` on both, so they
   get connected by it.
   "
-  [resolver-name attr-key table]
-  [::pco/op-name ::p.attr/attribute ::entity-table
-   => ::pco/resolver]
-  (let [output (table-output table)]
-    (pco/resolver resolver-name
-      {::pco/input  [attr-key]
-       ::pco/output output}
-      (fn [_ input]
-        (let [id (get input attr-key)]
-          (get table id))))))
+  ([attr-key table]
+   [::p.attr/attribute ::entity-table
+    => ::pco/resolver]
+   (let [resolver-name (symbol (str (attr-alias-resolver-name attr-key "-static-table")))]
+     (static-table-resolver resolver-name attr-key table)))
+  ([resolver-name attr-key table]
+   [::pco/op-name ::p.attr/attribute ::entity-table
+    => ::pco/resolver]
+   (let [output (table-output table)]
+     (pco/resolver resolver-name
+                   {::pco/input  [attr-key]
+                    ::pco/output output}
+                   (fn [_ input]
+                     (let [id (get input attr-key)]
+                       (get table id)))))))
 
 (>defn attribute-map-resolver
   "This is like the static-table-resolver, but provides a single attribute on each
