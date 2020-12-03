@@ -63,20 +63,20 @@
               (pci/register [resolver resolver]))))))
 
   (testing "mutation"
-    (let [mutation (pco/mutation 'r {::pco/output [:foo]
+    (let [mutation (pco/mutation 'm {::pco/output [:foo]
                                      ::pco/params [:bla]}
                                  (fn [_ _] {:foo 42}))]
       (is (= (pci/register mutation)
-             {::pci/index-mutations  {'r mutation}
+             {::pci/index-mutations  {'m mutation}
               ::pci/index-attributes {:bla {::pci/attr-id                :bla
-                                            ::pci/attr-mutation-param-in #{'r}}
+                                            ::pci/attr-mutation-param-in #{'m}}
                                       :foo {::pci/attr-id                 :foo
-                                            ::pci/attr-mutation-output-in #{'r}}}}))
+                                            ::pci/attr-mutation-output-in #{'m}}}}))
 
       (testing "throw error on duplicated name"
         (is (thrown-with-msg?
               #?(:clj AssertionError :cljs js/Error)
-              #"Tried to register duplicated mutation: r"
+              #"Tried to register duplicated mutation: m"
               (pci/register [mutation mutation]))))))
 
   (testing "multiple globals"
@@ -104,10 +104,13 @@
                                            :foo2 {}}}}))))
 
   (testing "adding indexes together"
-    (let [r1 (pco/resolver 'r {::pco/output [:foo]}
-               (fn [_ _] {:foo 42}))
-          r2 (pco/resolver 'r2 {::pco/output [:foo2]}
-               (fn [_ _] {:foo2 "val"}))]
+    (let [r1       (pco/resolver 'r {::pco/output [:foo]}
+                     (fn [_ _] {:foo 42}))
+          r2       (pco/resolver 'r2 {::pco/output [:foo2]}
+                     (fn [_ _] {:foo2 "val"}))
+          mutation (pco/mutation 'm {::pco/output [:foo]
+                                     ::pco/params [:bla]}
+                                 (fn [_ _] {:foo 42}))]
       (is (= (pci/register [(pci/register r1) r2])
              {::pci/index-resolvers  {'r  r1
                                       'r2 r2}
@@ -125,7 +128,17 @@
               ::pci/index-oir        {:foo  {#{} #{'r}}
                                       :foo2 {#{} #{'r2}}}
               ::pci/index-io         {#{} {:foo  {}
-                                           :foo2 {}}}})))))
+                                           :foo2 {}}}}))
+
+      (is (thrown-with-msg?
+            #?(:clj AssertionError :cljs js/Error)
+            #"Tried to register duplicated resolver: r"
+            (pci/register [(pci/register r1) (pci/register r1)])))
+
+      (is (thrown-with-msg?
+            #?(:clj AssertionError :cljs js/Error)
+            #"Tried to register duplicated mutation: m"
+            (pci/register [(pci/register mutation) (pci/register mutation)]))))))
 
 (deftest attribute-available?-test
   (let [register (pci/register (pco/resolver 'r {::pco/output [:foo]} (fn [_ _] {})))]

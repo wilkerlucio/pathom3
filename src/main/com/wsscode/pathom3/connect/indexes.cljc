@@ -39,6 +39,24 @@
   kinds of indexes."
   (fn [k _ _] k))
 
+(defmethod index-merger ::index-resolvers [_ a b]
+  (reduce-kv
+    (fn [m k v]
+      (assert (not (contains? m k))
+        (str "Tried to register duplicated resolver: " k))
+      (assoc m k v))
+    a
+    b))
+
+(defmethod index-merger ::index-mutations [_ a b]
+  (reduce-kv
+    (fn [m k v]
+      (assert (not (contains? m k))
+        (str "Tried to register duplicated mutation: " k))
+      (assoc m k v))
+    a
+    b))
+
 (defmethod index-merger ::index-oir [_ a b]
   (merge-oir a b))
 
