@@ -15,7 +15,7 @@
   (-cache-lookup-or-miss [this cache-key f]
     (let [cache @this]
       (if-let [entry (find cache cache-key)]
-        (.val entry)
+        (val entry)
         (let [res (f)]
           (swap! this assoc cache-key res)
           res))))
@@ -24,7 +24,7 @@
   (-cache-lookup-or-miss [this cache-key f]
     (let [cache @this]
       (if-let [entry (find cache cache-key)]
-        (.val entry)
+        (val entry)
         (let [res (f)]
           (vswap! this assoc cache-key res)
           res)))))

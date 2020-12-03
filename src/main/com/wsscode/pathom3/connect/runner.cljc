@@ -100,7 +100,7 @@
         :else
         v)
       (if-let [x (find entity k)]
-        (.val x)
+        (val x)
         v))))
 
 (>defn merge-entity-data
@@ -392,7 +392,7 @@
         plan  (plan-and-run! env ast-or-graph entity-tree*)]
 
     ; run batches on root path only
-    (if-not (seq (::p.path/path env))
+    (when-not (seq (::p.path/path env))
       (while (seq @(::batch-pending* env))
         (run-batches! env)))
 
