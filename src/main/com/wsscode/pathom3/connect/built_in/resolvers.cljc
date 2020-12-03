@@ -83,10 +83,11 @@
   data for entities using simple Clojure maps. Example:
 
       (def registry
-        [(pbir/static-table-resolver `song-names :song/id
+        [(pbir/static-table-resolver :song/id
            {1 {:song/name \"Marchinha Psicotica de Dr. Soup\"}
             2 {:song/name \"There's Enough\"}})
 
+         ; you can provide a name for the resolver, if so, prefer fully qualified symbols
          (pbir/static-table-resolver `song-analysis :song/id
            {1 {:song/duration 280 :song/tempo 98}
             2 {:song/duration 150 :song/tempo 130}})])
@@ -101,16 +102,21 @@
   name to be used to related the data, in this case we use `:song/id` on both, so they
   get connected by it.
   "
-  [resolver-name attr-key table]
-  [::pco/op-name ::p.attr/attribute ::entity-table
-   => ::pco/resolver]
-  (let [output (table-output table)]
-    (pco/resolver resolver-name
-      {::pco/input  [attr-key]
-       ::pco/output output}
-      (fn [_ input]
-        (let [id (get input attr-key)]
-          (get table id))))))
+  ([attr-key table]
+   [::p.attr/attribute ::entity-table
+    => ::pco/resolver]
+   (let [resolver-name (symbol (str (attr-alias-resolver-name attr-key "-static-table")))]
+     (static-table-resolver resolver-name attr-key table)))
+  ([resolver-name attr-key table]
+   [::pco/op-name ::p.attr/attribute ::entity-table
+    => ::pco/resolver]
+   (let [output (table-output table)]
+     (pco/resolver resolver-name
+       {::pco/input  [attr-key]
+        ::pco/output output}
+       (fn [_ input]
+         (let [id (get input attr-key)]
+           (get table id)))))))
 
 (>defn attribute-map-resolver
   "This is like the static-table-resolver, but provides a single attribute on each
