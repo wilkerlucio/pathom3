@@ -27,6 +27,8 @@
 (>def ::attr-mutation-output-in op-set)
 (>def ::attr-mutation-param-in op-set)
 
+(declare resolver)
+
 (defn merge-oir
   "Merge ::index-oir maps."
   [a b]
@@ -122,6 +124,8 @@
   ([indexes resolver]
    (let [{::pco/keys [op-name input output] :as op-config} (pco/operation-config resolver)
          input' (set input)]
+     (assert (nil? (com.wsscode.pathom3.connect.indexes/resolver indexes op-name))
+       (str "Tried to register duplicated resolver op-name: " op-name))
      (merge-indexes indexes
        {::index-resolvers  {op-name resolver}
         ::index-attributes (index-attributes op-config)

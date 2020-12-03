@@ -54,7 +54,13 @@
                                                    :attr-output-in #{r}
                                                    :attr-reach-via {#{} #{r}}}}
               ::pci/index-io         {#{} {:foo {}}}
-              ::pci/index-oir        {:foo {#{} #{'r}}}}))))
+              ::pci/index-oir        {:foo {#{} #{'r}}}}))
+
+      (testing "throw error on duplicated name"
+        (is (thrown-with-msg?
+              #?(:clj AssertionError :cljs js/Error)
+              #"Tried to register duplicated resolver op-name: r"
+              (pci/register [resolver resolver]))))))
 
   (testing "mutation"
     (let [mutation (pco/mutation 'r {::pco/output [:foo]
