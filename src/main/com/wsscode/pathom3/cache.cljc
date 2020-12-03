@@ -1,6 +1,5 @@
 (ns com.wsscode.pathom3.cache
   (:require
-    [clojure.core.cache.wrapped :as cache]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]])
   #?(:clj
      (:import
@@ -10,14 +9,6 @@
 
 (defprotocol CacheStore
   (-cache-lookup-or-miss [this cache-key f]))
-
-(defrecord CoreCache [cache*]
-  CacheStore
-  (-cache-lookup-or-miss [_ cache-key f]
-                         (cache/lookup-or-miss cache* cache-key f)))
-
-(defn lru-cache [initial max-elements]
-  (->CoreCache (cache/lru-cache-factory initial :threshold max-elements)))
 
 (extend-protocol CacheStore
   Atom
