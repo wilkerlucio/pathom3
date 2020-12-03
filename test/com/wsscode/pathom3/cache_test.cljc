@@ -19,17 +19,3 @@
       (is (= (p.cache/cached :foo {:foo cache*} :key #(-> "bar"))
              "other"))
       (is (= @cache* {:key "other"})))))
-
-(deftest lru-cache-test
-  (let [cache* (p.cache/lru-cache {} 3)]
-    (p.cache/-cache-lookup-or-miss cache* :a (constantly 1))
-    (p.cache/-cache-lookup-or-miss cache* :b (constantly 2))
-    (p.cache/-cache-lookup-or-miss cache* :c (constantly 3))
-    (is (= (-> cache* :cache* deref)
-           {:a 1 :b 2 :c 3}))
-    (p.cache/-cache-lookup-or-miss cache* :c (constantly 5))
-    (is (= (-> cache* :cache* deref)
-           {:a 1 :b 2 :c 3}))
-    (p.cache/-cache-lookup-or-miss cache* :d (constantly 6))
-    (is (= (-> cache* :cache* deref)
-           {:d 6 :b 2 :c 3}))))
