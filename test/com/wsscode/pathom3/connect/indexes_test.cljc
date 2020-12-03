@@ -59,7 +59,7 @@
       (testing "throw error on duplicated name"
         (is (thrown-with-msg?
               #?(:clj AssertionError :cljs js/Error)
-              #"Tried to register duplicated resolver op-name: r"
+              #"Tried to register duplicated resolver: r"
               (pci/register [resolver resolver]))))))
 
   (testing "mutation"
@@ -71,7 +71,13 @@
               ::pci/index-attributes {:bla {::pci/attr-id                :bla
                                             ::pci/attr-mutation-param-in #{'r}}
                                       :foo {::pci/attr-id                 :foo
-                                            ::pci/attr-mutation-output-in #{'r}}}}))))
+                                            ::pci/attr-mutation-output-in #{'r}}}}))
+
+      (testing "throw error on duplicated name"
+        (is (thrown-with-msg?
+              #?(:clj AssertionError :cljs js/Error)
+              #"Tried to register duplicated mutation: r"
+              (pci/register [mutation mutation]))))))
 
   (testing "multiple globals"
     (let [r1 (pco/resolver 'r {::pco/output [:foo]}
