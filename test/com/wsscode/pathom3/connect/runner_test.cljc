@@ -50,7 +50,7 @@
                    (p.ent/with-entity {::p.path/path []
                                        ::pcp/graph   {::pcp/nodes     {}
                                                       ::pcp/index-ast {}}} {:foo "bar"})
-                   {:buz ::pcr/unknown-value})
+                   {:buz ::pco/unknown-value})
                  ::p.ent/entity-tree* deref)
              {:foo "bar"})))
 

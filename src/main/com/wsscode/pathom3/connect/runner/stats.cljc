@@ -56,7 +56,7 @@
    overhead-pct
    attribute-error
    (pbir/single-attr-with-env-resolver ::p.attr/attribute ::pcp/node-id
-     #(get (::pcp/index-attrs %) %2 ::pcr/unknown-value))
+     #(get (::pcp/index-attrs %) %2 ::pco/unknown-value))
    (pbir/env-table-resolver ::pcp/nodes ::pcp/node-id
      [::pco/op-name
       ::pcp/expects

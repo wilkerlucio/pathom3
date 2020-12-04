@@ -110,7 +110,7 @@
    => ::p.ent/entity-tree]
   (reduce-kv
     (fn [out k v]
-      (if (refs/kw-identical? v ::unknown-value)
+      (if (refs/kw-identical? v ::pco/unknown-value)
         out
         (assoc out k (process-attr-subquery env entity k v))))
     entity
