@@ -503,8 +503,7 @@
              {:x 10
               :y 20}))
       (is (= @cache*
-             '{[x->y-single-attr-transform {:x 10} {}] {:y 20}
-               [x-constant {} {}]                      {:x 10}})))
+             '{[x->y-single-attr-transform {:x 10} {}] {:y 20}})))
 
     (testing "with params"
       (let [cache* (atom {})]
@@ -518,8 +517,7 @@
                {:x 10
                 :y 20}))
         (is (= @cache*
-               '{[x->y-single-attr-transform {:x 10} {:foo "bar"}] {:y 20}
-                 [x-constant {} {}]                                {:x 10}})))))
+               '{[x->y-single-attr-transform {:x 10} {:foo "bar"}] {:y 20}})))))
 
   (testing "cache hit"
     (is (= (run-graph
@@ -546,8 +544,7 @@
 
       (is (= @cache*
              {'[x->y-single-attr-transform {:x 10} {}]      {:y 30}
-              '[x->y-single-attr-transform {:x 10} {:z 42}] {:y 20}
-              '[x-constant {} {}]                           {:x 10}}))))
+              '[x->y-single-attr-transform {:x 10} {:z 42}] {:y 20}}))))
 
   (testing "resolver with cache disabled"
     (is (= (run-graph
