@@ -167,8 +167,7 @@
     :as        node}]
   (let [input-keys (keys input)
         resolver   (pci/resolver env op-name)
-        {::pco/keys [op-name batch?]
-         ::keys     [cache?]
+        {::pco/keys [op-name batch? cache?]
          :or        {cache? true}} (pco/operation-config resolver)
         env        (assoc env ::pcp/node node)
         entity     (p.ent/entity env)
@@ -183,7 +182,7 @@
                          batch?
                          {::batch-hold {::pco/op-name    op-name
                                         ::pcp/node       node
-                                        ::cache?         cache?
+                                        ::pco/cache?     cache?
                                         ::node-run-input input-data}}
 
                          cache?
@@ -361,7 +360,7 @@
             (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
 
           (doseq [[{env'       ::env
-                    ::keys     [node-run-input cache?]
+                    :keys      [::node-run-input ::pco/cache?]
                     ::pcp/keys [node]
                     :as        batch-item} response] (map vector batch-items responses)]
             (if cache?

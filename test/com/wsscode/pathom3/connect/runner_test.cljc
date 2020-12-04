@@ -331,12 +331,11 @@
   (testing "simple batching"
     (is (= (run-graph
              (pci/register
-               [batch-fetch
-                (pbir/constantly-resolver :list
-                                          [{:id 1}
-                                           {:id 2}
-                                           {:id 3}])])
-             {}
+               [batch-fetch])
+             {:list
+              [{:id 1}
+               {:id 2}
+               {:id 3}]}
              [{:list [:v]}])
            {:list
             [{:id 1 :v 10}
@@ -362,12 +361,11 @@
     (is (= (run-graph
              (pci/register
                [batch-fetch
-                batch-pre-id
-                (pbir/constantly-resolver :list
-                                          [{:pre-id 1}
-                                           {:pre-id 2}
-                                           {:id 3}])])
-             {}
+                batch-pre-id])
+             {:list
+              [{:pre-id 1}
+               {:pre-id 2}
+               {:id 3}]}
              [{:list [:v]}])
            {:list
             [{:pre-id 1 :id 2 :v 20}
@@ -378,17 +376,16 @@
     (is (= (run-graph
              (pci/register
                [batch-fetch
-                (pbir/single-attr-resolver :pre-id :id inc)
-                (pbir/constantly-resolver :list
-                                          [{:pre-id 1}
-                                           {:pre-id 2}
-                                           {:pre-id 3}])])
-             {}
+                (pbir/single-attr-resolver :pre-id :id inc)])
+             {:list
+              [{:pre-id 1}
+               {:pre-id 2}
+               {:id 4}]}
              [{:list [:v]}])
            {:list
             [{:pre-id 1 :id 2 :v 20}
              {:pre-id 2 :id 3 :v 30}
-             {:pre-id 3 :id 4 :v 40}]})))
+             {:id 4 :v 40}]})))
 
   (testing "process after batch"
     (testing "deep process"
@@ -396,12 +393,11 @@
                (pci/register
                  [batch-fetch
                   batch-fetch-nested
-                  (pbir/single-attr-resolver :pre-id :id inc)
-                  (pbir/constantly-resolver :list
-                                            [{:id 1}
-                                             {:id 2}
-                                             {:id 3}])])
-               {}
+                  (pbir/single-attr-resolver :pre-id :id inc)])
+               {:list
+                [{:id 1}
+                 {:id 2}
+                 {:id 3}]}
                [{:list [{:n [:v]}]}])
              {:list
               [{:id 1, :n {:pre-id 10 :id 11 :v 110}}
@@ -412,12 +408,11 @@
       (is (= (run-graph
                (pci/register
                  [batch-fetch
-                  (pbir/single-attr-resolver :v :x #(* 100 %))
-                  (pbir/constantly-resolver :list
-                                            [{:id 1}
-                                             {:id 2}
-                                             {:id 3}])])
-               {}
+                  (pbir/single-attr-resolver :v :x #(* 100 %))])
+               {:list
+                [{:id 1}
+                 {:id 2}
+                 {:id 3}]}
                [{:list [:x]}])
              {:list
               [{:id 1 :v 10 :x 1000}
@@ -427,15 +422,14 @@
   (testing "deep batching"
     (is (= (run-graph
              (pci/register
-               [batch-fetch
-                (pbir/constantly-resolver :list
-                                          [{:items [{:id 1}
-                                                    {:id 2}]}
-                                           {:items [{:id 3}
-                                                    {:id 4}]}
-                                           {:items [{:id 5}
-                                                    {:id 6}]}])])
-             {}
+               [batch-fetch])
+             {:list
+              [{:items [{:id 1}
+                        {:id 2}]}
+               {:items [{:id 3}
+                        {:id 4}]}
+               {:items [{:id 5}
+                        {:id 6}]}]}
              [{:list [{:items [:v]}]}])
            {:list [{:items [{:id 1, :v 10} {:id 2, :v 20}]}
                    {:items [{:id 3, :v 30} {:id 4, :v 40}]}
@@ -560,7 +554,7 @@
              (-> (pci/register
                    [(pbir/constantly-resolver :x 10)
                     (assoc-in (pbir/single-attr-resolver :x :y #(* 2 %))
-                      [:config ::pcr/cache?] false)])
+                      [:config ::pco/cache?] false)])
                  (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10}] {:y 30}})))
              {}
              [:y])

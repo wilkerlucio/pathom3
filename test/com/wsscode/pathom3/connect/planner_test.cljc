@@ -9,7 +9,6 @@
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
-    [com.wsscode.pathom3.connect.runner :as pcr]
     [edn-query-language.core :as eql]
     #?(:clj [tangle.core :as tangle])))
 
@@ -2592,7 +2591,7 @@
   (testing "unreachable"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dynamic-resolver {::pco/op-name           'dynamic-resolver
-                                                        ::pcr/cache?            false
+                                                        ::pco/cache?            false
                                                         ::pco/dynamic-resolver? true
                                                         ::pco/resolve           (fn [_ _])}}
               ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
@@ -2609,7 +2608,7 @@
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dynamic-resolver
                                      {::pco/op-name           'dynamic-resolver
-                                      ::pcr/cache?            false
+                                      ::pco/cache?            false
                                       ::pco/dynamic-resolver? true
                                       ::pco/resolve           (fn [_ _])}}
               ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
@@ -2635,7 +2634,7 @@
       (is (= (compute-run-graph
                {::pci/index-resolvers {'dynamic-resolver
                                        {::pco/op-name           'dynamic-resolver
-                                        ::pcr/cache?            false
+                                        ::pco/cache?            false
                                         ::pco/dynamic-resolver? true
                                         ::pco/resolve           (fn [_ _])}}
                 ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}}
@@ -2668,7 +2667,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pcr/cache?            false
+                                          ::pco/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
@@ -2698,7 +2697,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pcr/cache?            false
+                                          ::pco/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
@@ -2736,7 +2735,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pcr/cache?            false
+                                          ::pco/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:a {#{} #{'dynamic-resolver}}
@@ -2761,7 +2760,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pcr/cache?            false
+                                          ::pco/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:a {#{} #{'dynamic-resolver}}
@@ -2787,7 +2786,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pcr/cache?            false
+                                          ::pco/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::resolvers           [{::pco/op-name 'z
@@ -2822,7 +2821,7 @@
       (is (= (compute-run-graph
                (-> {::pci/index-resolvers {'dynamic-resolver
                                            {::pco/op-name           'dynamic-resolver
-                                            ::pcr/cache?            false
+                                            ::pco/cache?            false
                                             ::pco/dynamic-resolver? true
                                             ::pco/resolve           (fn [_ _])}}
                     ::resolvers           [{::pco/op-name 'z
@@ -2858,7 +2857,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pcr/cache?            false
+                                          ::pco/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:a {#{:b :c} #{'dynamic-resolver}}
@@ -2885,7 +2884,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pcr/cache?            false
+                                          ::pco/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::resolvers           [{::pco/op-name 'b
@@ -2929,7 +2928,7 @@
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dynamic-resolver
                                          {::pco/op-name           'dynamic-resolver
-                                          ::pcr/cache?            false
+                                          ::pco/cache?            false
                                           ::pco/dynamic-resolver? true
                                           ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:release/script {#{:db/id} #{'dynamic-resolver}}
@@ -3010,7 +3009,7 @@
   (testing "dynamic dependency input on local dependency and dynamic dependency"
     (is (= (compute-run-graph
              (-> {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                               ::pcr/cache?            false
+                                               ::pco/cache?            false
                                                ::pco/dynamic-resolver? true
                                                ::pco/resolve           (fn [_ _])}}
                   ::pci/index-oir       {:d1 {#{:d2 :l1} #{'dyn}}
@@ -3056,7 +3055,7 @@
   (testing "simple nested query"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pcr/cache?            false
+                                           ::pco/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a
@@ -3090,7 +3089,7 @@
   (testing "nested dependency"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pcr/cache?            false
+                                           ::pco/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a
@@ -3142,7 +3141,7 @@
                                                             ::pco/output       [:dynamic-2]
                                                             ::pco/dynamic-name dynamic-parser-42276}
                                       dynamic-parser-42276 {::pco/op-name           dynamic-parser-42276
-                                                            ::pcr/cache?            false
+                                                            ::pco/cache?            false
                                                             ::pco/dynamic-resolver? true}}
               ::eql/query           [:local :dynamic-2]})
            '{::pcp/nodes                 {1 {::pco/op-name          dynamic-1->local
@@ -3186,7 +3185,7 @@
     (testing "resolver has simple output"
       (is (= (compute-run-graph
                {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                             ::pcr/cache?            false
+                                             ::pco/cache?            false
                                              ::pco/dynamic-resolver? true
                                              ::pco/resolve           (fn [_ _])}
                                        'a   {::pco/op-name      'a
@@ -3234,7 +3233,7 @@
     #_(testing "resolver has union output"
         (is (= (compute-run-graph
                  {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                               ::pcr/cache?            false
+                                               ::pco/cache?            false
                                                ::pco/dynamic-resolver? true
                                                ::pco/resolve           (fn [_ _])}
                                          'a   {::pco/op-name      'a
@@ -3266,7 +3265,7 @@
   (testing "deep nesting"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pcr/cache?            false
+                                           ::pco/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a
@@ -3305,7 +3304,7 @@
     (testing "with dependency"
       (is (= (compute-run-graph
                {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                             ::pcr/cache?            false
+                                             ::pco/cache?            false
                                              ::pco/dynamic-resolver? true
                                              ::pco/resolve           (fn [_ _])}
                                        'a   {::pco/op-name      'a
@@ -3342,7 +3341,7 @@
   (testing "only returns the deps from the dynamic resolver in the child requirements"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pcr/cache?            false
+                                           ::pco/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a
@@ -3379,7 +3378,7 @@
 
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pcr/cache?            false
+                                           ::pco/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a
@@ -3416,7 +3415,7 @@
   (testing "indirect dependencies don't need to be in the query"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pcr/cache?            false
+                                           ::pco/cache?            false
                                            ::pco/dynamic-resolver? true
                                            ::pco/resolve           (fn [_ _])}
                                      'a   {::pco/op-name      'a

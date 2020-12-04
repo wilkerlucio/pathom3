@@ -25,6 +25,7 @@
 (>def ::input vector?)
 (>def ::output vector?)
 (>def ::params vector?)
+(>def ::cache? boolean?)
 (>def ::resolve fn?)
 (>def ::mutate fn?)
 (>def ::operation-type #{::operation-type-resolver ::operation-type-mutation})
