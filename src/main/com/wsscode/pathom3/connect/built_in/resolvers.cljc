@@ -24,7 +24,8 @@
   (let [resolver-name (symbol (str (attr-alias-resolver-name from to) "-alias"))]
     (pco/resolver resolver-name
       {::pco/input  [from]
-       ::pco/output [to]}
+       ::pco/output [to]
+       ::pco/cache? false}
       (fn [_ input] {to (get input from)}))))
 
 (defn equivalence-resolver
@@ -38,11 +39,13 @@
   ([attribute value]
    (let [resolver-name (symbol (str (attr-munge attribute) "-constant"))]
      (pco/resolver resolver-name
-       {::pco/output [attribute]}
+       {::pco/output [attribute]
+        ::pco/cache? false}
        (fn [_ _] {attribute value})))))
 
 (defn constantly-fn-resolver
-  "Create a simple resolver that always calls value-fn and return its value."
+  "Create a simple resolver that always calls value-fn and return its value. Note that
+  cache is disabled by default in this resolver."
   ([attribute value-fn]
    (let [resolver-name (symbol (str (attr-munge attribute) "-constant"))]
      (pco/resolver resolver-name
