@@ -34,8 +34,8 @@
   (is (= (let [stats (-> (psm/smart-map
                            (pci/register (error-resolver :a)))
                          (psm/sm-get-with-stats :a))]
-           (-> stats empty
-               (assoc :com.wsscode.pathom3.attribute/attribute :a)
+           (-> stats psm/smart-run-stats
+               (psm/sm-replace-context {:com.wsscode.pathom3.attribute/attribute :a})
                ::pcrs/attribute-error))
          {::pcrs/node-error-type ::pcrs/node-error-type-direct
           ::pcr/node-error       err}))
@@ -44,8 +44,8 @@
                            (pci/register [(error-resolver :a)
                                           (pbir/single-attr-resolver :a :b inc)]))
                          (psm/sm-get-with-stats :b))]
-           (-> stats empty
-               (assoc :com.wsscode.pathom3.attribute/attribute :b)
+           (-> stats psm/smart-run-stats
+               (psm/sm-replace-context {:com.wsscode.pathom3.attribute/attribute :b})
                ::pcrs/attribute-error))
          {::pcrs/node-error-type ::pcrs/node-error-type-ancestor
           ::pcr/node-error       err})))
