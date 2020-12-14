@@ -413,6 +413,13 @@
                        meta ::pcr/run-stats)]
      (assoc run-stats ::value (wrap-smart-map env (get @entity-tree* k))))))
 
+(>defn sm-replace-context
+  "Replace the context data for the smart map with new-context, keeping the
+  same environment. This returns a new smart map."
+  [^SmartMap sm new-context]
+  [::smart-map map? => ::smart-map]
+  (smart-map (sm-env sm) new-context))
+
 (>defn sm-assoc!
   "Assoc on the smart map in place, this function mutates the current cache and return
   the same instance of smart map.

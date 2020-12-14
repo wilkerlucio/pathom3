@@ -265,3 +265,10 @@
               ::geo/turn-point {::geo/right  3
                                 ::geo/bottom 5
                                 :right       3}})))))
+
+(deftest sm-replace-context-test
+  (let [sm (-> (psm/smart-map (pci/register registry)
+                 {:x 3 :y 5})
+               (psm/sm-replace-context {:x 10}))]
+    (is (= sm {:x 10}))
+    (is (= (::geo/left sm) 10))))
