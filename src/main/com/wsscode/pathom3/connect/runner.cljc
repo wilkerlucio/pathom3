@@ -48,8 +48,7 @@
   (if (map? m)
     (let [cache-tree* (volatile! m)
           ast         (pick-union-entry ast m)]
-      (run-graph! env ast cache-tree*)
-      @cache-tree*)
+      (run-graph! env ast cache-tree*))
     m))
 
 (defn process-sequence-subquery
@@ -381,10 +380,12 @@
    => (s/keys)]
   (let [start (time/now-ms)
         env   (-> env
+                  ; due to recursion those need to be defined only on the first time
                   (coll/merge-defaults {::pcp/plan-cache* (volatile! {})
                                         ::batch-pending*  (volatile! {})
                                         ::resolver-cache* (volatile! {})
                                         ::p.path/path     []})
+                  ; these need redefinition at each recursive call
                   (assoc
                     ::p.ent/entity-tree* entity-tree*
                     ::node-run-stats* (volatile! ^::map-container? {})))
@@ -395,8 +396,10 @@
       (while (seq @(::batch-pending* env))
         (run-batches! env)))
 
-    ; compute minimal stats
-    (let [total-time (- (time/now-ms) start)]
-      (assoc plan
-        ::graph-process-duration-ms total-time
-        ::node-run-stats (some-> env ::node-run-stats* deref)))))
+    ; return result with run stats in meta
+    (let [total-time (- (time/now-ms) start)
+          run-stats  (assoc plan
+                       ::graph-process-duration-ms total-time
+                       ::node-run-stats (some-> env ::node-run-stats* deref))]
+      (-> (p.ent/entity env)
+          (vary-meta assoc ::run-stats run-stats)))))

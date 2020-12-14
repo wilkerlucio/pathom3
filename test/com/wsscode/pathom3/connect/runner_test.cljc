@@ -87,14 +87,10 @@
           ::geo/half-width 15
           ::geo/center-x   25})))
 
-(defn run-graph [env tree query]
-  (let [ent*      (volatile! tree)
-        env       (-> env
-                      (p.ent/with-entity tree)
-                      (assoc ::pcr/node-run-stats* (volatile! ^::map-container? {})))
-        ast       (eql/query->ast query)
-        run-stats (pcr/run-graph! env ast ent*)]
-    (with-meta @ent* {::pcr/run-stats run-stats})))
+(defn run-graph [env query tree]
+  (let [ast    (eql/query->ast query)
+        result (pcr/run-graph! env ast (volatile! tree))]
+    result))
 
 (defn coords-resolver [c]
   (pco/resolver 'coords-resolver {::pco/output [::coords]}
@@ -104,8 +100,8 @@
 
 (deftest run-graph!-test
   (is (= (run-graph (pci/register geo/registry)
-                    {::geo/left 10 ::geo/width 30}
-                    [::geo/right ::geo/center-x])
+                    [::geo/right ::geo/center-x]
+                    {::geo/left 10 ::geo/width 30})
          {::geo/left       10
           ::geo/width      30
           ::geo/right      40
@@ -113,27 +109,27 @@
           ::geo/center-x   25}))
 
   (is (= (run-graph full-env
-                    {:data {::geo/x 10}}
-                    [{:data [:left]}])
+                    [{:data [:left]}]
+                    {:data {::geo/x 10}})
          {:data {::geo/x    10
                  ::geo/left 10
                  :left      10}}))
 
   (testing "ident"
     (is (= (run-graph full-env
-                      {}
-                      [[::geo/x 10]])
+                      [[::geo/x 10]]
+                      {})
            {[::geo/x 10] {::geo/x 10}}))
 
     (is (= (run-graph full-env
-                      {}
-                      [{[::geo/x 10] [::geo/left]}])
+                      [{[::geo/x 10] [::geo/left]}]
+                      {})
            {[::geo/x 10] {::geo/x    10
                           ::geo/left 10}}))
 
     (is (= (run-graph full-env
-                      {[::geo/x 10] {:random "data"}}
-                      [{[::geo/x 10] [::geo/left]}])
+                      [{[::geo/x 10] [::geo/left]}]
+                      {[::geo/x 10] {:random "data"}})
            {[::geo/x 10] {:random    "data"
                           ::geo/x    10
                           ::geo/left 10}})))
@@ -142,10 +138,10 @@
     (is (= (run-graph (pci/register [(pbir/constantly-resolver ::hold {})
                                      (pbir/constantly-resolver ::sequence [{} {}])
                                      (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
-                      {}
                       [::p.path/path
                        {::hold [::p.path/path]}
-                       {::sequence [::p.path/path]}])
+                       {::sequence [::p.path/path]}]
+                      {})
            {::p.path/path [],
             ::sequence    [{::p.path/path [::sequence 0]}
                            {::p.path/path [::sequence 1]}],
@@ -155,8 +151,8 @@
       (is (= (run-graph (pci/register [(pbir/constantly-resolver ::map-container
                                                                  ^::pcr/map-container? {:foo {}})
                                        (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
-                        {}
-                        [{::map-container [::p.path/path]}])
+                        [{::map-container [::p.path/path]}]
+                        {})
              {::map-container {:foo {::p.path/path [::map-container :foo]}}}))))
 
   (testing "insufficient data"
@@ -165,8 +161,8 @@
                                           (fn [_ _] {:a "a"}))
                                         (pco/resolver 'b {::pco/output [:b]}
                                           (fn [_ _] {}))])
-                         {}
-                         [:a])]
+                         [:a]
+                         {})]
       (is (= res {}))
       (is (= (-> res meta ::pcr/run-stats
                  ::pcr/node-run-stats
@@ -187,39 +183,39 @@
                                      (coords-resolver
                                        [{::geo/x 7 ::geo/y 9}
                                         {::geo/x 3 ::geo/y 4}])])
-                      {}
-                      [{::coords [:left]}])
+                      [{::coords [:left]}]
+                      {})
            {::coords [{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
                       {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}]}))
 
     (testing "data from join"
       (is (= (run-graph (pci/register geo/full-registry)
+                        [{::coords [:left]}]
                         {::coords [{::geo/x 7 ::geo/y 9}
-                                   {::geo/x 3 ::geo/y 4}]}
-                        [{::coords [:left]}])
+                                   {::geo/x 3 ::geo/y 4}]})
              {::coords [{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
                         {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}]})))
 
     (testing "set data from join"
       (is (= (run-graph (pci/register geo/full-registry)
+                        [{::coords [:left]}]
                         {::coords #{{::geo/x 7 ::geo/y 9}
-                                    {::geo/x 3 ::geo/y 4}}}
-                        [{::coords [:left]}])
+                                    {::geo/x 3 ::geo/y 4}}})
              {::coords #{{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
                          {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}})))
 
     (testing "map values"
       (is (= (run-graph (pci/register geo/full-registry)
+                        [{::coords [:left]}]
                         {::coords ^::pcr/map-container? {:a {::geo/x 7 ::geo/y 9}
-                                                         :b {::geo/x 3 ::geo/y 4}}}
-                        [{::coords [:left]}])
+                                                         :b {::geo/x 3 ::geo/y 4}}})
              {::coords {:a {::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
                         :b {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))
 
       (is (= (run-graph (pci/register geo/full-registry)
+                        '[{(::coords {::pcr/map-container? true}) [:left]}]
                         {::coords {:a {::geo/x 7 ::geo/y 9}
-                                   :b {::geo/x 3 ::geo/y 4}}}
-                        '[{(::coords {::pcr/map-container? true}) [:left]}])
+                                   :b {::geo/x 3 ::geo/y 4}}})
              {::coords {:a {::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
                         :b {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))))
 
@@ -236,8 +232,8 @@
                                            (fn [_ _]
                                              (swap! spy inc)
                                              {:error 1}))])
-                          {}
-                          [:error])
+                          [:error]
+                          {})
                {:error 1}))
         (is (= @spy 1))))
 
@@ -249,16 +245,16 @@
                                              (swap! spy inc)
                                              (throw (ex-info "Error" {}))))
                                          (pbir/constantly-resolver :error "value")])
-                          {}
-                          [:error])
+                          [:error]
+                          {})
                {:error "value"}))
         (is (= @spy 1)))))
 
   (testing "processing sequence of inconsistent maps"
     (is (= (run-graph (pci/register geo/full-registry)
+                      [{::coords [:left]}]
                       {::coords [{::geo/x 7 ::geo/y 9}
-                                 {::geo/left 7 ::geo/y 9}]}
-                      [{::coords [:left]}])
+                                 {::geo/left 7 ::geo/y 9}]})
            {::coords
             [{::geo/x    7
               ::geo/y    9
@@ -270,9 +266,9 @@
 
   (testing "processing sequence partial items being maps"
     (is (= (run-graph (pci/register geo/full-registry)
+                      [{::coords [:left]}]
                       {::coords [{::geo/x 7 ::geo/y 9}
-                                 20]}
-                      [{::coords [:left]}])
+                                 20]})
            {::coords [{::geo/x    7
                        ::geo/y    9
                        ::geo/left 7
@@ -289,10 +285,10 @@
                                            {123 "U"})
               (pbir/attribute-map-resolver :video/id :video/title
                                            {2 "V"})])
-           {}
            [{:list
              {:user/id  [:user/name]
-              :video/id [:video/title]}}])
+              :video/id [:video/title]}}]
+           {})
          {:list
           [{:user/id 123 :user/name "U"}
            {:video/id 2 :video/title "V"}]})))
@@ -332,11 +328,11 @@
     (is (= (run-graph
              (pci/register
                [batch-fetch])
+             [{:list [:v]}]
              {:list
               [{:id 1}
                {:id 2}
-               {:id 3}]}
-             [{:list [:v]}])
+               {:id 3}]})
            {:list
             [{:id 1 :v 10}
              {:id 2 :v 20}
@@ -350,8 +346,8 @@
                                           [{:id 1}
                                            {:id 2 :v 200}
                                            {:id 3}])])
-             {}
-             [{:list [:v]}])
+             [{:list [:v]}]
+             {})
            {:list
             [{:id 1 :v 10}
              {:id 2 :v 200}
@@ -362,11 +358,11 @@
              (pci/register
                [batch-fetch
                 batch-pre-id])
+             [{:list [:v]}]
              {:list
               [{:pre-id 1}
                {:pre-id 2}
-               {:id 3}]}
-             [{:list [:v]}])
+               {:id 3}]})
            {:list
             [{:pre-id 1 :id 2 :v 20}
              {:pre-id 2 :id 3 :v 30}
@@ -377,11 +373,11 @@
              (pci/register
                [batch-fetch
                 (pbir/single-attr-resolver :pre-id :id inc)])
+             [{:list [:v]}]
              {:list
               [{:pre-id 1}
                {:pre-id 2}
-               {:id 4}]}
-             [{:list [:v]}])
+               {:id 4}]})
            {:list
             [{:pre-id 1 :id 2 :v 20}
              {:pre-id 2 :id 3 :v 30}
@@ -394,11 +390,11 @@
                  [batch-fetch
                   batch-fetch-nested
                   (pbir/single-attr-resolver :pre-id :id inc)])
+               [{:list [{:n [:v]}]}]
                {:list
                 [{:id 1}
                  {:id 2}
-                 {:id 3}]}
-               [{:list [{:n [:v]}]}])
+                 {:id 3}]})
              {:list
               [{:id 1, :n {:pre-id 10 :id 11 :v 110}}
                {:id 2, :n {:pre-id 20 :id 21 :v 210}}
@@ -409,11 +405,11 @@
                (pci/register
                  [batch-fetch
                   (pbir/single-attr-resolver :v :x #(* 100 %))])
+               [{:list [:x]}]
                {:list
                 [{:id 1}
                  {:id 2}
-                 {:id 3}]}
-               [{:list [:x]}])
+                 {:id 3}]})
              {:list
               [{:id 1 :v 10 :x 1000}
                {:id 2 :v 20 :x 2000}
@@ -423,14 +419,14 @@
     (is (= (run-graph
              (pci/register
                [batch-fetch])
+             [{:list [{:items [:v]}]}]
              {:list
               [{:items [{:id 1}
                         {:id 2}]}
                {:items [{:id 3}
                         {:id 4}]}
                {:items [{:id 5}
-                        {:id 6}]}]}
-             [{:list [{:items [:v]}]}])
+                        {:id 6}]}]})
            {:list [{:items [{:id 1, :v 10} {:id 2, :v 20}]}
                    {:items [{:id 3, :v 30} {:id 4, :v 40}]}
                    {:items [{:id 5, :v 50} {:id 6, :v 60}]}]})))
@@ -443,8 +439,8 @@
                                              [{:id 1}
                                               {:id 2}
                                               {:id 3}])])
-                {:id 1}
-                [:v])]
+                [:v]
+                {:id 1})]
       (is (= res
              {:id 1})))
 
@@ -476,8 +472,8 @@
 (deftest run-graph!-params-test
   (is (= (run-graph
            (pci/register todos-resolver)
-           {}
-           [::todos])
+           [::todos]
+           {})
          {::todos [{::todo-message "Write demo on params"
                     ::todo-done?   true}
                    {::todo-message "Pathom in Rust"
@@ -485,8 +481,8 @@
 
   (is (= (run-graph
            (pci/register todos-resolver)
-           {}
-           '[(::todos {::todo-done? true})])
+           '[(::todos {::todo-done? true})]
+           {})
          {::todos [{::todo-message "Write demo on params"
                     ::todo-done?   true}]})))
 
@@ -498,8 +494,8 @@
                      [(pbir/constantly-resolver :x 10)
                       (pbir/single-attr-resolver :x :y #(* 2 %))])
                    (assoc ::pcr/resolver-cache* cache*))
-               {}
-               [:y])
+               [:y]
+               {})
              {:x 10
               :y 20}))
       (is (= @cache*
@@ -512,8 +508,8 @@
                        [(pbir/constantly-resolver :x 10)
                         (pbir/single-attr-resolver :x :y #(* 2 %))])
                      (assoc ::pcr/resolver-cache* cache*))
-                 {}
-                 ['(:y {:foo "bar"})])
+                 ['(:y {:foo "bar"})]
+                 {})
                {:x 10
                 :y 20}))
         (is (= @cache*
@@ -525,8 +521,8 @@
                    [(pbir/constantly-resolver :x 10)
                     (pbir/single-attr-resolver :x :y #(* 2 %))])
                  (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10} {}] {:y 30}})))
-             {}
-             [:y])
+             [:y]
+             {})
            {:x 10
             :y 30})))
 
@@ -537,8 +533,8 @@
                      [(pbir/constantly-resolver :x 10)
                       (pbir/single-attr-resolver :x :y #(* 2 %))])
                    (assoc ::pcr/resolver-cache* cache*))
-               {}
-               ['(:y {:z 42})])
+               ['(:y {:z 42})]
+               {})
              {:x 10
               :y 20}))
 
@@ -553,37 +549,37 @@
                     (assoc-in (pbir/single-attr-resolver :x :y #(* 2 %))
                       [:config ::pco/cache?] false)])
                  (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10}] {:y 30}})))
-             {}
-             [:y])
+             [:y]
+             {})
            {:x 10
             :y 20}))))
 
 (deftest run-graph!-placeholders-test
   (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
-                    {}
-                    [{:>/path [:foo]}])
+                    [{:>/path [:foo]}]
+                    {})
          {:foo    "bar"
           :>/path {:foo "bar"}}))
 
   (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
-                    {:foo "baz"}
-                    [{:>/path [:foo]}])
+                    [{:>/path [:foo]}]
+                    {:foo "baz"})
          {:foo    "baz"
           :>/path {:foo "baz"}}))
 
   (testing "modified data"
     (is (= (run-graph (pci/register
                         [(pbir/single-attr-resolver :x :y #(* 2 %))])
-                      {}
-                      '[{(:>/path {:x 20}) [:y]}])
+                      '[{(:>/path {:x 20}) [:y]}]
+                      {})
            {:>/path {:x 20
                      :y 40}}))
 
     (is (= (run-graph (pci/register
                         [(pbir/constantly-resolver :x 10)
                          (pbir/single-attr-resolver :x :y #(* 2 %))])
-                      {}
-                      '[{(:>/path {:x 20}) [:y]}])
+                      '[{(:>/path {:x 20}) [:y]}]
+                      {})
            {:x      10
             :y      20
             :>/path {:x 20
@@ -592,9 +588,9 @@
     (is (= (run-graph (pci/register
                         [(pbir/constantly-resolver :x 10)
                          (pbir/single-attr-resolver :x :y #(* 2 %))])
-                      {}
                       '[:x
-                        {(:>/path {:x 20}) [:y]}])
+                        {(:>/path {:x 20}) [:y]}]
+                      {})
            {:x      10
             :y      20
             :>/path {:x 20
@@ -604,11 +600,11 @@
       (is (= (run-graph (pci/register
                           [(pbir/constantly-resolver :x 10)
                            (pbir/single-attr-with-env-resolver :x :y #(* (:m (pco/params %) 2) %2))])
-                        {}
                         '[:x
                           {:>/m2 [(:y)]}
                           {:>/m3 [(:y {:m 3})]}
-                          {:>/m4 [(:y {:m 4})]}])
+                          {:>/m4 [(:y {:m 4})]}]
+                        {})
              {:x    10
               :y    20
               :>/m2 {:x 10
@@ -622,8 +618,8 @@
   (testing "simple call"
     (is (= (run-graph (pci/register (pco/mutation 'call {}
                                                   (fn [_ {:keys [this]}] {:result this})))
-                      {}
-                      '[(call {:this "thing"})])
+                      '[(call {:this "thing"})]
+                      {})
            '{call {:result "thing"}})))
 
   (testing "mutation join"
@@ -632,8 +628,8 @@
                [(pbir/alias-resolver :result :other)
                 (pco/mutation 'call {}
                               (fn [_ {:keys [this]}] {:result this}))])
-             {}
-             '[{(call {:this "thing"}) [:other]}])
+             '[{(call {:this "thing"}) [:other]}]
+             {})
            '{call {:result "thing"
                    :other  "thing"}})))
 
@@ -644,8 +640,8 @@
                  [(pbir/alias-resolver :result :other)
                   (pco/mutation 'call {}
                                 (fn [_ _] (throw err)))])
-               {}
-               '[{(call {:this "thing"}) [:other]}])
+               '[{(call {:this "thing"}) [:other]}]
+               {})
              {'call {::pcr/mutation-error err}}))))
 
   (testing "mutations run before anything else"
@@ -654,9 +650,9 @@
                    [(pbir/constantly-fn-resolver ::env-var (comp deref ::env-var))
                     (pco/mutation 'call {} (fn [{::keys [env-var]} _] (swap! env-var inc)))])
                  (assoc ::env-var (atom 0)))
-             {}
              '[::env-var
-               (call)])
+               (call)]
+             {})
            {::env-var 1
             'call     1}))))
 
@@ -665,8 +661,8 @@
         stats (-> (run-graph (pci/register
                                (pco/resolver 'error {::pco/output [:error]}
                                  (fn [_ _] (throw error))))
-                             {}
-                             [:error])
+                             [:error]
+                             {})
                   meta ::pcr/run-stats)
         env   (pcrs/run-stats-env stats)]
     (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})

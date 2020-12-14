@@ -38,8 +38,7 @@
   (testing "reading with *"
     (is (= (-> (p.eql/process (-> (pci/register geo/full-registry)
                                   (p.ent/with-entity {:left 10}))
-                              [::geo/x '*])
-               (dissoc :com.wsscode.pathom3.connect.runner/run-stats))
+                              [::geo/x '*]))
            {::geo/x    10
             ::geo/left 10
             :left      10})))

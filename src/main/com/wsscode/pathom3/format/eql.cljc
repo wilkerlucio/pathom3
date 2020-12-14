@@ -114,7 +114,7 @@
   (if (map? source)
     (let [start (if (ast-contains-wildcard? ast)
                   source
-                  {})]
+                  (with-meta {} (meta source)))]
       (into start (keep #(map-select-entry source %))
             (-> ast
                 (pick-union-entry source)

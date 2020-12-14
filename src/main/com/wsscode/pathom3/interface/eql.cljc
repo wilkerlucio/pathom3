@@ -3,22 +3,16 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.pathom3.connect.runner :as pcr]
-    [com.wsscode.pathom3.connect.runner.stats :as pcrs]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
-    [com.wsscode.pathom3.interface.smart-map :as psm]
     [edn-query-language.core :as eql]))
 
 (>defn process-ast
   [env ast]
   [(s/keys) :edn-query-language.ast/node => map?]
   (let [ent-tree* (get env ::p.ent/entity-tree* (volatile! {}))
-        run-stats (pcr/run-graph! env ast ent-tree*)]
-    (-> @ent-tree*
-        (assoc ::pcr/run-stats (psm/smart-map
-                                 (pcrs/run-stats-env run-stats)
-                                 (-> run-stats
-                                     (dissoc ::pcr/node-run-stats))))
+        result    (pcr/run-graph! env ast ent-tree*)]
+    (-> result
         (pf.eql/map-select-ast ast))))
 
 (>defn process

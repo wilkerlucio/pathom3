@@ -84,6 +84,13 @@
     :else
     x))
 
+(defn smart-run-stats
+  "Wrap runner run stats with smart definitions to traverse the runner data."
+  [run-stats]
+  (smart-map
+    (pcrs/run-stats-env run-stats)
+    run-stats))
+
 (defn sm-get
   "Get a property from a smart map.
 
@@ -101,7 +108,7 @@
        (wrap-smart-map env (val x))
        (let [ast   {:type     :root
                     :children [{:type :prop, :dispatch-key k, :key k}]}
-             stats (pcr/run-graph! env ast entity-tree*)]
+             stats (-> (pcr/run-graph! env ast entity-tree*) meta ::pcr/run-stats smart-run-stats)]
          (when-let [error (and (refs/kw-identical? (get env ::error-mode) ::error-mode-loud)
                                (-> stats
                                    (pcrs/attribute-error
@@ -402,12 +409,9 @@
    (let [{::p.ent/keys [entity-tree*] :as env} (sm-env sm)
          ast       {:type     :root
                     :children [{:type :prop, :dispatch-key k, :key k}]}
-         run-stats (pcr/run-graph! env ast entity-tree*)]
-     (smart-map
-       (pcrs/run-stats-env run-stats)
-       (-> run-stats
-           (dissoc ::pcr/node-run-stats)
-           (assoc ::value (wrap-smart-map env (get @entity-tree* k))))))))
+         run-stats (-> (pcr/run-graph! env ast entity-tree*)
+                       meta ::pcr/run-stats)]
+     (assoc run-stats ::value (wrap-smart-map env (get @entity-tree* k))))))
 
 (>defn sm-assoc!
   "Assoc on the smart map in place, this function mutates the current cache and return
