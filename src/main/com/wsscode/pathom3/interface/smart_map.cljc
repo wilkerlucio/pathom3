@@ -385,23 +385,31 @@
 
 (>def ::smart-map smart-map?)
 
+(defn datafy-smart-map
+  "Returns a map with all reachable keys from the smart map. The cached keys get their
+  value in this map, unresolved keys return with the special value `::pcr/unknown-value`.
+
+  This is helpful to use with REPL tools that support the Clojure Datafiable/Navitable
+  protocols. On navigation Pathom try to load the attribute you navigate to."
+  [sm]
+  (let [env (sm-env sm)
+        ent (p.ent/entity env)]
+    (-> (into (empty ent)
+              (map (fn [attr]
+                     (if-let [x (find ent attr)]
+                       x
+                       (coll/make-map-entry attr :com.wsscode.pathom3.connect.operation/unknown-value))))
+              (pci/reachable-attributes env ent))
+        (vary-meta assoc
+                   `d/nav
+                   (fn [_ k v]
+                     (if (refs/kw-identical? v :com.wsscode.pathom3.connect.operation/unknown-value)
+                       (get sm k)
+                       v))))))
+
 (extend-type SmartMap
   d/Datafiable
-  (datafy [sm]
-    (let [env (sm-env sm)
-          ent (p.ent/entity env)]
-      (-> (into (empty ent)
-                (map (fn [attr]
-                       (if-let [x (find ent attr)]
-                         x
-                         (coll/make-map-entry attr :com.wsscode.pathom3.connect.operation/unknown-value))))
-                (pci/reachable-attributes env ent))
-          (vary-meta assoc
-                     `d/nav
-                     (fn [_ k v]
-                       (if (refs/kw-identical? v :com.wsscode.pathom3.connect.operation/unknown-value)
-                         (get sm k)
-                         v)))))))
+  (datafy [sm] (datafy-smart-map sm)))
 
 ; endregion
 
