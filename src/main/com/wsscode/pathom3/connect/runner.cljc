@@ -343,6 +343,11 @@
         ::pcp/graph graph
         ::p.ent/entity-tree* entity-tree*))))
 
+(defn assoc-end-plan-stats [env plan]
+  (assoc plan
+    ::graph-run-finish-ms (time/now-ms)
+    ::node-run-stats (some-> env ::node-run-stats* deref)))
+
 (defn run-batches! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
@@ -381,9 +386,7 @@
               (p.ent/vswap-entity! env assoc-in (::p.path/path env')
                                    (-> (p.ent/entity env')
                                        (vary-meta assoc ::run-stats
-                                                  (assoc (::pcp/graph env')
-                                                    ::graph-run-finish-ms (time/now-ms)
-                                                    ::node-run-stats (some-> env' ::node-run-stats* deref))))))))))))
+                                                  (assoc-end-plan-stats env' (::pcp/graph env'))))))))))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
@@ -411,8 +414,6 @@
         (run-batches! env)))
 
     ; return result with run stats in meta
-    (let [run-stats (assoc plan
-                      ::graph-run-finish-ms (time/now-ms)
-                      ::node-run-stats (some-> env ::node-run-stats* deref))]
+    (let [run-stats (assoc-end-plan-stats env plan)]
       (-> (p.ent/entity env)
           (vary-meta assoc ::run-stats run-stats)))))
