@@ -345,6 +345,7 @@
 
 (defn assoc-end-plan-stats [env plan]
   (assoc plan
+    ::graph-run-start-ms (::graph-run-start-ms env)
     ::graph-run-finish-ms (time/now-ms)
     ::node-run-stats (some-> env ::node-run-stats* deref)))
 
@@ -403,10 +404,10 @@
                                        ::p.path/path     []})
                  ; these need redefinition at each recursive call
                  (assoc
+                   ::graph-run-start-ms (time/now-ms)
                    ::p.ent/entity-tree* entity-tree*
                    ::node-run-stats* (volatile! ^::map-container? {})))
-        plan (plan-and-run! env ast-or-graph entity-tree*)
-        plan (assoc plan ::graph-run-start-ms (time/now-ms))]
+        plan (plan-and-run! env ast-or-graph entity-tree*)]
 
     ; run batches on root path only
     (when-not (seq (::p.path/path env))
@@ -414,6 +415,5 @@
         (run-batches! env)))
 
     ; return result with run stats in meta
-    (let [run-stats (assoc-end-plan-stats env plan)]
-      (-> (p.ent/entity env)
-          (vary-meta assoc ::run-stats run-stats)))))
+    (-> (p.ent/entity env)
+        (vary-meta assoc ::run-stats (assoc-end-plan-stats env plan)))))
