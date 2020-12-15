@@ -1,5 +1,7 @@
 (ns com.wsscode.pathom3.interface.smart-map-test
   (:require
+    [clojure.core.protocols :as d]
+    [clojure.datafy :as datafy]
     [clojure.test :refer [deftest is are run-tests testing]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -210,6 +212,20 @@
 (pco/defresolver error-resolver []
   {:error (throw (ex-info "Error" {}))})
 
+(deftest smart-map-datafy-test
+  (let [sm  (-> (pci/register [(pbir/alias-resolver :id :name)
+                               (pbir/alias-resolver :id :age)])
+                (psm/smart-map {:id 10}))
+        smd (d/datafy sm)]
+    (is (= smd
+           {:id   10
+            :name ::pco/unknown-value
+            :age  ::pco/unknown-value}))
+
+    (testing "navigates in"
+      (is (= (d/nav smd :name ::pco/unknown-value)
+             10)))))
+
 (deftest smart-map-errors-test
   (testing "quiet mode (default)"
     (let [sm (-> (pci/register error-resolver)
@@ -272,3 +288,20 @@
                (psm/sm-replace-context {:x 10}))]
     (is (= sm {:x 10}))
     (is (= (::geo/left sm) 10))))
+
+(comment
+  (let [sm (-> (psm/smart-map (pci/register registry)
+                 {:x 3 :y 5})
+               (psm/sm-touch! [{::geo/turn-point [:right]}]))]
+    sm)
+  (let [sm (psm/smart-map (pci/register registry)
+             {:x 3 :width 5})]
+
+    [(satisfies? clojure.core.protocols/Navigable sm)
+     (datafy/datafy sm)
+     (datafy/nav (datafy/datafy sm) :left ::pco/unknown-value)])
+
+  (let [sm (psm/smart-map (pci/register registry)
+             {:x 3 :width 5})]
+
+    sm))

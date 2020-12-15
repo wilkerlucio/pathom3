@@ -3,6 +3,7 @@
   structure will realize the values as the user requests then. Values realized are
   cached, meaning that subsequent lookups are fast."
   (:require
+    [clojure.core.protocols :as d]
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.coll :as coll]
@@ -14,7 +15,7 @@
     [edn-query-language.core :as eql]
     #?(:clj [potemkin.collections :refer [def-map-type]])))
 
-(declare smart-map smart-map?)
+(declare smart-map smart-map? sm-env)
 
 (>def ::error-mode
   #{::error-mode-silent
@@ -383,6 +384,24 @@
 (defn smart-map? [x] (instance? SmartMap x))
 
 (>def ::smart-map smart-map?)
+
+(extend-type SmartMap
+  d/Datafiable
+  (datafy [sm]
+    (let [env (sm-env sm)
+          ent (p.ent/entity env)]
+      (-> (into (empty ent)
+                (map (fn [attr]
+                       (if-let [x (find ent attr)]
+                         x
+                         (coll/make-map-entry attr :com.wsscode.pathom3.connect.operation/unknown-value))))
+                (pci/reachable-attributes env ent))
+          (vary-meta assoc
+                     `d/nav
+                     (fn [_ k v]
+                       (if (refs/kw-identical? v :com.wsscode.pathom3.connect.operation/unknown-value)
+                         (get sm k)
+                         v)))))))
 
 ; endregion
 
