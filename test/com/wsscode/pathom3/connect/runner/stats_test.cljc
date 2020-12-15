@@ -10,9 +10,12 @@
 (deftest resolver-accumulated-duration-test
   (is (= (pcrs/resolver-accumulated-duration
            {::pcr/node-run-stats
-            {1 {::pcr/run-duration-ms 1}
-             2 {::pcr/run-duration-ms 10}
-             3 {::pcr/run-duration-ms 100}}})
+            {1 {::pcr/run-start-ms 0
+                ::pcr/run-finish-ms 1}
+             2 {::pcr/run-start-ms 0
+                ::pcr/run-finish-ms 10}
+             3 {::pcr/run-start-ms 0
+                ::pcr/run-finish-ms 100}}})
          {::pcrs/resolver-accumulated-duration-ms 111})))
 
 (deftest overhead-duration-test
