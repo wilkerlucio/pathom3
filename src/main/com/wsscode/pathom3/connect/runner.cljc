@@ -194,9 +194,10 @@
                      (catch #?(:clj Throwable :cljs :default) e
                        (mark-resolver-error env node e)
                        ::node-error))
-        duration   (- (time/now-ms) start)]
+        finish     (time/now-ms)]
     (merge-node-stats! env node
-                       {::run-duration-ms duration
+                       {::run-start-ms    start
+                        ::run-finish-ms   finish
                         ::node-run-input  input-data
                         ::node-run-output result})
     result))
@@ -328,10 +329,15 @@
    => (s/keys)]
   (let [graph (if (::pcp/nodes ast-or-graph)
                 ast-or-graph
-                (pcp/compute-run-graph
-                  (assoc env
-                    :edn-query-language.ast/node ast-or-graph
-                    ::pcp/available-data (pfsd/data->shape-descriptor @entity-tree*))))]
+                (let [start-plan  (time/now-ms)
+                      plan        (pcp/compute-run-graph
+                                    (assoc env
+                                      :edn-query-language.ast/node ast-or-graph
+                                      ::pcp/available-data (pfsd/data->shape-descriptor @entity-tree*)))
+                      finish-plan (time/now-ms)]
+                  (assoc plan
+                    ::compute-plan-run-start-ms start-plan
+                    ::compute-plan-run-finish-ms finish-plan)))]
     (run-graph!*
       (assoc env
         ::pcp/graph graph
@@ -352,7 +358,7 @@
                                    ::pcp/keys [node]} batch-items]
                             (mark-resolver-error env' node (ex-info "Batch error" {} e)))
                           ::node-error))
-            duration  (- (time/now-ms) start)]
+            finish    (time/now-ms)]
 
         (when-not (refs/kw-identical? ::node-error responses)
           (if (not= (count inputs) (count responses))
@@ -366,10 +372,18 @@
               (p.cache/cached ::resolver-cache* env'
                 [batch-op node-run-input (pco/params batch-item)]
                 (fn [] response)))
-            (merge-node-stats! env' node {::batch-run-duration-ms duration})
+            (merge-node-stats! env' node {::batch-run-start-ms  start
+                                          ::batch-run-finish-ms finish
+                                          ::node-run-output     response})
             (merge-resolver-response! env' response)
             (run-next-node! env' node)
-            (p.ent/vswap-entity! env assoc-in (::p.path/path env') (p.ent/entity env'))))))))
+            (if (seq (::p.path/path env'))
+              (p.ent/vswap-entity! env assoc-in (::p.path/path env')
+                                   (-> (p.ent/entity env')
+                                       (vary-meta assoc ::run-stats
+                                                  (assoc (::pcp/graph env')
+                                                    ::graph-run-finish-ms (time/now-ms)
+                                                    ::node-run-stats (some-> env' ::node-run-stats* deref))))))))))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
@@ -378,18 +392,18 @@
   [(s/keys) (s/or :ast :edn-query-language.ast/node
                   :graph ::pcp/graph) ::p.ent/entity-tree*
    => (s/keys)]
-  (let [start (time/now-ms)
-        env   (-> env
-                  ; due to recursion those need to be defined only on the first time
-                  (coll/merge-defaults {::pcp/plan-cache* (volatile! {})
-                                        ::batch-pending*  (volatile! {})
-                                        ::resolver-cache* (volatile! {})
-                                        ::p.path/path     []})
-                  ; these need redefinition at each recursive call
-                  (assoc
-                    ::p.ent/entity-tree* entity-tree*
-                    ::node-run-stats* (volatile! ^::map-container? {})))
-        plan  (plan-and-run! env ast-or-graph entity-tree*)]
+  (let [env  (-> env
+                 ; due to recursion those need to be defined only on the first time
+                 (coll/merge-defaults {::pcp/plan-cache* (volatile! {})
+                                       ::batch-pending*  (volatile! {})
+                                       ::resolver-cache* (volatile! {})
+                                       ::p.path/path     []})
+                 ; these need redefinition at each recursive call
+                 (assoc
+                   ::p.ent/entity-tree* entity-tree*
+                   ::node-run-stats* (volatile! ^::map-container? {})))
+        plan (plan-and-run! env ast-or-graph entity-tree*)
+        plan (assoc plan ::graph-run-start-ms (time/now-ms))]
 
     ; run batches on root path only
     (when-not (seq (::p.path/path env))
@@ -397,9 +411,8 @@
         (run-batches! env)))
 
     ; return result with run stats in meta
-    (let [total-time (- (time/now-ms) start)
-          run-stats  (assoc plan
-                       ::graph-process-duration-ms total-time
-                       ::node-run-stats (some-> env ::node-run-stats* deref))]
+    (let [run-stats (assoc plan
+                      ::graph-run-finish-ms (time/now-ms)
+                      ::node-run-stats (some-> env ::node-run-stats* deref))]
       (-> (p.ent/entity env)
           (vary-meta assoc ::run-stats run-stats)))))

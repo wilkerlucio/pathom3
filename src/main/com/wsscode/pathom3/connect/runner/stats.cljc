@@ -9,10 +9,23 @@
 
 ; region performance
 
+(defn duration-resolver [attr]
+  (let [op-name     (symbol (str (pbir/attr-munge attr) "-duration"))
+        start-kw    (keyword (namespace attr) (str (name attr) "-start-ms"))
+        finish-kw   (keyword (namespace attr) (str (name attr) "-finish-ms"))
+        duration-kw (keyword (namespace attr) (str (name attr) "-duration-ms"))]
+    (pco/resolver op-name
+      {::pco/input  [start-kw finish-kw]
+       ::pco/output [duration-kw]}
+      (fn [_ input]
+        {duration-kw (- (finish-kw input) (start-kw input))}))))
+
 (pco/defresolver resolver-accumulated-duration
   [{::pcr/keys [node-run-stats]}]
+  {::pco/input [{::pcr/node-run-stats [::pcr/run-duration-ms]}]}
   {::resolver-accumulated-duration-ms
-   (transduce (map ::pcr/run-duration-ms) + 0 (vals node-run-stats))})
+   (transduce (map #(- (::pcr/run-finish-ms %)
+                       (::pcr/run-start-ms %))) + 0 (vals node-run-stats))})
 
 (pco/defresolver overhead-duration
   [{::pcr/keys [graph-process-duration-ms]
@@ -55,6 +68,10 @@
    overhead-duration
    overhead-pct
    attribute-error
+   (duration-resolver ::pcr/run)
+   (duration-resolver ::pcr/batch-run)
+   (duration-resolver ::pcr/graph-run)
+   (duration-resolver ::pcr/compute-plan-run)
    (pbir/single-attr-with-env-resolver ::p.attr/attribute ::pcp/node-id
      #(get (::pcp/index-attrs %) %2 ::pco/unknown-value))
    (pbir/env-table-resolver ::pcp/nodes ::pcp/node-id
@@ -68,7 +85,10 @@
       ::pcp/source-for-attrs
       ::pcp/node-parents])
    (pbir/env-table-resolver ::pcr/node-run-stats ::pcp/node-id
-     [::pcr/run-duration-ms
+     [::pcr/run-start-ms
+      ::pcr/run-finish-ms
+      ::pcr/batch-run-start-ms
+      ::pcr/batch-run-finish-ms
       ::pcr/node-run-input
       ::pcr/node-error])])
 

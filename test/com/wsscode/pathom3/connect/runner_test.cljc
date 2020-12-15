@@ -338,6 +338,29 @@
              {:id 2 :v 20}
              {:id 3 :v 30}]})))
 
+  (testing "root batch"
+    (is (= (run-graph
+             (pci/register
+               [batch-fetch])
+             [:v]
+             {:id 1})
+           {:id 1 :v 10}))
+
+    (is (some?
+          (-> (run-graph
+                (pci/register
+                  [batch-fetch])
+                [:v]
+                {:id 1}) meta ::pcr/run-stats))))
+
+  (testing "run stats"
+    (is (some? (-> (run-graph
+                     (pci/register
+                       [batch-fetch])
+                     [{'(:>/id {:id 1}) [:v]}]
+                     {})
+                   :>/id meta ::pcr/run-stats))))
+
   (testing "different plan"
     (is (= (run-graph
              (pci/register
