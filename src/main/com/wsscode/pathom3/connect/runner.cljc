@@ -196,10 +196,10 @@
                        ::node-error))
         finish     (time/now-ms)]
     (merge-node-stats! env node
-                       {::run-start-ms    start
-                        ::run-finish-ms   finish
-                        ::node-run-input  input-data
-                        ::node-run-output result})
+                       {::resolver-run-start-ms  start
+                        ::resolver-run-finish-ms finish
+                        ::node-run-input         input-data
+                        ::node-run-output        result})
     result))
 
 (defn run-resolver-node!

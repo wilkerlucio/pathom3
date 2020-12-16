@@ -24,8 +24,8 @@
   [{::pcr/keys [node-run-stats]}]
   {::pco/input [{::pcr/node-run-stats [::pcr/run-duration-ms]}]}
   {::resolver-accumulated-duration-ms
-   (transduce (map #(- (::pcr/run-finish-ms %)
-                       (::pcr/run-start-ms %))) + 0 (vals node-run-stats))})
+   (transduce (map #(- (::pcr/resolver-run-finish-ms %)
+                       (::pcr/resolver-run-start-ms %))) + 0 (vals node-run-stats))})
 
 (pco/defresolver overhead-duration
   [{::pcr/keys [graph-process-duration-ms]
@@ -68,7 +68,7 @@
    overhead-duration
    overhead-pct
    attribute-error
-   (duration-resolver ::pcr/run)
+   (duration-resolver ::pcr/resolver-run)
    (duration-resolver ::pcr/batch-run)
    (duration-resolver ::pcr/graph-run)
    (duration-resolver ::pcr/compute-plan-run)
@@ -85,16 +85,17 @@
       ::pcp/source-for-attrs
       ::pcp/node-parents])
    (pbir/env-table-resolver ::pcr/node-run-stats ::pcp/node-id
-     [::pcr/run-start-ms
-      ::pcr/run-finish-ms
+     [::pcr/resolver-run-start-ms
+      ::pcr/resolver-run-finish-ms
       ::pcr/batch-run-start-ms
       ::pcr/batch-run-finish-ms
       ::pcr/node-run-input
+      ::pcr/node-run-output
       ::pcr/node-error])])
 
 (def stats-index (pci/register stats-registry))
 
 (defn run-stats-env [stats]
   (-> stats
-      (merge stats-index)
+      (pci/register stats-index)
       (assoc :com.wsscode.pathom3.interface.smart-map/keys-mode :com.wsscode.pathom3.interface.smart-map/keys-mode-reachable)))
