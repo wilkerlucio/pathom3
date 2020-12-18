@@ -182,7 +182,8 @@
                          {::batch-hold {::pco/op-name    op-name
                                         ::pcp/node       node
                                         ::pco/cache?     cache?
-                                        ::node-run-input input-data}}
+                                        ::node-run-input input-data
+                                        ::env            env}}
 
                          cache?
                          (p.cache/cached ::resolver-cache* env
@@ -217,7 +218,7 @@
         batch-hold
         (let [batch-pending (::batch-pending* env)]
           (vswap! batch-pending update (::pco/op-name batch-hold) coll/vconj
-                  (assoc batch-hold ::env env))
+                  batch-hold)
           nil)
 
         (not (refs/kw-identical? ::node-error response))
@@ -361,9 +362,11 @@
     (doseq [[batch-op batch-items] batches]
       (let [inputs    (mapv ::node-run-input batch-items)
             resolver  (pci/resolver env batch-op)
+            batch-env (-> batch-items first ::env
+                          (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
             start     (time/now-ms)
             responses (try
-                        (pco.prot/-resolve resolver env inputs)
+                        (pco.prot/-resolve resolver batch-env inputs)
                         (catch #?(:clj Throwable :cljs :default) e
                           (doseq [{env'       ::env
                                    ::pcp/keys [node]} batch-items]
