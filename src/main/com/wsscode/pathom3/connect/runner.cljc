@@ -330,6 +330,7 @@
 
 (defn plan-and-run!
   [env ast-or-graph entity-tree*]
+  #_ ; keep commented for description, but don't want to validate this fn on runtime
   [(s/keys) (s/or :ast :edn-query-language.ast/node
                   :graph ::pcp/graph) ::p.ent/entity-tree*
    => (s/keys)]
