@@ -328,7 +328,7 @@
 
     graph))
 
-(defn plan-and-run!
+(>defn plan-and-run!
   [env ast-or-graph entity-tree*]
   [(s/keys) (s/or :ast :edn-query-language.ast/node
                   :graph ::pcp/graph) ::p.ent/entity-tree*
