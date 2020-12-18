@@ -26,6 +26,7 @@
 (>def ::output vector?)
 (>def ::params vector?)
 (>def ::cache? boolean?)
+(>def ::batch? boolean?)
 (>def ::resolve fn?)
 (>def ::mutate fn?)
 (>def ::operation-type #{::operation-type-resolver ::operation-type-mutation})
