@@ -10,7 +10,7 @@
 (>defn process-ast
   [env ast]
   [(s/keys) :edn-query-language.ast/node => map?]
-  (let [ent-tree* (get env ::p.ent/entity-tree* (volatile! {}))
+  (let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
         result    (pcr/run-graph! env ast ent-tree*)]
     (-> result
         (pf.eql/map-select-ast ast))))

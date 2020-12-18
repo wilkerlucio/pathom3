@@ -13,6 +13,18 @@
   (is (= @(::p.e/entity-tree* (p.e/with-entity {} {:foo "bar"}))
          {:foo "bar"})))
 
+(deftest swap-entity!-test
+  (let [tree* (atom {})]
+    (is (= (p.e/swap-entity! {::p.e/entity-tree* tree*}
+                             assoc :foo "bar")
+           {:foo "bar"}
+           @tree*)))
+
+  (let [tree* (atom {:a 1})]
+    (is (= (p.e/swap-entity! {::p.e/entity-tree* tree*} assoc :b 2)
+           {:a 1, :b 2}
+           @tree*))))
+
 (deftest vswap-entity!-test
   (let [tree* (volatile! {})]
     (is (= (p.e/vswap-entity! {::p.e/entity-tree* tree*}

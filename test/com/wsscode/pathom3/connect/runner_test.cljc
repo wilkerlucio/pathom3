@@ -89,7 +89,7 @@
 
 (defn run-graph [env query tree]
   (let [ast    (eql/query->ast query)
-        result (pcr/run-graph! env ast (volatile! tree))]
+        result (pcr/run-graph! env ast (p.ent/create-entity tree))]
     result))
 
 (defn coords-resolver [c]
@@ -465,6 +465,8 @@
                 [:v]
                 {:id 1})]
       (is (= res
+             {:id 1}))
+      (is (= (meta res)
              {:id 1})))
 
     (testing "partial error")))
