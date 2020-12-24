@@ -121,7 +121,7 @@
          (let [id (get input attr-key)]
            (get table id)))))))
 
-(>defn attribute-map-resolver
+(>defn static-attribute-map-resolver
   "This is like the static-table-resolver, but provides a single attribute on each
   map entry.
 
@@ -142,7 +142,7 @@
   [input output mapping]
   [::p.attr/attribute ::p.attr/attribute map?
    => ::pco/resolver]
-  (let [resolver-name (symbol (str (attr-alias-resolver-name input output) "-attribute-map"))]
+  (let [resolver-name (symbol (str (attr-alias-resolver-name input output) "-static-attribute-map"))]
     (pco/resolver resolver-name
       {::pco/input  [input]
        ::pco/output [output]}

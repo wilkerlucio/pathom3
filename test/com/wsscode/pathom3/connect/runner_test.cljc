@@ -281,10 +281,10 @@
              [(pbir/constantly-resolver :list
                                         [{:user/id 123}
                                          {:video/id 2}])
-              (pbir/attribute-map-resolver :user/id :user/name
-                                           {123 "U"})
-              (pbir/attribute-map-resolver :video/id :video/title
-                                           {2 "V"})])
+              (pbir/static-attribute-map-resolver :user/id :user/name
+                                                  {123 "U"})
+              (pbir/static-attribute-map-resolver :video/id :video/title
+                                                  {2 "V"})])
            [{:list
              {:user/id  [:user/name]
               :video/id [:video/title]}}]

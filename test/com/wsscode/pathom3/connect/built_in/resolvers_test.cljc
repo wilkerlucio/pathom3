@@ -41,9 +41,9 @@
            [::color]))))
 
 (deftest attribute-map-resolver-test
-  (let [resolver (pbir/attribute-map-resolver ::id ::color
-                                              {1 "Gray"
-                                               2 "Purple"})
+  (let [resolver (pbir/static-attribute-map-resolver ::id ::color
+                                                     {1 "Gray"
+                                                      2 "Purple"})
         config   (pco/operation-config resolver)]
     (is (= (resolver {::id 2})
            {::color "Purple"}))
