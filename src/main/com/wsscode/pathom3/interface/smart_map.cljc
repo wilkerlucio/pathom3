@@ -502,10 +502,16 @@
   ([env]
    [(s/keys :opt [::pci/index-oir]) => ::smart-map]
    (smart-map env {}))
-  ([env context]
+  ([{::keys [persistent-cache?]
+     :or    {persistent-cache? true}
+     :as    env} context]
    [(s/keys :opt [::pci/index-oir])
     map? => ::smart-map]
    (->SmartMap
      (-> env
+         (coll/merge-defaults
+           (cond-> {:com.wsscode.pathom3.connect.planner/plan-cache* (volatile! {})}
+             persistent-cache?
+             (assoc ::pcr/resolver-cache* (volatile! {}))))
          (p.ent/with-entity context)
          (assoc ::source-context context)))))
