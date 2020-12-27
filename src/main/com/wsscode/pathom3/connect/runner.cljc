@@ -218,7 +218,7 @@
   (if (all-requires-ready? env node)
     (run-next-node! env node)
     (let [{::keys [batch-hold] :as response}
-          (p.plugin/run-with-plugins env ::wrap-resolver-call
+          (p.plugin/run-with-plugins env ::wrap-resolve
             invoke-resolver-from-node env node)]
       (cond
         batch-hold
