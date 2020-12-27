@@ -4,7 +4,7 @@
  :deps
  {com.fulcrologic/guardrails {:mvn/version "0.0.12"}
   com.wsscode/async          {:mvn/version "1.0.12"}
-  com.wsscode/cljc-misc      {:mvn/version "2020.12.23"}
+  com.wsscode/cljc-misc      {:mvn/version "2020.12.27"}
   org.clojure/core.async     {:mvn/version "1.3.610"}
   edn-query-language/eql     {:mvn/version "1.0.0"}
   potemkin/potemkin          {:mvn/version "0.4.5"}}
