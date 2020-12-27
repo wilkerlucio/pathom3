@@ -3,6 +3,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.coll :as coll]
+    #?(:clj [com.wsscode.misc.macros :as macros])
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.connect.operation.protocols :as pop]
     [com.wsscode.pathom3.format.eql :as pf.eql]
@@ -291,11 +292,6 @@
       (recur (into '[[:sym _]] arglist))
       arglist)))
 
-(defn full-symbol [sym ns]
-  (if (namespace sym)
-    sym
-    (symbol ns (name sym))))
-
 #?(:clj
    (defmacro defresolver
      "Defines a new Pathom resolver.
@@ -379,7 +375,7 @@
                (update :arglist normalize-arglist))
 
            arglist' (s/unform ::operation-args arglist)
-           fqsym    (full-symbol name (str *ns*))
+           fqsym    (macros/full-symbol name (str *ns*))
            defdoc   (cond-> [] docstring (conj docstring))]
        `(def ~name
           ~@defdoc
@@ -403,7 +399,7 @@
                (update :arglist normalize-arglist))
 
            arglist' (s/unform ::operation-args arglist)
-           fqsym    (full-symbol name (str *ns*))
+           fqsym    (macros/full-symbol name (str *ns*))
            defdoc   (cond-> [] docstring (conj docstring))]
        `(def ~name
           ~@defdoc
