@@ -3,7 +3,10 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.coll :as coll]
-    #?(:clj [com.wsscode.misc.macros :as macros])))
+    #?(:clj [com.wsscode.misc.macros :as macros]))
+  #?(:cljs
+     (:require-macros
+       [com.wsscode.pathom3.plugin])))
 
 (>def ::id "Plugin ID" symbol?)
 (>def ::index-plugins (s/map-of ::id (s/keys :req [::id])))
