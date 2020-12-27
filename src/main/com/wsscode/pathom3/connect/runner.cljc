@@ -112,8 +112,7 @@
     (fn [out k v]
       (if (refs/kw-identical? v ::pco/unknown-value)
         out
-        (p.plugin/run-with-plugins env
-          ::wrap-merge-attribute
+        (p.plugin/run-with-plugins env ::wrap-merge-attribute
           (fn [env m k v] (assoc m k (process-attr-subquery env entity k v)))
           env out k v)))
     entity
