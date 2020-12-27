@@ -19,3 +19,9 @@
   [(s/keys :req [::path]) ::path-entry
    => map?]
   (update env ::path coll/vconj path-entry))
+
+(>defn root?
+  "Check if current path is the root, meaning a blank path."
+  [{::keys [path]}]
+  [(s/keys :opt [::path]) => boolean?]
+  (empty? path))

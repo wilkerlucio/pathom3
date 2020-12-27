@@ -405,13 +405,8 @@
                     (vary-meta assoc ::run-stats
                                (assoc-end-plan-stats env' (::pcp/graph env'))))))))))))
 
-(>defn run-graph!
-  "Plan and execute a request, given an environment (with indexes), the request AST
-  and the entity-tree*."
+(defn run-graph-impl!
   [env ast-or-graph entity-tree*]
-  [(s/keys) (s/or :ast :edn-query-language.ast/node
-                  :graph ::pcp/graph) ::p.ent/entity-tree*
-   => (s/keys)]
   (let [env  (-> env
                  ; due to recursion those need to be defined only on the first time
                  (coll/merge-defaults {::pcp/plan-cache* (volatile! {})
@@ -426,13 +421,23 @@
         plan (plan-and-run! env ast-or-graph entity-tree*)]
 
     ; run batches on root path only
-    (when-not (seq (::p.path/path env))
+    (when (p.path/root? env)
       (while (seq @(::batch-pending* env))
         (run-batches! env)))
 
     ; return result with run stats in meta
     (-> (p.ent/entity env)
         (vary-meta assoc ::run-stats (assoc-end-plan-stats env plan)))))
+
+(>defn run-graph!
+  "Plan and execute a request, given an environment (with indexes), the request AST
+  and the entity-tree*."
+  [env ast-or-graph entity-tree*]
+  [(s/keys) (s/or :ast :edn-query-language.ast/node
+                  :graph ::pcp/graph) ::p.ent/entity-tree*
+   => (s/keys)]
+  (p.plugin/run-with-plugins env ::wrap-run-graph!
+    run-graph-impl! env ast-or-graph entity-tree*))
 
 (>defn with-resolver-cache
   ([env] [map? => map?] (with-resolver-cache env (atom {})))

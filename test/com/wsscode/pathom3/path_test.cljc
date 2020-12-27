@@ -9,3 +9,9 @@
 
   (is (= (p.path/append-path {::p.path/path [:one]} :foo)
          {::p.path/path [:one :foo]})))
+
+(deftest root?-test
+  (is (= (p.path/root? {}) true))
+  (is (= (p.path/root? {::p.path/path nil}) true))
+  (is (= (p.path/root? {::p.path/path []}) true))
+  (is (= (p.path/root? {::p.path/path [:foo]}) false)))
