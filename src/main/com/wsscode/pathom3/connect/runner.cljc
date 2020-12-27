@@ -433,3 +433,7 @@
     ; return result with run stats in meta
     (-> (p.ent/entity env)
         (vary-meta assoc ::run-stats (assoc-end-plan-stats env plan)))))
+
+(>defn with-resolver-cache
+  ([env] [map? => map?] (with-resolver-cache env (atom {})))
+  ([env cache*] [map? p.cache/cache-store? => map?] (assoc env ::resolver-cache* cache*)))
