@@ -6,6 +6,7 @@
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.attribute :as p.attr]
+    [com.wsscode.pathom3.plugin :as p.plugin]
     [edn-query-language.core :as eql]))
 
 (declare map-select-ast)
@@ -83,22 +84,22 @@
   (coll/index-by :key children))
 
 (defn map-select-entry
-  [source {:keys [key children] :as ast}]
+  [env source {:keys [key] :as ast}]
   (if-let [x (find source key)]
-    (let [val (val x)]
+    (let [val (val x)
+          ast (update ast :children #(or % [{:key          '*
+                                             :dispatch-key '*}]))]
       (coll/make-map-entry
         key
-        (if children
-          (cond
-            (map? val)
-            (map-select-ast val ast)
+        (cond
+          (map? val)
+          (map-select-ast env val ast)
 
-            (or (sequential? val)
-                (set? val))
-            (into (empty val) (map #(map-select-ast % ast)) val)
+          (or (sequential? val)
+              (set? val))
+          (into (empty val) (map #(map-select-ast env % ast)) val)
 
-            :else
-            val)
+          :else
           val)))))
 
 (defn ast-contains-wildcard?
@@ -106,19 +107,39 @@
   [{:keys [children]}]
   (boolean (some #{'*} (map :key children))))
 
+(defn extend-ast-with-wildcard [source children]
+  (let [children-contains? (fn [k] (->> children
+                                        (filter (comp #{k} :key))
+                                        first
+                                        boolean))]
+    (reduce
+      (fn [children k]
+        (if (children-contains? k)
+          children
+          (conj children {:type         :prop
+                          :key          k
+                          :dispatch-key k})))
+      children
+      (keys source))))
+
+(comment
+  (eql/query->ast [{:deep ['*]}]))
+
 (>defn map-select-ast
   "Same as map-select, but using AST as source."
-  [source ast]
-  [any? (s/keys :opt-un [:edn-query-language.ast/children])
+  [env source ast]
+  [map? any? (s/keys :opt-un [:edn-query-language.ast/children])
    => any?]
   (if (map? source)
-    (let [start (if (ast-contains-wildcard? ast)
-                  source
-                  (with-meta {} (meta source)))]
-      (into start (keep #(map-select-entry source %))
+    (let [start (with-meta {} (meta source))]
+      (into start (keep #(p.plugin/run-with-plugins env ::wrap-map-select-entry
+                           map-select-entry env source %))
             (-> ast
                 (pick-union-entry source)
-                :children)))
+                :children
+                (cond->>
+                  (ast-contains-wildcard? ast)
+                  (extend-ast-with-wildcard source)))))
     source))
 
 (>defn map-select
@@ -128,9 +149,9 @@
   Example:
   (p/map-select {:foo \"bar\" :deep {:a 1 :b 2}} [{:deep [:a]}])
   => {:deep {:a 1}}"
-  [source tx]
-  [any? ::eql/query => any?]
-  (map-select-ast source (eql/query->ast tx)))
+  [env source tx]
+  [map? any? ::eql/query => any?]
+  (map-select-ast env source (eql/query->ast tx)))
 
 (>defn data->query
   "Helper function to transform a data into an output shape."

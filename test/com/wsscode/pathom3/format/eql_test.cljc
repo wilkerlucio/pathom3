@@ -1,7 +1,9 @@
 (ns com.wsscode.pathom3.format.eql-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.format.eql :as pf.eql]
+    [com.wsscode.pathom3.plugin :as p.plugin]
     [edn-query-language.core :as eql]))
 
 (deftest query-root-properties-test
@@ -43,42 +45,65 @@
                 :query [:baz],
                 :children [{:type :prop, :dispatch-key :baz, :key :baz}]}})))
 
+(def protected-list #{:foo})
+
+(p.plugin/defplugin elide-specials
+  {::pf.eql/wrap-map-select-entry
+   (fn [mst]
+     (fn [env source {:keys [key] :as ast}]
+       (if (and (contains? source key)
+                (contains? protected-list key))
+         (coll/make-map-entry key "Protected value")
+         (mst env source ast))))})
+
 (deftest map-select-test
-  (is (= (pf.eql/map-select {} [:foo :bar])
+  (is (= (pf.eql/map-select {} {} [:foo :bar])
          {}))
 
-  (is (= (pf.eql/map-select {:foo 123} [:foo :bar])
+  (is (= (pf.eql/map-select {} {:foo 123} [:foo :bar])
          {:foo 123}))
 
-  (is (= (pf.eql/map-select {:foo {:a 1 :b 2}} [{:foo [:b]}])
+  (is (= (pf.eql/map-select {} {:foo {:a 1 :b 2}} [{:foo [:b]}])
          {:foo {:b 2}}))
 
   (testing "process vector"
-    (is (= (pf.eql/map-select {:foo [{:a 1 :b 2}
-                                     {:c 1 :b 1}
-                                     {:a 1 :c 1}
-                                     3]}
+    (is (= (pf.eql/map-select {} {:foo [{:a 1 :b 2}
+                                        {:c 1 :b 1}
+                                        {:a 1 :c 1}
+                                        3]}
                               [{:foo [:b]}])
            {:foo [{:b 2} {:b 1} {} 3]})))
 
   (testing "retain set type"
-    (is (= (pf.eql/map-select {:foo #{{:a 1 :b 2}
-                                      {:c 1 :b 1}}}
+    (is (= (pf.eql/map-select {} {:foo #{{:a 1 :b 2}
+                                         {:c 1 :b 1}}}
                               [{:foo [:b]}])
            {:foo #{{:b 2} {:b 1}}})))
 
   (testing "union"
-    (is (= (pf.eql/map-select {:foo [{:a 1 :aa 2 :aaa 3}
-                                     {:b 2 :bb 10 :bbb 20}
-                                     {:c 3 :cc 30 :ccc 300}]}
+    (is (= (pf.eql/map-select {} {:foo [{:a 1 :aa 2 :aaa 3}
+                                        {:b 2 :bb 10 :bbb 20}
+                                        {:c 3 :cc 30 :ccc 300}]}
                               [{:foo {:a [:aa]
                                       :b [:b]
                                       :c [:ccc]}}])
            {:foo [{:aa 2} {:b 2} {:ccc 300}]})))
 
   (testing "*"
-    (is (= (pf.eql/map-select {:foo 1 :bar 2} [:foo '*])
-           {:foo 1 :bar 2}))))
+    (is (= (pf.eql/map-select {} {:foo 1 :bar 2} [:foo '*])
+           {:foo 1 :bar 2})))
+
+  (testing "extended"
+    (is (= (pf.eql/map-select (p.plugin/add elide-specials) {:foo 1 :bar 2} [:foo :bar])
+           {:foo "Protected value" :bar 2}))
+
+    (is (= (pf.eql/map-select (p.plugin/add elide-specials) {:deep {:foo "bar"}}
+                              ['*])
+           {:deep {:foo "Protected value"}}))
+
+    (is (= (pf.eql/map-select (p.plugin/add elide-specials) {:deep {:foo "bar"}}
+                              [:deep])
+           {:deep {:foo "Protected value"}}))))
 
 (deftest data->query-test
   (is (= (pf.eql/data->query {}) []))
