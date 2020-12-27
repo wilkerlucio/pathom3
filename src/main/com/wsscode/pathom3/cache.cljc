@@ -29,6 +29,8 @@
           (vswap! this assoc cache-key res)
           res)))))
 
+(defn cache-store? [x] (satisfies? CacheStore x))
+
 (>defn cached
   "Try to read some value from a cache, otherwise run and cache it.
 

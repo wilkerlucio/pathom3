@@ -1419,4 +1419,4 @@
 
 (>defn with-plan-cache
   ([env] [map? => map?] (with-plan-cache env (atom {})))
-  ([env cache*] [map? refs/atom? => map?] (assoc env ::plan-cache* cache*)))
+  ([env cache*] [map? p.cache/cache-store? => map?] (assoc env ::plan-cache* cache*)))
