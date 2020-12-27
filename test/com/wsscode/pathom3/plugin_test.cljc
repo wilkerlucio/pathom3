@@ -16,12 +16,12 @@
    (fn [op] (fn [x] (conj (op (conj x :e3)) :x3)))})
 
 (def plugin-env
-  (p.plugin/add-plugin
+  (p.plugin/register-plugin
     op-plugin))
 
-(deftest add-plugin-test
+(deftest register-plugin-test
   (let [plugin (assoc op-plugin ::p.plugin/id 'foo)]
-    (is (= (p.plugin/add-plugin
+    (is (= (p.plugin/register-plugin
              plugin)
            {:com.wsscode.pathom3.plugin/index-plugins
             {'foo plugin},
@@ -35,7 +35,7 @@
     (is (thrown-with-msg?
           #?(:clj AssertionError :cljs js/Error)
           #"Tried to add duplicated plugin: com.wsscode.pathom3.plugin-test/op-plugin"
-          (p.plugin/add [op-plugin op-plugin])))))
+          (p.plugin/register [op-plugin op-plugin])))))
 
 (deftest run-with-plugins-test
   (is (= (p.plugin/run-with-plugins plugin-env
@@ -46,32 +46,32 @@
            ::wrap-operation (fn [x] (conj x "S")) ["O"])
          ["O" :e1 "S" :x1]))
 
-  (is (= (p.plugin/run-with-plugins (p.plugin/add plugin-env op-plugin2)
+  (is (= (p.plugin/run-with-plugins (p.plugin/register plugin-env op-plugin2)
            ::wrap-operation (fn [x] (conj x "S")) ["O"])
          ["O" :e1 :e2 "S" :x2 :x1]))
 
   (is (= (p.plugin/run-with-plugins (-> plugin-env
-                                        (p.plugin/add [op-plugin2
-                                                       [op-plugin3]]))
+                                        (p.plugin/register [op-plugin2
+                                                            [op-plugin3]]))
            ::wrap-operation (fn [x] (conj x "S")) ["O"])
          ["O" :e1 :e2 :e3 "S" :x3 :x2 :x1]))
 
   (testing "add in order"
     (is (= (p.plugin/run-with-plugins (-> plugin-env
-                                          (p.plugin/add op-plugin2)
-                                          (p.plugin/add-before `op-plugin op-plugin3))
+                                          (p.plugin/register op-plugin2)
+                                          (p.plugin/register-before `op-plugin op-plugin3))
              ::wrap-operation (fn [x] (conj x "S")) ["O"])
            ["O" :e3 :e1 :e2 "S" :x2 :x1 :x3]))
 
     (is (= (p.plugin/run-with-plugins (-> plugin-env
-                                          (p.plugin/add op-plugin2)
-                                          (p.plugin/add-after `op-plugin op-plugin3))
+                                          (p.plugin/register op-plugin2)
+                                          (p.plugin/register-after `op-plugin op-plugin3))
              ::wrap-operation (fn [x] (conj x "S")) ["O"])
            ["O" :e1 :e3 :e2 "S" :x2 :x3 :x1])))
 
   (testing "remove plugin"
     (is (= (p.plugin/run-with-plugins (-> plugin-env
-                                          (p.plugin/add op-plugin2)
+                                          (p.plugin/register op-plugin2)
                                           (p.plugin/remove-plugin `op-plugin))
              ::wrap-operation (fn [x] (conj x "S")) ["O"])
            ["O" :e2 "S" :x2]))))

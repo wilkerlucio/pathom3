@@ -73,11 +73,11 @@
     env
     (plugin-extensions plugin)))
 
-(>defn add-plugin
+(>defn register-plugin
   "Add a new plugin to the end. This will create the appropriated structures to optimize
   the plugin call speed."
   ([plugin]
-   [::plugin => map?] (add-plugin {} plugin))
+   [::plugin => map?] (register-plugin {} plugin))
   ([env {::keys [id] :as plugin}]
    [map? ::plugin => map?]
    (assert (nil? (get-in env [::index-plugins id]))
@@ -87,28 +87,28 @@
                   (add-plugin-at-order plugin))]
      (refresh-actions-from-plugin env' plugin))))
 
-(>defn add-before
+(>defn register-before
   ([env ref-id plugin]
    [map? ::id ::plugin => map?]
-   (add-plugin env (assoc plugin ::add-before ref-id))))
+   (register-plugin env (assoc plugin ::add-before ref-id))))
 
-(>defn add-after
+(>defn register-after
   ([env ref-id plugin]
    [map? ::id ::plugin => map?]
-   (add-plugin env (assoc plugin ::add-after ref-id))))
+   (register-plugin env (assoc plugin ::add-after ref-id))))
 
-(>defn add
+(>defn register
   "Add one or many plugins."
-  ([plugins] [::plugin-or-plugins => map?] (add {} plugins))
+  ([plugins] [::plugin-or-plugins => map?] (register {} plugins))
   ([env plugins]
    [map? ::plugin-or-plugins => map?]
    (cond
      (::id plugins)
-     (add-plugin env plugins)
+     (register-plugin env plugins)
 
      (sequential? plugins)
      (reduce
-       add
+       register
        env
        plugins)
 

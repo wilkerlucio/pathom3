@@ -94,14 +94,14 @@
            {:foo 1 :bar 2})))
 
   (testing "extended"
-    (is (= (pf.eql/map-select (p.plugin/add elide-specials) {:foo 1 :bar 2} [:foo :bar])
+    (is (= (pf.eql/map-select (p.plugin/register elide-specials) {:foo 1 :bar 2} [:foo :bar])
            {:foo "Protected value" :bar 2}))
 
-    (is (= (pf.eql/map-select (p.plugin/add elide-specials) {:deep {:foo "bar"}}
+    (is (= (pf.eql/map-select (p.plugin/register elide-specials) {:deep {:foo "bar"}}
                               ['*])
            {:deep {:foo "Protected value"}}))
 
-    (is (= (pf.eql/map-select (p.plugin/add elide-specials) {:deep {:foo "bar"}}
+    (is (= (pf.eql/map-select (p.plugin/register elide-specials) {:deep {:foo "bar"}}
                               [:deep])
            {:deep {:foo "Protected value"}}))))
 

@@ -122,9 +122,6 @@
       children
       (keys source))))
 
-(comment
-  (eql/query->ast [{:deep ['*]}]))
-
 (>defn map-select-ast
   "Same as map-select, but using AST as source."
   [env source ast]
