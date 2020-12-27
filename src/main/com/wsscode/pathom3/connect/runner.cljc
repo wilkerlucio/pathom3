@@ -197,7 +197,8 @@
                          :else
                          (pco.prot/-resolve resolver env input-data)))
                      (catch #?(:clj Throwable :cljs :default) e
-                       (mark-resolver-error env node e)
+                       (p.plugin/run-with-plugins env ::wrap-mark-error
+                         mark-resolver-error env node e)
                        ::node-error))
         finish     (time/now-ms)]
     (merge-node-stats! env node
@@ -375,7 +376,8 @@
                         (catch #?(:clj Throwable :cljs :default) e
                           (doseq [{env'       ::env
                                    ::pcp/keys [node]} batch-items]
-                            (mark-resolver-error env' node (ex-info "Batch error" {} e)))
+                            (p.plugin/run-with-plugins env' ::wrap-mark-error
+                              mark-resolver-error env' node (ex-info "Batch error" {} e)))
                           ::node-error))
             finish    (time/now-ms)]
 
