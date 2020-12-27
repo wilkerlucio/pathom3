@@ -51,8 +51,8 @@
          ["O" :e1 :e2 "S" :x2 :x1]))
 
   (is (= (p.plugin/run-with-plugins (-> plugin-env
-                                        (p.plugin/add op-plugin2)
-                                        (p.plugin/add op-plugin3))
+                                        (p.plugin/add [op-plugin2
+                                                       [op-plugin3]]))
            ::wrap-operation (fn [x] (conj x "S")) ["O"])
          ["O" :e1 :e2 :e3 "S" :x3 :x2 :x1]))
 

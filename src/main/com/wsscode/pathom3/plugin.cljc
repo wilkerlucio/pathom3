@@ -13,7 +13,10 @@
 
 (>def ::plugin (s/keys :req [::id]))
 (>def ::plugins (s/coll-of ::plugin))
-(>def ::plugin-or-plugins (s/or :one ::plugin :many ::plugins))
+
+(>def ::plugin-or-plugins
+  (s/or :one ::plugin :many
+        (s/coll-of ::plugin-or-plugins)))
 
 (>def ::plugin-actions "Compiled list of actions for a given plugin type"
   (s/coll-of fn? :kind vector?))
@@ -105,7 +108,7 @@
 
      (sequential? plugins)
      (reduce
-       add-plugin
+       add
        env
        plugins)
 
