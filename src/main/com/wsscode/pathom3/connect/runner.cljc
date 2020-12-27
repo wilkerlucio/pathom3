@@ -13,7 +13,8 @@
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
-    [com.wsscode.pathom3.path :as p.path]))
+    [com.wsscode.pathom3.path :as p.path]
+    [com.wsscode.pathom3.plugin :as p.plugin]))
 
 (>def ::map-container? boolean?)
 (>def ::merge-attribute fn?)
@@ -111,7 +112,10 @@
     (fn [out k v]
       (if (refs/kw-identical? v ::pco/unknown-value)
         out
-        (assoc out k (process-attr-subquery env entity k v))))
+        (p.plugin/run-with-plugins env
+          ::wrap-merge-attribute
+          (fn [env m k v] (assoc m k (process-attr-subquery env entity k v)))
+          env out k v)))
     entity
     new-data))
 
