@@ -305,7 +305,8 @@
   "Runs the mutations gathered by the planner."
   [{::pcp/keys [graph] :as env}]
   (doseq [ast (::pcp/mutations graph)]
-    (invoke-mutation! env ast)))
+    (p.plugin/run-with-plugins env ::wrap-mutate
+      invoke-mutation! env ast)))
 
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the
