@@ -154,7 +154,9 @@
    {::pcp/keys [node-id]}
    error]
   (if node-run-stats*
-    (vswap! node-run-stats* assoc-in [node-id ::node-error] error)))
+    (doto node-run-stats*
+      (vswap! assoc-in [node-id ::node-error] error)
+      (vswap! update ::nodes-with-error coll/sconj node-id))))
 
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
@@ -376,10 +378,13 @@
             responses (try
                         (pco.prot/-resolve resolver batch-env inputs)
                         (catch #?(:clj Throwable :cljs :default) e
+                          (p.plugin/run-with-plugins env ::wrap-batch-resolver-error
+                            (fn [_ _ _]) env [batch-op batch-items] e)
+
                           (doseq [{env'       ::env
                                    ::pcp/keys [node]} batch-items]
                             (p.plugin/run-with-plugins env' ::wrap-resolver-error
-                              mark-resolver-error env' node (ex-info "Batch error" {} e)))
+                              mark-resolver-error env' node (ex-info "Batch error" {::batch-error? true} e)))
                           ::node-error))
             finish    (time/now-ms)]
 
