@@ -74,8 +74,16 @@
         (assoc idx k v)))
     ia ib))
 
+(defn input-set [input]
+  (into #{}
+        (map (fn [attr]
+               (if (map? attr)
+                 (coll/map-vals input-set attr)
+                 attr)))
+        input))
+
 (defn index-attributes [{::pco/keys [op-name input output]}]
-  (let [input         (set input)
+  (let [input         (input-set input)
         provides      (remove #(contains? input %) (keys (pfsd/query->shape-descriptor output)))
         op-group      #{op-name}
         attr-provides (zipmap provides (repeat op-group))
@@ -141,7 +149,7 @@
   to the index ::pc/index-io."
   ([indexes resolver]
    (let [{::pco/keys [op-name input output] :as op-config} (pco/operation-config resolver)
-         input' (set input)]
+         input' (input-set input)]
      (assert (nil? (com.wsscode.pathom3.connect.indexes/resolver indexes op-name))
        (str "Tried to register duplicated resolver: " op-name))
      (merge-indexes indexes

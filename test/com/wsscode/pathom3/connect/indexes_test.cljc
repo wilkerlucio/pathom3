@@ -226,3 +226,16 @@
                                                ::y {}}
                                      ::d)
            false))))
+
+(deftest input-set-test
+  (is (= (pci/input-set [])
+         #{}))
+
+  (is (= (pci/input-set [:foo])
+         #{:foo}))
+
+  (is (= (pci/input-set [:foo :bar])
+         #{:foo :bar}))
+
+  (is (= (pci/input-set [{:foo [:baz]} :bar])
+         #{{:foo #{:baz}} :bar})))
