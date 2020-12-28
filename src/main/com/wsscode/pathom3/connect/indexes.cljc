@@ -8,10 +8,25 @@
     [com.wsscode.pathom3.format.eql :as pfse]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]))
 
-(>def ::indexes map?)
-(>def ::index-resolvers map?)
-(>def ::index-oir map?)
-(>def ::index-io map?)
+(>def ::index-input
+  (s/coll-of ::index-input-value))
+
+(>def ::index-input-value
+  (s/or :simple ::p.attr/attribute
+        :nested (s/map-of ::p.attr/attribute ::index-input)))
+
+(>def ::indexes (s/keys))
+(>def ::index-attributes map?)
+(>def ::index-resolvers (s/map-of ::pco/op-name ::pco/resolver))
+(>def ::index-mutations (s/map-of ::pco/op-name ::pco/mutation))
+
+(>def ::index-oir
+  "Index: Output -> Input -> Resolver"
+  (s/map-of ::p.attr/attribute
+            (s/map-of ::index-input (s/coll-of ::pco/op-name :kind set?))))
+
+(>def ::index-io "Index: Input -> Output"
+  (s/map-of ::index-input ::pfsd/shape-descriptor))
 
 (>def ::operations
   (s/or :single ::pco/operation
