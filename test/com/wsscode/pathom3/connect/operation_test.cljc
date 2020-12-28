@@ -2,6 +2,7 @@
   (:require
     #?(:clj [clojure.spec.alpha :as s])
     [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.operation :as pco]))
 
 (deftest resolver-test
@@ -519,3 +520,14 @@
          {}))
   (is (= (pco/params (pco/with-node-params {:foo "bar"}))
          {:foo "bar"})))
+
+(deftest update-config-test
+  (is (= (-> (pbir/constantly-resolver :foo "bar")
+             (pco/update-config assoc :extra "data")
+             (pco/operation-config))
+         '{:com.wsscode.pathom3.connect.operation/input    [],
+           :com.wsscode.pathom3.connect.operation/provides {:foo {}},
+           :com.wsscode.pathom3.connect.operation/output   [:foo],
+           :com.wsscode.pathom3.connect.operation/cache?   false,
+           :com.wsscode.pathom3.connect.operation/op-name  foo-constant,
+           :extra                                          "data"})))
