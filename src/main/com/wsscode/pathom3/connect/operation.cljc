@@ -27,6 +27,7 @@
 (>def ::output vector?)
 (>def ::params vector?)
 (>def ::cache? boolean?)
+(>def ::cache-store keyword?)
 (>def ::batch? boolean?)
 (>def ::resolve fn?)
 (>def ::mutate fn?)

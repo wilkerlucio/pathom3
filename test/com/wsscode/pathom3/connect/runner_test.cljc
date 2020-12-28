@@ -572,7 +572,26 @@
                {:x 10
                 :y 20}))
         (is (= @cache*
-               '{[x->y-single-attr-transform {:x 10} {:foo "bar"}] {:y 20}})))))
+               '{[x->y-single-attr-transform {:x 10} {:foo "bar"}] {:y 20}}))))
+
+    (testing "custom cache key"
+      (let [cache*    (atom {})
+            my-cache* (atom {})]
+        (is (= (run-graph
+                 (-> (pci/register
+                       [(pbir/constantly-resolver :x 10)
+                        (-> (pbir/single-attr-resolver :x :y #(* 2 %))
+                            (pco/update-config assoc ::pco/cache-store ::my-cache))])
+                     (assoc ::pcr/resolver-cache* cache*)
+                     (assoc ::my-cache my-cache*))
+                 [:y]
+                 {})
+               {:x 10
+                :y 20}))
+        (is (= @cache*
+               '{}))
+        (is (= @my-cache*
+               '{[x->y-single-attr-transform {:x 10} {}] {:y 20}})))))
 
   (testing "cache hit"
     (is (= (run-graph
@@ -615,30 +634,30 @@
 
 (deftest run-graph!-placeholders-test
   (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
-                    [{:>/path [:foo]}]
-                    {})
+           [{:>/path [:foo]}]
+           {})
          {:foo    "bar"
           :>/path {:foo "bar"}}))
 
   (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
-                    [{:>/path [:foo]}]
-                    {:foo "baz"})
+           [{:>/path [:foo]}]
+           {:foo "baz"})
          {:foo    "baz"
           :>/path {:foo "baz"}}))
 
   (testing "modified data"
     (is (= (run-graph (pci/register
                         [(pbir/single-attr-resolver :x :y #(* 2 %))])
-                      '[{(:>/path {:x 20}) [:y]}]
-                      {})
+             '[{(:>/path {:x 20}) [:y]}]
+             {})
            {:>/path {:x 20
                      :y 40}}))
 
     (is (= (run-graph (pci/register
                         [(pbir/constantly-resolver :x 10)
                          (pbir/single-attr-resolver :x :y #(* 2 %))])
-                      '[{(:>/path {:x 20}) [:y]}]
-                      {})
+             '[{(:>/path {:x 20}) [:y]}]
+             {})
            {:x      10
             :y      20
             :>/path {:x 20
@@ -647,9 +666,9 @@
     (is (= (run-graph (pci/register
                         [(pbir/constantly-resolver :x 10)
                          (pbir/single-attr-resolver :x :y #(* 2 %))])
-                      '[:x
-                        {(:>/path {:x 20}) [:y]}]
-                      {})
+             '[:x
+               {(:>/path {:x 20}) [:y]}]
+             {})
            {:x      10
             :y      20
             :>/path {:x 20
@@ -659,11 +678,11 @@
       (is (= (run-graph (pci/register
                           [(pbir/constantly-resolver :x 10)
                            (pbir/single-attr-with-env-resolver :x :y #(* (:m (pco/params %) 2) %2))])
-                        '[:x
-                          {:>/m2 [(:y)]}
-                          {:>/m3 [(:y {:m 3})]}
-                          {:>/m4 [(:y {:m 4})]}]
-                        {})
+               '[:x
+                 {:>/m2 [(:y)]}
+                 {:>/m3 [(:y {:m 3})]}
+                 {:>/m4 [(:y {:m 4})]}]
+               {})
              {:x    10
               :y    20
               :>/m2 {:x 10
@@ -676,9 +695,9 @@
 (deftest run-graph!-mutations-test
   (testing "simple call"
     (is (= (run-graph (pci/register (pco/mutation 'call {}
-                                                  (fn [_ {:keys [this]}] {:result this})))
-                      '[(call {:this "thing"})]
-                      {})
+                                      (fn [_ {:keys [this]}] {:result this})))
+             '[(call {:this "thing"})]
+             {})
            '{call {:result "thing"}})))
 
   (testing "mutation join"
@@ -686,7 +705,7 @@
              (pci/register
                [(pbir/alias-resolver :result :other)
                 (pco/mutation 'call {}
-                              (fn [_ {:keys [this]}] {:result this}))])
+                  (fn [_ {:keys [this]}] {:result this}))])
              '[{(call {:this "thing"}) [:other]}]
              {})
            '{call {:result "thing"
@@ -698,7 +717,7 @@
                (pci/register
                  [(pbir/alias-resolver :result :other)
                   (pco/mutation 'call {}
-                                (fn [_ _] (throw err)))])
+                    (fn [_ _] (throw err)))])
                '[{(call {:this "thing"}) [:other]}]
                {})
              {'call {::pcr/mutation-error err}}))))
@@ -720,8 +739,8 @@
         stats (-> (run-graph (pci/register
                                (pco/resolver 'error {::pco/output [:error]}
                                  (fn [_ _] (throw error))))
-                             [:error]
-                             {})
+                    [:error]
+                    {})
                   meta ::pcr/run-stats)
         env   (pcrs/run-stats-env stats)]
     (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
@@ -731,16 +750,15 @@
 
 (deftest placeholder-merge-entity-test
   ; TODO: currently not possible, need to handle conflicts before
-  #_
-  (testing "forward current entity data"
-    (is (= (pcr/placeholder-merge-entity
-             {::pcp/graph          {::pcp/nodes        {}
-                                    ::pcp/placeholders #{:>/p1}
-                                    ::pcp/index-ast    {:>/p1 {:key          :>/p1
-                                                               :dispatch-key :>/p1}}}
-              ::p.ent/entity-tree* (volatile! {:foo "bar"})}
-             {})
-           {:>/p1 {:foo "bar"}})))
+  #_(testing "forward current entity data"
+      (is (= (pcr/placeholder-merge-entity
+               {::pcp/graph          {::pcp/nodes        {}
+                                      ::pcp/placeholders #{:>/p1}
+                                      ::pcp/index-ast    {:>/p1 {:key          :>/p1
+                                                                 :dispatch-key :>/p1}}}
+                ::p.ent/entity-tree* (volatile! {:foo "bar"})}
+               {})
+             {:>/p1 {:foo "bar"}})))
 
   (testing "override with source when params are provided"
     (is (= (pcr/placeholder-merge-entity
