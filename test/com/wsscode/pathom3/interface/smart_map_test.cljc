@@ -7,7 +7,8 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.interface.smart-map :as psm]
-    [com.wsscode.pathom3.test.geometry-resolvers :as geo])
+    [com.wsscode.pathom3.test.geometry-resolvers :as geo]
+    [com.wsscode.pathom3.test.helpers :as th])
   #?(:clj
      (:import
        (clojure.lang
@@ -207,6 +208,36 @@
                  (psm/smart-map {:x 3 :width 5}))]
       (is (= (find sm :right) [:right 8]))
       (is (= (find sm ::noop) nil)))))
+
+(deftest smart-map-resolver-cache-test
+  (testing "uses persistent resolver cache by default"
+    (let [spy (th/spy {:return {:foo "bar"}})
+          env (pci/register (pco/resolver 'spy {::pco/output [:foo]} spy))
+          sm  (psm/smart-map env {})]
+      (is (= [(:foo sm)
+              (:foo (assoc sm :some "data"))
+              (-> spy meta :calls deref count)]
+             ["bar" "bar" 1]))))
+
+  (testing "disable persistent cache"
+    (let [spy (th/spy {:return {:foo "bar"}})
+          env (pci/register {::psm/persistent-cache? false}
+                            (pco/resolver 'spy {::pco/output [:foo]} spy))
+          sm  (psm/smart-map env {})]
+      (is (= [(:foo sm)
+              (:foo (assoc sm :some "data"))
+              (-> spy meta :calls deref count)]
+             ["bar" "bar" 2]))))
+
+  (testing "disabling persistent cache entirely"
+    (let [spy (th/spy {:return {:foo "bar"}})
+          env (pci/register {:com.wsscode.pathom3.connect.runner/resolver-cache* nil}
+                            (pco/resolver 'spy {::pco/output [:foo]} spy))
+          sm  (psm/smart-map env {})]
+      (is (= [(:foo sm)
+              (:foo (assoc sm :some "data"))
+              (-> spy meta :calls deref count)]
+             ["bar" "bar" 2])))))
 
 (pco/defresolver error-resolver []
   {:error (throw (ex-info "Error" {}))})

@@ -3,6 +3,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.coll :as coll]
+    #?(:clj [com.wsscode.misc.macros :as macros])
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.connect.operation.protocols :as pop]
     [com.wsscode.pathom3.format.eql :as pf.eql]
@@ -26,6 +27,7 @@
 (>def ::output vector?)
 (>def ::params vector?)
 (>def ::cache? boolean?)
+(>def ::cache-store keyword?)
 (>def ::batch? boolean?)
 (>def ::resolve fn?)
 (>def ::mutate fn?)
@@ -291,11 +293,6 @@
       (recur (into '[[:sym _]] arglist))
       arglist)))
 
-(defn full-symbol [sym ns]
-  (if (namespace sym)
-    sym
-    (symbol ns (name sym))))
-
 #?(:clj
    (defmacro defresolver
      "Defines a new Pathom resolver.
@@ -379,7 +376,7 @@
                (update :arglist normalize-arglist))
 
            arglist' (s/unform ::operation-args arglist)
-           fqsym    (full-symbol name (str *ns*))
+           fqsym    (macros/full-symbol name (str *ns*))
            defdoc   (cond-> [] docstring (conj docstring))]
        `(def ~name
           ~@defdoc
@@ -403,7 +400,7 @@
                (update :arglist normalize-arglist))
 
            arglist' (s/unform ::operation-args arglist)
-           fqsym    (full-symbol name (str *ns*))
+           fqsym    (macros/full-symbol name (str *ns*))
            defdoc   (cond-> [] docstring (conj docstring))]
        `(def ~name
           ~@defdoc
@@ -415,5 +412,30 @@
    (s/fdef defmutation
      :args ::defmutation-args
      :ret any?))
+
+(defn update-config
+  "Update operation config"
+  ([operation f]
+   (update operation :config f))
+  ([operation f a1]
+   (update operation :config f a1))
+  ([operation f a1 a2]
+   (update operation :config f a1 a2))
+  ([operation f a1 a2 a3]
+   (update operation :config f a1 a2 a3))
+  ([operation f a1 a2 a3 a4]
+   (update operation :config f a1 a2 a3 a4))
+  ([operation f a1 a2 a3 a4 a5]
+   (update operation :config f a1 a2 a3 a4 a5))
+  ([operation f a1 a2 a3 a4 a5 a6]
+   (update operation :config f a1 a2 a3 a4 a5 a6))
+  ([operation f a1 a2 a3 a4 a5 a6 a7]
+   (update operation :config f a1 a2 a3 a4 a5 a6 a7))
+  ([operation f a1 a2 a3 a4 a5 a6 a7 a8]
+   (update operation :config f a1 a2 a3 a4 a5 a6 a7 a8))
+  ([operation f a1 a2 a3 a4 a5 a6 a7 a8 a9]
+   (update operation :config f a1 a2 a3 a4 a5 a6 a7 a8 a9))
+  ([operation f a1 a2 a3 a4 a5 a6 a7 a8 a9 & args]
+   (apply update operation :config f a1 a2 a3 a4 a5 a6 a7 a8 a9 args)))
 
 ; endregion

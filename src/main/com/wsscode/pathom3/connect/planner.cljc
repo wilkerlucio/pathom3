@@ -1394,7 +1394,8 @@
     => ::graph]
    (add-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
                              ::snapshot-message "Start query plan"})
-   (p.cache/cached ::plan-cache* env [(::available-data env)
+   (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
+                                      (::available-data env)
                                       (:edn-query-language.ast/node env)]
      #(compute-run-graph*
         (merge (base-graph)
@@ -1418,4 +1419,4 @@
 
 (>defn with-plan-cache
   ([env] [map? => map?] (with-plan-cache env (atom {})))
-  ([env cache*] [map? refs/atom? => map?] (assoc env ::plan-cache* cache*)))
+  ([env cache*] [map? p.cache/cache-store? => map?] (assoc env ::plan-cache* cache*)))

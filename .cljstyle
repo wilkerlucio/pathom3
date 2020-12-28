@@ -24,6 +24,8 @@
                          mapv                               [[:inner 0]]
                          p.cache/cached                     [[:inner 0]]
                          p.ent/swap-entity!                 [[:inner 0]]
+                         p.plugin/defplugin                 [[:inner 0]]
+                         p.plugin/run-with-plugins          [[:inner 0]]
                          p/cached-async                     [[:inner 0]]
                          pbir/env-table-resolver            [[:inner 0]]
                          pbir/single-attr-with-env-resolver [[:inner 0]]
