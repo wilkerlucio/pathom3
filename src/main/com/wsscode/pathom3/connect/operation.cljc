@@ -37,6 +37,7 @@
 (>def ::resolver resolver?)
 (>def ::mutation mutation?)
 (>def ::provides ::pfsd/shape-descriptor)
+(>def ::requires ::pfsd/shape-descriptor)
 (>def ::dynamic-name ::op-name)
 (>def ::dynamic-resolver? boolean?)
 (>def ::transform fn?)
@@ -130,8 +131,14 @@
                       {::input    []
                        ::provides (pfsd/query->shape-descriptor output)}
                       {})
-           config'  (-> (merge defaults config)
-                        (dissoc ::resolve ::transform))]
+
+           {::keys [input] :as config'}
+           (-> (merge defaults config)
+               (dissoc ::resolve ::transform))
+
+           config'  (cond-> config'
+                      input
+                      (assoc ::requires (pfsd/query->shape-descriptor input)))]
        (->Resolver config' (or resolve (fn [_ _])))))))
 
 (>defn mutation
@@ -156,7 +163,7 @@
                  (coll/merge-defaults {::op-name op-name})
                  (assoc ::mutate mutate))))
   ([{::keys [transform] :as config}]
-   [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve ::transform])
+   [(s/or :map (s/keys :req [::op-name] :opt [::output ::mutate ::transform])
           :mutation ::mutation)
     => ::mutation]
    (when-not (s/valid? (s/keys) config)

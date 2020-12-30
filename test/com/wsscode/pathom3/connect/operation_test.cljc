@@ -15,6 +15,18 @@
              {::pco/op-name  'foo
               ::pco/input    []
               ::pco/provides {:foo {}}
+              ::pco/requires {}
+              ::pco/output   [:foo]})))
+
+    (let [resolver (pco/resolver 'foo {::pco/input [:required] ::pco/output [:foo]} (fn [_ _] {:foo "bar"}))]
+      (is (= (resolver)
+             {:foo "bar"}))
+
+      (is (= (pco/operation-config resolver)
+             {::pco/op-name  'foo
+              ::pco/input    [:required]
+              ::pco/provides {:foo {}}
+              ::pco/requires {:required {}}
               ::pco/output   [:foo]}))))
 
   (testing "creating resolver from pure maps"
@@ -28,7 +40,8 @@
              {::pco/op-name  'foo
               ::pco/output   [:foo]
               ::pco/input    []
-              ::pco/provides {:foo {}}}))))
+              ::pco/provides {:foo {}}
+              ::pco/requires {}}))))
 
   (testing "validates configuration map"
     (try
@@ -72,7 +85,8 @@
               ::other        "bar"
               ::pco/output   [:foo]
               ::pco/input    []
-              ::pco/provides {:foo {}}}))))
+              ::pco/provides {:foo {}}
+              ::pco/requires {}}))))
 
   (testing "noop when called with a resolver"
     (let [resolver (-> {::pco/op-name 'foo
@@ -88,7 +102,8 @@
              {::pco/op-name  'foo
               ::pco/output   [:foo]
               ::pco/input    []
-              ::pco/provides {:foo {}}})))))
+              ::pco/provides {:foo {}}
+              ::pco/requires {}})))))
 
 (deftest mutation-test
   (testing "creating mutations"
@@ -525,9 +540,10 @@
   (is (= (-> (pbir/constantly-resolver :foo "bar")
              (pco/update-config assoc :extra "data")
              (pco/operation-config))
-         '{:com.wsscode.pathom3.connect.operation/input    [],
-           :com.wsscode.pathom3.connect.operation/provides {:foo {}},
-           :com.wsscode.pathom3.connect.operation/output   [:foo],
-           :com.wsscode.pathom3.connect.operation/cache?   false,
-           :com.wsscode.pathom3.connect.operation/op-name  foo-constant,
-           :extra                                          "data"})))
+         '{::pco/input    [],
+           ::pco/provides {:foo {}},
+           ::pco/requires {}
+           ::pco/output   [:foo],
+           ::pco/cache?   false,
+           ::pco/op-name  foo-constant,
+           :extra         "data"})))
