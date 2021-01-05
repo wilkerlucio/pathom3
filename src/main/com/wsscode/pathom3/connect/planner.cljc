@@ -200,6 +200,13 @@
   {::id-counter     (atom 0)
    ::available-data {}})
 
+(defn reset-env
+  "Restore the original environment sent to run-graph! Use this for nested graphs
+  that need a clean environment."
+  [env]
+  (-> env meta ::original-env
+      (with-meta (meta env))))
+
 (defn next-node-id
   "Return the next node ID in the system, its an incremental number"
   [{::keys [id-counter]}]
@@ -1401,7 +1408,8 @@
         (merge (base-graph)
                graph
                {::index-ast (pf.eql/index-ast (:edn-query-language.ast/node env))})
-        (merge (base-env) env)))))
+        (-> (merge (base-env) env)
+            (vary-meta assoc ::original-env env))))))
 
 (>defn graph-provides
   "Get a set with all provided attributes from the graph."
