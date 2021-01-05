@@ -1266,8 +1266,8 @@
                                    ::snapshot-message (str "Process attribute " attribute)})
             (dissoc <> ::root)
             (reduce-kv
-              (fn [graph inputs resolvers]
-                (compute-input-resolvers-graph graph env inputs resolvers))
+              (fn [graph input resolvers]
+                (compute-input-resolvers-graph graph env input resolvers))
               <>
               (get index-oir attribute))
             (set-node-source-for-attrs <> env))]
