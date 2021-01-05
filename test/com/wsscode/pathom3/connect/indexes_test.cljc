@@ -19,7 +19,8 @@
            '{::pco/input    []
              ::pco/op-name  r
              ::pco/output   [:foo]
-             ::pco/provides {:foo {}}})))
+             ::pco/provides {:foo {}}
+             ::pco/requires {}})))
 
   (is (= (pci/resolver-config {} 'r) nil)))
 
