@@ -16,7 +16,7 @@
 (>def ::index-oir
   "Index: Output -> Input -> Resolver"
   (s/map-of ::p.attr/attribute
-            (s/map-of ::p.attr/attributes-set (s/coll-of ::pco/op-name :kind set?))))
+            (s/map-of ::pfsd/shape-descriptor (s/coll-of ::pco/op-name :kind set?))))
 
 (>def ::index-io "Index: Input -> Output"
   (s/map-of ::p.attr/attributes-set ::pfsd/shape-descriptor))
@@ -168,7 +168,7 @@
         ::index-oir        (reduce (fn [indexes out-attr]
                                      (cond-> indexes
                                        (not (contains? requires out-attr))
-                                       (update-in [out-attr input'] coll/sconj op-name)))
+                                       (update-in [out-attr requires] coll/sconj op-name)))
                              {}
                              root-props)}))))
 

@@ -56,7 +56,7 @@
                                                    :attr-output-in #{r}
                                                    :attr-reach-via {#{} #{r}}}}
               ::pci/index-io         {#{} {:foo {}}}
-              ::pci/index-oir        {:foo {#{} #{'r}}}}))
+              ::pci/index-oir        {:foo {{} #{'r}}}}))
 
       (testing "throw error on duplicated name"
         (is (thrown-with-msg?
@@ -70,7 +70,7 @@
                    (fn [_ _]))
                  (pci/register)
                  ::pci/index-oir)
-             {:bar {#{:id} #{'r}}})))
+             {:bar {{:id {}} #{'r}}})))
 
     (testing "nested inputs"
       (is (= (-> (pco/resolver 'r {::pco/input  [{:users [:score]}]
@@ -78,7 +78,7 @@
                    (fn [_ _]))
                  (pci/register)
                  ::pci/index-oir)
-             {:total-score {#{:users} #{'r}}}))))
+             {:total-score {{:users {:score {}}} #{'r}}}))))
 
   (testing "mutation"
     (let [mutation (pco/mutation 'm {::pco/output [:foo]
@@ -116,8 +116,8 @@
                                        :foo2 #::pci{:attr-id        :foo2
                                                     :attr-output-in #{r2}
                                                     :attr-reach-via {#{} #{r2}}}}
-              ::pci/index-oir        {:foo  {#{} #{'r}}
-                                      :foo2 {#{} #{'r2}}}
+              ::pci/index-oir        {:foo  {{} #{'r}}
+                                      :foo2 {{} #{'r2}}}
               ::pci/index-io         {#{} {:foo  {}
                                            :foo2 {}}}}))))
 
@@ -143,8 +143,8 @@
                                        :foo2 #::pci{:attr-id        :foo2
                                                     :attr-output-in #{r2}
                                                     :attr-reach-via {#{} #{r2}}}}
-              ::pci/index-oir        {:foo  {#{} #{'r}}
-                                      :foo2 {#{} #{'r2}}}
+              ::pci/index-oir        {:foo  {{} #{'r}}
+                                      :foo2 {{} #{'r2}}}
               ::pci/index-io         {#{} {:foo  {}
                                            :foo2 {}}}}))
 
