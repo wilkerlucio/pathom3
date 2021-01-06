@@ -70,7 +70,15 @@
                    (fn [_ _]))
                  (pci/register)
                  ::pci/index-oir)
-             {:bar {#{:id} #{'r}}}))))
+             {:bar {#{:id} #{'r}}})))
+
+    (testing "nested inputs"
+      (is (= (-> (pco/resolver 'r {::pco/input  [{:users [:score]}]
+                                   ::pco/output [:total-score]}
+                   (fn [_ _]))
+                 (pci/register)
+                 ::pci/index-oir)
+             {:total-score {#{:users} #{'r}}}))))
 
   (testing "mutation"
     (let [mutation (pco/mutation 'm {::pco/output [:foo]

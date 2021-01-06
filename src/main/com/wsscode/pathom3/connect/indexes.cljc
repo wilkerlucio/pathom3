@@ -163,8 +163,8 @@
   the output to input index in the ::pc/index-oir and the reverse index for auto-complete
   to the index ::pc/index-io."
   ([indexes resolver]
-   (let [{::pco/keys [op-name input output requires] :as op-config} (pco/operation-config resolver)
-         input'     (input-set input)
+   (let [{::pco/keys [op-name output requires] :as op-config} (pco/operation-config resolver)
+         input'     (into #{} (keys requires))
          root-props (pfse/query-root-properties output)]
      (assert (nil? (com.wsscode.pathom3.connect.indexes/resolver indexes op-name))
        (str "Tried to register duplicated resolver: " op-name))
