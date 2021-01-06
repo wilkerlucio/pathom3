@@ -148,295 +148,6 @@
       render-graphviz?
       (render-graph env))))
 
-(deftest compute-run-graph-test-no-path
-  (testing "no path"
-    (is (= (compute-run-graph
-             {::pci/index-oir '{}
-              ::eql/query     [:a]})
-           {::pcp/nodes                 {}
-            ::pcp/index-resolver->nodes {}
-            ::pcp/unreachable-attrs     {:a {}}
-            ::pcp/unreachable-resolvers #{}
-            ::pcp/index-ast             {:a {:dispatch-key :a
-                                             :key          :a
-                                             :type         :prop}}}))
-
-    (testing "broken chain"
-      (is (= (compute-run-graph
-               {::pci/index-oir '{:b {{:a {}} #{b}}}
-                ::eql/query     [:b]})
-             '#::pcp{:nodes                 {}
-                     :index-resolver->nodes {}
-                     :unreachable-attrs     {:b {}, :a {}}
-                     :unreachable-resolvers #{b}
-                     :index-ast             {:b {:dispatch-key :b
-                                                 :key          :b
-                                                 :type         :prop}}}))
-
-      (is (= (compute-run-graph
-               {::pci/index-oir '{:b {{:a {}} #{b1 b}}}
-                ::eql/query     [:b]})
-             '#::pcp{:nodes                 {}
-                     :index-resolver->nodes {}
-                     :unreachable-attrs     {:a {} :b {}}
-                     :unreachable-resolvers #{b b1}
-                     :index-ast             {:b {:dispatch-key :b
-                                                 :key          :b
-                                                 :type         :prop}}}))
-
-      (is (= (compute-run-graph
-               {::resolvers [{::pco/op-name 'a
-                              ::pco/output  [:a]}
-                             {::pco/op-name 'b
-                              ::pco/input   [:a]
-                              ::pco/output  [:b]}]
-                ::eql/query [:b]
-                ::out       {::pcp/unreachable-attrs {:a {}}}})
-             '#::pcp{:nodes                 {}
-                     :index-resolver->nodes {}
-                     :unreachable-attrs     {:a {} :b {}}
-                     :unreachable-resolvers #{b}
-                     :index-ast             {:b {:dispatch-key :b
-                                                 :key          :b
-                                                 :type         :prop}}}))
-
-      (is (= (compute-run-graph
-               {::resolvers [{::pco/op-name 'b
-                              ::pco/input   [:a]
-                              ::pco/output  [:b]}
-                             {::pco/op-name 'c
-                              ::pco/input   [:b]
-                              ::pco/output  [:c]}]
-                ::eql/query [:c]})
-             '#::pcp{:nodes                 {}
-                     :index-resolver->nodes {}
-                     :unreachable-attrs     {:a {} :b {} :c {}}
-                     :unreachable-resolvers #{b c}
-                     :index-ast             {:c {:dispatch-key :c
-                                                 :key          :c
-                                                 :type         :prop}}}))
-
-      (is (= (compute-run-graph
-               {::resolvers [{::pco/op-name 'b
-                              ::pco/input   [:a]
-                              ::pco/output  [:b]}
-                             {::pco/op-name 'd
-                              ::pco/output  [:d]}
-                             {::pco/op-name 'c
-                              ::pco/input   [:b :d]
-                              ::pco/output  [:c]}]
-                ::eql/query [:c]})
-             '#::pcp{:nodes                 {}
-                     :index-resolver->nodes {}
-                     :unreachable-attrs     {:c {}, :b {}, :a {}}
-                     :unreachable-resolvers #{b c}
-                     :index-ast             {:c {:dispatch-key :c
-                                                 :key          :c
-                                                 :type         :prop}}}))
-
-      (is (= (compute-run-graph
-               {::resolvers [{::pco/op-name 'b
-                              ::pco/input   [:a]
-                              ::pco/output  [:b]}
-                             {::pco/op-name 'd
-                              ::pco/output  [:d]}
-                             {::pco/op-name 'c
-                              ::pco/input   [:b :d]
-                              ::pco/output  [:c]}]
-                ::eql/query [:c :d]})
-             '{::pcp/nodes                 {4 {::pco/op-name          d
-                                               ::pcp/node-id          4
-                                               ::pcp/expects          {:d {}}
-                                               ::pcp/input            {}
-                                               ::pcp/source-for-attrs #{:d}}}
-               ::pcp/index-resolver->nodes {d #{4}}
-               ::pcp/unreachable-resolvers #{c b}
-               ::pcp/unreachable-attrs     {:c {}, :b {}, :a {}}
-               ::pcp/root                  4
-               ::pcp/index-attrs           {:d 4}
-               ::pcp/index-ast             {:c {:dispatch-key :c
-                                                :key          :c
-                                                :type         :prop}
-                                            :d {:dispatch-key :d
-                                                :key          :d
-                                                :type         :prop}}})))
-
-    (testing "currently available data"
-      (is (= (compute-run-graph
-               {::pci/index-oir      '{}
-                ::eql/query          [:a]
-                ::pcp/available-data {:a {}}})
-             {::pcp/nodes                 {}
-              ::pcp/index-resolver->nodes {}
-              ::pcp/unreachable-attrs     {}
-              ::pcp/unreachable-resolvers #{}
-              ::pcp/index-ast             {:a {:dispatch-key :a
-                                               :key          :a
-                                               :type         :prop}}}))
-
-      (testing "exposed nested needs"
-        (is (= (compute-run-graph
-                 {::pci/index-oir      '{}
-                  ::eql/query          [{:a [:bar]}]
-                  ::pcp/available-data {:a {}}})
-               {::pcp/nodes                    {}
-                ::pcp/index-resolver->nodes    {}
-                ::pcp/unreachable-attrs        {}
-                ::pcp/unreachable-resolvers    #{}
-                ::pcp/nested-available-process #{:a}
-                ::pcp/index-ast                {:a {:children     [{:dispatch-key :bar
-                                                                    :key          :bar
-                                                                    :type         :prop}]
-                                                    :dispatch-key :a
-                                                    :key          :a
-                                                    :query        [:bar]
-                                                    :type         :join}}}))))))
-
-(deftest compute-run-graph-mutations-test
-  (is (= (compute-run-graph
-           {::pci/index-oir '{}
-            ::eql/query     [(list 'foo {})]})
-         '{::pcp/nodes                 {}
-           ::pcp/index-resolver->nodes {}
-           ::pcp/unreachable-resolvers #{}
-           ::pcp/unreachable-attrs     {}
-           ::pcp/mutations             [{:dispatch-key foo
-                                         :key          foo
-                                         :params       {}
-                                         :type         :call}]
-           ::pcp/index-ast             {foo {:dispatch-key foo
-                                             :key          foo
-                                             :params       {}
-                                             :type         :call}}})))
-
-(deftest compute-run-graph-idents-test
-  (testing "separate idents"
-    (is (= (compute-run-graph
-             {::resolvers [{::pco/op-name 'a
-                            ::pco/output  [:a]}]
-              ::eql/query [:a [:foo "bar"]]})
-           '{::pcp/nodes                 {1 {::pco/op-name          a
-                                             ::pcp/node-id          1
-                                             ::pcp/expects          {:a {}}
-                                             ::pcp/input            {}
-                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
-             ::pcp/root                  1
-             ::pcp/idents                #{[:foo "bar"]}
-             ::pcp/index-attrs           {:a 1}
-             ::pcp/index-ast             {:a           {:dispatch-key :a
-                                                        :key          :a
-                                                        :type         :prop}
-                                          [:foo "bar"] {:dispatch-key :foo
-                                                        :key          [:foo
-                                                                       "bar"]
-                                                        :type         :prop}}}))
-
-    (is (= (compute-run-graph
-             {::resolvers [{::pco/op-name 'a
-                            ::pco/output  [:a]}]
-              ::eql/query [:a {[:foo "bar"] [:baz]}]})
-           '{::pcp/nodes                 {1 {::pco/op-name          a
-                                             ::pcp/node-id          1
-                                             ::pcp/expects          {:a {}}
-                                             ::pcp/input            {}
-                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
-             ::pcp/root                  1
-             ::pcp/idents                #{[:foo "bar"]}
-             ::pcp/index-attrs           {:a 1}
-             ::pcp/index-ast             {:a           {:dispatch-key :a
-                                                        :key          :a
-                                                        :type         :prop}
-                                          [:foo "bar"] {:children     [{:dispatch-key :baz
-                                                                        :key          :baz
-                                                                        :type         :prop}]
-                                                        :dispatch-key :foo
-                                                        :key          [:foo
-                                                                       "bar"]
-                                                        :query        [:baz]
-                                                        :type         :join}}}))))
-
-(deftest compute-run-graph-cycles-test
-  (testing "cycles"
-    (is (= (compute-run-graph
-             {::resolvers [{::pco/op-name 'a
-                            ::pco/input   [:b]
-                            ::pco/output  [:a]}
-                           {::pco/op-name 'b
-                            ::pco/input   [:a]
-                            ::pco/output  [:b]}]
-              ::eql/query [:a]})
-           '#::pcp{:nodes                 {},
-                   :index-resolver->nodes {},
-                   :unreachable-resolvers #{a b},
-                   :unreachable-attrs     {:b {}, :a {}},
-                   :index-ast             {:a {:type         :prop,
-                                               :dispatch-key :a,
-                                               :key          :a}}}))
-
-    (is (= (compute-run-graph
-             {::resolvers [{::pco/op-name 'a
-                            ::pco/input   [:c]
-                            ::pco/output  [:a]}
-                           {::pco/op-name 'b
-                            ::pco/input   [:a]
-                            ::pco/output  [:b]}
-                           {::pco/op-name 'c
-                            ::pco/input   [:b]
-                            ::pco/output  [:c]}]
-              ::eql/query [:a]})
-           '#::pcp{:nodes                 {}
-                   :index-resolver->nodes {}
-                   :unreachable-attrs     {:c {}, :b {}, :a {}}
-                   :unreachable-resolvers #{a b c}
-                   :index-ast             {:a {:type         :prop,
-                                               :dispatch-key :a,
-                                               :key          :a}}}))
-
-    (testing "partial cycle"
-      (is (= (compute-run-graph
-               {::pci/index-oir '{:a {{:c {}} #{a}
-                                      {}      #{a1}}
-                                  :b {{:a {}} #{b}}
-                                  :c {{:b {}} #{c}}
-                                  :d {{} #{d}}}
-                ::eql/query     [:c :a]})
-             '{::pcp/nodes                 {1 {::pco/op-name          c
-                                               ::pcp/node-id          1
-                                               ::pcp/expects          {:c {}}
-                                               ::pcp/input            {:b {}}
-                                               ::pcp/node-parents     #{2}
-                                               ::pcp/source-for-attrs #{:c}}
-                                            2 {::pco/op-name          b
-                                               ::pcp/node-id          2
-                                               ::pcp/expects          {:b {}}
-                                               ::pcp/input            {:a {}}
-                                               ::pcp/run-next         1
-                                               ::pcp/node-parents     #{4}
-                                               ::pcp/source-for-attrs #{:b}}
-                                            4 {::pco/op-name          a1
-                                               ::pcp/node-id          4
-                                               ::pcp/expects          {:a {}}
-                                               ::pcp/input            {}
-                                               ::pcp/run-next         2
-                                               ::pcp/source-for-attrs #{:a}}}
-               ::pcp/index-resolver->nodes {c #{1} b #{2} a1 #{4}}
-               ::pcp/unreachable-resolvers #{a}
-               ::pcp/unreachable-attrs     {}
-               ::pcp/root                  4
-               ::pcp/index-attrs           {:a 4 :b 2 :c 1}
-               ::pcp/index-ast             {:c {:type         :prop,
-                                                :dispatch-key :c,
-                                                :key          :c},
-                                            :a {:type         :prop,
-                                                :dispatch-key :a,
-                                                :key          :a}}})))))
-
 (deftest compute-run-graph-test
   (testing "simplest path"
     (is (= (compute-run-graph
@@ -2396,6 +2107,295 @@
                                                     :dispatch-key :other,
                                                     :key          :other}}
                ::pcp/root                  1})))))
+
+(deftest compute-run-graph-no-path-test
+  (testing "no path"
+    (is (= (compute-run-graph
+             {::pci/index-oir '{}
+              ::eql/query     [:a]})
+           {::pcp/nodes                 {}
+            ::pcp/index-resolver->nodes {}
+            ::pcp/unreachable-attrs     {:a {}}
+            ::pcp/unreachable-resolvers #{}
+            ::pcp/index-ast             {:a {:dispatch-key :a
+                                             :key          :a
+                                             :type         :prop}}}))
+
+    (testing "broken chain"
+      (is (= (compute-run-graph
+               {::pci/index-oir '{:b {{:a {}} #{b}}}
+                ::eql/query     [:b]})
+             '#::pcp{:nodes                 {}
+                     :index-resolver->nodes {}
+                     :unreachable-attrs     {:b {}, :a {}}
+                     :unreachable-resolvers #{b}
+                     :index-ast             {:b {:dispatch-key :b
+                                                 :key          :b
+                                                 :type         :prop}}}))
+
+      (is (= (compute-run-graph
+               {::pci/index-oir '{:b {{:a {}} #{b1 b}}}
+                ::eql/query     [:b]})
+             '#::pcp{:nodes                 {}
+                     :index-resolver->nodes {}
+                     :unreachable-attrs     {:a {} :b {}}
+                     :unreachable-resolvers #{b b1}
+                     :index-ast             {:b {:dispatch-key :b
+                                                 :key          :b
+                                                 :type         :prop}}}))
+
+      (is (= (compute-run-graph
+               {::resolvers [{::pco/op-name 'a
+                              ::pco/output  [:a]}
+                             {::pco/op-name 'b
+                              ::pco/input   [:a]
+                              ::pco/output  [:b]}]
+                ::eql/query [:b]
+                ::out       {::pcp/unreachable-attrs {:a {}}}})
+             '#::pcp{:nodes                 {}
+                     :index-resolver->nodes {}
+                     :unreachable-attrs     {:a {} :b {}}
+                     :unreachable-resolvers #{b}
+                     :index-ast             {:b {:dispatch-key :b
+                                                 :key          :b
+                                                 :type         :prop}}}))
+
+      (is (= (compute-run-graph
+               {::resolvers [{::pco/op-name 'b
+                              ::pco/input   [:a]
+                              ::pco/output  [:b]}
+                             {::pco/op-name 'c
+                              ::pco/input   [:b]
+                              ::pco/output  [:c]}]
+                ::eql/query [:c]})
+             '#::pcp{:nodes                 {}
+                     :index-resolver->nodes {}
+                     :unreachable-attrs     {:a {} :b {} :c {}}
+                     :unreachable-resolvers #{b c}
+                     :index-ast             {:c {:dispatch-key :c
+                                                 :key          :c
+                                                 :type         :prop}}}))
+
+      (is (= (compute-run-graph
+               {::resolvers [{::pco/op-name 'b
+                              ::pco/input   [:a]
+                              ::pco/output  [:b]}
+                             {::pco/op-name 'd
+                              ::pco/output  [:d]}
+                             {::pco/op-name 'c
+                              ::pco/input   [:b :d]
+                              ::pco/output  [:c]}]
+                ::eql/query [:c]})
+             '#::pcp{:nodes                 {}
+                     :index-resolver->nodes {}
+                     :unreachable-attrs     {:c {}, :b {}, :a {}}
+                     :unreachable-resolvers #{b c}
+                     :index-ast             {:c {:dispatch-key :c
+                                                 :key          :c
+                                                 :type         :prop}}}))
+
+      (is (= (compute-run-graph
+               {::resolvers [{::pco/op-name 'b
+                              ::pco/input   [:a]
+                              ::pco/output  [:b]}
+                             {::pco/op-name 'd
+                              ::pco/output  [:d]}
+                             {::pco/op-name 'c
+                              ::pco/input   [:b :d]
+                              ::pco/output  [:c]}]
+                ::eql/query [:c :d]})
+             '{::pcp/nodes                 {4 {::pco/op-name          d
+                                               ::pcp/node-id          4
+                                               ::pcp/expects          {:d {}}
+                                               ::pcp/input            {}
+                                               ::pcp/source-for-attrs #{:d}}}
+               ::pcp/index-resolver->nodes {d #{4}}
+               ::pcp/unreachable-resolvers #{c b}
+               ::pcp/unreachable-attrs     {:c {}, :b {}, :a {}}
+               ::pcp/root                  4
+               ::pcp/index-attrs           {:d 4}
+               ::pcp/index-ast             {:c {:dispatch-key :c
+                                                :key          :c
+                                                :type         :prop}
+                                            :d {:dispatch-key :d
+                                                :key          :d
+                                                :type         :prop}}})))
+
+    (testing "currently available data"
+      (is (= (compute-run-graph
+               {::pci/index-oir      '{}
+                ::eql/query          [:a]
+                ::pcp/available-data {:a {}}})
+             {::pcp/nodes                 {}
+              ::pcp/index-resolver->nodes {}
+              ::pcp/unreachable-attrs     {}
+              ::pcp/unreachable-resolvers #{}
+              ::pcp/index-ast             {:a {:dispatch-key :a
+                                               :key          :a
+                                               :type         :prop}}}))
+
+      (testing "exposed nested needs"
+        (is (= (compute-run-graph
+                 {::pci/index-oir      '{}
+                  ::eql/query          [{:a [:bar]}]
+                  ::pcp/available-data {:a {}}})
+               {::pcp/nodes                    {}
+                ::pcp/index-resolver->nodes    {}
+                ::pcp/unreachable-attrs        {}
+                ::pcp/unreachable-resolvers    #{}
+                ::pcp/nested-available-process #{:a}
+                ::pcp/index-ast                {:a {:children     [{:dispatch-key :bar
+                                                                    :key          :bar
+                                                                    :type         :prop}]
+                                                    :dispatch-key :a
+                                                    :key          :a
+                                                    :query        [:bar]
+                                                    :type         :join}}}))))))
+
+(deftest compute-run-graph-mutations-test
+  (is (= (compute-run-graph
+           {::pci/index-oir '{}
+            ::eql/query     [(list 'foo {})]})
+         '{::pcp/nodes                 {}
+           ::pcp/index-resolver->nodes {}
+           ::pcp/unreachable-resolvers #{}
+           ::pcp/unreachable-attrs     {}
+           ::pcp/mutations             [{:dispatch-key foo
+                                         :key          foo
+                                         :params       {}
+                                         :type         :call}]
+           ::pcp/index-ast             {foo {:dispatch-key foo
+                                             :key          foo
+                                             :params       {}
+                                             :type         :call}}})))
+
+(deftest compute-run-graph-idents-test
+  (testing "separate idents"
+    (is (= (compute-run-graph
+             {::resolvers [{::pco/op-name 'a
+                            ::pco/output  [:a]}]
+              ::eql/query [:a [:foo "bar"]]})
+           '{::pcp/nodes                 {1 {::pco/op-name          a
+                                             ::pcp/node-id          1
+                                             ::pcp/expects          {:a {}}
+                                             ::pcp/input            {}
+                                             ::pcp/source-for-attrs #{:a}}}
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/unreachable-resolvers #{}
+             ::pcp/unreachable-attrs     {}
+             ::pcp/root                  1
+             ::pcp/idents                #{[:foo "bar"]}
+             ::pcp/index-attrs           {:a 1}
+             ::pcp/index-ast             {:a           {:dispatch-key :a
+                                                        :key          :a
+                                                        :type         :prop}
+                                          [:foo "bar"] {:dispatch-key :foo
+                                                        :key          [:foo
+                                                                       "bar"]
+                                                        :type         :prop}}}))
+
+    (is (= (compute-run-graph
+             {::resolvers [{::pco/op-name 'a
+                            ::pco/output  [:a]}]
+              ::eql/query [:a {[:foo "bar"] [:baz]}]})
+           '{::pcp/nodes                 {1 {::pco/op-name          a
+                                             ::pcp/node-id          1
+                                             ::pcp/expects          {:a {}}
+                                             ::pcp/input            {}
+                                             ::pcp/source-for-attrs #{:a}}}
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/unreachable-resolvers #{}
+             ::pcp/unreachable-attrs     {}
+             ::pcp/root                  1
+             ::pcp/idents                #{[:foo "bar"]}
+             ::pcp/index-attrs           {:a 1}
+             ::pcp/index-ast             {:a           {:dispatch-key :a
+                                                        :key          :a
+                                                        :type         :prop}
+                                          [:foo "bar"] {:children     [{:dispatch-key :baz
+                                                                        :key          :baz
+                                                                        :type         :prop}]
+                                                        :dispatch-key :foo
+                                                        :key          [:foo
+                                                                       "bar"]
+                                                        :query        [:baz]
+                                                        :type         :join}}}))))
+
+(deftest compute-run-graph-cycles-test
+  (testing "cycles"
+    (is (= (compute-run-graph
+             {::resolvers [{::pco/op-name 'a
+                            ::pco/input   [:b]
+                            ::pco/output  [:a]}
+                           {::pco/op-name 'b
+                            ::pco/input   [:a]
+                            ::pco/output  [:b]}]
+              ::eql/query [:a]})
+           '#::pcp{:nodes                 {},
+                   :index-resolver->nodes {},
+                   :unreachable-resolvers #{a b},
+                   :unreachable-attrs     {:b {}, :a {}},
+                   :index-ast             {:a {:type         :prop,
+                                               :dispatch-key :a,
+                                               :key          :a}}}))
+
+    (is (= (compute-run-graph
+             {::resolvers [{::pco/op-name 'a
+                            ::pco/input   [:c]
+                            ::pco/output  [:a]}
+                           {::pco/op-name 'b
+                            ::pco/input   [:a]
+                            ::pco/output  [:b]}
+                           {::pco/op-name 'c
+                            ::pco/input   [:b]
+                            ::pco/output  [:c]}]
+              ::eql/query [:a]})
+           '#::pcp{:nodes                 {}
+                   :index-resolver->nodes {}
+                   :unreachable-attrs     {:c {}, :b {}, :a {}}
+                   :unreachable-resolvers #{a b c}
+                   :index-ast             {:a {:type         :prop,
+                                               :dispatch-key :a,
+                                               :key          :a}}}))
+
+    (testing "partial cycle"
+      (is (= (compute-run-graph
+               {::pci/index-oir '{:a {{:c {}} #{a}
+                                      {}      #{a1}}
+                                  :b {{:a {}} #{b}}
+                                  :c {{:b {}} #{c}}
+                                  :d {{} #{d}}}
+                ::eql/query     [:c :a]})
+             '{::pcp/nodes                 {1 {::pco/op-name          c
+                                               ::pcp/node-id          1
+                                               ::pcp/expects          {:c {}}
+                                               ::pcp/input            {:b {}}
+                                               ::pcp/node-parents     #{2}
+                                               ::pcp/source-for-attrs #{:c}}
+                                            2 {::pco/op-name          b
+                                               ::pcp/node-id          2
+                                               ::pcp/expects          {:b {}}
+                                               ::pcp/input            {:a {}}
+                                               ::pcp/run-next         1
+                                               ::pcp/node-parents     #{4}
+                                               ::pcp/source-for-attrs #{:b}}
+                                            4 {::pco/op-name          a1
+                                               ::pcp/node-id          4
+                                               ::pcp/expects          {:a {}}
+                                               ::pcp/input            {}
+                                               ::pcp/run-next         2
+                                               ::pcp/source-for-attrs #{:a}}}
+               ::pcp/index-resolver->nodes {c #{1} b #{2} a1 #{4}}
+               ::pcp/unreachable-resolvers #{a}
+               ::pcp/unreachable-attrs     {}
+               ::pcp/root                  4
+               ::pcp/index-attrs           {:a 4 :b 2 :c 1}
+               ::pcp/index-ast             {:c {:type         :prop,
+                                                :dispatch-key :c,
+                                                :key          :c},
+                                            :a {:type         :prop,
+                                                :dispatch-key :a,
+                                                :key          :a}}})))))
 
 (deftest compute-run-graph-nested-inputs-test
   (testing "discard non available paths on nesting"
