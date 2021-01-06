@@ -1085,22 +1085,71 @@
                            (into #{} (map (partial get-attribute-node graph)) missing))))
 
 (defn required-input-reachable?
-  [{::keys [index-attrs] :as _graph} _env attr]
-  #_(if (seq sub)
+  "After running a sub graph for dependencies, the planner checks if all required inputs
+  are met in the new sub graph. In case of nested dependencies, a new graph must run
+  to verify that the sub query dependencies are possible to met, otherwise the path
+  is discarded."
+  [{::keys [index-attrs] :as graph} {::keys [available-data] :as env} required]
+  (let [attr (key required)
+        sub  (val required)]
+    (if (seq sub)
       ; check if subquery is realizable
-      (if-let [node-id (get index-attrs attr)]
-        (let [provides (->> (get-node graph node-id ::pco/op-name)
-                            (pci/resolver-config env)
-                            ::pco/provides
-                            attr)
+      (let [available-sub-data (get available-data attr)]
+        (if-let [node-id (get index-attrs attr)]
+          (let [provides (->> (get-node graph node-id ::pco/op-name)
+                              (pci/resolver-config env)
+                              ::pco/provides
+                              attr)
 
-              graph'   (compute-run-graph
+                graph'   (compute-run-graph
+                           (-> (reset-env env)
+                               (assoc
+                                 ::available-data (pfsd/merge-shapes available-sub-data provides)
+                                 :edn-query-language.ast/node (pfsd/shape-descriptor->ast sub))))]
+            (every? #(required-input-reachable? graph' env %) sub))
+
+          ; there is no node from the graph, but still gonna look in current data
+          (let [graph' (compute-run-graph
                          (-> (reset-env env)
                              (assoc
-                               ::available-data provides
+                               ::available-data (or available-sub-data {})
                                :edn-query-language.ast/node (pfsd/shape-descriptor->ast sub))))]
-          (every? #(required-input-reachable? graph' env %) sub))))
-  (contains? index-attrs attr))
+            (every? #(required-input-reachable? graph' env %) sub))))
+
+      (contains? index-attrs attr))))
+
+(defn unreachable-attrs-after-missing-check
+  "Mark which attributes are unreachable, given the unreachable resolvers.
+
+  This makes sure we don't mark an attribute as unreachable when it still have possibilities
+  to run.
+
+  A special case is nested requirements, since they were already part of a separated
+  computation we can always merge those in."
+  [env unreachable-resolvers still-missing]
+  (into {}
+        (filter (fn [x]
+                  (or (seq (val x))
+                      (set/subset? (all-attribute-resolvers env (key x)) unreachable-resolvers))))
+        still-missing))
+
+(defn attributes-with-nodes
+  "Filter attributes that have attached nodes."
+  [{::keys [index-attrs]} attrs]
+  (into #{} (filter #(contains? index-attrs %) attrs)))
+
+(defn merge-missing-chain [graph graph' env missing']
+  (let [missing-with-nodes (attributes-with-nodes graph' missing')]
+    (if (seq missing-with-nodes)
+      (let [ancestor (find-missing-ancestor graph' missing-with-nodes)]
+        (assert ancestor "Error finding ancestor during missing chain computation")
+        (cond-> (merge-nodes-run-next graph' env ancestor {::run-next (::root graph)})
+          (::run-and (get-root-node graph'))
+          (merge-node-expects (::root graph') {::expects (zipmap missing' (repeat {}))})
+
+          true
+          (add-snapshot! env {::snapshot-message (str "Chaining dependencies for " (pc-attr env) ", set node " (::root graph) " to run after node " ancestor)})))
+      graph')))
 
 (defn compute-missing-chain
   "Start a recursive call to process the dependencies required by the resolver. It
@@ -1117,20 +1166,13 @@
                               (update ::run-next-trail coll/sconj (::root graph))
                               (update ::attr-deps-trail coll/sconj (pc-attr env))
                               (assoc :edn-query-language.ast/node (eql/query->ast (vec missing')))))
-          still-missing (remove #(required-input-reachable? graph' env %) missing')
+          still-missing (into {} (remove #(required-input-reachable? graph' env %)) missing)
           all-provided? (empty? still-missing)]
       (if all-provided?
-        (let [ancestor (find-missing-ancestor graph' missing')]
-          (assert ancestor "Error finding ancestor during missing chain computation")
-          (cond-> (merge-nodes-run-next graph' env ancestor {::run-next (::root graph)})
-            (::run-and (get-root-node graph'))
-            (merge-node-expects (::root graph') {::expects (zipmap missing' (repeat {}))})
-
-            true
-            (add-snapshot! env {::snapshot-message (str "Chaining dependencies for " (pc-attr env) ", set node " (::root graph) " to run after node " ancestor)})))
+        (merge-missing-chain graph graph' env missing')
         (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
-              unreachable-attrs (filter #(set/subset? (all-attribute-resolvers env %) unreachable-resolvers) still-missing)]
-          (update out' ::unreachable-attrs into (map #(coll/make-map-entry % {})) unreachable-attrs))))
+              unreachable-attrs (unreachable-attrs-after-missing-check env unreachable-resolvers still-missing)]
+          (update out' ::unreachable-attrs pfsd/merge-shapes unreachable-attrs))))
     graph))
 
 (defn runner-node-sym

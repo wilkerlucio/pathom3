@@ -2396,8 +2396,6 @@
                                                     :key          :other}}
                ::pcp/root                  1})))))
 
-; TODO WIP
-#_
 (deftest compute-run-graph-nested-inputs-test
   (testing "discard non available paths on nesting"
     (is (= (compute-run-graph
@@ -2410,13 +2408,13 @@
            '{::pcp/nodes                 {}
              ::pcp/index-resolver->nodes {}
              ::pcp/unreachable-resolvers #{scores-sum}
-             ::pcp/unreachable-attrs     {:scores-sum
-                                          {:users #{:user/score}}}
+             ::pcp/unreachable-attrs     {:scores-sum {}
+                                          :users      {:user/score {}}}
              ::pcp/index-ast             {:scores-sum {:type         :prop,
                                                        :dispatch-key :scores-sum,
                                                        :key          :scores-sum}}})))
 
-  (testing "return node including the nested data"
+  (testing "allow possible path"
     (is (= (compute-run-graph
              (-> {::eql/query [:scores-sum :age-sum]
                   ::resolvers '[{::pco/op-name scores-sum
@@ -2427,22 +2425,127 @@
                                 {::pco/op-name user
                                  ::pco/input   [:user/id]
                                  ::pco/output  [:user/score]}]}))
-           '{::pcp/nodes                 {}
-             ::pcp/index-resolver->nodes {}
-             ::pcp/unreachable-resolvers #{'scores-sum}
-             ::pcp/unreachable-attrs     #{{:users [:user/score]}}
-             ::pcp/index-attrs           {}
-             ::pcp/index-ast             {:name  {:type         :prop,
-                                                  :dispatch-key :name,
-                                                  :key          :name},
-                                          :other {:type         :prop,
-                                                  :dispatch-key :other,
-                                                  :key          :other}}
-             ::pcp/root                  1})))
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                                        {1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id      1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input
+                                                                                                                            {:users {:user/score {}}},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents #{2},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs
+                                                                                                                            #{:scores-sum}},
+                                                                         2
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        users,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:users {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:users},
+                                                                          :com.wsscode.pathom3.connect.planner/run-next         1}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
+                                                                        {scores-sum #{1}, users #{2}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {:age-sum {}},
+             :com.wsscode.pathom3.connect.planner/index-ast             {:scores-sum {:type :prop, :dispatch-key :scores-sum, :key :scores-sum},
+                                                                         :age-sum    {:type :prop, :dispatch-key :age-sum, :key :age-sum}},
+             :com.wsscode.pathom3.connect.planner/index-attrs
+                                                                        {:users 2, :scores-sum 1},
+             :com.wsscode.pathom3.connect.planner/root                  2})))
+
+  (testing "data partially available, require join lookup"
+    (is (= (compute-run-graph
+             (-> {::eql/query          [:scores-sum]
+                  ::pcp/available-data {:users {:user/id {}}}
+                  ::resolvers          '[{::pco/op-name scores-sum
+                                          ::pco/input   [{:users [:user/score]}]
+                                          ::pco/output  [:scores-sum]}
+                                         {::pco/op-name users
+                                          ::pco/output  [{:users [:user/id]}]}
+                                         {::pco/op-name user
+                                          ::pco/input   [:user/id]
+                                          ::pco/output  [:user/score]}]}))
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name scores-sum,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:scores-sum {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:users #:user{:score {}}}}},
+                                                  :index-resolver->nodes {scores-sum #{1}},
+                                                  :unreachable-resolvers #{},
+                                                  :unreachable-attrs {},
+                                                  :index-ast {:scores-sum {:type :prop,
+                                                                           :dispatch-key :scores-sum,
+                                                                           :key :scores-sum}}})))
+
+  (testing "data partially available, require nested and resolver call"
+    (is (= (compute-run-graph
+             (-> {::eql/query          [:scores-sum]
+                  ::pcp/available-data {:users {:user/id {}}}
+                  ::resolvers          '[{::pco/op-name scores-sum
+                                          ::pco/input   [{:users [:user/score]} :other]
+                                          ::pco/output  [:scores-sum]}
+                                         {::pco/op-name users
+                                          ::pco/output  [{:users [:user/id]}]}
+                                         {::pco/op-name other
+                                          ::pco/output  [:other]}
+                                         {::pco/op-name user
+                                          ::pco/input   [:user/id]
+                                          ::pco/output  [:user/score]}]}))
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name scores-sum,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:scores-sum {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:users #:user{:score {}},
+                                                                                                         :other {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{2},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:scores-sum}},
+                                                          2 {:com.wsscode.pathom3.connect.operation/op-name other,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:other {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:other},
+                                                             :com.wsscode.pathom3.connect.planner/run-next 1}},
+                                                  :index-resolver->nodes {scores-sum #{1},
+                                                                          other #{2}},
+                                                  :unreachable-resolvers #{},
+                                                  :unreachable-attrs {},
+                                                  :index-ast {:scores-sum {:type :prop,
+                                                                           :dispatch-key :scores-sum,
+                                                                           :key :scores-sum}},
+                                                  :index-attrs {:other 2, :scores-sum 1},
+                                                  :root 2})))
+
+  (testing "data completely available, skip dependency"
+    (is (= (compute-run-graph
+             (-> {::eql/query          [:scores-sum]
+                  ::pcp/available-data {:users {:user/score {}}}
+                  ::resolvers          '[{::pco/op-name scores-sum
+                                          ::pco/input   [{:users [:user/score]}]
+                                          ::pco/output  [:scores-sum]}
+                                         {::pco/op-name users
+                                          ::pco/output  [{:users [:user/id]}]}
+                                         {::pco/op-name user
+                                          ::pco/input   [:user/id]
+                                          ::pco/output  [:user/score]}]}))
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                                        {1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name scores-sum,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects {:scores-sum {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input
+                                                                                                                         {:users {:user/score {}}},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs
+                                                                                                                         #{:scores-sum}}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
+                                                                        {scores-sum #{1}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs {},
+             :com.wsscode.pathom3.connect.planner/index-ast
+                                                                        {:scores-sum
+                                                                         {:type :prop, :dispatch-key :scores-sum, :key :scores-sum}},
+             :com.wsscode.pathom3.connect.planner/root 1,
+             :com.wsscode.pathom3.connect.planner/index-attrs {:scores-sum 1}})))
 
   (testing "multiple resolvers for the same root but different sub queries"
     (is (= (compute-run-graph
-             (-> {::eql/query [:scores-sum :age-sum]
+             (-> {::eql/query [:scores-sum :total-max-score]
                   ::resolvers '[{::pco/op-name scores-sum
                                  ::pco/input   [{:users [:user/score]}]
                                  ::pco/output  [:scores-sum]}
@@ -2454,38 +2557,95 @@
                                 {::pco/op-name user
                                  ::pco/input   [:user/id]
                                  ::pco/output  [:user/score]}]}))
-           '{})))
-
-  (testing "data partially available, require join lookup")
-
-  (testing "data completely available, skip dependency")
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                       {1
+                                                        {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
+                                                         :com.wsscode.pathom3.connect.planner/node-id      1,
+                                                         :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}},
+                                                         :com.wsscode.pathom3.connect.planner/input
+                                                                                                           {:users {:user/score {}}},
+                                                         :com.wsscode.pathom3.connect.planner/node-parents #{2},
+                                                         :com.wsscode.pathom3.connect.planner/source-for-attrs
+                                                                                                           #{:scores-sum}},
+                                                        2
+                                                        {:com.wsscode.pathom3.connect.operation/op-name        users,
+                                                         :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                         :com.wsscode.pathom3.connect.planner/expects          {:users {}},
+                                                         :com.wsscode.pathom3.connect.planner/input            {},
+                                                         :com.wsscode.pathom3.connect.planner/source-for-attrs #{:users},
+                                                         :com.wsscode.pathom3.connect.planner/run-next         1}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
+                                                       {scores-sum #{1}, users #{2}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers
+                                                       #{total-max},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs
+                                                       {:total-max-score {}, :users {:user/max-score {}}},
+             :com.wsscode.pathom3.connect.planner/index-ast
+                                                       {:scores-sum
+                                                        {:type :prop, :dispatch-key :scores-sum, :key :scores-sum},
+                                                        :total-max-score
+                                                        {:type         :prop,
+                                                         :dispatch-key :total-max-score,
+                                                         :key          :total-max-score}},
+             :com.wsscode.pathom3.connect.planner/index-attrs
+                                                       {:users 2, :scores-sum 1},
+             :com.wsscode.pathom3.connect.planner/root 2})))
 
   (testing "multiple distinct nested details"
-    (is (= (meta (compute-run-graph
-                   (-> {::eql/query [:scores-sum :age-sum]
-                        ::resolvers '[{::pco/op-name scores-sum
-                                       ::pco/input   [{:users [:user/score]}]
-                                       ::pco/output  [:scores-sum]}
-                                      {::pco/op-name age-sum
-                                       ::pco/input   [{:users [:user/age]}]
-                                       ::pco/output  [:age-sum]}
-                                      {::pco/op-name users
-                                       ::pco/output  [{:users [:user/id]}]}
-                                      {::pco/op-name user
-                                       ::pco/input   [:user/id]
-                                       ::pco/output  [:user/age :user/score]}]})))
-           '{::pcp/nodes                 {}
-             ::pcp/index-resolver->nodes {}
-             ::pcp/unreachable-resolvers #{'scores-sum}
-             ::pcp/unreachable-attrs     #{{:users [:user/score]}}
-             ::pcp/index-attrs           {}
-             ::pcp/index-ast             {:name  {:type         :prop,
-                                                  :dispatch-key :name,
-                                                  :key          :name},
-                                          :other {:type         :prop,
-                                                  :dispatch-key :other,
-                                                  :key          :other}}
-             ::pcp/root                  1}))))
+    (is (= (compute-run-graph
+             (-> {::eql/query [:scores-sum :age-sum]
+                  ::resolvers '[{::pco/op-name scores-sum
+                                 ::pco/input   [{:users [:user/score]}]
+                                 ::pco/output  [:scores-sum]}
+                                {::pco/op-name age-sum
+                                 ::pco/input   [{:users [:user/age]}]
+                                 ::pco/output  [:age-sum]}
+                                {::pco/op-name users
+                                 ::pco/output  [{:users [:user/id]}]}
+                                {::pco/op-name user
+                                 ::pco/input   [:user/id]
+                                 ::pco/output  [:user/age :user/score]}]}))
+           '{:com.wsscode.pathom3.connect.planner/nodes
+                                                                        {1
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id      1,
+                                                                          :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input
+                                                                                                                            {:users {:user/score {}}},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents #{6},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs
+                                                                                                                            #{:scores-sum}},
+                                                                         2
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        users,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:users {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:users},
+                                                                          :com.wsscode.pathom3.connect.planner/run-next         6},
+                                                                         4
+                                                                         {:com.wsscode.pathom3.connect.operation/op-name        age-sum,
+                                                                          :com.wsscode.pathom3.connect.planner/node-id          4,
+                                                                          :com.wsscode.pathom3.connect.planner/expects          {:age-sum {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input            {:users {:user/age {}}},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{6},
+                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:age-sum}},
+                                                                         6
+                                                                         {:com.wsscode.pathom3.connect.planner/node-id      6,
+                                                                          :com.wsscode.pathom3.connect.planner/expects
+                                                                                                                            {:scores-sum {}, :age-sum {}},
+                                                                          :com.wsscode.pathom3.connect.planner/run-and      #{1 4},
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents #{2}}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
+                                                                        {scores-sum #{1}, users #{2}, age-sum #{4}},
+             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
+             :com.wsscode.pathom3.connect.planner/index-ast
+                                                                        {:scores-sum
+                                                                                  {:type :prop, :dispatch-key :scores-sum, :key :scores-sum},
+                                                                         :age-sum {:type :prop, :dispatch-key :age-sum, :key :age-sum}},
+             :com.wsscode.pathom3.connect.planner/index-attrs
+                                                                        {:users 2, :scores-sum 1, :age-sum 4},
+             :com.wsscode.pathom3.connect.planner/root                  2}))))
 
 (deftest compute-run-graph-placeholders-test
   (testing "just placeholder"
