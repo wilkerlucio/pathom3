@@ -25,6 +25,29 @@
              [{:foo {:a [:x] :b [:y]}}])
            {:foo {:x {} :y {}}}))))
 
+(deftest shape-descriptor->ast-test
+  (testing "empty query"
+    (is (= (psd/shape-descriptor->ast
+             {})
+           {:children []
+            :type     :root})))
+
+  (testing "single attribute"
+    (is (= (psd/shape-descriptor->ast
+             {:foo {}})
+           {:type :root, :children [{:type :prop, :dispatch-key :foo, :key :foo}]})))
+
+  (testing "multiple attributes and nesting"
+    (is (= (psd/shape-descriptor->ast
+             {:foo {:bar {}}
+              :baz {}})
+           {:type     :root,
+            :children [{:type         :join,
+                        :dispatch-key :foo,
+                        :key          :foo,
+                        :children     [{:type :prop, :dispatch-key :bar, :key :bar}]}
+                       {:type :prop, :dispatch-key :baz, :key :baz}]}))))
+
 (deftest shape-descriptor->query-test
   (testing "empty query"
     (is (= (psd/shape-descriptor->query

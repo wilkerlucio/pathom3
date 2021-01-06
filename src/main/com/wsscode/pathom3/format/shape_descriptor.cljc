@@ -79,6 +79,29 @@
   [:edn-query-language.core/query => ::shape-descriptor]
   (ast->shape-descriptor (eql/query->ast output)))
 
+(>defn shape-descriptor->ast-children
+  "Convert pathom output format into shape descriptor format."
+  [shape]
+  [::shape-descriptor => vector?]
+  (into []
+        (map (fn [[k v]]
+               (if (seq v)
+                 {:type         :join
+                  :key          k
+                  :dispatch-key k
+                  :children     (shape-descriptor->ast-children v)}
+                 {:type         :prop
+                  :key          k
+                  :dispatch-key k})))
+        shape))
+
+(>defn shape-descriptor->ast
+  "Convert pathom output format into shape descriptor format."
+  [shape]
+  [::shape-descriptor => map?]
+  {:type     :root
+   :children (shape-descriptor->ast-children shape)})
+
 (>defn shape-descriptor->query
   "Convert pathom output format into shape descriptor format."
   [shape]
