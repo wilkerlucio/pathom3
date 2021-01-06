@@ -10,7 +10,7 @@
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as pf.eql]
-    [com.wsscode.pathom3.format.shape-descriptor :as fsd]
+    [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.placeholder :as pph]
     [edn-query-language.core :as eql])
   #?(:cljs
@@ -31,7 +31,7 @@
 
 (>def ::available-data
   "An shape descriptor declaring which data is already available when the planner starts."
-  ::fsd/shape-descriptor)
+  ::pfsd/shape-descriptor)
 
 (>def ::node-parents
   "A set of node-ids containing the direct parents of the current node.
@@ -61,7 +61,7 @@
 
 (>def ::input
   "An IO-MAP description of required inputs to run the node."
-  ::fsd/shape-descriptor)
+  ::pfsd/shape-descriptor)
 
 (>def ::index-attrs
   "A index pointing from attribute to the node that provides its value."
@@ -104,7 +104,7 @@
 
 (>def ::expects
   "An data shape description of what is expected from this execution node to return."
-  ::fsd/shape-descriptor)
+  ::pfsd/shape-descriptor)
 
 (>def ::root
   "A node-id that defines the root in the planner graph."
@@ -135,8 +135,8 @@
   ::pco/op-name)
 
 (>def ::unreachable-attrs
-  "A set containing the attributes that can't be reached considering current graph and available data."
-  ::p.attr/attributes-set)
+  "A shape containing the attributes that can't be reached considering current graph and available data."
+  ::pfsd/shape-descriptor)
 
 (>def ::unreachable-resolvers
   "A set containing the resolvers that can't be reached considering current graph and available data."
@@ -901,7 +901,7 @@
                                    (keep ::input))
                              root-dyn-nodes)
         dyn-requires   (reduce coll/merge-grow (keep ::expects root-dyn-nodes))
-        final-deps     (reduce coll/merge-grow (fsd/ast->shape-descriptor ast) nodes-inputs)
+        final-deps     (reduce coll/merge-grow (pfsd/ast->shape-descriptor ast) nodes-inputs)
         children-ast   (-> (first root-dyn-nodes) ::foreign-ast
                            (update :children #(filterv (comp final-deps :key) %))) ; TODO: fix me, consider all root dyn nodes
         ast'           {:type     :root
