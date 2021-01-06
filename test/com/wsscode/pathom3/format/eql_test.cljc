@@ -141,7 +141,7 @@
   (is (= (pf.eql/merge-ast-children
            nil
            (eql/query->ast [:b]))
-         (eql/query->ast [:b])))
+         {:type :join, :children [{:type :prop, :dispatch-key :b, :key :b}]}))
 
   (is (= (pf.eql/merge-ast-children
            nil
