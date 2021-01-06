@@ -2448,7 +2448,13 @@
              :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
              :com.wsscode.pathom3.connect.planner/unreachable-attrs     {:age-sum {}},
              :com.wsscode.pathom3.connect.planner/index-ast             {:scores-sum {:type :prop, :dispatch-key :scores-sum, :key :scores-sum},
-                                                                         :age-sum    {:type :prop, :dispatch-key :age-sum, :key :age-sum}},
+                                                                         :age-sum    {:type :prop, :dispatch-key :age-sum, :key :age-sum}
+                                                                         :users      {:type         :join
+                                                                                      :key          :users
+                                                                                      :dispatch-key :users
+                                                                                      :children     [{:type         :prop
+                                                                                                      :key          :user/score
+                                                                                                      :dispatch-key :user/score}]}},
              :com.wsscode.pathom3.connect.planner/index-attrs
                                                                         {:users 2, :scores-sum 1},
              :com.wsscode.pathom3.connect.planner/root                  2})))
@@ -2465,16 +2471,22 @@
                                          {::pco/op-name user
                                           ::pco/input   [:user/id]
                                           ::pco/output  [:user/score]}]}))
-           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name scores-sum,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:scores-sum {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {:users #:user{:score {}}}}},
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name scores-sum,
+                                                                             :com.wsscode.pathom3.connect.planner/node-id   1,
+                                                                             :com.wsscode.pathom3.connect.planner/expects   {:scores-sum {}},
+                                                                             :com.wsscode.pathom3.connect.planner/input     {:users #:user{:score {}}}}},
                                                   :index-resolver->nodes {scores-sum #{1}},
                                                   :unreachable-resolvers #{},
-                                                  :unreachable-attrs {},
-                                                  :index-ast {:scores-sum {:type :prop,
-                                                                           :dispatch-key :scores-sum,
-                                                                           :key :scores-sum}}})))
+                                                  :unreachable-attrs     {},
+                                                  :index-ast             {:scores-sum {:type         :prop,
+                                                                                       :dispatch-key :scores-sum,
+                                                                                       :key          :scores-sum}
+                                                                          :users      {:type         :join
+                                                                                       :key          :users
+                                                                                       :dispatch-key :users
+                                                                                       :children     [{:type         :prop
+                                                                                                       :key          :user/score
+                                                                                                       :dispatch-key :user/score}]}}})))
 
   (testing "data partially available, require nested and resolver call"
     (is (= (compute-run-graph
@@ -2497,19 +2509,25 @@
                                                                                                          :other {}},
                                                              :com.wsscode.pathom3.connect.planner/node-parents #{2},
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:scores-sum}},
-                                                          2 {:com.wsscode.pathom3.connect.operation/op-name other,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:other {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                          2 {:com.wsscode.pathom3.connect.operation/op-name        other,
+                                                             :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                             :com.wsscode.pathom3.connect.planner/expects          {:other {}},
+                                                             :com.wsscode.pathom3.connect.planner/input            {},
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:other},
-                                                             :com.wsscode.pathom3.connect.planner/run-next 1}},
+                                                             :com.wsscode.pathom3.connect.planner/run-next         1}},
                                                   :index-resolver->nodes {scores-sum #{1},
-                                                                          other #{2}},
+                                                                          other      #{2}},
                                                   :unreachable-resolvers #{},
                                                   :unreachable-attrs {},
-                                                  :index-ast {:scores-sum {:type :prop,
+                                                  :index-ast {:scores-sum {:type         :prop,
                                                                            :dispatch-key :scores-sum,
-                                                                           :key :scores-sum}},
+                                                                           :key          :scores-sum}
+                                                              :users      {:type         :join
+                                                                           :key          :users
+                                                                           :dispatch-key :users
+                                                                           :children     [{:type         :prop
+                                                                                           :key          :user/score
+                                                                                           :dispatch-key :user/score}]}},
                                                   :index-attrs {:other 2, :scores-sum 1},
                                                   :root 2})))
 
@@ -2587,7 +2605,14 @@
                                                         :total-max-score
                                                         {:type         :prop,
                                                          :dispatch-key :total-max-score,
-                                                         :key          :total-max-score}},
+                                                         :key          :total-max-score}
+                                                        :users
+                                                        {:type         :join
+                                                         :key          :users
+                                                         :dispatch-key :users
+                                                         :children     [{:type         :prop
+                                                                         :key          :user/score
+                                                                         :dispatch-key :user/score}]}},
              :com.wsscode.pathom3.connect.planner/index-attrs
                                                        {:users 2, :scores-sum 1},
              :com.wsscode.pathom3.connect.planner/root 2})))
@@ -2643,7 +2668,16 @@
              :com.wsscode.pathom3.connect.planner/index-ast
                                                                         {:scores-sum
                                                                                   {:type :prop, :dispatch-key :scores-sum, :key :scores-sum},
-                                                                         :age-sum {:type :prop, :dispatch-key :age-sum, :key :age-sum}},
+                                                                         :age-sum {:type :prop, :dispatch-key :age-sum, :key :age-sum}
+                                                                         :users      {:children     [{:dispatch-key :user/score
+                                                                                                      :key          :user/score
+                                                                                                      :type         :prop}
+                                                                                                     {:dispatch-key :user/age
+                                                                                                      :key          :user/age
+                                                                                                      :type         :prop}]
+                                                                                      :dispatch-key :users
+                                                                                      :key          :users
+                                                                                      :type         :join}},
              :com.wsscode.pathom3.connect.planner/index-attrs
                                                                         {:users 2, :scores-sum 1, :age-sum 4},
              :com.wsscode.pathom3.connect.planner/root                  2}))))

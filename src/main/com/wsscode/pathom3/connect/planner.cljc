@@ -1138,8 +1138,19 @@
   [{::keys [index-attrs]} attrs]
   (into #{} (filter #(contains? index-attrs %) attrs)))
 
-(defn merge-missing-chain [graph graph' env missing']
-  (let [missing-with-nodes (attributes-with-nodes graph' missing')]
+(defn merge-nested-missing-ast [graph missing]
+  (reduce-kv
+    (fn [g attr shape]
+      (update-in g [::index-ast attr] pf.eql/merge-ast-children
+        (-> (pfsd/shape-descriptor->ast shape)
+            (assoc :type :prop :key attr :dispatch-key attr))))
+    graph
+    (coll/filter-vals seq missing)))
+
+(defn merge-missing-chain [graph graph' env missing]
+  (let [missing'           (into #{} (keys missing))
+        missing-with-nodes (attributes-with-nodes graph' missing')
+        graph'             (merge-nested-missing-ast graph' missing)]
     (if (seq missing-with-nodes)
       (let [ancestor (find-missing-ancestor graph' missing-with-nodes)]
         (assert ancestor "Error finding ancestor during missing chain computation")
@@ -1169,7 +1180,7 @@
           still-missing (into {} (remove #(required-input-reachable? graph' env %)) missing)
           all-provided? (empty? still-missing)]
       (if all-provided?
-        (merge-missing-chain graph graph' env missing')
+        (merge-missing-chain graph graph' env missing)
         (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
               unreachable-attrs (unreachable-attrs-after-missing-check env unreachable-resolvers still-missing)]
           (update out' ::unreachable-attrs pfsd/merge-shapes unreachable-attrs))))

@@ -207,6 +207,6 @@
           (seq idx')
           (assoc :children (map-children->children idx'))
 
-          (and (seq idx') (= :prop (:type ast1)))
+          (and (seq idx') (not (contains? #{:join :root} (:type ast1))))
           (assoc :type :join))
         (dissoc :query))))
