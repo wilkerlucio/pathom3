@@ -126,3 +126,77 @@
   (is (= (pf.eql/pick-union-entry (eql/query->ast1 [{:foo {:a [:x] :b [:y]}}])
                                   {:b 1})
          {:type :root, :children [{:type :prop, :dispatch-key :y, :key :y}]})))
+
+(deftest merge-ast-children-test
+  (is (= (pf.eql/merge-ast-children
+           (eql/query->ast [])
+           (eql/query->ast []))
+         (eql/query->ast [])))
+
+  (is (= (pf.eql/merge-ast-children
+           (eql/query->ast [:a])
+           (eql/query->ast [:b]))
+         (eql/query->ast [:a :b])))
+
+  (is (= (pf.eql/merge-ast-children
+           nil
+           (eql/query->ast [:b]))
+         (eql/query->ast [:b])))
+
+  (is (= (pf.eql/merge-ast-children
+           nil
+           (eql/query->ast1 [:b]))
+         (eql/query->ast1 [:b])))
+
+  (is (= (pf.eql/merge-ast-children
+           (eql/query->ast [:a])
+           (eql/query->ast [:a]))
+         {:type     :root,
+          :children [{:type :prop, :dispatch-key :a, :key :a}]}))
+
+  (is (= (pf.eql/merge-ast-children
+           (eql/query->ast1 [:a])
+           (eql/query->ast1 [:a]))
+         {:type :prop, :dispatch-key :a, :key :a}))
+
+  (is (= (pf.eql/merge-ast-children
+           (eql/query->ast1 [:a])
+           (eql/query->ast1 [{:a [:b]}]))
+         {:type :join,
+          :dispatch-key :a,
+          :key :a,
+          :children [{:type :prop, :dispatch-key :b, :key :b}]}))
+
+  (is (= (pf.eql/merge-ast-children
+           (eql/query->ast [{:a [:b]}])
+           (eql/query->ast [:a]))
+         {:type     :root,
+          :children [{:type         :join,
+                      :dispatch-key :a,
+                      :key          :a,
+                      :children     [{:type :prop, :dispatch-key :b, :key :b}]}]}))
+
+  (is (= (pf.eql/merge-ast-children
+           (eql/query->ast [{:a [:b]}])
+           (eql/query->ast [{:a [{:b [:c]}]}]))
+         {:type     :root,
+          :children [{:type         :join,
+                      :dispatch-key :a,
+                      :key          :a,
+                      :children     [{:type         :join,
+                                      :dispatch-key :b,
+                                      :key          :b,
+                                      :children     [{:type :prop, :dispatch-key :c, :key :c}]}]}]}))
+
+  (is (= (pf.eql/merge-ast-children
+           (eql/query->ast [{:a [:b]}])
+           (eql/query->ast [{:a [{:c [:d]}]}]))
+         {:type     :root,
+          :children [{:type         :join,
+                      :dispatch-key :a,
+                      :key          :a,
+                      :children     [{:type :prop, :dispatch-key :b, :key :b}
+                                     {:type         :join,
+                                      :dispatch-key :c,
+                                      :key          :c,
+                                      :children     [{:type :prop, :dispatch-key :d, :key :d}]}]}]})))

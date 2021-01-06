@@ -184,3 +184,29 @@
            data)
          (sort-by (comp pr-str #(if (map? %) (ffirst %) %))) ; sort results
          vec)))
+
+(defn map-children->children [map-children]
+  (reduce-kv
+    (fn [children _ ast]
+      (conj children (cond-> ast (:children ast) (update :children map-children->children))))
+    []
+    map-children))
+
+(defn merge-ast-children [ast1 ast2]
+  (let [idx  (coll/index-by :key (:children ast1))
+        idx' (reduce
+               (fn [idx {:keys [key] :as node}]
+                 (let [node (dissoc node :query)]
+                   (if (contains? idx key)
+                     (update idx key merge-ast-children node)
+                     (assoc idx key node))))
+               idx
+               (:children ast2))]
+    (-> (merge ast2 ast1)
+        (cond->
+          (seq idx')
+          (assoc :children (map-children->children idx'))
+
+          (and (seq idx') (= :prop (:type ast1)))
+          (assoc :type :join))
+        (dissoc :query))))
