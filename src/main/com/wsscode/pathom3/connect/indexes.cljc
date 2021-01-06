@@ -97,9 +97,9 @@
                  attr)))
         input))
 
-(defn index-attributes [{::pco/keys [op-name input output]}]
+(defn index-attributes [{::pco/keys [op-name input provides]}]
   (let [input         (input-set input)
-        provides      (remove #(contains? input %) (keys (pfsd/query->shape-descriptor output)))
+        provides      (remove #(contains? input %) (keys provides))
         op-group      #{op-name}
         attr-provides (zipmap provides (repeat op-group))
         input-count   (count input)]

@@ -26,9 +26,10 @@
 
 (deftest index-attributes-test
   (testing "combinations"
-    (is (= (pci/index-attributes {::pco/op-name 'x
-                                  ::pco/input   [:a :b]
-                                  ::pco/output  [:c]})
+    (is (= (pci/index-attributes {::pco/op-name  'x
+                                  ::pco/input    [:a :b]
+                                  ::pco/output   [:c]
+                                  ::pco/provides {:c {}}})
            '{#{:b :a} #:com.wsscode.pathom3.connect.indexes{:attr-id #{:b :a},
                                                             :attr-provides {:c #{x}},
                                                             :attr-input-in #{x}},
