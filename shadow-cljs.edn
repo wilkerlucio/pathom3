@@ -4,7 +4,7 @@
                  :test-dir         "web/public/js/test"
                  :ns-regexp        "-test$"
                  :compiler-options {:static-fns      false
-                                    :external-config {:guardrails {:throw? true :emit-spec? true}}}
+                                    :external-config {:guardrails {:throw? false :emit-spec? true}}}
                  :devtools         {:http-port          9158
                                     :http-resource-root "public"
                                     :http-root          "web/public/js/test"}}
