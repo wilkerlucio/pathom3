@@ -361,26 +361,7 @@
                                                         :query        [:baz]
                                                         :type         :join}}}))))
 
-(deftest compute-run-graph-test
-  (testing "simplest path"
-    (is (= (compute-run-graph
-             {::resolvers [{::pco/op-name 'a
-                            ::pco/output  [:a]}]
-              ::eql/query [:a]})
-           '{::pcp/nodes                 {1 {::pco/op-name          a
-                                             ::pcp/node-id          1
-                                             ::pcp/expects          {:a {}}
-                                             ::pcp/input            {}
-                                             ::pcp/source-for-attrs #{:a}}}
-             ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
-             ::pcp/root                  1
-             ::pcp/index-attrs           {:a 1}
-             ::pcp/index-ast             {:a {:dispatch-key :a
-                                              :key          :a
-                                              :type         :prop}}})))
-
+(deftest compute-run-graph-cycles-test
   (testing "cycles"
     (is (= (compute-run-graph
              {::resolvers [{::pco/op-name 'a
@@ -454,7 +435,27 @@
                                                 :key          :c},
                                             :a {:type         :prop,
                                                 :dispatch-key :a,
-                                                :key          :a}}}))))
+                                                :key          :a}}})))))
+
+(deftest compute-run-graph-test
+  (testing "simplest path"
+    (is (= (compute-run-graph
+             {::resolvers [{::pco/op-name 'a
+                            ::pco/output  [:a]}]
+              ::eql/query [:a]})
+           '{::pcp/nodes                 {1 {::pco/op-name          a
+                                             ::pcp/node-id          1
+                                             ::pcp/expects          {:a {}}
+                                             ::pcp/input            {}
+                                             ::pcp/source-for-attrs #{:a}}}
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/unreachable-resolvers #{}
+             ::pcp/unreachable-attrs     {}
+             ::pcp/root                  1
+             ::pcp/index-attrs           {:a 1}
+             ::pcp/index-ast             {:a {:dispatch-key :a
+                                              :key          :a
+                                              :type         :prop}}})))
 
   (testing "collapse nodes"
     (is (= (compute-run-graph
