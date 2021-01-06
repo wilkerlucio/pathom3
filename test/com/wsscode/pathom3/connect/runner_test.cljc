@@ -293,6 +293,27 @@
           [{:user/id 123 :user/name "U"}
            {:video/id 2 :video/title "V"}]})))
 
+(deftest run-graph!-nested-inputs-test
+  (is (= (run-graph
+           (pci/register
+             [(pco/resolver 'users
+                {::pco/output [{:users [:user/id]}]}
+                (fn [_ _]
+                  {:users [{:user/id 1}
+                           {:user/id 2}]}))
+              (pbir/static-attribute-map-resolver :user/id :user/score
+                                                  {1 10
+                                                   2 20})
+              (pco/resolver 'total-score
+                {::pco/input  [{:users [:user/score]}]
+                 ::pco/output [:total-score]}
+                (fn [_ {:keys [users]}]
+                  {:total-score (reduce + 0 (map :user/score users))}))])
+           [:total-score]
+           {})
+         {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
+          :total-score 30})))
+
 (pco/defresolver batch-fetch [items]
   {::pco/input  [:id]
    ::pco/output [:v]
@@ -303,7 +324,6 @@
   {::pco/input  [:id]
    ::pco/output [:v-param]
    ::pco/batch? true}
-  (tap> env)
   (let [m (-> (pco/params env) :multiplier (or 10))]
     (mapv #(hash-map :v (* m (:id %))) items)))
 

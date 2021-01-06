@@ -2417,7 +2417,7 @@
 
   (testing "allow possible path"
     (is (= (compute-run-graph
-             (-> {::eql/query [:scores-sum :age-sum]
+             (-> {::eql/query [:scores-sum]
                   ::resolvers '[{::pco/op-name scores-sum
                                  ::pco/input   [{:users [:user/score]}]
                                  ::pco/output  [:scores-sum]}
@@ -2446,9 +2446,8 @@
              :com.wsscode.pathom3.connect.planner/index-resolver->nodes
                                                                         {scores-sum #{1}, users #{2}},
              :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {:age-sum {}},
+             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
              :com.wsscode.pathom3.connect.planner/index-ast             {:scores-sum {:type :prop, :dispatch-key :scores-sum, :key :scores-sum},
-                                                                         :age-sum    {:type :prop, :dispatch-key :age-sum, :key :age-sum}
                                                                          :users      {:type         :join
                                                                                       :key          :users
                                                                                       :dispatch-key :users
