@@ -39,3 +39,31 @@
                                             {:baz "a"}]})
          {:foo {:bar {}
                 :baz {}}})))
+
+(deftest missing-test
+  (is (= (psd/missing {} {})
+         nil))
+
+  (is (= (psd/missing {} {:foo {}})
+         {:foo {}}))
+
+  (is (= (psd/missing {} {:foo {:bar {}}})
+         {:foo {:bar {}}}))
+
+  (is (= (psd/missing {:foo {}} {})
+         nil))
+
+  (is (= (psd/missing {:foo {}} {:foo {}})
+         nil))
+
+  (is (= (psd/missing {:foo {}} {:foo {} :bar {}})
+         {:bar {}}))
+
+  (is (= (psd/missing {:foo {:bar {}}} {:foo {:bar {}}})
+         nil))
+
+  (is (= (psd/missing {:foo {}} {:foo {:bar {}}})
+         {:foo {:bar {}}}))
+
+  (is (= (psd/missing {:foo {:bar {}}} {:foo {:bar {} :baz {}}})
+         {:foo {:baz {}}})))

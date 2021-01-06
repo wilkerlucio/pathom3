@@ -78,3 +78,22 @@
   [output]
   [:edn-query-language.core/query => ::shape-descriptor]
   (ast->shape-descriptor (eql/query->ast output)))
+
+(>defn missing
+  "Given some available and required shapes, returns which items are missing from available
+  in the required. Returns nil when nothing is missing."
+  [available required]
+  [::shape-descriptor ::shape-descriptor
+   => (? ::shape-descriptor)]
+  (let [res (into
+              {}
+              (keep (fn [el]
+                      (let [attr      (key el)
+                            sub-query (val el)]
+                        (if (contains? available attr)
+                          (if-let [sub-req (and (seq sub-query)
+                                                (missing (get available attr) sub-query))]
+                            (coll/make-map-entry attr sub-req))
+                          el))))
+              required)]
+    (if (seq res) res)))
