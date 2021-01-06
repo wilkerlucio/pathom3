@@ -142,6 +142,9 @@
         (time (compute-run-graph* options))
         (compute-run-graph* options))
 
+      true
+      (vary-meta assoc ::env env)
+
       render-graphviz?
       (render-graph env))))
 
