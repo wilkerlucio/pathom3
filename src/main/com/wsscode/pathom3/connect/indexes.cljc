@@ -163,8 +163,9 @@
   the output to input index in the ::pc/index-oir and the reverse index for auto-complete
   to the index ::pc/index-io."
   ([indexes resolver]
-   (let [{::pco/keys [op-name input output] :as op-config} (pco/operation-config resolver)
-         input' (input-set input)]
+   (let [{::pco/keys [op-name input output requires] :as op-config} (pco/operation-config resolver)
+         input'     (input-set input)
+         root-props (pfse/query-root-properties output)]
      (assert (nil? (com.wsscode.pathom3.connect.indexes/resolver indexes op-name))
        (str "Tried to register duplicated resolver: " op-name))
      (merge-indexes indexes
@@ -173,10 +174,10 @@
         ::index-io         {input' (pfsd/query->shape-descriptor output)}
         ::index-oir        (reduce (fn [indexes out-attr]
                                      (cond-> indexes
-                                       (not= #{out-attr} input')
+                                       (not (contains? requires out-attr))
                                        (update-in [out-attr input'] coll/sconj op-name)))
                              {}
-                             (pfse/query-root-properties output))}))))
+                             root-props)}))))
 
 (defn- register-mutation
   "Low level function to add a mutation to the index. For mutations, the index-mutations

@@ -62,7 +62,15 @@
         (is (thrown-with-msg?
               #?(:clj AssertionError :cljs js/Error)
               #"Tried to register duplicated resolver: r"
-              (pci/register [resolver resolver]))))))
+              (pci/register [resolver resolver])))))
+
+    (testing "remove outputs mentioned at input, and warns"
+      (is (= (-> (pco/resolver 'r {::pco/input  [:id]
+                                   ::pco/output [:id :bar]}
+                   (fn [_ _]))
+                 (pci/register)
+                 ::pci/index-oir)
+             {:bar {#{:id} #{'r}}}))))
 
   (testing "mutation"
     (let [mutation (pco/mutation 'm {::pco/output [:foo]
