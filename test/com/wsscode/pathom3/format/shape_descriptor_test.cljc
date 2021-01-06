@@ -25,6 +25,23 @@
              [{:foo {:a [:x] :b [:y]}}])
            {:foo {:x {} :y {}}}))))
 
+(deftest shape-descriptor->query-test
+  (testing "empty query"
+    (is (= (psd/shape-descriptor->query
+             {})
+           [])))
+
+  (testing "single attribute"
+    (is (= (psd/shape-descriptor->query
+             {:foo {}})
+           [:foo])))
+
+  (testing "multiple attributes and nesting"
+    (is (= (psd/shape-descriptor->query
+             {:foo {:bar {}}
+              :baz {}})
+           [{:foo [:bar]} :baz]))))
+
 (deftest data->shape-descriptor-test
   (is (= (psd/data->shape-descriptor {})
          {}))

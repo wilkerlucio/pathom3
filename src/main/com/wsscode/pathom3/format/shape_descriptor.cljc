@@ -79,6 +79,17 @@
   [:edn-query-language.core/query => ::shape-descriptor]
   (ast->shape-descriptor (eql/query->ast output)))
 
+(>defn shape-descriptor->query
+  "Convert pathom output format into shape descriptor format."
+  [shape]
+  [::shape-descriptor => :edn-query-language.core/query]
+  (into []
+        (map (fn [[k v]]
+               (if (seq v)
+                 {k (shape-descriptor->query v)}
+                 k)))
+        shape))
+
 (>defn missing
   "Given some available and required shapes, returns which items are missing from available
   in the required. Returns nil when nothing is missing."
