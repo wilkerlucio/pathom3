@@ -885,9 +885,13 @@
   (let [ast            (pf.eql/maybe-merge-union-ast ast)
         nested-graph   (compute-run-graph*
                          (base-graph)
+                         ; TODO: attempt to replace with reset-env
                          (-> (base-env)
                              (merge (select-keys env [::pci/index-resolvers
-                                                      ::pci/index-oir]))
+                                                      ::pci/index-oir
+                                                      ::pci/index-io
+                                                      ::pci/index-mutations
+                                                      ::pci/index-attributes]))
                              (inject-index-nested-provides env)
                              (assoc :edn-query-language.ast/node ast)))
         sym            (pc-sym env)
