@@ -318,6 +318,20 @@
   (testing "source data in available data"
     (is (= (run-graph
              (pci/register
+               [(pco/resolver 'total-score
+                  {::pco/input  [{:users [:user/score]}]
+                   ::pco/output [:total-score]}
+                  (fn [_ {:keys [users]}]
+                    {:total-score (reduce + 0 (map :user/score users))}))])
+             [:total-score]
+             {:users [{:user/score 10}
+                      {:user/score 20}]})
+           {:users       [#:user{:score 10} #:user{:score 20}]
+            :total-score 30})))
+
+  (testing "source data partially in available data"
+    (is (= (run-graph
+             (pci/register
                [(pbir/static-attribute-map-resolver :user/id :user/score
                   {1 10
                    2 20})
