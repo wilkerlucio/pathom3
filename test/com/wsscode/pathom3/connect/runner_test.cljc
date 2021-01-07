@@ -175,8 +175,8 @@
                  (get 1)
                  ::pcr/node-error
                  ex-data)
-             {:available nil
-              :required  [:b]}))))
+             {:available {}
+              :required  {:b {}}}))))
 
   (testing "processing sequence of consistent elements"
     (is (= (run-graph (pci/register [geo/full-registry
@@ -314,6 +314,27 @@
              {})
            {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
             :total-score 30})))
+
+  (testing "resolver gets only the exact shape it asked for"
+    (is (= (run-graph
+             (pci/register
+               [(pco/resolver 'users
+                  {::pco/output [{:users [:user/id]}]}
+                  (fn [_ _]
+                    {:users [{:user/id 1}
+                             {:user/id 2}]}))
+                (pbir/static-attribute-map-resolver :user/id :user/score
+                  {1 10
+                   2 20})
+                (pco/resolver 'total-score
+                  {::pco/input  [{:users [:user/score]}]
+                   ::pco/output [:filter-test]}
+                  (fn [_ {:keys [users]}]
+                    {:filter-test users}))])
+             [:filter-test]
+             {})
+           {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
+            :filter-test [#:user{:score 10} #:user{:score 20}]})))
 
   (testing "source data in available data"
     (is (= (run-graph

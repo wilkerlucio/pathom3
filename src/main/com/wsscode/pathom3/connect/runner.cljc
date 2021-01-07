@@ -178,20 +178,20 @@
    {::pco/keys [op-name]
     ::pcp/keys [input]
     :as        node}]
-  (let [input-keys  (keys input)
-        resolver    (pci/resolver env op-name)
+  (let [resolver    (pci/resolver env op-name)
         {::pco/keys [op-name batch? cache? cache-store]
          :or        {cache? true}} (pco/operation-config resolver)
         env         (assoc env ::pcp/node node)
         entity      (p.ent/entity env)
-        input-data  (select-keys entity input-keys)
+        input-data  (pfsd/select-shape entity input)
+        input-shape (pfsd/data->shape-descriptor input-data)
         params      (pco/params env)
         start       (time/now-ms)
         cache-store (choose-cache-store env cache-store)
         result      (try
-                      (if (< (count input-data) (count input-keys))
-                        (throw (ex-info "Insufficient data" {:required  input-keys
-                                                             :available (keys input-data)}))
+                      (if (pfsd/missing input-shape input)
+                        (throw (ex-info "Insufficient data" {:required  input
+                                                             :available input-shape}))
                         (cond
                           batch?
                           {::batch-hold {::pco/op-name     op-name
