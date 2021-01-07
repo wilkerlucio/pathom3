@@ -131,3 +131,27 @@
                           el))))
               required)]
     (if (seq res) res)))
+
+(>defn select-shape
+  "Select the parts of data covered by shape. This is similar to select-keys, but for
+  nested shapes."
+  [data shape]
+  [map? ::shape-descriptor => map?]
+  (reduce-kv
+    (fn [out k sub]
+      (if-let [x (find data k)]
+        (let [v (val x)]
+          (if (seq sub)
+            (cond
+              (map? v)
+              (assoc out k (select-shape v sub))
+
+              (or (sequential? v) (set? v))
+              (assoc out k (into (empty v) (map #(select-shape % sub)) v))
+
+              :else
+              (assoc out k v))
+            (assoc out k v)))
+        out))
+    (empty data)
+    shape))

@@ -107,3 +107,41 @@
 
   (is (= (psd/missing {:foo {:bar {}}} {:foo {:bar {} :baz {}}})
          {:foo {:baz {}}})))
+
+(deftest select-shape-test
+  (is (= (psd/select-shape {} {})
+         {}))
+
+  (is (= (psd/select-shape {:foo "bar"} {})
+         {}))
+
+  (is (= (psd/select-shape {:foo "bar"} {:foo {}})
+         {:foo "bar"}))
+
+  (is (= (psd/select-shape {:foo "bar"} {:foo {} :baz {}})
+         {:foo "bar"}))
+
+  (is (= (psd/select-shape {:foo "bar" :baz "baz"} {:foo {}})
+         {:foo "bar"}))
+
+  (is (= (psd/select-shape {:foo {:a 1 :b 2}} {:foo {}})
+         {:foo {:a 1 :b 2}}))
+
+  (is (= (psd/select-shape {:foo {:a 1 :b 2}} {:foo {:a {}}})
+         {:foo {:a 1}}))
+
+  (is (= (psd/select-shape {:foo [{:a 1 :b 2}
+                                  {:a 3 :b 4}]} {:foo {:a {}}})
+         {:foo [{:a 1}
+                {:a 3}]}))
+
+  (is (= (psd/select-shape {:foo #{{:a 1 :b 2}
+                                   {:a 3 :b 4}}} {:foo {:a {}}})
+         {:foo #{{:a 1}
+                 {:a 3}}}))
+
+  (testing "keep meta"
+    (is (= (-> (psd/select-shape ^:yes? {:foo [{:a 1 :b 2}
+                                               {:a 3 :b 4}]} {:foo {:a {}}})
+               (meta))
+           {:yes? true}))))
