@@ -19,15 +19,17 @@
            '{::pco/input    []
              ::pco/op-name  r
              ::pco/output   [:foo]
-             ::pco/provides {:foo {}}})))
+             ::pco/provides {:foo {}}
+             ::pco/requires {}})))
 
   (is (= (pci/resolver-config {} 'r) nil)))
 
 (deftest index-attributes-test
   (testing "combinations"
-    (is (= (pci/index-attributes {::pco/op-name 'x
-                                  ::pco/input   [:a :b]
-                                  ::pco/output  [:c]})
+    (is (= (pci/index-attributes {::pco/op-name  'x
+                                  ::pco/input    [:a :b]
+                                  ::pco/output   [:c]
+                                  ::pco/provides {:c {}}})
            '{#{:b :a} #:com.wsscode.pathom3.connect.indexes{:attr-id #{:b :a},
                                                             :attr-provides {:c #{x}},
                                                             :attr-input-in #{x}},
@@ -54,13 +56,29 @@
                                                    :attr-output-in #{r}
                                                    :attr-reach-via {#{} #{r}}}}
               ::pci/index-io         {#{} {:foo {}}}
-              ::pci/index-oir        {:foo {#{} #{'r}}}}))
+              ::pci/index-oir        {:foo {{} #{'r}}}}))
 
       (testing "throw error on duplicated name"
         (is (thrown-with-msg?
               #?(:clj AssertionError :cljs js/Error)
               #"Tried to register duplicated resolver: r"
-              (pci/register [resolver resolver]))))))
+              (pci/register [resolver resolver])))))
+
+    (testing "remove outputs mentioned at input, and warns"
+      (is (= (-> (pco/resolver 'r {::pco/input  [:id]
+                                   ::pco/output [:id :bar]}
+                   (fn [_ _]))
+                 (pci/register)
+                 ::pci/index-oir)
+             {:bar {{:id {}} #{'r}}})))
+
+    (testing "nested inputs"
+      (is (= (-> (pco/resolver 'r {::pco/input  [{:users [:score]}]
+                                   ::pco/output [:total-score]}
+                   (fn [_ _]))
+                 (pci/register)
+                 ::pci/index-oir)
+             {:total-score {{:users {:score {}}} #{'r}}}))))
 
   (testing "mutation"
     (let [mutation (pco/mutation 'm {::pco/output [:foo]
@@ -98,8 +116,8 @@
                                        :foo2 #::pci{:attr-id        :foo2
                                                     :attr-output-in #{r2}
                                                     :attr-reach-via {#{} #{r2}}}}
-              ::pci/index-oir        {:foo  {#{} #{'r}}
-                                      :foo2 {#{} #{'r2}}}
+              ::pci/index-oir        {:foo  {{} #{'r}}
+                                      :foo2 {{} #{'r2}}}
               ::pci/index-io         {#{} {:foo  {}
                                            :foo2 {}}}}))))
 
@@ -125,8 +143,8 @@
                                        :foo2 #::pci{:attr-id        :foo2
                                                     :attr-output-in #{r2}
                                                     :attr-reach-via {#{} #{r2}}}}
-              ::pci/index-oir        {:foo  {#{} #{'r}}
-                                      :foo2 {#{} #{'r2}}}
+              ::pci/index-oir        {:foo  {{} #{'r}}
+                                      :foo2 {{} #{'r2}}}
               ::pci/index-io         {#{} {:foo  {}
                                            :foo2 {}}}}))
 
@@ -226,3 +244,16 @@
                                                ::y {}}
                                      ::d)
            false))))
+
+(deftest input-set-test
+  (is (= (pci/input-set [])
+         #{}))
+
+  (is (= (pci/input-set [:foo])
+         #{:foo}))
+
+  (is (= (pci/input-set [:foo :bar])
+         #{:foo :bar}))
+
+  (is (= (pci/input-set [{:foo [:baz]} :bar])
+         #{{:foo #{:baz}} :bar})))

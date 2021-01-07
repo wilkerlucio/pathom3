@@ -8,10 +8,18 @@
     [com.wsscode.pathom3.format.eql :as pfse]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]))
 
-(>def ::indexes map?)
-(>def ::index-resolvers map?)
-(>def ::index-oir map?)
-(>def ::index-io map?)
+(>def ::indexes (s/keys))
+(>def ::index-attributes map?)
+(>def ::index-resolvers (s/map-of ::pco/op-name ::pco/resolver))
+(>def ::index-mutations (s/map-of ::pco/op-name ::pco/mutation))
+
+(>def ::index-oir
+  "Index: Output -> Input -> Resolver"
+  (s/map-of ::p.attr/attribute
+            (s/map-of ::pfsd/shape-descriptor (s/coll-of ::pco/op-name :kind set?))))
+
+(>def ::index-io "Index: Input -> Output"
+  (s/map-of ::p.attr/attributes-set ::pfsd/shape-descriptor))
 
 (>def ::operations
   (s/or :single ::pco/operation
@@ -74,9 +82,17 @@
         (assoc idx k v)))
     ia ib))
 
-(defn index-attributes [{::pco/keys [op-name input output]}]
-  (let [input         (set input)
-        provides      (remove #(contains? input %) (keys (pfsd/query->shape-descriptor output)))
+(defn input-set [input]
+  (into #{}
+        (map (fn [attr]
+               (if (map? attr)
+                 (coll/map-vals input-set attr)
+                 attr)))
+        input))
+
+(defn index-attributes [{::pco/keys [op-name input provides]}]
+  (let [input         (input-set input)
+        provides      (remove #(contains? input %) (keys provides))
         op-group      #{op-name}
         attr-provides (zipmap provides (repeat op-group))
         input-count   (count input)]
@@ -140,8 +156,9 @@
   the output to input index in the ::pc/index-oir and the reverse index for auto-complete
   to the index ::pc/index-io."
   ([indexes resolver]
-   (let [{::pco/keys [op-name input output] :as op-config} (pco/operation-config resolver)
-         input' (set input)]
+   (let [{::pco/keys [op-name output requires] :as op-config} (pco/operation-config resolver)
+         input'     (into #{} (keys requires))
+         root-props (pfse/query-root-properties output)]
      (assert (nil? (com.wsscode.pathom3.connect.indexes/resolver indexes op-name))
        (str "Tried to register duplicated resolver: " op-name))
      (merge-indexes indexes
@@ -150,10 +167,10 @@
         ::index-io         {input' (pfsd/query->shape-descriptor output)}
         ::index-oir        (reduce (fn [indexes out-attr]
                                      (cond-> indexes
-                                       (not= #{out-attr} input')
-                                       (update-in [out-attr input'] coll/sconj op-name)))
+                                       (not (contains? requires out-attr))
+                                       (update-in [out-attr requires] coll/sconj op-name)))
                              {}
-                             (pfse/query-root-properties output))}))))
+                             root-props)}))))
 
 (defn- register-mutation
   "Low level function to add a mutation to the index. For mutations, the index-mutations

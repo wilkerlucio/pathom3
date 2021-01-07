@@ -78,3 +78,80 @@
   [output]
   [:edn-query-language.core/query => ::shape-descriptor]
   (ast->shape-descriptor (eql/query->ast output)))
+
+(>defn shape-descriptor->ast-children
+  "Convert pathom output format into shape descriptor format."
+  [shape]
+  [::shape-descriptor => vector?]
+  (into []
+        (map (fn [[k v]]
+               (if (seq v)
+                 {:type         :join
+                  :key          k
+                  :dispatch-key k
+                  :children     (shape-descriptor->ast-children v)}
+                 {:type         :prop
+                  :key          k
+                  :dispatch-key k})))
+        shape))
+
+(>defn shape-descriptor->ast
+  "Convert pathom output format into shape descriptor format."
+  [shape]
+  [::shape-descriptor => map?]
+  {:type     :root
+   :children (shape-descriptor->ast-children shape)})
+
+(>defn shape-descriptor->query
+  "Convert pathom output format into shape descriptor format."
+  [shape]
+  [::shape-descriptor => :edn-query-language.core/query]
+  (into []
+        (map (fn [[k v]]
+               (if (seq v)
+                 {k (shape-descriptor->query v)}
+                 k)))
+        shape))
+
+(>defn missing
+  "Given some available and required shapes, returns which items are missing from available
+  in the required. Returns nil when nothing is missing."
+  [available required]
+  [::shape-descriptor ::shape-descriptor
+   => (? ::shape-descriptor)]
+  (let [res (into
+              {}
+              (keep (fn [el]
+                      (let [attr      (key el)
+                            sub-query (val el)]
+                        (if (contains? available attr)
+                          (if-let [sub-req (and (seq sub-query)
+                                                (missing (get available attr) sub-query))]
+                            (coll/make-map-entry attr sub-req))
+                          el))))
+              required)]
+    (if (seq res) res)))
+
+(>defn select-shape
+  "Select the parts of data covered by shape. This is similar to select-keys, but for
+  nested shapes."
+  [data shape]
+  [map? ::shape-descriptor => map?]
+  (reduce-kv
+    (fn [out k sub]
+      (if-let [x (find data k)]
+        (let [v (val x)]
+          (if (seq sub)
+            (cond
+              (map? v)
+              (assoc out k (select-shape v sub))
+
+              (or (sequential? v) (set? v))
+              (assoc out k (into (empty v) (map #(select-shape % sub)) v))
+
+              :else
+              (assoc out k v))
+            (assoc out k v)))
+        out))
+    (empty data)
+    shape))

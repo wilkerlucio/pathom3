@@ -25,6 +25,46 @@
              [{:foo {:a [:x] :b [:y]}}])
            {:foo {:x {} :y {}}}))))
 
+(deftest shape-descriptor->ast-test
+  (testing "empty query"
+    (is (= (psd/shape-descriptor->ast
+             {})
+           {:children []
+            :type     :root})))
+
+  (testing "single attribute"
+    (is (= (psd/shape-descriptor->ast
+             {:foo {}})
+           {:type :root, :children [{:type :prop, :dispatch-key :foo, :key :foo}]})))
+
+  (testing "multiple attributes and nesting"
+    (is (= (psd/shape-descriptor->ast
+             {:foo {:bar {}}
+              :baz {}})
+           {:type     :root,
+            :children [{:type         :join,
+                        :dispatch-key :foo,
+                        :key          :foo,
+                        :children     [{:type :prop, :dispatch-key :bar, :key :bar}]}
+                       {:type :prop, :dispatch-key :baz, :key :baz}]}))))
+
+(deftest shape-descriptor->query-test
+  (testing "empty query"
+    (is (= (psd/shape-descriptor->query
+             {})
+           [])))
+
+  (testing "single attribute"
+    (is (= (psd/shape-descriptor->query
+             {:foo {}})
+           [:foo])))
+
+  (testing "multiple attributes and nesting"
+    (is (= (psd/shape-descriptor->query
+             {:foo {:bar {}}
+              :baz {}})
+           [{:foo [:bar]} :baz]))))
+
 (deftest data->shape-descriptor-test
   (is (= (psd/data->shape-descriptor {})
          {}))
@@ -39,3 +79,69 @@
                                             {:baz "a"}]})
          {:foo {:bar {}
                 :baz {}}})))
+
+(deftest missing-test
+  (is (= (psd/missing {} {})
+         nil))
+
+  (is (= (psd/missing {} {:foo {}})
+         {:foo {}}))
+
+  (is (= (psd/missing {} {:foo {:bar {}}})
+         {:foo {:bar {}}}))
+
+  (is (= (psd/missing {:foo {}} {})
+         nil))
+
+  (is (= (psd/missing {:foo {}} {:foo {}})
+         nil))
+
+  (is (= (psd/missing {:foo {}} {:foo {} :bar {}})
+         {:bar {}}))
+
+  (is (= (psd/missing {:foo {:bar {}}} {:foo {:bar {}}})
+         nil))
+
+  (is (= (psd/missing {:foo {}} {:foo {:bar {}}})
+         {:foo {:bar {}}}))
+
+  (is (= (psd/missing {:foo {:bar {}}} {:foo {:bar {} :baz {}}})
+         {:foo {:baz {}}})))
+
+(deftest select-shape-test
+  (is (= (psd/select-shape {} {})
+         {}))
+
+  (is (= (psd/select-shape {:foo "bar"} {})
+         {}))
+
+  (is (= (psd/select-shape {:foo "bar"} {:foo {}})
+         {:foo "bar"}))
+
+  (is (= (psd/select-shape {:foo "bar"} {:foo {} :baz {}})
+         {:foo "bar"}))
+
+  (is (= (psd/select-shape {:foo "bar" :baz "baz"} {:foo {}})
+         {:foo "bar"}))
+
+  (is (= (psd/select-shape {:foo {:a 1 :b 2}} {:foo {}})
+         {:foo {:a 1 :b 2}}))
+
+  (is (= (psd/select-shape {:foo {:a 1 :b 2}} {:foo {:a {}}})
+         {:foo {:a 1}}))
+
+  (is (= (psd/select-shape {:foo [{:a 1 :b 2}
+                                  {:a 3 :b 4}]} {:foo {:a {}}})
+         {:foo [{:a 1}
+                {:a 3}]}))
+
+  (is (= (psd/select-shape {:foo #{{:a 1 :b 2}
+                                   {:a 3 :b 4}}} {:foo {:a {}}})
+         {:foo #{{:a 1}
+                 {:a 3}}}))
+
+  (testing "keep meta"
+    (is (= (-> (psd/select-shape ^:yes? {:foo [{:a 1 :b 2}
+                                               {:a 3 :b 4}]} {:foo {:a {}}})
+               (meta))
+           {:yes? true}))))
