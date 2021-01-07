@@ -29,6 +29,7 @@
                          p/cached-async                     [[:inner 0]]
                          pbir/env-table-resolver            [[:inner 0]]
                          pbir/single-attr-with-env-resolver [[:inner 0]]
+                         pbir/static-attribute-map-resolver [[:inner 0]]
                          pc/defmutation                     [[:inner 0]]
                          pc/defresolver                     [[:inner 0]]
                          pc/mutation                        [[:inner 0]]

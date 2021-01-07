@@ -282,9 +282,9 @@
                                         [{:user/id 123}
                                          {:video/id 2}])
               (pbir/static-attribute-map-resolver :user/id :user/name
-                                                  {123 "U"})
+                {123 "U"})
               (pbir/static-attribute-map-resolver :video/id :video/title
-                                                  {2 "V"})])
+                {2 "V"})])
            [{:list
              {:user/id  [:user/name]
               :video/id [:video/title]}}]
@@ -294,25 +294,43 @@
            {:video/id 2 :video/title "V"}]})))
 
 (deftest run-graph!-nested-inputs-test
-  (is (= (run-graph
-           (pci/register
-             [(pco/resolver 'users
-                {::pco/output [{:users [:user/id]}]}
-                (fn [_ _]
-                  {:users [{:user/id 1}
-                           {:user/id 2}]}))
-              (pbir/static-attribute-map-resolver :user/id :user/score
-                                                  {1 10
-                                                   2 20})
-              (pco/resolver 'total-score
-                {::pco/input  [{:users [:user/score]}]
-                 ::pco/output [:total-score]}
-                (fn [_ {:keys [users]}]
-                  {:total-score (reduce + 0 (map :user/score users))}))])
-           [:total-score]
-           {})
-         {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
-          :total-score 30})))
+  (testing "data from resolvers"
+    (is (= (run-graph
+             (pci/register
+               [(pco/resolver 'users
+                  {::pco/output [{:users [:user/id]}]}
+                  (fn [_ _]
+                    {:users [{:user/id 1}
+                             {:user/id 2}]}))
+                (pbir/static-attribute-map-resolver :user/id :user/score
+                  {1 10
+                   2 20})
+                (pco/resolver 'total-score
+                  {::pco/input  [{:users [:user/score]}]
+                   ::pco/output [:total-score]}
+                  (fn [_ {:keys [users]}]
+                    {:total-score (reduce + 0 (map :user/score users))}))])
+             [:total-score]
+             {})
+           {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
+            :total-score 30})))
+
+  (testing "source data in available data"
+    (is (= (run-graph
+             (pci/register
+               [(pbir/static-attribute-map-resolver :user/id :user/score
+                  {1 10
+                   2 20})
+                (pco/resolver 'total-score
+                  {::pco/input  [{:users [:user/score]}]
+                   ::pco/output [:total-score]}
+                  (fn [_ {:keys [users]}]
+                    {:total-score (reduce + 0 (map :user/score users))}))])
+             [:total-score]
+             {:users [{:user/id 1}
+                      {:user/id 2}]})
+           {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
+            :total-score 30}))))
 
 (pco/defresolver batch-fetch [items]
   {::pco/input  [:id]

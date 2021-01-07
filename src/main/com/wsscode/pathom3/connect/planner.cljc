@@ -182,7 +182,7 @@
 (def pc-input ::pco/input)
 
 (declare compute-run-graph compute-run-graph* compute-root-and collapse-nodes-chain node-ancestors
-         compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes)
+         compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes mark-attribute-process-sub-query)
 
 (defn add-snapshot!
   ([graph {::keys [snapshots*]} event-details]
@@ -1136,21 +1136,23 @@
 (defn attributes-with-nodes
   "Filter attributes that have attached nodes."
   [{::keys [index-attrs]} attrs]
-  (into #{} (filter #(contains? index-attrs %) attrs)))
+  (into #{} (filter #(contains? index-attrs %)) attrs))
 
-(defn merge-nested-missing-ast [graph missing]
+(defn merge-nested-missing-ast [graph {::keys [available-data]} missing]
   (reduce-kv
     (fn [g attr shape]
-      (update-in g [::index-ast attr] pf.eql/merge-ast-children
-        (-> (pfsd/shape-descriptor->ast shape)
-            (assoc :type :prop :key attr :dispatch-key attr))))
+      (cond-> (update-in g [::index-ast attr] pf.eql/merge-ast-children
+                (-> (pfsd/shape-descriptor->ast shape)
+                    (assoc :type :prop :key attr :dispatch-key attr)))
+        (contains? available-data attr)
+        (mark-attribute-process-sub-query {:key attr :children []})))
     graph
     (coll/filter-vals seq missing)))
 
 (defn merge-missing-chain [graph graph' env missing]
   (let [missing'           (into #{} (keys missing))
         missing-with-nodes (attributes-with-nodes graph' missing')
-        graph'             (merge-nested-missing-ast graph' missing)]
+        graph'             (merge-nested-missing-ast graph' env missing)]
     (if (seq missing-with-nodes)
       (let [ancestor (find-missing-ancestor graph' missing-with-nodes)]
         (assert ancestor "Error finding ancestor during missing chain computation")
@@ -1160,23 +1162,23 @@
 
           true
           (add-snapshot! env {::snapshot-message (str "Chaining dependencies for " (pc-attr env) ", set node " (::root graph) " to run after node " ancestor)})))
-      graph')))
+      (set-root-node graph' (::root graph)))))
 
 (defn compute-missing-chain
   "Start a recursive call to process the dependencies required by the resolver. It
   sets the ::run-next data at the env, it will be used to link the nodes after they
   are created in the process."
-  [graph {::keys [graph-before-missing-chain] :as env} missing]
+  [graph {::keys [graph-before-missing-chain available-data] :as env} missing]
   (if (seq missing)
     (let [_             (add-snapshot! graph env {::snapshot-message (str "Computing " (pc-attr env) " dependencies: " (pr-str missing))})
-          missing'      (into #{} (keys missing))
+          missing-flat  (into [] (remove available-data) (keys missing))
           graph'        (compute-run-graph*
                           (dissoc graph ::root)
                           (-> env
                               (dissoc pc-attr)
                               (update ::run-next-trail coll/sconj (::root graph))
                               (update ::attr-deps-trail coll/sconj (pc-attr env))
-                              (assoc :edn-query-language.ast/node (eql/query->ast (vec missing')))))
+                              (assoc :edn-query-language.ast/node (eql/query->ast missing-flat))))
           still-missing (into {} (remove #(required-input-reachable? graph' env %)) missing)
           all-provided? (empty? still-missing)]
       (if all-provided?
