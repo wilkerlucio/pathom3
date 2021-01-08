@@ -4143,18 +4143,18 @@
 
 (deftest direct-ancestor-chain-test
   (testing "return self on edge"
-    (is (= (pcp/node-direct-ancestor-chain
+    (is (= (pcp/find-node-direct-ancestor-chain
              {::pcp/nodes {1 {}}}
              1)
            [1])))
 
   (testing "follow single node"
-    (is (= (pcp/node-direct-ancestor-chain
+    (is (= (pcp/find-node-direct-ancestor-chain
              {::pcp/nodes {1 {::pcp/node-parents #{2}}}}
              1)
            [2 1]))))
 
-(deftest find-first-ancestor-test
+(deftest find-furthest-ancestor-test
   (testing "return self on edge"
     (is (= (pcp/find-furthest-ancestor
              {::pcp/nodes {1 {}}}
@@ -4190,6 +4190,37 @@
                            4 {::pcp/run-and #{}}}}
              1)
            3))))
+
+(deftest find-run-next-descendants-test
+  (testing "return the node if that's the latest"
+    (is (= (pcp/find-run-next-descendants
+             {::pcp/nodes {1 {::pcp/node-id 1}}}
+             {::pcp/node-id 1})
+           [{::pcp/node-id 1}]))
+    (is (= (pcp/find-run-next-descendants
+             {::pcp/nodes {1 {::pcp/node-id  1
+                              ::pcp/run-next 2}
+                           2 {::pcp/node-id 2}}}
+             {::pcp/node-id  1
+              ::pcp/run-next 2})
+           [{::pcp/node-id  1
+             ::pcp/run-next 2}
+            {::pcp/node-id 2}]))))
+
+(deftest find-leaf-node-test
+  (testing "return the node if that's the latest"
+    (is (= (pcp/find-leaf-node
+             {::pcp/nodes {1 {::pcp/node-id 1}}}
+             {::pcp/node-id 1})
+           {::pcp/node-id 1}))
+
+    (is (= (pcp/find-leaf-node
+             {::pcp/nodes {1 {::pcp/node-id  1
+                              ::pcp/run-next 2}
+                           2 {::pcp/node-id 2}}}
+             {::pcp/node-id  1
+              ::pcp/run-next 2})
+           {::pcp/node-id 2}))))
 
 (deftest same-resolver-test
   (is (= (pcp/same-resolver?

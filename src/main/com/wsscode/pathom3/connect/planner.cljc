@@ -972,7 +972,7 @@
         (add-snapshot! env {::snapshot-event   ::snapshot-include-node
                             ::snapshot-message (str "Included node " sym)}))))
 
-(>defn direct-node-successors
+(>defn find-direct-node-successors
   "Direct successors of node, branch nodes and run-next, in case of branch nodes the
   branches will always come before the run-next."
   [{::keys [run-next] :as node}]
@@ -995,7 +995,7 @@
        (if (dynamic-resolver? env sym)
          syms
          (conj syms sym))
-       (into syms (mapcat #(collect-syms graph env {::node-id %}) (direct-node-successors node)))))))
+       (into syms (mapcat #(collect-syms graph env {::node-id %}) (find-direct-node-successors node)))))))
 
 (defn all-attribute-resolvers
   [{::pci/keys [index-oir]}
@@ -1041,7 +1041,7 @@
   as items are requested."
   [graph node-id]
   [::graph ::node-id => (s/coll-of ::node-id)]
-  (let [successors (direct-node-successors (get-node graph node-id))]
+  (let [successors (find-direct-node-successors (get-node graph node-id))]
     (cond
       (seq successors)
       (lazy-seq (cons node-id (apply concat (map #(node-successors graph %) successors))))
@@ -1268,7 +1268,7 @@
               (compute-root-or env {::node-id (::root graph)}))
           (set-root-node <> (::root graph)))))))
 
-(defn node-for-attribute-in-chain
+(defn find-node-for-attribute-in-chain
   "Walks the graph run next chain until it finds the node that's providing the
   attribute."
   [graph
@@ -1278,7 +1278,7 @@
     (let [{::keys [run-next expects run-and]} (get-node graph node-id)]
       (cond
         run-and
-        (some #(node-for-attribute-in-chain graph env %)
+        (some #(find-node-for-attribute-in-chain graph env %)
           (cond->> run-and
             run-next
             (into [run-next])))
@@ -1291,13 +1291,13 @@
 
 (defn set-node-source-for-attrs
   [graph {::p.attr/keys [attribute] :as env}]
-  (if-let [node-id (node-for-attribute-in-chain graph env (::root graph))]
+  (if-let [node-id (find-node-for-attribute-in-chain graph env (::root graph))]
     (-> graph
         (update-in [::nodes node-id ::source-for-attrs] coll/sconj attribute)
         (update ::index-attrs assoc attribute (get-in graph [::index-attrs attribute] node-id)))
     graph))
 
-(defn node-direct-ancestor-chain
+(defn find-node-direct-ancestor-chain
   "Computes ancestor chain for a given node, it only walks as long as there is a single
   parent on the node, if there is a fork (multiple after-nodes) it will stop."
   [graph node-id]
@@ -1321,17 +1321,33 @@
   "Traverse node after-node chain and returns the most distant resolver ancestor of node id.
   This only walks though resolver nodes, branch nodes are removed."
   [graph node-id]
-  (or (->> (node-direct-ancestor-chain graph node-id)
+  (or (->> (find-node-direct-ancestor-chain graph node-id)
            (remove (comp ::run-and #(get-node graph %)))
            (remove (comp ::run-or #(get-node graph %)))
            first)
       node-id))
 
+(>defn find-run-next-descendants
+  "Return descendants by waling the run-next"
+  [graph node]
+  [::graph ::node => (s/coll-of ::node)]
+  (loop [descendants [node]
+         {::keys [run-next]} node]
+    (if-let [next (get-node graph run-next)]
+      (recur (conj descendants next) next)
+      descendants)))
+
+(defn find-leaf-node
+  "Traverses all run-next still it reaches a leaf."
+  [graph node]
+  [::graph ::node => ::node]
+  (peek (find-run-next-descendants graph node)))
+
 (defn push-root-to-ancestor [graph node-id]
   (set-root-node graph (find-furthest-ancestor graph node-id)))
 
 (defn compute-and-unless-root-is-ancestor [{::keys [root] :as graph} env {::keys [node-id]}]
-  (if (= node-id (first (node-direct-ancestor-chain graph root)))
+  (if (= node-id (first (find-node-direct-ancestor-chain graph root)))
     (set-root-node graph node-id)
     (compute-root-and graph env {::node-id node-id})))
 
