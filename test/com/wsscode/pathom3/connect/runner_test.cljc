@@ -303,7 +303,7 @@
                       {:value 1}))
                   (pco/resolver `value2
                     {::pco/output   [:value]
-                     ::pcr/priority 1}
+                     ::pco/priority 1}
                     (fn [_ _]
                       {:value 2}))])
                [:value]
@@ -321,7 +321,7 @@
                     (pco/resolver `value2
                       {::pco/input    [:b]
                        ::pco/output   [:value]
-                       ::pcr/priority 1}
+                       ::pco/priority 1}
                       (fn [_ _]
                         {:value 2}))
                     (pbir/constant-resolver :a 1)
@@ -342,7 +342,7 @@
                       (pco/resolver `value2
                         {::pco/input    [:c]
                          ::pco/output   [:value]
-                         ::pcr/priority 1}
+                         ::pco/priority 1}
                         (fn [_ _]
                           {:value 2}))
                       (pbir/constant-resolver :a 1)

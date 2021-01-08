@@ -31,6 +31,7 @@
 (>def ::cache? boolean?)
 (>def ::cache-store keyword?)
 (>def ::batch? boolean?)
+(>def ::priority int?)
 (>def ::resolve fn?)
 (>def ::mutate fn?)
 (>def ::operation-type #{::operation-type-resolver ::operation-type-mutation})

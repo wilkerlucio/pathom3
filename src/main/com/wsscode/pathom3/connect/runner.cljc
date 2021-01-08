@@ -19,7 +19,6 @@
 (>def ::map-container? boolean?)
 (>def ::merge-attribute fn?)
 (>def ::node-error any?)
-(>def ::priority int?)
 
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
@@ -252,7 +251,7 @@
                                   (pcp/find-leaf-node (pcp/get-node graph %))
                                   (assoc ::source-node-path %)))
                         (keep #(pcp/node-with-resolver-config graph env %)))]
-    (mapv ::source-node-path (sort-by #(or (::priority %) 0) #(compare %2 %) nodes-data))))
+    (mapv ::source-node-path (sort-by #(or (::pco/priority %) 0) #(compare %2 %) nodes-data))))
 
 (defn default-choose-path [env _or-node node-ids]
   (-> (priority-sort env node-ids)
