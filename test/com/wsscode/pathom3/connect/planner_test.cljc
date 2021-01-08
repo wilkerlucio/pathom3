@@ -2512,38 +2512,88 @@
                                 ::pco/output  [:x]}
                                {::pco/op-name 'y
                                 ::pco/output  [:y]}]}))
-           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name foo,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:foo {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {:x {}},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{2},
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name        foo,
+                                                             :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                             :com.wsscode.pathom3.connect.planner/expects          {:foo {}},
+                                                             :com.wsscode.pathom3.connect.planner/input            {:x {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents     #{4},
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo}},
-                                                          2 {:com.wsscode.pathom3.connect.operation/op-name x,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:x {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                          2 {:com.wsscode.pathom3.connect.operation/op-name        x,
+                                                             :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                             :com.wsscode.pathom3.connect.planner/expects          {:x {}},
+                                                             :com.wsscode.pathom3.connect.planner/input            {},
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:x},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{4},
-                                                             :com.wsscode.pathom3.connect.planner/run-next 1},
-                                                          3 {:com.wsscode.pathom3.connect.operation/op-name y,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 3,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:y {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents     #{4}},
+                                                          3 {:com.wsscode.pathom3.connect.operation/op-name        y,
+                                                             :com.wsscode.pathom3.connect.planner/node-id          3,
+                                                             :com.wsscode.pathom3.connect.planner/expects          {:y {}},
+                                                             :com.wsscode.pathom3.connect.planner/input            {},
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:y},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{4}},
-                                                          4 #:com.wsscode.pathom3.connect.planner{:node-id 4,
-                                                                                                  :expects {:y {},
-                                                                                                            :x {}},
-                                                                                                  :run-and #{3
-                                                                                                             2}}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents     #{4}},
+                                                          4 #:com.wsscode.pathom3.connect.planner{:node-id  4,
+                                                                                                  :expects  {:y {},
+                                                                                                             :x {}},
+                                                                                                  :run-and  #{3
+                                                                                                              2},
+                                                                                                  :run-next 1}},
                                                   :index-resolver->nodes {foo #{1}, x #{2}, y #{3}},
                                                   :unreachable-resolvers #{},
                                                   :unreachable-attrs {},
-                                                  :index-ast {:foo {:type :prop,
+                                                  :index-ast {:foo {:type         :prop,
                                                                     :dispatch-key :foo,
-                                                                    :key :foo}},
+                                                                    :key          :foo}},
                                                   :index-attrs {:x 2, :y 3, :foo 1},
-                                                  :root 4}))))
+                                                  :root 4})))
+
+  (testing "only optional"
+    (testing "unavailable"
+      (is (= (compute-run-graph
+               (-> {::eql/query [:foo]
+                    ::resolvers [{::pco/op-name 'foo
+                                  ::pco/input   [(pco/? :y)]
+                                  ::pco/output  [:foo]}]}))
+             '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name        foo,
+                                                                               :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                               :com.wsscode.pathom3.connect.planner/expects          {:foo {}},
+                                                                               :com.wsscode.pathom3.connect.planner/input            {},
+                                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo}}},
+                                                    :index-resolver->nodes {foo #{1}},
+                                                    :unreachable-resolvers #{},
+                                                    :unreachable-attrs     {:y {}},
+                                                    :index-ast             {:foo {:type         :prop,
+                                                                                  :dispatch-key :foo,
+                                                                                  :key          :foo}},
+                                                    :root                  1,
+                                                    :index-attrs           {:foo 1}})))
+
+    (testing "available"
+      (is (= (compute-run-graph
+               (-> {::eql/query [:foo]
+                    ::resolvers [{::pco/op-name 'foo
+                                  ::pco/input   [(pco/? :y)]
+                                  ::pco/output  [:foo]}
+                                 {::pco/op-name 'y
+                                  ::pco/output  [:y]}]}))
+             '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name        foo,
+                                                                               :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                               :com.wsscode.pathom3.connect.planner/expects          {:foo {}},
+                                                                               :com.wsscode.pathom3.connect.planner/input            {},
+                                                                               :com.wsscode.pathom3.connect.planner/node-parents     #{2},
+                                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo}},
+                                                                            2 {:com.wsscode.pathom3.connect.operation/op-name        y,
+                                                                               :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                               :com.wsscode.pathom3.connect.planner/expects          {:y {}},
+                                                                               :com.wsscode.pathom3.connect.planner/input            {},
+                                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:y},
+                                                                               :com.wsscode.pathom3.connect.planner/run-next         1}},
+                                                    :index-resolver->nodes {foo #{1}, y #{2}},
+                                                    :unreachable-resolvers #{},
+                                                    :unreachable-attrs     {},
+                                                    :index-ast             {:foo {:type         :prop,
+                                                                                  :dispatch-key :foo,
+                                                                                  :key          :foo}},
+                                                    :index-attrs           {:y 2, :foo 1},
+                                                    :root                  2})))))
 
 (deftest compute-run-graph-placeholders-test
   (testing "just placeholder"

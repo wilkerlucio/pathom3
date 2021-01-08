@@ -1149,16 +1149,15 @@
     graph
     (coll/filter-vals seq missing)))
 
-(defn merge-missing-chain [graph graph' env missing]
-  (let [missing'           (into #{} (keys missing))
-        missing-with-nodes (attributes-with-nodes graph' missing')
+(defn merge-missing-chain [graph graph' env missing missing-flat]
+  (let [missing-with-nodes (attributes-with-nodes graph' missing-flat)
         graph'             (merge-nested-missing-ast graph' env missing)]
     (if (seq missing-with-nodes)
       (let [ancestor (find-missing-ancestor graph' missing-with-nodes)]
         (assert ancestor "Error finding ancestor during missing chain computation")
         (cond-> (merge-nodes-run-next graph' env ancestor {::run-next (::root graph)})
           (::run-and (get-root-node graph'))
-          (merge-node-expects (::root graph') {::expects (zipmap missing' (repeat {}))})
+          (merge-node-expects (::root graph') {::expects (zipmap missing-flat (repeat {}))})
 
           true
           (add-snapshot! env {::snapshot-message (str "Chaining dependencies for " (pc-attr env) ", set node " (::root graph) " to run after node " ancestor)})))
@@ -1178,28 +1177,28 @@
   sets the ::run-next data at the env, it will be used to link the nodes after they
   are created in the process."
   [graph {::keys [graph-before-missing-chain available-data] :as env} missing resolvers]
-  (if (seq missing)
-    (let [_             (add-snapshot! graph env {::snapshot-message (str "Computing " (pc-attr env) " dependencies: " (pr-str missing))})
-          missing-flat  (into []
-                              (remove available-data)
-                              (concat
-                                (keys missing)
-                                (keys (resolvers-optionals env resolvers))))
-          graph'        (compute-run-graph*
-                          (dissoc graph ::root)
-                          (-> env
-                              (dissoc pc-attr)
-                              (update ::run-next-trail coll/sconj (::root graph))
-                              (update ::attr-deps-trail coll/sconj (pc-attr env))
-                              (assoc :edn-query-language.ast/node (eql/query->ast missing-flat))))
-          still-missing (into {} (remove #(required-input-reachable? graph' env %)) missing)
-          all-provided? (empty? still-missing)]
-      (if all-provided?
-        (merge-missing-chain graph graph' env missing)
-        (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
-              unreachable-attrs (unreachable-attrs-after-missing-check env unreachable-resolvers still-missing)]
-          (update out' ::unreachable-attrs pfsd/merge-shapes unreachable-attrs))))
-    graph))
+  (let [missing-flat (into []
+                           (remove available-data)
+                           (concat
+                             (keys missing)
+                             (keys (resolvers-optionals env resolvers))))]
+    (if (or (seq missing-flat) (seq missing))
+      (let [_             (add-snapshot! graph env {::snapshot-message (str "Computing " (pc-attr env) " dependencies: " (pr-str missing))})
+            graph'        (compute-run-graph*
+                            (dissoc graph ::root)
+                            (-> env
+                                (dissoc pc-attr)
+                                (update ::run-next-trail coll/sconj (::root graph))
+                                (update ::attr-deps-trail coll/sconj (pc-attr env))
+                                (assoc :edn-query-language.ast/node (eql/query->ast missing-flat))))
+            still-missing (into {} (remove #(required-input-reachable? graph' env %)) missing)
+            all-provided? (empty? still-missing)]
+        (if all-provided?
+          (merge-missing-chain graph graph' env missing missing-flat)
+          (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
+                unreachable-attrs (unreachable-attrs-after-missing-check env unreachable-resolvers still-missing)]
+            (update out' ::unreachable-attrs pfsd/merge-shapes unreachable-attrs))))
+      graph)))
 
 (defn runner-node-sym
   "Find the runner symbol for a resolver, on normal resolvers that is the resolver symbol,

@@ -396,7 +396,34 @@
              {})
            {:x   10
             :y   42
-            :foo 42}))))
+            :foo 42})))
+
+  (testing "all optionals"
+    (testing "not available"
+      (is (= (run-graph
+               (pci/register
+                 [(pco/resolver 'foo
+                    {::pco/input  [(pco/? :y)]
+                     ::pco/output [:foo]}
+                    (fn [_ {:keys [y]}]
+                      {:foo (if y y "nope")}))])
+               [:foo]
+               {})
+             {:foo "nope"})))
+
+    (testing "available"
+      (is (= (run-graph
+               (pci/register
+                 [(pco/resolver 'foo
+                    {::pco/input  [(pco/? :y)]
+                     ::pco/output [:foo]}
+                    (fn [_ {:keys [y]}]
+                      {:foo (if y y "nope")}))
+                  (pbir/constantly-resolver :y 42)])
+               [:foo]
+               {})
+             {:y   42
+              :foo 42})))))
 
 (pco/defresolver batch-fetch [items]
   {::pco/input  [:id]
