@@ -220,6 +220,14 @@
   (-> (resolver-config env resolver-sym)
       ::pco/provides))
 
+(>defn resolver-optionals
+  "Get the resolver provides from the resolver configuration map"
+  [env resolver-sym]
+  [(s/keys :opt [::index-resolvers]) ::pco/op-name
+   => (? ::pco/optionals)]
+  (-> (resolver-config env resolver-sym)
+      ::pco/optionals))
+
 (>defn mutation
   [{::keys [index-mutations]} mutation-name]
   [(s/keys :opt [::index-mutations]) ::pco/op-name
