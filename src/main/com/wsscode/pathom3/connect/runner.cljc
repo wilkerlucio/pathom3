@@ -250,6 +250,12 @@
                         (map #(-> graph
                                   (pcp/find-leaf-node (pcp/get-node graph %))
                                   (assoc ::source-node-path %)))
+                        (map (fn [{::keys [source-node-path] :as node}]
+                               (if-let [branches (pcp/node-branches node)]
+                                 (-> graph
+                                     (pcp/get-node (first (priority-sort env branches)))
+                                     (assoc ::source-node-path source-node-path))
+                                 node)))
                         (keep #(pcp/node-with-resolver-config graph env %)))]
     (mapv ::source-node-path (sort-by #(or (::pco/priority %) 0) #(compare %2 %) nodes-data))))
 

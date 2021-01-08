@@ -351,7 +351,33 @@
                    [:value]
                    {})
                  {:c     3
-                  :value 2})))))))
+                  :value 2}))
+
+          (is (= (run-graph
+                   (pci/register
+                     [(pco/resolver `value-b1
+                        {::pco/input  [:b]
+                         ::pco/output [:a]}
+                        (fn [_ _]
+                          {:a "b1"}))
+                      (pco/resolver `value-b2
+                        {::pco/input    [:b]
+                         ::pco/output   [:a]
+                         ::pco/priority 1}
+                        (fn [_ _]
+                          {:a "b2"}))
+                      (pco/resolver `value-cd
+                        {::pco/input  [:c :d]
+                         ::pco/output [:a]}
+                        (fn [_ _]
+                          {:a "cd"}))
+                      (pbir/constant-resolver :b 2)
+                      (pbir/alias-resolver :d :c)
+                      (pbir/constant-resolver :d 10)])
+                   [:a]
+                   {})
+                 {:a "b2"
+                  :b 2})))))))
 
 (deftest run-graph!-unions-test
   (is (= (run-graph
