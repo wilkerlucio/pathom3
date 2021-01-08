@@ -68,6 +68,7 @@
    overhead-duration
    overhead-pct
    attribute-error
+   (duration-resolver ::pcr/node-run)
    (duration-resolver ::pcr/resolver-run)
    (duration-resolver ::pcr/batch-run)
    (duration-resolver ::pcr/graph-run)
