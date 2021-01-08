@@ -47,7 +47,6 @@
   "Create a simple resolver that always calls value-fn and return its value. Note that
   cache is disabled by default in this resolver."
   ([attribute value-fn]
-   (assert (fn? value-fn) "Value to constantly resolver must be a function. Use constant-resolver to provide a constant value.")
    (let [resolver-name (symbol (str (attr-munge attribute) "-constant"))]
      (pco/resolver resolver-name
        {::pco/output [attribute]
