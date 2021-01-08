@@ -135,9 +135,9 @@
                           ::geo/left 10}})))
 
   (testing "path"
-    (is (= (run-graph (pci/register [(pbir/constantly-resolver ::hold {})
-                                     (pbir/constantly-resolver ::sequence [{} {}])
-                                     (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
+    (is (= (run-graph (pci/register [(pbir/constant-resolver ::hold {})
+                                     (pbir/constant-resolver ::sequence [{} {}])
+                                     (pbir/constantly-resolver ::p.path/path ::p.path/path)])
                       [::p.path/path
                        {::hold [::p.path/path]}
                        {::sequence [::p.path/path]}]
@@ -148,9 +148,9 @@
             ::hold        {::p.path/path [::hold]}}))
 
     (testing "map container path"
-      (is (= (run-graph (pci/register [(pbir/constantly-resolver ::map-container
-                                                                 ^::pcr/map-container? {:foo {}})
-                                       (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
+      (is (= (run-graph (pci/register [(pbir/constant-resolver ::map-container
+                                                               ^::pcr/map-container? {:foo {}})
+                                       (pbir/constantly-resolver ::p.path/path ::p.path/path)])
                         [{::map-container [::p.path/path]}]
                         {})
              {::map-container {:foo {::p.path/path [::map-container :foo]}}}))))
@@ -270,7 +270,7 @@
                                            (fn [_ _]
                                              (swap! spy inc)
                                              (throw (ex-info "Error" {}))))
-                                         (pbir/constantly-resolver :error "value")])
+                                         (pbir/constant-resolver :error "value")])
                           [:error]
                           {})
                {:error "value"}))
@@ -292,14 +292,51 @@
                       {:value 2}))])
                [:value]
                {})
-             {:value 2})))))
+             {:value 2})))
+
+    (testing "standard priority"
+      (is (= (run-graph
+               (pci/register
+                 [(pco/resolver `value
+                    {::pco/output [:value]}
+                    (fn [_ _]
+                      {:value 1}))
+                  (pco/resolver `value2
+                    {::pco/output   [:value]
+                     ::pcr/priority 1}
+                    (fn [_ _]
+                      {:value 2}))])
+               [:value]
+               {})
+             {:value 2}))
+
+      (testing "distinct inputs"
+        (is (= (run-graph
+                 (pci/register
+                   [(pco/resolver `value
+                      {::pco/input  [:a :b]
+                       ::pco/output [:value]}
+                      (fn [_ _]
+                        {:value 1}))
+                    (pco/resolver `value2
+                      {::pco/input    [:c]
+                       ::pco/output   [:value]
+                       ::pcr/priority 1}
+                      (fn [_ _]
+                        {:value 2}))
+                    (pbir/constant-resolver :a 1)
+                    (pbir/constant-resolver :b 2)
+                    (pbir/constant-resolver :c 3)])
+                 [:value]
+                 {})
+               {:value 2}))))))
 
 (deftest run-graph!-unions-test
   (is (= (run-graph
            (pci/register
-             [(pbir/constantly-resolver :list
-                                        [{:user/id 123}
-                                         {:video/id 2}])
+             [(pbir/constant-resolver :list
+                                      [{:user/id 123}
+                                       {:video/id 2}])
               (pbir/static-attribute-map-resolver :user/id :user/name
                 {123 "U"})
               (pbir/static-attribute-map-resolver :video/id :video/title
@@ -395,7 +432,7 @@
                    ::pco/output [:foo]}
                   (fn [_ {:keys [x y]}]
                     {:foo (if y y x)}))
-                (pbir/constantly-resolver :x 10)])
+                (pbir/constant-resolver :x 10)])
              [:foo]
              {})
            {:x   10
@@ -409,8 +446,8 @@
                    ::pco/output [:foo]}
                   (fn [_ {:keys [x y]}]
                     {:foo (if y y x)}))
-                (pbir/constantly-resolver :x 10)
-                (pbir/constantly-resolver :y 42)])
+                (pbir/constant-resolver :x 10)
+                (pbir/constant-resolver :y 42)])
              [:foo]
              {})
            {:x   10
@@ -438,7 +475,7 @@
                      ::pco/output [:foo]}
                     (fn [_ {:keys [y]}]
                       {:foo (if y y "nope")}))
-                  (pbir/constantly-resolver :y 42)])
+                  (pbir/constant-resolver :y 42)])
                [:foo]
                {})
              {:y   42
@@ -548,10 +585,10 @@
     (is (= (run-graph
              (pci/register
                [batch-fetch
-                (pbir/constantly-resolver :list
-                                          [{:id 1}
-                                           {:id 2 :v 200}
-                                           {:id 3}])])
+                (pbir/constant-resolver :list
+                                        [{:id 1}
+                                         {:id 2 :v 200}
+                                         {:id 3}])])
              [{:list [:v]}]
              {})
            {:list
@@ -641,10 +678,10 @@
     (let [res (run-graph
                 (pci/register
                   [batch-fetch-error
-                   (pbir/constantly-resolver :list
-                                             [{:id 1}
-                                              {:id 2}
-                                              {:id 3}])])
+                   (pbir/constant-resolver :list
+                                           [{:id 1}
+                                            {:id 2}
+                                            {:id 3}])])
                 [:v]
                 {:id 1})]
       (is (= res
@@ -700,7 +737,7 @@
     (let [cache* (atom {})]
       (is (= (run-graph
                (-> (pci/register
-                     [(pbir/constantly-resolver :x 10)
+                     [(pbir/constant-resolver :x 10)
                       (pbir/single-attr-resolver :x :y #(* 2 %))])
                    (assoc ::pcr/resolver-cache* cache*))
                [:y]
@@ -714,7 +751,7 @@
       (let [cache* (atom {})]
         (is (= (run-graph
                  (-> (pci/register
-                       [(pbir/constantly-resolver :x 10)
+                       [(pbir/constant-resolver :x 10)
                         (pbir/single-attr-resolver :x :y #(* 2 %))])
                      (assoc ::pcr/resolver-cache* cache*))
                  ['(:y {:foo "bar"})]
@@ -729,7 +766,7 @@
             my-cache* (atom {})]
         (is (= (run-graph
                  (-> (pci/register
-                       [(pbir/constantly-resolver :x 10)
+                       [(pbir/constant-resolver :x 10)
                         (-> (pbir/single-attr-resolver :x :y #(* 2 %))
                             (pco/update-config assoc ::pco/cache-store ::my-cache))])
                      (assoc ::pcr/resolver-cache* cache*)
@@ -746,7 +783,7 @@
   (testing "cache hit"
     (is (= (run-graph
              (-> (pci/register
-                   [(pbir/constantly-resolver :x 10)
+                   [(pbir/constant-resolver :x 10)
                     (pbir/single-attr-resolver :x :y #(* 2 %))])
                  (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10} {}] {:y 30}})))
              [:y]
@@ -758,7 +795,7 @@
     (let [cache* (atom {'[x->y-single-attr-transform {:x 10} {}] {:y 30}})]
       (is (= (run-graph
                (-> (pci/register
-                     [(pbir/constantly-resolver :x 10)
+                     [(pbir/constant-resolver :x 10)
                       (pbir/single-attr-resolver :x :y #(* 2 %))])
                    (assoc ::pcr/resolver-cache* cache*))
                ['(:y {:z 42})]
@@ -773,7 +810,7 @@
   (testing "resolver with cache disabled"
     (is (= (run-graph
              (-> (pci/register
-                   [(pbir/constantly-resolver :x 10)
+                   [(pbir/constant-resolver :x 10)
                     (assoc-in (pbir/single-attr-resolver :x :y #(* 2 %))
                       [:config ::pco/cache?] false)])
                  (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10}] {:y 30}})))
@@ -783,13 +820,13 @@
             :y 20}))))
 
 (deftest run-graph!-placeholders-test
-  (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
+  (is (= (run-graph (pci/register (pbir/constant-resolver :foo "bar"))
            [{:>/path [:foo]}]
            {})
          {:foo    "bar"
           :>/path {:foo "bar"}}))
 
-  (is (= (run-graph (pci/register (pbir/constantly-resolver :foo "bar"))
+  (is (= (run-graph (pci/register (pbir/constant-resolver :foo "bar"))
            [{:>/path [:foo]}]
            {:foo "baz"})
          {:foo    "baz"
@@ -804,7 +841,7 @@
                      :y 40}}))
 
     (is (= (run-graph (pci/register
-                        [(pbir/constantly-resolver :x 10)
+                        [(pbir/constant-resolver :x 10)
                          (pbir/single-attr-resolver :x :y #(* 2 %))])
              '[{(:>/path {:x 20}) [:y]}]
              {})
@@ -814,7 +851,7 @@
                      :y 40}}))
 
     (is (= (run-graph (pci/register
-                        [(pbir/constantly-resolver :x 10)
+                        [(pbir/constant-resolver :x 10)
                          (pbir/single-attr-resolver :x :y #(* 2 %))])
              '[:x
                {(:>/path {:x 20}) [:y]}]
@@ -826,7 +863,7 @@
 
     (testing "different parameters"
       (is (= (run-graph (pci/register
-                          [(pbir/constantly-resolver :x 10)
+                          [(pbir/constant-resolver :x 10)
                            (pbir/single-attr-with-env-resolver :x :y #(* (:m (pco/params %) 2) %2))])
                '[:x
                  {:>/m2 [(:y)]}
@@ -875,7 +912,7 @@
   (testing "mutations run before anything else"
     (is (= (run-graph
              (-> (pci/register
-                   [(pbir/constantly-fn-resolver ::env-var (comp deref ::env-var))
+                   [(pbir/constantly-resolver ::env-var (comp deref ::env-var))
                     (pco/mutation 'call {} (fn [{::keys [env-var]} _] (swap! env-var inc)))])
                  (assoc ::env-var (atom 0)))
              '[::env-var

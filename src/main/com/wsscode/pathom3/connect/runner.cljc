@@ -19,6 +19,7 @@
 (>def ::map-container? boolean?)
 (>def ::merge-attribute fn?)
 (>def ::node-error any?)
+(>def ::priority int?)
 
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
@@ -245,8 +246,14 @@
           (merge-resolver-response! env response)
           (run-next-node! env node))))))
 
-(defn default-choose-path [_env _or-node options]
-  (first options))
+(defn priority-sort [nodes-data]
+  (sort-by #(or (::priority %) 0) #(compare %2 %) nodes-data))
+
+(defn default-choose-path [{::pcp/keys [graph] :as env} _or-node node-ids]
+  (let [nodes-data (keep #(pcp/node-with-resolver-config graph env %) node-ids)]
+    (-> (priority-sort nodes-data)
+        first
+        ::pcp/node-id)))
 
 (>defn run-or-node!
   [{::pcp/keys [graph]
@@ -258,7 +265,10 @@
                      {::node-run-start-ms (time/now-ms)})
   (loop [nodes run-or]
     (if (seq nodes)
-      (let [node-id (choose-path env or-node nodes)]
+      (let [node-id (or (choose-path env or-node nodes)
+                        (do
+                          (println "Path function failed to return a path, picking first option.")
+                          (first nodes)))]
         (run-node! env (pcp/get-node graph node-id))
         (if (all-requires-ready? env or-node)
           (merge-node-stats! env or-node {::success-path node-id})

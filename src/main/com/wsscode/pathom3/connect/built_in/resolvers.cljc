@@ -34,7 +34,7 @@
   [(alias-resolver attribute-a attribute-b)
    (alias-resolver attribute-b attribute-a)])
 
-(defn constantly-resolver
+(defn constant-resolver
   "Create a simple resolver that always return `value` for `attribute`."
   ([attribute value]
    (let [resolver-name (symbol (str (attr-munge attribute) "-constant"))]
@@ -43,10 +43,11 @@
         ::pco/cache? false}
        (fn [_ _] {attribute value})))))
 
-(defn constantly-fn-resolver
+(defn constantly-resolver
   "Create a simple resolver that always calls value-fn and return its value. Note that
   cache is disabled by default in this resolver."
   ([attribute value-fn]
+   (assert (fn? value-fn) "Value to constantly resolver must be a function. Use constant-resolver to provide a constant value.")
    (let [resolver-name (symbol (str (attr-munge attribute) "-constant"))]
      (pco/resolver resolver-name
        {::pco/output [attribute]

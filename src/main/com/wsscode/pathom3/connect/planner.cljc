@@ -228,6 +228,13 @@
     => any?]
    (get-in graph [::nodes node-id k])))
 
+(defn node-with-resolver-config
+  "Get the node plus the resolver config, when the node has an op-name."
+  [graph env node-id]
+  (let [node            (get-node graph node-id)
+        resolver-config (->> node ::pco/op-name (pci/resolver-config env))]
+    (merge node resolver-config)))
+
 (defn assoc-node
   "Set attribute k about node-id. Only assoc when node exists, otherwise its a noop."
   [graph node-id k v]
