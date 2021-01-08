@@ -367,6 +367,37 @@
            {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
             :total-score 30}))))
 
+(deftest run-graph!-optional-inputs-test
+  (testing "data from resolvers"
+    (is (= (run-graph
+             (pci/register
+               [(pco/resolver 'foo
+                  {::pco/input  [:x (pco/? :y)]
+                   ::pco/output [:foo]}
+                  (fn [_ {:keys [x y]}]
+                    {:foo (if y y x)}))
+                (pbir/constantly-resolver :x 10)])
+             [:foo]
+             {})
+           {:x   10
+            :foo 10})))
+
+  (testing "data from resolvers"
+    (is (= (run-graph
+             (pci/register
+               [(pco/resolver 'foo
+                  {::pco/input  [:x (pco/? :y)]
+                   ::pco/output [:foo]}
+                  (fn [_ {:keys [x y]}]
+                    {:foo (if y y x)}))
+                (pbir/constantly-resolver :x 10)
+                (pbir/constantly-resolver :y 42)])
+             [:foo]
+             {})
+           {:x   10
+            :y   42
+            :foo 42}))))
+
 (pco/defresolver batch-fetch [items]
   {::pco/input  [:id]
    ::pco/output [:v]

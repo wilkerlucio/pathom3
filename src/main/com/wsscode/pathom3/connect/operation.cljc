@@ -1,13 +1,15 @@
 (ns com.wsscode.pathom3.connect.operation
   (:require
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef |]]
     [com.wsscode.misc.coll :as coll]
     #?(:clj [com.wsscode.misc.macros :as macros])
     [com.wsscode.misc.refs :as refs]
+    [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.operation.protocols :as pop]
     [com.wsscode.pathom3.format.eql :as pf.eql]
-    [com.wsscode.pathom3.format.shape-descriptor :as pfsd])
+    [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [edn-query-language.core :as eql])
   #?(:cljs
      (:require-macros
        [com.wsscode.pathom3.connect.operation])))
@@ -38,6 +40,7 @@
 (>def ::mutation mutation?)
 (>def ::provides ::pfsd/shape-descriptor)
 (>def ::requires ::pfsd/shape-descriptor)
+(>def ::optionals ::pfsd/shape-descriptor)
 (>def ::dynamic-name ::op-name)
 (>def ::dynamic-resolver? boolean?)
 (>def ::transform fn?)
@@ -86,6 +89,12 @@
 
 ; region constructors and helpers
 
+(>defn ?
+  "Make an attribute optional"
+  [attr]
+  [::p.attr/attribute => any?]
+  (eql/update-property-param attr assoc ::optional? true))
+
 (>defn operation-config [operation]
   [::operation => ::operation-config]
   (pop/-operation-config operation))
@@ -93,6 +102,20 @@
 (>defn operation-type [operation]
   [::operation => ::operation-type]
   (pop/-operation-type operation))
+
+(defn describe-input*
+  [ast path outs*]
+  (doseq [{:keys [key params] :as node} (:children ast)]
+    (if (::optional? params)
+      (vswap! outs* assoc-in (concat [::optionals] path [key]) {})
+      (vswap! outs* assoc-in (concat [::requires] path [key]) {}))
+    (describe-input* node (conj path key) outs*)))
+
+(defn describe-input [input]
+  (let [input-ast (eql/query->ast input)
+        outs* (volatile! {::requires {}})]
+    (describe-input* input-ast [] outs*)
+    @outs*))
 
 (>defn resolver
   "Helper to create a resolver. A resolver have at least a name, the output definition
@@ -138,7 +161,7 @@
 
            config'  (cond-> config'
                       input
-                      (assoc ::requires (pfsd/query->shape-descriptor input)))]
+                      (merge (describe-input input)))]
        (->Resolver config' (or resolve (fn [_ _])))))))
 
 (>defn mutation

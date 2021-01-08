@@ -179,11 +179,11 @@
     ::pcp/keys [input]
     :as        node}]
   (let [resolver    (pci/resolver env op-name)
-        {::pco/keys [op-name batch? cache? cache-store]
+        {::pco/keys [op-name batch? cache? cache-store optionals]
          :or        {cache? true}} (pco/operation-config resolver)
         env         (assoc env ::pcp/node node)
         entity      (p.ent/entity env)
-        input-data  (pfsd/select-shape entity input)
+        input-data  (pfsd/select-shape entity (pfsd/merge-shapes input optionals))
         input-shape (pfsd/data->shape-descriptor input-data)
         params      (pco/params env)
         start       (time/now-ms)

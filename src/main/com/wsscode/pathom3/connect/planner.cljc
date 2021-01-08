@@ -1164,14 +1164,27 @@
           (add-snapshot! env {::snapshot-message (str "Chaining dependencies for " (pc-attr env) ", set node " (::root graph) " to run after node " ancestor)})))
       (set-root-node graph' (::root graph)))))
 
+(defn resolvers-optionals
+  "Merge the optionals from a collection of resolver symbols."
+  [env resolvers]
+  (transduce
+    (map #(pci/resolver-optionals env %))
+    pfsd/merge-shapes
+    {}
+    resolvers))
+
 (defn compute-missing-chain
   "Start a recursive call to process the dependencies required by the resolver. It
   sets the ::run-next data at the env, it will be used to link the nodes after they
   are created in the process."
-  [graph {::keys [graph-before-missing-chain available-data] :as env} missing]
+  [graph {::keys [graph-before-missing-chain available-data] :as env} missing resolvers]
   (if (seq missing)
     (let [_             (add-snapshot! graph env {::snapshot-message (str "Computing " (pc-attr env) " dependencies: " (pr-str missing))})
-          missing-flat  (into [] (remove available-data) (keys missing))
+          missing-flat  (into []
+                              (remove available-data)
+                              (concat
+                                (keys missing)
+                                (keys (resolvers-optionals env resolvers))))
           graph'        (compute-run-graph*
                           (dissoc graph ::root)
                           (-> env
@@ -1245,7 +1258,7 @@
 
         (if (::root <>)
           (-> <>
-              (compute-missing-chain (assoc env ::graph-before-missing-chain graph) missing)
+              (compute-missing-chain (assoc env ::graph-before-missing-chain graph) missing resolvers)
               (compute-root-or env {::node-id (::root graph)}))
           (set-root-node <> (::root graph)))))))
 
