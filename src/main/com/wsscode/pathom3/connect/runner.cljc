@@ -254,20 +254,29 @@
     :or        {choose-path default-choose-path}
     :as        env} {::pcp/keys [run-or] :as or-node}]
   [(s/keys :req [::pcp/graph]) ::pcp/node => nil?]
+  (merge-node-stats! env or-node
+                     {::node-run-start-ms (time/now-ms)})
   (loop [nodes run-or]
-    (let [node-id (choose-path env or-node nodes)]
-      (when node-id
+    (if (seq nodes)
+      (let [node-id (choose-path env or-node nodes)]
         (run-node! env (pcp/get-node graph node-id))
-        (if-not (all-requires-ready? env or-node)
+        (if (all-requires-ready? env or-node)
+          (merge-node-stats! env or-node {::success-path node-id})
           (recur (disj nodes node-id))))))
+  (merge-node-stats! env or-node
+                     {::node-run-finish-ms (time/now-ms)})
   (run-next-node! env or-node))
 
 (>defn run-and-node!
   "Given an AND node, runs every attached node, then runs the attached next."
   [{::pcp/keys [graph] :as env} {::pcp/keys [run-and] :as and-node}]
   [(s/keys :req [::pcp/graph]) ::pcp/node => nil?]
+  (merge-node-stats! env and-node
+                     {::node-run-start-ms (time/now-ms)})
   (doseq [node-id run-and]
     (run-node! env (pcp/get-node graph node-id)))
+  (merge-node-stats! env and-node
+                     {::node-run-finish-ms (time/now-ms)})
   (run-next-node! env and-node))
 
 (>defn run-node!
@@ -279,9 +288,6 @@
   [env node]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*]) ::pcp/node
    => nil?]
-  (merge-node-stats! env node
-                     {::node-run-start (time/now-ms)})
-
   (case (pcp/node-kind node)
     ::pcp/node-resolver
     (run-resolver-node! env node)
