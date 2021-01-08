@@ -219,6 +219,32 @@
              {::coords {:a {::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
                         :b {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))))
 
+  (testing "processing sequence of inconsistent maps"
+    (is (= (run-graph (pci/register geo/full-registry)
+                      [{::coords [:left]}]
+                      {::coords [{::geo/x 7 ::geo/y 9}
+                                 {::geo/left 7 ::geo/y 9}]})
+           {::coords
+            [{::geo/x    7
+              ::geo/y    9
+              ::geo/left 7
+              :left      7}
+             {::geo/left 7
+              ::geo/y    9
+              :left      7}]})))
+
+  (testing "processing sequence partial items being maps"
+    (is (= (run-graph (pci/register geo/full-registry)
+                      [{::coords [:left]}]
+                      {::coords [{::geo/x 7 ::geo/y 9}
+                                 20]})
+           {::coords [{::geo/x    7
+                       ::geo/y    9
+                       ::geo/left 7
+                       :left      7}
+                      20]}))))
+
+(deftest run-graph!-or-test
   (testing "processing OR nodes"
     (testing "return the first option that works, don't call the others"
       (let [spy (atom 0)]
@@ -248,32 +274,7 @@
                           [:error]
                           {})
                {:error "value"}))
-        (is (= @spy 1)))))
-
-  (testing "processing sequence of inconsistent maps"
-    (is (= (run-graph (pci/register geo/full-registry)
-                      [{::coords [:left]}]
-                      {::coords [{::geo/x 7 ::geo/y 9}
-                                 {::geo/left 7 ::geo/y 9}]})
-           {::coords
-            [{::geo/x    7
-              ::geo/y    9
-              ::geo/left 7
-              :left      7}
-             {::geo/left 7
-              ::geo/y    9
-              :left      7}]})))
-
-  (testing "processing sequence partial items being maps"
-    (is (= (run-graph (pci/register geo/full-registry)
-                      [{::coords [:left]}]
-                      {::coords [{::geo/x 7 ::geo/y 9}
-                                 20]})
-           {::coords [{::geo/x    7
-                       ::geo/y    9
-                       ::geo/left 7
-                       :left      7}
-                      20]}))))
+        (is (= @spy 1))))))
 
 (deftest run-graph!-unions-test
   (is (= (run-graph
