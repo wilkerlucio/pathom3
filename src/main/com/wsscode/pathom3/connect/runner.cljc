@@ -245,15 +245,21 @@
           (merge-resolver-response! env response)
           (run-next-node! env node))))))
 
+(defn default-choose-path [_env _or-node options]
+  (first options))
+
 (>defn run-or-node!
-  [{::pcp/keys [graph] :as env} {::pcp/keys [run-or] :as or-node}]
+  [{::pcp/keys [graph]
+    ::keys     [choose-path]
+    :or        {choose-path default-choose-path}
+    :as        env} {::pcp/keys [run-or] :as or-node}]
   [(s/keys :req [::pcp/graph]) ::pcp/node => nil?]
   (loop [nodes run-or]
-    (let [[node-id & tail] nodes]
+    (let [node-id (choose-path env or-node nodes)]
       (when node-id
         (run-node! env (pcp/get-node graph node-id))
         (if-not (all-requires-ready? env or-node)
-          (recur tail)))))
+          (recur (disj nodes node-id))))))
   (run-next-node! env or-node))
 
 (>defn run-and-node!

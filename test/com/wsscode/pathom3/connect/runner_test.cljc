@@ -249,18 +249,18 @@
     (testing "return the first option that works, don't call the others"
       (let [spy (atom 0)]
         (is (= (run-graph (pci/register [(pco/resolver `value
-                                           {::pco/output [:error]}
+                                           {::pco/output [:value]}
                                            (fn [_ _]
                                              (swap! spy inc)
-                                             {:error 1}))
+                                             {:value 1}))
                                          (pco/resolver `value2
-                                           {::pco/output [:error]}
+                                           {::pco/output [:value]}
                                            (fn [_ _]
                                              (swap! spy inc)
-                                             {:error 1}))])
-                          [:error]
+                                             {:value 1}))])
+                          [:value]
                           {})
-               {:error 1}))
+               {:value 1}))
         (is (= @spy 1))))
 
     (testing "one option fail, one succeed"
@@ -274,7 +274,25 @@
                           [:error]
                           {})
                {:error "value"}))
-        (is (= @spy 1))))))
+        (is (= @spy 1))))
+
+    (testing "custom prioritization"
+      (is (= (run-graph
+               (pci/register
+                 {::pcr/choose-path
+                  (fn [_env _or-node options]
+                    (last options))}
+                 [(pco/resolver `value
+                    {::pco/output [:value]}
+                    (fn [_ _]
+                      {:value 1}))
+                  (pco/resolver `value2
+                    {::pco/output [:value]}
+                    (fn [_ _]
+                      {:value 2}))])
+               [:value]
+               {})
+             {:value 2})))))
 
 (deftest run-graph!-unions-test
   (is (= (run-graph
