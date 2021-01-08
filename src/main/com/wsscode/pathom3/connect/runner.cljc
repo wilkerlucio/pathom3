@@ -246,14 +246,17 @@
           (merge-resolver-response! env response)
           (run-next-node! env node))))))
 
-(defn priority-sort [nodes-data]
-  (sort-by #(or (::priority %) 0) #(compare %2 %) nodes-data))
+(defn priority-sort [{::pcp/keys [graph] :as env} node-ids]
+  (let [nodes-data (->> node-ids
+                        (map #(-> graph
+                                  (pcp/find-leaf-node (pcp/get-node graph %))
+                                  (assoc ::source-node-path %)))
+                        (keep #(pcp/node-with-resolver-config graph env %)))]
+    (mapv ::source-node-path (sort-by #(or (::priority %) 0) #(compare %2 %) nodes-data))))
 
-(defn default-choose-path [{::pcp/keys [graph] :as env} _or-node node-ids]
-  (let [nodes-data (keep #(pcp/node-with-resolver-config graph env %) node-ids)]
-    (-> (priority-sort nodes-data)
-        first
-        ::pcp/node-id)))
+(defn default-choose-path [env _or-node node-ids]
+  (-> (priority-sort env node-ids)
+      first))
 
 (>defn run-or-node!
   [{::pcp/keys [graph]

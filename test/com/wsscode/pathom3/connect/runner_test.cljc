@@ -314,22 +314,44 @@
         (is (= (run-graph
                  (pci/register
                    [(pco/resolver `value
-                      {::pco/input  [:a :b]
+                      {::pco/input  [:a]
                        ::pco/output [:value]}
                       (fn [_ _]
                         {:value 1}))
                     (pco/resolver `value2
-                      {::pco/input    [:c]
+                      {::pco/input    [:b]
                        ::pco/output   [:value]
                        ::pcr/priority 1}
                       (fn [_ _]
                         {:value 2}))
                     (pbir/constant-resolver :a 1)
-                    (pbir/constant-resolver :b 2)
-                    (pbir/constant-resolver :c 3)])
+                    (pbir/constant-resolver :b 2)])
                  [:value]
                  {})
-               {:value 2}))))))
+               {:b     2
+                :value 2}))
+
+        (testing "complex extension"
+          (is (= (run-graph
+                   (pci/register
+                     [(pco/resolver `value
+                        {::pco/input  [:a :b]
+                         ::pco/output [:value]}
+                        (fn [_ _]
+                          {:value 1}))
+                      (pco/resolver `value2
+                        {::pco/input    [:c]
+                         ::pco/output   [:value]
+                         ::pcr/priority 1}
+                        (fn [_ _]
+                          {:value 2}))
+                      (pbir/constant-resolver :a 1)
+                      (pbir/constant-resolver :b 2)
+                      (pbir/constant-resolver :c 3)])
+                   [:value]
+                   {})
+                 {:c     3
+                  :value 2})))))))
 
 (deftest run-graph!-unions-test
   (is (= (run-graph

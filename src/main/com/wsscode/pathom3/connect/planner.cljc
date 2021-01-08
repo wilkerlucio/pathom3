@@ -229,11 +229,12 @@
    (get-in graph [::nodes node-id k])))
 
 (defn node-with-resolver-config
-  "Get the node plus the resolver config, when the node has an op-name."
-  [graph env node-id]
-  (let [node            (get-node graph node-id)
-        resolver-config (->> node ::pco/op-name (pci/resolver-config env))]
-    (merge node resolver-config)))
+  "Get the node plus the resolver config, when the node has an op-name. If node is
+  not a resolver not it returns nil."
+  [graph env {::keys [node-id] :as node'}]
+  (let [node (get-node graph node-id)]
+    (if-let [config (some->> node ::pco/op-name (pci/resolver-config env))]
+      (merge node' node config))))
 
 (defn assoc-node
   "Set attribute k about node-id. Only assoc when node exists, otherwise its a noop."
@@ -1329,13 +1330,14 @@
 
 (>defn find-run-next-descendants
   "Return descendants by waling the run-next"
-  [graph node]
+  [graph {::keys [node-id]}]
   [::graph ::node => (s/coll-of ::node)]
-  (loop [descendants [node]
-         {::keys [run-next]} node]
-    (if-let [next (get-node graph run-next)]
-      (recur (conj descendants next) next)
-      descendants)))
+  (let [node (get-node graph node-id)]
+    (loop [descendants [node]
+           {::keys [run-next]} node]
+      (if-let [next (get-node graph run-next)]
+        (recur (conj descendants next) next)
+        descendants))))
 
 (defn find-leaf-node
   "Traverses all run-next still it reaches a leaf."
