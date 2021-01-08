@@ -351,8 +351,9 @@
                    [:value]
                    {})
                  {:c     3
-                  :value 2}))
+                  :value 2})))
 
+        (testing "leaf is a branch"
           (is (= (run-graph
                    (pci/register
                      [(pco/resolver `value-b1
