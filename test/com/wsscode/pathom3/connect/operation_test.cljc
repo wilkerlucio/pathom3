@@ -88,6 +88,19 @@
               ::pco/provides {:foo {}}
               ::pco/requires {}}))))
 
+  (testing "defining optional inputs"
+    (let [resolver (pco/resolver 'foo
+                     {::pco/input  [:x (pco/? :y)]
+                      ::pco/output [:foo]}
+                     (fn [_ _] {:foo "bar"}))]
+      (is (= (pco/operation-config resolver)
+             {::pco/op-name   'foo
+              ::pco/output    [:foo]
+              ::pco/input     [:x (pco/? :y)]
+              ::pco/provides  {:foo {}}
+              ::pco/requires  {:x {}}
+              ::pco/optionals {:y {}}}))))
+
   (testing "noop when called with a resolver"
     (let [resolver (-> {::pco/op-name 'foo
                         ::pco/output  [:foo]
@@ -547,3 +560,19 @@
            ::pco/cache?   false,
            ::pco/op-name  foo-constant,
            :extra         "data"})))
+
+(deftest describe-input-test
+  (is (= (pco/describe-input [])
+         {::pco/requires {}}))
+
+  (is (= (pco/describe-input [:foo])
+         {::pco/requires {:foo {}}}))
+
+  (is (= (pco/describe-input [:foo (pco/? :bar)])
+         {::pco/requires  {:foo {}}
+          ::pco/optionals {:bar {}}}))
+
+  (is (= (pco/describe-input [:foo {:baz [:x (pco/? :y)]}])
+         {::pco/requires  {:foo {}
+                           :baz {:x {}}}
+          ::pco/optionals {:baz {:y {}}}})))
