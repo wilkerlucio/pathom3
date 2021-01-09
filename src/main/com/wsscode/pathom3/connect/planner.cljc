@@ -191,8 +191,7 @@
    graph))
 
 (defn base-graph []
-  {::nodes                 {}
-   ::unreachable-resolvers #{}})
+  {::nodes {}})
 
 (defn base-env []
   {::id-counter     (atom 0)
@@ -1013,11 +1012,11 @@
    env]
   (let [syms (->> (collect-nested-resolver-names graph env (get-root-node graph))
                   (into unreachable-resolvers)
-                  (into (::unreachable-resolvers previous-graph)))]
+                  (into (::unreachable-resolvers previous-graph #{})))]
     (add-snapshot! graph env {::snapshot-message (str "Mark node unreachable, resolvers " (pr-str syms) ", attrs" unreachable-attrs)})
-    (cond-> (assoc previous-graph
-              ::unreachable-resolvers syms
-              ::unreachable-attrs unreachable-attrs)
+    (cond-> (coll/assoc-if previous-graph
+                           ::unreachable-resolvers syms
+                           ::unreachable-attrs unreachable-attrs)
       (set/subset? (all-attribute-resolvers env (pc-attr env)) syms)
       (add-unreachable-attr (pc-attr env)))))
 

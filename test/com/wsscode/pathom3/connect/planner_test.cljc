@@ -160,7 +160,6 @@
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  1
              ::pcp/index-attrs           {:a 1}
              ::pcp/index-ast             {:a {:dispatch-key :a
@@ -179,7 +178,6 @@
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a :b}}}
              ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:a 1 :b 1}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -211,7 +209,6 @@
                                              ::pcp/expects {:b {} :a {} :c {}}
                                              ::pcp/run-and #{2 1}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:a 1 :b 2 :c 1}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -246,7 +243,6 @@
                                              ::pcp/run-or           #{1 2}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1} a2 #{2}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  3
              ::pcp/index-attrs           {:a 3}
              ::pcp/index-ast             {:a {:type         :prop,
@@ -276,7 +272,6 @@
                                              ::pcp/expects {:b {} :a {}}
                                              ::pcp/run-and #{2 1}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:a 1 :b 2}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -316,7 +311,6 @@
                                              ::pcp/source-for-attrs #{:c}
                                              ::pcp/node-parents     #{3}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2} c #{4}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:a 1 :b 2 :c 4}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -366,7 +360,6 @@
                                              ::pcp/run-and  #{4 2}
                                              ::pcp/run-next 1}}
              ::pcp/index-resolver->nodes {multi #{1} direct #{2} indirect #{3} dep #{4}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:direct 2 :dep 4 :indirect 3 :multi 1}
              ::pcp/index-ast             {:multi {:type         :prop,
                                                   :dispatch-key :multi,
@@ -417,7 +410,6 @@
                                              ::pcp/source-for-attrs #{:d}
                                              ::pcp/node-parents     #{5}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} e #{3} b #{4} d #{6}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:e 3 :c 2 :b 4 :d 6 :a 1}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -463,7 +455,6 @@
                                              ::pcp/expects      {:a {} :d {}}
                                              ::pcp/run-and      #{1 5}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:c 2 :b 3 :a 1}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -499,7 +490,6 @@
                                                ::pcp/source-for-attrs #{:b}
                                                ::pcp/run-next         1}}
                ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3}}
-               ::pcp/unreachable-resolvers #{}
                ::pcp/index-attrs           {:c 2 :b 3 :a 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -545,7 +535,6 @@
                                                                             d #{2},
                                                                             c #{3},
                                                                             b #{4}},
-                                                    :unreachable-resolvers #{},
                                                     :index-ast             {:a {:type         :prop,
                                                                                 :dispatch-key :a,
                                                                                 :key          :a}},
@@ -735,7 +724,6 @@
                                                                                                          :f {}},
                                                              :com.wsscode.pathom3.connect.planner/node-parents #{9},
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:e}}},
-                                                  :unreachable-resolvers #{},
                                                   :index-ast {:a {:type :prop,
                                                                   :dispatch-key :a,
                                                                   :key :a},
@@ -806,7 +794,6 @@
                                              ::pcp/expects {:b {} :e {} :c {}}
                                              ::pcp/run-and #{7 4}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5} e #{6}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:c 2 :b 3 :a 1 :e 6 :d 5}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -841,7 +828,6 @@
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:b :a}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-resolvers #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -872,7 +858,6 @@
                                              ::pcp/source-for-attrs #{:b :a}
                                              ::pcp/node-parents     #{2}}}
              ::pcp/index-resolver->nodes {a #{3} z #{2}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:z 2 :a 3 :b 3}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -912,7 +897,6 @@
                                              ::pcp/source-for-attrs #{:b :a}
                                              ::pcp/node-parents     #{3}}}
              ::pcp/index-resolver->nodes {c #{1} a #{4} z #{3}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:z 3 :b 4 :c 1 :a 4}
              ::pcp/index-ast             {:c {:type         :prop,
                                               :dispatch-key :c,
@@ -943,7 +927,6 @@
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {b #{1} a #{2}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  2
              ::pcp/index-attrs           {:a 2 :b 1}
              ::pcp/index-ast             {:b {:type         :prop,
@@ -982,7 +965,6 @@
                                              ::pcp/run-or           #{3 1}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1} a2 #{2} b #{3}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  4
              ::pcp/index-attrs           {:b 3 :a 4}
              ::pcp/index-ast             {:a {:type         :prop,
@@ -1017,7 +999,6 @@
                                                                                                     :run-or #{1
                                                                                                               3},
                                                                                                     :source-for-attrs #{:a}}},
-                                                    :unreachable-resolvers #{},
                                                     :index-ast {:a {:type :prop,
                                                                     :dispatch-key :a,
                                                                     :key :a},
@@ -1049,7 +1030,6 @@
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {b #{1} a #{2}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  2
              ::pcp/index-attrs           {:a 2 :b 1}
              ::pcp/index-ast             {:b {:type         :prop,
@@ -1087,7 +1067,6 @@
                                              ::pcp/run-next         2
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  3
              ::pcp/index-attrs           {:a 3 :b 2 :c 1}
              ::pcp/index-ast             {:c {:type         :prop,
@@ -1117,7 +1096,6 @@
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:b}}}
              ::pcp/index-resolver->nodes {c #{1} b #{2}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  2
              ::pcp/index-attrs           {:b 2 :c 1}
              ::pcp/index-ast             {:c {:type         :prop,
@@ -1165,7 +1143,6 @@
                                                                                                                      :z},
                                                              :com.wsscode.pathom3.connect.planner/node-parents #{5},
                                                              :com.wsscode.pathom3.connect.planner/run-next 1}},
-                                                  :unreachable-resolvers #{},
                                                   :index-ast {:a {:type :prop,
                                                                   :dispatch-key :a,
                                                                   :key :a}},
@@ -1208,7 +1185,6 @@
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {b #{1} a #{2} a2 #{3}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  4
              ::pcp/index-attrs           {:a 4 :b 1}
              ::pcp/index-ast             {:b {:type         :prop,
@@ -1249,7 +1225,6 @@
                                                 ::pcp/run-next         3
                                                 ::pcp/source-for-attrs #{:a}}}
                 ::pcp/index-resolver->nodes {b2 #{1} b #{2} a #{4}}
-                ::pcp/unreachable-resolvers #{}
                 ::pcp/root                  4
                 ::pcp/index-attrs           {:a 4 :b 3}
                 ::pcp/index-ast             {:b {:type         :prop,
@@ -1278,7 +1253,6 @@
                                                 ::pcp/run-next         3
                                                 ::pcp/source-for-attrs #{:a}}}
                 ::pcp/index-resolver->nodes {b2 #{2} b #{1} a #{4}}
-                ::pcp/unreachable-resolvers #{}
                 ::pcp/root                  4
                 ::pcp/index-attrs           {:a 4 :b 3}
                 ::pcp/index-ast             {:b {:type         :prop,
@@ -1320,8 +1294,7 @@
                                              ::pcp/run-and  #{3
                                                               2},
                                              ::pcp/run-next 1}},
-             ::pcp/index-resolver->nodes {c #{1}, a #{2}, b #{3}},
-             ::pcp/unreachable-resolvers #{},
+             ::pcp/index-resolver->nodes {c #{1}, a #{2}, b #{3}},,
              ::pcp/index-attrs           {:a 2, :b 3, :c 1},
              ::pcp/index-ast             {:c {:type         :prop,
                                               :dispatch-key :c,
@@ -1352,7 +1325,6 @@
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {c2 #{1} a #{2}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  2
              ::pcp/index-attrs           {:a 2 :c 1}
              ::pcp/index-ast             {:c {:type         :prop,
@@ -1410,7 +1382,6 @@
                                                                           a  #{2},
                                                                           a1 #{3},
                                                                           b  #{5}},
-                                                  :unreachable-resolvers #{},
                                                   :index-attrs           {:a 4, :b 5, :c 1},
                                                   :index-ast             {:c {:type         :prop,
                                                                               :dispatch-key :c,
@@ -1469,7 +1440,6 @@
                                              ::pcp/expects {:d {} :c {}}
                                              ::pcp/run-and #{6 2}}}
              ::pcp/index-resolver->nodes {a #{1} cd #{4 2} b #{3} d #{5}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:c 2 :a 1 :d 6 :b 3}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -1516,7 +1486,6 @@
                                              ::pcp/node-parents #{3}
                                              ::pcp/run-next     1}}
              ::pcp/index-resolver->nodes {d #{1} c #{2} a #{3} b #{4}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:a 3 :c 2 :b 4 :d 1}
              ::pcp/index-ast             {:d {:type         :prop,
                                               :dispatch-key :d,
@@ -1583,8 +1552,7 @@
                                           b #{2},
                                           a #{3},
                                           z #{4},
-                                          c #{5}},
-             ::pcp/unreachable-resolvers #{},
+                                          c #{5}},,
              ::pcp/index-attrs           {:z 4, :a 3, :b 2, :c 5, :d 1},
              ::pcp/index-ast             {:d {:type         :prop,
                                               :dispatch-key :d,
@@ -1638,7 +1606,6 @@
                                           id             #{2}
                                           recur-dep      #{3}
                                           label-type     #{4}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:db/id          2
                                           :release/script 1
                                           :label/type     4
@@ -1733,8 +1700,7 @@
                                                                                                                   :run-and  #{2
                                                                                                                               7}
                                                                                                                   :run-next 1}}
-                                                  :root                  8
-                                                  :unreachable-resolvers #{}})))
+                                                  :root                  8})))
 
   ; TODO: fix OR case
   #_(testing "or on multi dependency"
@@ -1777,7 +1743,6 @@
                                              ::pcp/run-next         1
                                              ::pcp/source-for-attrs #{:name :other-id}}}
              ::pcp/index-resolver->nodes {from-other-id #{1} from-id #{2}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:other-id 2 :name 2}
              ::pcp/index-ast             {:name {:type         :prop,
                                                  :dispatch-key :name,
@@ -1817,7 +1782,6 @@
              ::pcp/index-resolver->nodes {from-id        #{1}
                                           from-other-id2 #{2}
                                           from-other-id  #{3}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  1
              ::pcp/index-attrs           {:other-id 1 :other-id2 3 :name 1}
              ::pcp/index-ast             {:name {:type         :prop,
@@ -1859,7 +1823,6 @@
                ::pcp/index-resolver->nodes {from-id        #{1}
                                             from-other-id2 #{5}
                                             from-other-id  #{3}}
-               ::pcp/unreachable-resolvers #{}
                ::pcp/index-attrs           {:other-id 1 :other-id2 3 :name 1 :other 5}
                ::pcp/index-ast             {:name  {:type         :prop,
                                                     :dispatch-key :name,
@@ -1876,7 +1839,6 @@
               ::eql/query     [:a]})
            {::pcp/nodes                 {}
             ::pcp/unreachable-attrs     {:a {}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/index-ast             {:a {:dispatch-key :a
                                              :key          :a
                                              :type         :prop}}}))
@@ -1982,7 +1944,6 @@
                 ::eql/query          [:a]
                 ::pcp/available-data {:a {}}})
              {::pcp/nodes                 {}
-              ::pcp/unreachable-resolvers #{}
               ::pcp/index-ast             {:a {:dispatch-key :a
                                                :key          :a
                                                :type         :prop}}}))
@@ -1993,7 +1954,6 @@
                   ::eql/query          [{:a [:bar]}]
                   ::pcp/available-data {:a {}}})
                {::pcp/nodes                    {}
-                ::pcp/unreachable-resolvers    #{}
                 ::pcp/nested-available-process #{:a}
                 ::pcp/index-ast                {:a {:children     [{:dispatch-key :bar
                                                                     :key          :bar
@@ -2008,7 +1968,6 @@
            {::pci/index-oir '{}
             ::eql/query     [(list 'foo {})]})
          '{::pcp/nodes                 {}
-           ::pcp/unreachable-resolvers #{}
            ::pcp/mutations             [{:dispatch-key foo
                                          :key          foo
                                          :params       {}
@@ -2030,7 +1989,6 @@
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  1
              ::pcp/idents                #{[:foo "bar"]}
              ::pcp/index-attrs           {:a 1}
@@ -2052,7 +2010,6 @@
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  1
              ::pcp/idents                #{[:foo "bar"]}
              ::pcp/index-attrs           {:a 1}
@@ -2170,36 +2127,31 @@
                                 {::pco/op-name user
                                  ::pco/input   [:user/id]
                                  ::pco/output  [:user/score]}]}))
-           '{:com.wsscode.pathom3.connect.planner/nodes
-                                                                        {1
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id      1,
-                                                                          :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input
-                                                                                                                            {:users {:user/score {}}},
-                                                                          :com.wsscode.pathom3.connect.planner/node-parents #{2},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs
-                                                                                                                            #{:scores-sum}},
-                                                                         2
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        users,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          2,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:users {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:users},
-                                                                          :com.wsscode.pathom3.connect.planner/run-next         1}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-                                                                        {scores-sum #{1}, users #{2}},
-             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-             :com.wsscode.pathom3.connect.planner/index-ast             {:scores-sum {:type :prop, :dispatch-key :scores-sum, :key :scores-sum},
-                                                                         :users      {:type         :join
-                                                                                      :key          :users
-                                                                                      :dispatch-key :users
-                                                                                      :children     [{:type         :prop
-                                                                                                      :key          :user/score
-                                                                                                      :dispatch-key :user/score}]}},
-             :com.wsscode.pathom3.connect.planner/index-attrs
-                                                                        {:users 2, :scores-sum 1},
-             :com.wsscode.pathom3.connect.planner/root                  2})))
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name scores-sum,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:scores-sum {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:users #:user{:score {}}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{2},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:scores-sum}},
+                                                          2 {:com.wsscode.pathom3.connect.operation/op-name users,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:users {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:users},
+                                                             :com.wsscode.pathom3.connect.planner/run-next 1}},
+                                                  :index-ast {:scores-sum {:type :prop,
+                                                                           :dispatch-key :scores-sum,
+                                                                           :key :scores-sum},
+                                                              :users {:type :join,
+                                                                      :children [{:type :prop,
+                                                                                  :key :user/score,
+                                                                                  :dispatch-key :user/score}],
+                                                                      :key :users,
+                                                                      :dispatch-key :users}},
+                                                  :index-resolver->nodes {scores-sum #{1},
+                                                                          users #{2}},
+                                                  :index-attrs {:users 2, :scores-sum 1},
+                                                  :root 2})))
 
   (testing "data partially available, require join lookup"
     (is (= (compute-run-graph
@@ -2219,7 +2171,6 @@
                                                                                 :com.wsscode.pathom3.connect.planner/input            {:users #:user{:score {}}}
                                                                                 :com.wsscode.pathom3.connect.planner/source-for-attrs #{:scores-sum}}},
                                                   :index-resolver->nodes    {scores-sum #{1}},
-                                                  :unreachable-resolvers    #{},
                                                   :nested-available-process #{:users}
                                                   :index-attrs              {:scores-sum 1}
                                                   :root                     1
@@ -2262,7 +2213,6 @@
                                                                                 :com.wsscode.pathom3.connect.planner/run-next         1}},
                                                   :index-resolver->nodes    {scores-sum #{1},
                                                                              other      #{2}},
-                                                  :unreachable-resolvers    #{},
                                                   :nested-available-process #{:users}
                                                   :index-ast                {:scores-sum {:type         :prop,
                                                                                           :dispatch-key :scores-sum,
@@ -2299,7 +2249,6 @@
                                                                                                                          #{:scores-sum}}},
              :com.wsscode.pathom3.connect.planner/index-resolver->nodes
                                                                         {scores-sum #{1}},
-             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
              :com.wsscode.pathom3.connect.planner/index-ast
                                                                         {:scores-sum
                                                                          {:type :prop, :dispatch-key :scores-sum, :key :scores-sum}},
@@ -2407,7 +2356,6 @@
                                                                           :com.wsscode.pathom3.connect.planner/node-parents #{2}}},
              :com.wsscode.pathom3.connect.planner/index-resolver->nodes
                                                                         {scores-sum #{1}, users #{2}, age-sum #{4}},
-             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
              :com.wsscode.pathom3.connect.planner/index-ast
                                                                         {:scores-sum
                                                                                   {:type :prop, :dispatch-key :scores-sum, :key :scores-sum},
@@ -2447,7 +2395,6 @@
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:x},
                                                              :com.wsscode.pathom3.connect.planner/run-next 1}},
                                                   :index-resolver->nodes {foo #{1}, x #{2}},
-                                                  :unreachable-resolvers #{},
                                                   :unreachable-attrs {:y {}},
                                                   :index-ast {:foo {:type :prop,
                                                                     :dispatch-key :foo,
@@ -2490,7 +2437,6 @@
                                                                                                               2},
                                                                                                   :run-next 1}},
                                                   :index-resolver->nodes {foo #{1}, x #{2}, y #{3}},
-                                                  :unreachable-resolvers #{},
                                                   :index-ast {:foo {:type         :prop,
                                                                     :dispatch-key :foo,
                                                                     :key          :foo}},
@@ -2510,7 +2456,6 @@
                                                                                :com.wsscode.pathom3.connect.planner/input            {},
                                                                                :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo}}},
                                                     :index-resolver->nodes {foo #{1}},
-                                                    :unreachable-resolvers #{},
                                                     :unreachable-attrs     {:y {}},
                                                     :index-ast             {:foo {:type         :prop,
                                                                                   :dispatch-key :foo,
@@ -2539,7 +2484,6 @@
                                                                                :com.wsscode.pathom3.connect.planner/source-for-attrs #{:y},
                                                                                :com.wsscode.pathom3.connect.planner/run-next         1}},
                                                     :index-resolver->nodes {foo #{1}, y #{2}},
-                                                    :unreachable-resolvers #{},
                                                     :index-ast             {:foo {:type         :prop,
                                                                                   :dispatch-key :foo,
                                                                                   :key          :foo}},
@@ -2556,7 +2500,6 @@
                                                              :com.wsscode.pathom3.connect.planner/expects {:a {}},
                                                              :com.wsscode.pathom3.connect.planner/input {},
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
-                                                  :unreachable-resolvers #{},
                                                   :index-ast #:>{:p1 {:type :join,
                                                                       :dispatch-key :>/p1,
                                                                       :key :>/p1,
@@ -2593,7 +2536,6 @@
                                                                                                             :a {}},
                                                                                                   :run-and #{1
                                                                                                              2}}},
-                                                  :unreachable-resolvers #{},
                                                   :index-ast {:a {:type :prop,
                                                                   :dispatch-key :a,
                                                                   :key :a},
@@ -2619,7 +2561,6 @@
                                                              :com.wsscode.pathom3.connect.planner/expects {:a {}},
                                                              :com.wsscode.pathom3.connect.planner/input {},
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
-                                                  :unreachable-resolvers #{},
                                                   :index-ast #:>{:p1 {:type :join,
                                                                       :dispatch-key :>/p1,
                                                                       :key :>/p1,
@@ -2663,7 +2604,6 @@
                                                                                                             :a {}},
                                                                                                   :run-and #{1
                                                                                                              2}}},
-                                                  :unreachable-resolvers #{},
                                                   :index-ast #:>{:p1 {:type :join,
                                                                       :dispatch-key :>/p1,
                                                                       :key :>/p1,
@@ -2703,7 +2643,6 @@
                                              ::pcp/input            {}
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/root                  1
              ::pcp/index-attrs           {:a 1}
              ::pcp/index-ast             {:a {:type         :prop,
@@ -2724,7 +2663,6 @@
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-resolvers #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -2747,7 +2685,6 @@
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-resolvers #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -2771,7 +2708,6 @@
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-resolvers #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -2795,7 +2731,6 @@
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-resolvers #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -2822,7 +2757,6 @@
                                                ::pcp/input            {}
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/unreachable-resolvers #{}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -2868,7 +2802,6 @@
                                             ::pcp/source-for-attrs #{:release/script}
                                             ::pcp/foreign-ast      (eql/query->ast [:release/script])}}
             ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:release/script 1}
             ::pcp/index-ast             {:release/script {:type         :prop,
@@ -2898,7 +2831,6 @@
                                                                                   :type         :prop}]
                                                                       :type     :root}}}
               ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
-              ::pcp/unreachable-resolvers #{}
               ::pcp/root                  1
               ::pcp/index-attrs           {:release/script 1}
 
@@ -2926,7 +2858,6 @@
                                             ::pcp/source-for-attrs #{:release/script :label/type}
                                             ::pcp/foreign-ast      (eql/query->ast [:release/script :label/type])}}
             ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/index-attrs           {:release/script 1 :label/type 1}
             ::pcp/index-ast             {:release/script {:type         :prop,
                                                           :dispatch-key :release/script,
@@ -2963,7 +2894,6 @@
                                             ::pcp/node-parents     #{2}
                                             ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{3} id #{2}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/index-attrs           {:db/id 2 :release/script 3 :label/type 3}
             ::pcp/index-ast             {:release/script {:type         :prop,
                                                           :dispatch-key :release/script,
@@ -2991,7 +2921,6 @@
                                             ::pcp/source-for-attrs #{:b :a}
                                             ::pcp/foreign-ast      (eql/query->ast [:a :b])}}
             ::pcp/index-resolver->nodes {'dynamic-resolver #{2}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/root                  2
             ::pcp/index-attrs           {:a 2 :b 2}
             ::pcp/index-ast             {:b {:type         :prop,
@@ -3016,7 +2945,6 @@
                                             ::pcp/source-for-attrs #{:c :b :a}
                                             ::pcp/foreign-ast      (eql/query->ast [:a :b :c])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{3}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/root                  3
             ::pcp/index-attrs           {:a 3 :b 3 :c 3}
             ::pcp/index-ast             {:c {:type         :prop,
@@ -3049,7 +2977,6 @@
                                             ::pcp/source-for-attrs #{:z}
                                             ::pcp/run-next         2}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{2} z #{3}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/root                  3
             ::pcp/index-attrs           {:z 3 :a 2 :b 2}
             ::pcp/index-ast             {:b {:type         :prop,
@@ -3084,7 +3011,6 @@
                                               ::pcp/run-next         1
                                               ::pcp/foreign-ast      (eql/query->ast [:a :b])}}
               ::pcp/index-resolver->nodes '{z #{1} dynamic-resolver #{3}}
-              ::pcp/unreachable-resolvers #{}
               ::pcp/root                  3
               ::pcp/index-attrs           {:a 3 :b 3 :z 1}
               ::pcp/index-ast             {:z {:type         :prop,
@@ -3129,8 +3055,7 @@
                                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a
                                                                                                                                      :b
                                                                                                                                      :c}}}
-                                                  :root                  2
-                                                  :unreachable-resolvers #{}})))
+                                                  :root                  2})))
 
   (testing "multiple calls to dynamic resolver"
     (is (= (compute-run-graph
@@ -3168,7 +3093,6 @@
                                             ::pcp/source-for-attrs #{:a}
                                             ::pcp/foreign-ast      (eql/query->ast [:a])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{1 3} b #{2}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/root                  3
             ::pcp/index-attrs           {:a 3 :b 2 :c 1}
             ::pcp/index-ast             {:c {:type         :prop,
@@ -3212,7 +3136,6 @@
                                             ::pcp/run-next         3
                                             ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{4} id #{2} complex #{3}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/index-attrs           {:db/id          2
                                          :release/script 4
                                          :label/type     4
@@ -3251,7 +3174,6 @@
                                               ::pcp/source-for-attrs #{:c :b :d :a}
                                               ::pcp/foreign-ast      (eql/query->ast [:b :a :c :d])}}
               ::pcp/index-resolver->nodes '{dyn #{6}}
-              ::pcp/unreachable-resolvers #{}
               ::pcp/index-attrs           {:c 6 :d 6 :a 6 :b 6}
               ::pcp/root                  6})))
 
@@ -3292,7 +3214,6 @@
                                             ::pcp/run-and  #{3 2}
                                             ::pcp/run-next 1}}
             ::pcp/index-resolver->nodes '{dyn #{1 2} l1 #{3}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/index-attrs           {:d2 2 :l1 3 :d1 1}
             ::pcp/index-ast             {:d1 {:type         :prop,
                                               :dispatch-key :d1,
@@ -3322,7 +3243,6 @@
                                             ::pcp/source-for-attrs #{:a}
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
@@ -3356,7 +3276,6 @@
                                             ::pcp/source-for-attrs #{:a}
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
@@ -3414,7 +3333,6 @@
                                              ::pcp/run-next         1}}
              ::pcp/index-resolver->nodes {dynamic-1->local     #{1}
                                           dynamic-parser-42276 #{2}}
-             ::pcp/unreachable-resolvers #{}
              ::pcp/index-attrs           {:dynamic-1 2
                                           :local     1
                                           :dynamic-2 2}
@@ -3451,7 +3369,6 @@
                                               ::pcp/source-for-attrs #{:a}
                                               ::pcp/foreign-ast      (eql/query->ast [{:a [:b :c]}])}}
               ::pcp/index-resolver->nodes '{dyn #{1}}
-              ::pcp/unreachable-resolvers #{}
               ::pcp/root                  1
               ::pcp/index-attrs           {:a 1}
               ::pcp/index-ast             {:a {:type         :join,
@@ -3501,7 +3418,6 @@
                                                 ::pcp/foreign-ast      (eql/query->ast [{:a {:b [:b]
                                                                                              :c [:c]}}])}}
                 ::pcp/index-resolver->nodes '{dyn #{1}}
-                ::pcp/unreachable-resolvers #{}
                 ::pcp/unreachable-attrs     #{}
                 ::pcp/root                  1
                 ::pcp/index-attrs           {:a 1}}))))
@@ -3526,7 +3442,6 @@
                                             ::pcp/source-for-attrs #{:a}
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [{:b [:c]}]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
@@ -3565,7 +3480,6 @@
                                               ::pcp/source-for-attrs #{:a}
                                               ::pcp/foreign-ast      (eql/query->ast [{:a [{:b [:c]}]}])}}
               ::pcp/index-resolver->nodes '{dyn #{1}}
-              ::pcp/unreachable-resolvers #{}
               ::pcp/root                  1
               ::pcp/index-attrs           {:a 1}
               ::pcp/index-ast             {:a {:type         :join,
@@ -3606,7 +3520,6 @@
                                             ::pcp/source-for-attrs #{:a}
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:c]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
@@ -3638,7 +3551,6 @@
                                             ::pcp/source-for-attrs #{:a}
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
@@ -3675,7 +3587,6 @@
                                             ::pcp/source-for-attrs #{:a}
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/unreachable-resolvers #{}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
