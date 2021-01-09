@@ -134,7 +134,7 @@
   "On dynamic resolvers, this points to the original source resolver in the foreign parser."
   ::pco/op-name)
 
-(>def ::unreachable-attrs
+(>def ::unreachable-paths
   "A shape containing the attributes that can't be reached considering current graph and available data."
   ::pfsd/shape-descriptor)
 
@@ -422,7 +422,7 @@
 (defn add-unreachable-attr
   "Add attribute to unreachable list"
   [graph attr]
-  (update graph ::unreachable-attrs assoc attr {}))
+  (update graph ::unreachable-paths assoc attr {}))
 
 (defn optimize-merge?
   "Check if node and graph point to same run-next."
@@ -1008,15 +1008,15 @@
   [previous-graph
    graph
    {::keys [unreachable-resolvers
-            unreachable-attrs]}
+            unreachable-paths]}
    env]
   (let [syms (->> (collect-nested-resolver-names graph env (get-root-node graph))
                   (into unreachable-resolvers)
                   (into (::unreachable-resolvers previous-graph #{})))]
-    (add-snapshot! graph env {::snapshot-message (str "Mark node unreachable, resolvers " (pr-str syms) ", attrs" unreachable-attrs)})
+    (add-snapshot! graph env {::snapshot-message (str "Mark node unreachable, resolvers " (pr-str syms) ", attrs" unreachable-paths)})
     (cond-> (coll/assoc-if previous-graph
                            ::unreachable-resolvers syms
-                           ::unreachable-attrs unreachable-attrs)
+                           ::unreachable-paths unreachable-paths)
       (set/subset? (all-attribute-resolvers env (pc-attr env)) syms)
       (add-unreachable-attr (pc-attr env)))))
 
@@ -1204,7 +1204,7 @@
           (merge-missing-chain graph graph' env missing missing-flat)
           (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
                 unreachable-attrs (unreachable-attrs-after-missing-check env unreachable-resolvers still-missing)]
-            (update out' ::unreachable-attrs pfsd/merge-shapes unreachable-attrs))))
+            (update out' ::unreachable-paths pfsd/merge-shapes unreachable-attrs))))
       graph)))
 
 (defn runner-node-sym
@@ -1402,7 +1402,7 @@
 
 (defn compute-attribute-graph
   "Compute the run graph for a given attribute."
-  [{::keys [unreachable-attrs] :as graph}
+  [{::keys [unreachable-paths] :as graph}
    {::keys     [available-data attr-deps-trail]
     ::pci/keys [index-oir]
     {attr :key
@@ -1420,7 +1420,7 @@
           (add-snapshot! env {::snapshot-event   ::snapshot-mark-process-sub-query
                               ::snapshot-message (str "Mark attribute " attr " to sub-process.")}))
 
-      (or (contains? unreachable-attrs attr)
+      (or (contains? unreachable-paths attr)
           (contains? attr-deps-trail attr))
       graph
 

@@ -583,7 +583,7 @@
                                                 ::pcp/run-next 11}}
                ::pcp/index-resolver->nodes {a1 #{10} e #{11} b #{12} f #{13}}
                ::pcp/unreachable-resolvers #{a d2 c3 c2 c d}
-               ::pcp/unreachable-attrs     {:c {} :d {}}
+               ::pcp/unreachable-paths     {:c {} :d {}}
                ::pcp/index-attrs           {:b 12 :f 13 :e 11 :a 10}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -634,7 +634,7 @@
                                                 ::pcp/run-next 11}}
                ::pcp/index-resolver->nodes {a1 #{10} e #{11} b #{12} f #{13}}
                ::pcp/unreachable-resolvers #{a d2 c3 c2 c d}
-               ::pcp/unreachable-attrs     {:c {} :d {}}
+               ::pcp/unreachable-paths     {:c {} :d {}}
                ::pcp/index-attrs           {:b 12 :f 13 :e 11 :a 10}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -1837,9 +1837,9 @@
     (is (= (compute-run-graph
              {::pci/index-oir '{}
               ::eql/query     [:a]})
-           {::pcp/nodes                 {}
-            ::pcp/unreachable-attrs     {:a {}}
-            ::pcp/index-ast             {:a {:dispatch-key :a
+           {::pcp/nodes             {}
+            ::pcp/unreachable-paths {:a {}}
+            ::pcp/index-ast         {:a {:dispatch-key :a
                                              :key          :a
                                              :type         :prop}}}))
 
@@ -1848,7 +1848,7 @@
                {::pci/index-oir '{:b {{:a {}} #{b}}}
                 ::eql/query     [:b]})
              '#::pcp{:nodes                 {}
-                     :unreachable-attrs     {:b {}, :a {}}
+                     :unreachable-paths     {:b {}, :a {}}
                      :unreachable-resolvers #{b}
                      :index-ast             {:b {:dispatch-key :b
                                                  :key          :b
@@ -1858,7 +1858,7 @@
                {::pci/index-oir '{:b {{:a {}} #{b1 b}}}
                 ::eql/query     [:b]})
              '#::pcp{:nodes                 {}
-                     :unreachable-attrs     {:a {} :b {}}
+                     :unreachable-paths     {:a {} :b {}}
                      :unreachable-resolvers #{b b1}
                      :index-ast             {:b {:dispatch-key :b
                                                  :key          :b
@@ -1871,9 +1871,9 @@
                               ::pco/input   [:a]
                               ::pco/output  [:b]}]
                 ::eql/query [:b]
-                ::out       {::pcp/unreachable-attrs {:a {}}}})
+                ::out       {::pcp/unreachable-paths {:a {}}}})
              '#::pcp{:nodes                 {}
-                     :unreachable-attrs     {:a {} :b {}}
+                     :unreachable-paths     {:a {} :b {}}
                      :unreachable-resolvers #{b}
                      :index-ast             {:b {:dispatch-key :b
                                                  :key          :b
@@ -1888,7 +1888,7 @@
                               ::pco/output  [:c]}]
                 ::eql/query [:c]})
              '#::pcp{:nodes                 {}
-                     :unreachable-attrs     {:a {} :b {} :c {}}
+                     :unreachable-paths     {:a {} :b {} :c {}}
                      :unreachable-resolvers #{b c}
                      :index-ast             {:c {:dispatch-key :c
                                                  :key          :c
@@ -1905,7 +1905,7 @@
                               ::pco/output  [:c]}]
                 ::eql/query [:c]})
              '#::pcp{:nodes                 {}
-                     :unreachable-attrs     {:c {}, :b {}, :a {}}
+                     :unreachable-paths     {:c {}, :b {}, :a {}}
                      :unreachable-resolvers #{b c}
                      :index-ast             {:c {:dispatch-key :c
                                                  :key          :c
@@ -1928,7 +1928,7 @@
                                                ::pcp/source-for-attrs #{:d}}}
                ::pcp/index-resolver->nodes {d #{4}}
                ::pcp/unreachable-resolvers #{c b}
-               ::pcp/unreachable-attrs     {:c {}, :b {}, :a {}}
+               ::pcp/unreachable-paths     {:c {}, :b {}, :a {}}
                ::pcp/root                  4
                ::pcp/index-attrs           {:d 4}
                ::pcp/index-ast             {:c {:dispatch-key :c
@@ -2037,7 +2037,7 @@
               ::eql/query [:a]})
            '#::pcp{:nodes                 {},
                    :unreachable-resolvers #{a b},
-                   :unreachable-attrs     {:b {}, :a {}},
+                   :unreachable-paths     {:b {}, :a {}},
                    :index-ast             {:a {:type         :prop,
                                                :dispatch-key :a,
                                                :key          :a}}}))
@@ -2054,7 +2054,7 @@
                             ::pco/output  [:c]}]
               ::eql/query [:a]})
            '#::pcp{:nodes                 {}
-                   :unreachable-attrs     {:c {}, :b {}, :a {}}
+                   :unreachable-paths     {:c {}, :b {}, :a {}}
                    :unreachable-resolvers #{a b c}
                    :index-ast             {:a {:type         :prop,
                                                :dispatch-key :a,
@@ -2089,7 +2089,7 @@
                                                ::pcp/source-for-attrs #{:a}}}
                ::pcp/index-resolver->nodes {c #{1} b #{2} a1 #{4}}
                ::pcp/unreachable-resolvers #{a}
-               ::pcp/unreachable-attrs     {}
+               ::pcp/unreachable-paths     {}
                ::pcp/root                  4
                ::pcp/index-attrs           {:a 4 :b 2 :c 1}
                ::pcp/index-ast             {:c {:type         :prop,
@@ -2110,7 +2110,7 @@
                                  ::pco/output  [{:users [:user/id]}]}]}))
            '{::pcp/nodes                 {}
              ::pcp/unreachable-resolvers #{scores-sum}
-             ::pcp/unreachable-attrs     {:scores-sum {}
+             ::pcp/unreachable-paths     {:scores-sum {}
                                           :users      {:user/score {}}}
              ::pcp/index-ast             {:scores-sum {:type         :prop,
                                                        :dispatch-key :scores-sum,
@@ -2290,7 +2290,7 @@
                                                        {scores-sum #{1}, users #{2}},
              :com.wsscode.pathom3.connect.planner/unreachable-resolvers
                                                        #{total-max},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs
+             ::pcp/unreachable-paths
                                                        {:total-max-score {}, :users {:user/max-score {}}},
              :com.wsscode.pathom3.connect.planner/index-ast
                                                        {:scores-sum
@@ -2382,7 +2382,7 @@
                                 ::pco/output  [:foo]}
                                {::pco/op-name 'x
                                 ::pco/output  [:x]}]}))
-           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name foo,
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name foo,
                                                              :com.wsscode.pathom3.connect.planner/node-id 1,
                                                              :com.wsscode.pathom3.connect.planner/expects {:foo {}},
                                                              :com.wsscode.pathom3.connect.planner/input {:x {}},
@@ -2395,12 +2395,12 @@
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:x},
                                                              :com.wsscode.pathom3.connect.planner/run-next 1}},
                                                   :index-resolver->nodes {foo #{1}, x #{2}},
-                                                  :unreachable-attrs {:y {}},
-                                                  :index-ast {:foo {:type :prop,
+                                                  :unreachable-paths     {:y {}},
+                                                  :index-ast             {:foo {:type :prop,
                                                                     :dispatch-key :foo,
                                                                     :key :foo}},
-                                                  :index-attrs {:x 2, :foo 1},
-                                                  :root 2})))
+                                                  :index-attrs           {:x 2, :foo 1},
+                                                  :root                  2})))
 
   (testing "adds optionals to plan, when available"
     (is (= (compute-run-graph
@@ -2456,7 +2456,7 @@
                                                                                :com.wsscode.pathom3.connect.planner/input            {},
                                                                                :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo}}},
                                                     :index-resolver->nodes {foo #{1}},
-                                                    :unreachable-attrs     {:y {}},
+                                                    :unreachable-paths     {:y {}},
                                                     :index-ast             {:foo {:type         :prop,
                                                                                   :dispatch-key :foo,
                                                                                   :key          :foo}},
@@ -2779,7 +2779,7 @@
               ::eql/query           [:release/script]})
            {::pcp/nodes                 {}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {:db/id {}}
+            ::pcp/unreachable-paths     {:db/id {}}
             ::pcp/index-ast             {:release/script {:type         :prop,
                                                           :dispatch-key :release/script,
                                                           :key          :release/script}}})))
@@ -3418,7 +3418,7 @@
                                                 ::pcp/foreign-ast      (eql/query->ast [{:a {:b [:b]
                                                                                              :c [:c]}}])}}
                 ::pcp/index-resolver->nodes '{dyn #{1}}
-                ::pcp/unreachable-attrs     #{}
+                ::pcp/unreachable-paths     #{}
                 ::pcp/root                  1
                 ::pcp/index-attrs           {:a 1}}))))
 
