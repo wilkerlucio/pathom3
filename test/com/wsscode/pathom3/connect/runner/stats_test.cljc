@@ -31,7 +31,7 @@
 (def err (ex-info "Error" {}))
 
 (defn error-resolver [attr]
-  (pbir/constantly-resolver attr (fn [_] (throw err))))
+  (pbir/constantly-fn-resolver attr (fn [_] (throw err))))
 
 (deftest find-error-for-attribute-test
   (is (= (let [stats (-> (psm/smart-map

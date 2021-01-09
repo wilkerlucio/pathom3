@@ -262,7 +262,7 @@
                  (psm/smart-map))]
       (is (= (:error sm) nil))
       (is (= (-> sm
-                 (psm/sm-update-env pci/register (pbir/constant-resolver :not-here "now it is"))
+                 (psm/sm-update-env pci/register (pbir/constantly-resolver :not-here "now it is"))
                  :not-here) "now it is"))))
 
   (testing "loud mode"
@@ -278,7 +278,7 @@
                (psm/smart-map {:x 3 :width 5}))]
     (is (= (:not-here sm) nil))
     (is (= (-> sm
-               (psm/sm-update-env pci/register (pbir/constant-resolver :not-here "now it is"))
+               (psm/sm-update-env pci/register (pbir/constantly-resolver :not-here "now it is"))
                :not-here) "now it is"))))
 
 (deftest sm-assoc!-test

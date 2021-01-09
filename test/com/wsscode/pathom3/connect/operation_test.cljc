@@ -550,7 +550,7 @@
          {:foo "bar"})))
 
 (deftest update-config-test
-  (is (= (-> (pbir/constant-resolver :foo "bar")
+  (is (= (-> (pbir/constantly-resolver :foo "bar")
              (pco/update-config assoc :extra "data")
              (pco/operation-config))
          '{::pco/input    [],

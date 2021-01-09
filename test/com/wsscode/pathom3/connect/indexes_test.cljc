@@ -173,7 +173,7 @@
            #{::x})))
 
   (testing "globals"
-    (let [register (pci/register (pbir/constant-resolver ::x {}))]
+    (let [register (pci/register (pbir/constantly-resolver ::x {}))]
       (is (= (pci/reachable-attributes register {})
              #{::x}))))
 
