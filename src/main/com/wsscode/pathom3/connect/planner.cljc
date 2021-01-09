@@ -192,9 +192,7 @@
 
 (defn base-graph []
   {::nodes                 {}
-   ::index-resolver->nodes {}
-   ::unreachable-resolvers #{}
-   ::unreachable-attrs     {}})
+   ::unreachable-resolvers #{}})
 
 (defn base-env []
   {::id-counter     (atom 0)
@@ -893,7 +891,6 @@
   (let [ast            (pf.eql/maybe-merge-union-ast ast)
         nested-graph   (compute-run-graph*
                          (base-graph)
-                         ; TODO: attempt to replace with reset-env
                          (-> (base-env)
                              (merge (select-keys env [::pci/index-resolvers
                                                       ::pci/index-oir
@@ -986,8 +983,10 @@
       run-next
       (conj run-next))))
 
-(defn collect-syms
-  ([graph env node] (collect-syms graph env node #{}))
+(defn collect-nested-resolver-names
+  "From a node, scans all descendents (run next and branches) and collect
+  the op-name of every resolver call found."
+  ([graph env node] (collect-nested-resolver-names graph env node #{}))
   ([graph
     env
     {::keys [node-id]} syms]
@@ -996,9 +995,10 @@
        (if (dynamic-resolver? env sym)
          syms
          (conj syms sym))
-       (into syms (mapcat #(collect-syms graph env {::node-id %}) (find-direct-node-successors node)))))))
+       (into syms (mapcat #(collect-nested-resolver-names graph env {::node-id %}) (find-direct-node-successors node)))))))
 
 (defn all-attribute-resolvers
+  "Gets the op name for all resolvers available for a given attribute."
   [{::pci/keys [index-oir]}
    attr]
   (if-let [ir (get index-oir attr)]
@@ -1011,7 +1011,7 @@
    {::keys [unreachable-resolvers
             unreachable-attrs]}
    env]
-  (let [syms (->> (collect-syms graph env (get-root-node graph))
+  (let [syms (->> (collect-nested-resolver-names graph env (get-root-node graph))
                   (into unreachable-resolvers)
                   (into (::unreachable-resolvers previous-graph)))]
     (add-snapshot! graph env {::snapshot-message (str "Mark node unreachable, resolvers " (pr-str syms) ", attrs" unreachable-attrs)})

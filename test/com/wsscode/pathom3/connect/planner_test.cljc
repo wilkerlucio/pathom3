@@ -161,7 +161,6 @@
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  1
              ::pcp/index-attrs           {:a 1}
              ::pcp/index-ast             {:a {:dispatch-key :a
@@ -181,7 +180,6 @@
                                              ::pcp/source-for-attrs #{:a :b}}}
              ::pcp/index-resolver->nodes {a #{1}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:a 1 :b 1}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -214,7 +212,6 @@
                                              ::pcp/run-and #{2 1}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:a 1 :b 2 :c 1}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -250,7 +247,6 @@
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1} a2 #{2}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  3
              ::pcp/index-attrs           {:a 3}
              ::pcp/index-ast             {:a {:type         :prop,
@@ -281,7 +277,6 @@
                                              ::pcp/run-and #{2 1}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:a 1 :b 2}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -322,7 +317,6 @@
                                              ::pcp/node-parents     #{3}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2} c #{4}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:a 1 :b 2 :c 4}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -373,7 +367,6 @@
                                              ::pcp/run-next 1}}
              ::pcp/index-resolver->nodes {multi #{1} direct #{2} indirect #{3} dep #{4}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:direct 2 :dep 4 :indirect 3 :multi 1}
              ::pcp/index-ast             {:multi {:type         :prop,
                                                   :dispatch-key :multi,
@@ -425,7 +418,6 @@
                                              ::pcp/node-parents     #{5}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} e #{3} b #{4} d #{6}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:e 3 :c 2 :b 4 :d 6 :a 1}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -472,7 +464,6 @@
                                              ::pcp/run-and      #{1 5}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:c 2 :b 3 :a 1}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -509,7 +500,6 @@
                                                ::pcp/run-next         1}}
                ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3}}
                ::pcp/unreachable-resolvers #{}
-               ::pcp/unreachable-attrs     {}
                ::pcp/index-attrs           {:c 2 :b 3 :a 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -556,7 +546,6 @@
                                                                             c #{3},
                                                                             b #{4}},
                                                     :unreachable-resolvers #{},
-                                                    :unreachable-attrs     {},
                                                     :index-ast             {:a {:type         :prop,
                                                                                 :dispatch-key :a,
                                                                                 :key          :a}},
@@ -677,80 +666,93 @@
                                 :e {{:c {} :b {} :f {}} #{e}}
                                 :f {{} #{f}}}
                ::eql/query     [:a :d :e]})
-           '{:com.wsscode.pathom3.connect.planner/nodes
-                                                                        {7
-                                                                         {:com.wsscode.pathom3.connect.planner/node-id 7,
-                                                                          :com.wsscode.pathom3.connect.planner/expects {:a {}, :d {}},
-                                                                          :com.wsscode.pathom3.connect.planner/run-and #{1 5},
-                                                                          ::pcp/node-parents                           #{4}},
-                                                                         1
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {:c {}, :b {}},
-                                                                          ::pcp/node-parents                                    #{7},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}},
-                                                                         4
-                                                                         {:com.wsscode.pathom3.connect.planner/node-id  4,
-                                                                          :com.wsscode.pathom3.connect.planner/expects  {:b {}, :c {}},
-                                                                          :com.wsscode.pathom3.connect.planner/run-and  #{3 2},
-                                                                          :com.wsscode.pathom3.connect.planner/run-next 7,
-                                                                          ::pcp/node-parents                            #{11}},
-                                                                         3
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        b,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          3,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:b {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
-                                                                          ::pcp/node-parents                                    #{4 9}},
-                                                                         2
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        c,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          2,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:c {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:c},
-                                                                          ::pcp/node-parents                                    #{4 9}},
-                                                                         11
-                                                                         {:com.wsscode.pathom3.connect.planner/node-id 11,
-                                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}, :c {}, :f {}},
-                                                                          :com.wsscode.pathom3.connect.planner/run-and #{4 9}},
-                                                                         9
-                                                                         {:com.wsscode.pathom3.connect.planner/node-id  9,
-                                                                          :com.wsscode.pathom3.connect.planner/expects  {:b {}, :c {}, :f {}},
-                                                                          :com.wsscode.pathom3.connect.planner/run-and  #{3 2 10},
-                                                                          :com.wsscode.pathom3.connect.planner/run-next 8,
-                                                                          ::pcp/node-parents                            #{11}},
-                                                                         5
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name d,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id   5,
-                                                                          :com.wsscode.pathom3.connect.planner/expects   {:d {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input     {:c {}, :b {}},
-                                                                          ::pcp/node-parents                             #{7}},
-                                                                         10
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        f,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          10,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:f {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:f},
-                                                                          ::pcp/node-parents                                    #{9}},
-                                                                         8
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        e,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          8,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:e {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {:c {}, :b {}, :f {}},
-                                                                          ::pcp/node-parents                                    #{9},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:e}}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-                                                                        {a #{1}, c #{2}, b #{3}, d #{5}, e #{8}, f #{10}},
-             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
-             :com.wsscode.pathom3.connect.planner/index-ast
-                                                                        {:a {:type :prop, :dispatch-key :a, :key :a},
-                                                                         :d {:type :prop, :dispatch-key :d, :key :d},
-                                                                         :e {:type :prop, :dispatch-key :e, :key :e}},
-             :com.wsscode.pathom3.connect.planner/index-attrs
-                                                                        {:c 2, :b 3, :a 1, :f 10, :e 8},
-             :com.wsscode.pathom3.connect.planner/root                  11}))
+           '#:com.wsscode.pathom3.connect.planner{:nodes {7 #:com.wsscode.pathom3.connect.planner{:node-id 7,
+                                                                                                  :expects {:a {},
+                                                                                                            :d {}},
+                                                                                                  :run-and #{1
+                                                                                                             5},
+                                                                                                  :node-parents #{4}},
+                                                          1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:c {},
+                                                                                                         :b {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{7},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}},
+                                                          4 #:com.wsscode.pathom3.connect.planner{:node-id 4,
+                                                                                                  :expects {:b {},
+                                                                                                            :c {}},
+                                                                                                  :run-and #{3
+                                                                                                             2},
+                                                                                                  :run-next 7,
+                                                                                                  :node-parents #{11}},
+                                                          3 {:com.wsscode.pathom3.connect.operation/op-name b,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:b {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{4
+                                                                                                                 9}},
+                                                          2 {:com.wsscode.pathom3.connect.operation/op-name c,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:c {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:c},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{4
+                                                                                                                 9}},
+                                                          11 #:com.wsscode.pathom3.connect.planner{:node-id 11,
+                                                                                                   :expects {:b {},
+                                                                                                             :c {},
+                                                                                                             :f {}},
+                                                                                                   :run-and #{4
+                                                                                                              9}},
+                                                          9 #:com.wsscode.pathom3.connect.planner{:node-id 9,
+                                                                                                  :expects {:b {},
+                                                                                                            :c {},
+                                                                                                            :f {}},
+                                                                                                  :run-and #{3
+                                                                                                             2
+                                                                                                             10},
+                                                                                                  :run-next 8,
+                                                                                                  :node-parents #{11}},
+                                                          5 {:com.wsscode.pathom3.connect.operation/op-name d,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 5,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:d {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:c {},
+                                                                                                         :b {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{7}},
+                                                          10 {:com.wsscode.pathom3.connect.operation/op-name f,
+                                                              :com.wsscode.pathom3.connect.planner/node-id 10,
+                                                              :com.wsscode.pathom3.connect.planner/expects {:f {}},
+                                                              :com.wsscode.pathom3.connect.planner/input {},
+                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:f},
+                                                              :com.wsscode.pathom3.connect.planner/node-parents #{9}},
+                                                          8 {:com.wsscode.pathom3.connect.operation/op-name e,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 8,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:e {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:c {},
+                                                                                                         :b {},
+                                                                                                         :f {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{9},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:e}}},
+                                                  :unreachable-resolvers #{},
+                                                  :index-ast {:a {:type :prop,
+                                                                  :dispatch-key :a,
+                                                                  :key :a},
+                                                              :d {:type :prop,
+                                                                  :dispatch-key :d,
+                                                                  :key :d},
+                                                              :e {:type :prop,
+                                                                  :dispatch-key :e,
+                                                                  :key :e}},
+                                                  :index-resolver->nodes {a #{1},
+                                                                          c #{2},
+                                                                          b #{3},
+                                                                          d #{5},
+                                                                          e #{8},
+                                                                          f #{10}},
+                                                  :index-attrs {:c 2, :b 3, :a 1, :f 10, :e 8},
+                                                  :root 11}))
 
     (is (= (compute-run-graph
              '{::pci/index-oir {:a {{:c {} :b {}} #{a}}
@@ -805,7 +807,6 @@
                                              ::pcp/run-and #{7 4}}}
              ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5} e #{6}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:c 2 :b 3 :a 1 :e 6 :d 5}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -841,7 +842,6 @@
                                                ::pcp/source-for-attrs #{:b :a}}}
                ::pcp/index-resolver->nodes {a #{1}}
                ::pcp/unreachable-resolvers #{}
-               ::pcp/unreachable-attrs     {}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -873,7 +873,6 @@
                                              ::pcp/node-parents     #{2}}}
              ::pcp/index-resolver->nodes {a #{3} z #{2}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:z 2 :a 3 :b 3}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -914,7 +913,6 @@
                                              ::pcp/node-parents     #{3}}}
              ::pcp/index-resolver->nodes {c #{1} a #{4} z #{3}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:z 3 :b 4 :c 1 :a 4}
              ::pcp/index-ast             {:c {:type         :prop,
                                               :dispatch-key :c,
@@ -946,7 +944,6 @@
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {b #{1} a #{2}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  2
              ::pcp/index-attrs           {:a 2 :b 1}
              ::pcp/index-ast             {:b {:type         :prop,
@@ -986,7 +983,6 @@
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1} a2 #{2} b #{3}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  4
              ::pcp/index-attrs           {:b 3 :a 4}
              ::pcp/index-ast             {:a {:type         :prop,
@@ -999,41 +995,38 @@
                                       {:b {}} #{a2}}
                                   :b {{} #{b}}}
                  ::eql/query     [:a :b]})
-             '{:com.wsscode.pathom3.connect.planner/nodes
-                                                                          {1
-                                                                           {:com.wsscode.pathom3.connect.operation/op-name a,
-                                                                            :com.wsscode.pathom3.connect.planner/node-id   1,
-                                                                            :com.wsscode.pathom3.connect.planner/expects   {:a {}},
-                                                                            :com.wsscode.pathom3.connect.planner/input     {},
-                                                                            ::pcp/node-parents                             #{4}},
-                                                                           2
-                                                                           {:com.wsscode.pathom3.connect.operation/op-name a2,
-                                                                            :com.wsscode.pathom3.connect.planner/node-id   2,
-                                                                            :com.wsscode.pathom3.connect.planner/expects   {:a {}},
-                                                                            :com.wsscode.pathom3.connect.planner/input     {:b {}},
-                                                                            ::pcp/node-parents                             #{3}},
-                                                                           3
-                                                                           {:com.wsscode.pathom3.connect.operation/op-name        b,
-                                                                            :com.wsscode.pathom3.connect.planner/node-id          3,
-                                                                            :com.wsscode.pathom3.connect.planner/expects          {:b {}},
-                                                                            :com.wsscode.pathom3.connect.planner/input            {},
-                                                                            :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
-                                                                            :com.wsscode.pathom3.connect.planner/run-next         2,
-                                                                            ::pcp/node-parents                                    #{4}},
-                                                                           4
-                                                                           {:com.wsscode.pathom3.connect.planner/node-id          4,
-                                                                            :com.wsscode.pathom3.connect.planner/expects          {:a {}},
-                                                                            :com.wsscode.pathom3.connect.planner/run-or           #{1 3},
-                                                                            :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
-               :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-                                                                          {a #{1}, a2 #{2}, b #{3}},
-               :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-               :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
-               :com.wsscode.pathom3.connect.planner/index-ast
-                                                                          {:a {:type :prop, :dispatch-key :a, :key :a},
-                                                                           :b {:type :prop, :dispatch-key :b, :key :b}},
-               :com.wsscode.pathom3.connect.planner/index-attrs           {:b 3, :a 4},
-               :com.wsscode.pathom3.connect.planner/root                  4}))))
+             '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                            2 {:com.wsscode.pathom3.connect.operation/op-name a2,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{3}},
+                                                            3 {:com.wsscode.pathom3.connect.operation/op-name b,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {},
+                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 2,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                            4 #:com.wsscode.pathom3.connect.planner{:node-id 4,
+                                                                                                    :expects {:a {}},
+                                                                                                    :run-or #{1
+                                                                                                              3},
+                                                                                                    :source-for-attrs #{:a}}},
+                                                    :unreachable-resolvers #{},
+                                                    :index-ast {:a {:type :prop,
+                                                                    :dispatch-key :a,
+                                                                    :key :a},
+                                                                :b {:type :prop,
+                                                                    :dispatch-key :b,
+                                                                    :key :b}},
+                                                    :index-resolver->nodes {a #{1}, a2 #{2}, b #{3}},
+                                                    :index-attrs {:b 3, :a 4},
+                                                    :root 4}))))
 
   (testing "single dependency with extra provides"
     (is (= (compute-run-graph
@@ -1057,7 +1050,6 @@
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {b #{1} a #{2}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  2
              ::pcp/index-attrs           {:a 2 :b 1}
              ::pcp/index-ast             {:b {:type         :prop,
@@ -1096,7 +1088,6 @@
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {c #{1} b #{2} a #{3}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  3
              ::pcp/index-attrs           {:a 3 :b 2 :c 1}
              ::pcp/index-ast             {:c {:type         :prop,
@@ -1127,7 +1118,6 @@
                                              ::pcp/source-for-attrs #{:b}}}
              ::pcp/index-resolver->nodes {c #{1} b #{2}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  2
              ::pcp/index-attrs           {:b 2 :c 1}
              ::pcp/index-ast             {:c {:type         :prop,
@@ -1143,49 +1133,48 @@
                                      :a {{:y {} :z {}} #{a}}}
               ::eql/query          [:a]
               ::pcp/available-data {:xx {}}})
-           '{:com.wsscode.pathom3.connect.planner/nodes
-                                                                        {1
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {:y {}, :z {}},
-                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{6},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}},
-                                                                         3
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name    xx->x,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id      3,
-                                                                          :com.wsscode.pathom3.connect.planner/expects      {:x {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input        {:xx {}},
-                                                                          :com.wsscode.pathom3.connect.planner/node-parents #{5}},
-                                                                         4
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name    xc,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id      4,
-                                                                          :com.wsscode.pathom3.connect.planner/expects      {:x {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input        {},
-                                                                          :com.wsscode.pathom3.connect.planner/node-parents #{5}},
-                                                                         5
-                                                                         {:com.wsscode.pathom3.connect.planner/node-id          5,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:x {}},
-                                                                          :com.wsscode.pathom3.connect.planner/run-or           #{4 3},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:x},
-                                                                          :com.wsscode.pathom3.connect.planner/run-next         6},
-                                                                         6
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        yz,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          6,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:z {}, :y {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {:x {}},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:y :z},
-                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{5},
-                                                                          :com.wsscode.pathom3.connect.planner/run-next         1}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-                                                                        {a #{1}, yz #{6}, xx->x #{3}, xc #{4}},
-             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
-             :com.wsscode.pathom3.connect.planner/index-ast
-                                                                        {:a {:type :prop, :dispatch-key :a, :key :a}},
-             :com.wsscode.pathom3.connect.planner/index-attrs
-                                                                        {:x 5, :y 6, :z 6, :a 1},
-             :com.wsscode.pathom3.connect.planner/root                  5})))
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:y {},
+                                                                                                         :z {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{6},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}},
+                                                          3 {:com.wsscode.pathom3.connect.operation/op-name xx->x,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:x {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:xx {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{5}},
+                                                          4 {:com.wsscode.pathom3.connect.operation/op-name xc,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 4,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:x {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{5}},
+                                                          5 #:com.wsscode.pathom3.connect.planner{:node-id 5,
+                                                                                                  :expects {:x {}},
+                                                                                                  :run-or #{4
+                                                                                                            3},
+                                                                                                  :source-for-attrs #{:x},
+                                                                                                  :run-next 6},
+                                                          6 {:com.wsscode.pathom3.connect.operation/op-name yz,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 6,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:z {},
+                                                                                                           :y {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:x {}},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:y
+                                                                                                                     :z},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{5},
+                                                             :com.wsscode.pathom3.connect.planner/run-next 1}},
+                                                  :unreachable-resolvers #{},
+                                                  :index-ast {:a {:type :prop,
+                                                                  :dispatch-key :a,
+                                                                  :key :a}},
+                                                  :index-resolver->nodes {a #{1},
+                                                                          yz #{6},
+                                                                          xx->x #{3},
+                                                                          xc #{4}},
+                                                  :index-attrs {:x 5, :y 6, :z 6, :a 1},
+                                                  :root 5})))
 
   (testing "multiple paths chain at root"
     (is (= (compute-run-graph
@@ -1220,7 +1209,6 @@
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {b #{1} a #{2} a2 #{3}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  4
              ::pcp/index-attrs           {:a 4 :b 1}
              ::pcp/index-ast             {:b {:type         :prop,
@@ -1262,7 +1250,6 @@
                                                 ::pcp/source-for-attrs #{:a}}}
                 ::pcp/index-resolver->nodes {b2 #{1} b #{2} a #{4}}
                 ::pcp/unreachable-resolvers #{}
-                ::pcp/unreachable-attrs     {}
                 ::pcp/root                  4
                 ::pcp/index-attrs           {:a 4 :b 3}
                 ::pcp/index-ast             {:b {:type         :prop,
@@ -1292,7 +1279,6 @@
                                                 ::pcp/source-for-attrs #{:a}}}
                 ::pcp/index-resolver->nodes {b2 #{2} b #{1} a #{4}}
                 ::pcp/unreachable-resolvers #{}
-                ::pcp/unreachable-attrs     {}
                 ::pcp/root                  4
                 ::pcp/index-attrs           {:a 4 :b 3}
                 ::pcp/index-ast             {:b {:type         :prop,
@@ -1336,7 +1322,6 @@
                                              ::pcp/run-next 1}},
              ::pcp/index-resolver->nodes {c #{1}, a #{2}, b #{3}},
              ::pcp/unreachable-resolvers #{},
-             ::pcp/unreachable-attrs     {},
              ::pcp/index-attrs           {:a 2, :b 3, :c 1},
              ::pcp/index-ast             {:c {:type         :prop,
                                               :dispatch-key :c,
@@ -1368,7 +1353,6 @@
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {c2 #{1} a #{2}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  2
              ::pcp/index-attrs           {:a 2 :c 1}
              ::pcp/index-ast             {:c {:type         :prop,
@@ -1427,7 +1411,6 @@
                                                                           a1 #{3},
                                                                           b  #{5}},
                                                   :unreachable-resolvers #{},
-                                                  :unreachable-attrs     {},
                                                   :index-attrs           {:a 4, :b 5, :c 1},
                                                   :index-ast             {:c {:type         :prop,
                                                                               :dispatch-key :c,
@@ -1487,7 +1470,6 @@
                                              ::pcp/run-and #{6 2}}}
              ::pcp/index-resolver->nodes {a #{1} cd #{4 2} b #{3} d #{5}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:c 2 :a 1 :d 6 :b 3}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
@@ -1535,7 +1517,6 @@
                                              ::pcp/run-next     1}}
              ::pcp/index-resolver->nodes {d #{1} c #{2} a #{3} b #{4}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:a 3 :c 2 :b 4 :d 1}
              ::pcp/index-ast             {:d {:type         :prop,
                                               :dispatch-key :d,
@@ -1604,7 +1585,6 @@
                                           z #{4},
                                           c #{5}},
              ::pcp/unreachable-resolvers #{},
-             ::pcp/unreachable-attrs     {},
              ::pcp/index-attrs           {:z 4, :a 3, :b 2, :c 5, :d 1},
              ::pcp/index-ast             {:d {:type         :prop,
                                               :dispatch-key :d,
@@ -1659,7 +1639,6 @@
                                           recur-dep      #{3}
                                           label-type     #{4}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:db/id          2
                                           :release/script 1
                                           :label/type     4
@@ -1755,7 +1734,6 @@
                                                                                                                               7}
                                                                                                                   :run-next 1}}
                                                   :root                  8
-                                                  :unreachable-attrs     {}
                                                   :unreachable-resolvers #{}})))
 
   ; TODO: fix OR case
@@ -1800,7 +1778,6 @@
                                              ::pcp/source-for-attrs #{:name :other-id}}}
              ::pcp/index-resolver->nodes {from-other-id #{1} from-id #{2}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:other-id 2 :name 2}
              ::pcp/index-ast             {:name {:type         :prop,
                                                  :dispatch-key :name,
@@ -1841,7 +1818,6 @@
                                           from-other-id2 #{2}
                                           from-other-id  #{3}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  1
              ::pcp/index-attrs           {:other-id 1 :other-id2 3 :name 1}
              ::pcp/index-ast             {:name {:type         :prop,
@@ -1884,7 +1860,6 @@
                                             from-other-id2 #{5}
                                             from-other-id  #{3}}
                ::pcp/unreachable-resolvers #{}
-               ::pcp/unreachable-attrs     {}
                ::pcp/index-attrs           {:other-id 1 :other-id2 3 :name 1 :other 5}
                ::pcp/index-ast             {:name  {:type         :prop,
                                                     :dispatch-key :name,
@@ -1900,7 +1875,6 @@
              {::pci/index-oir '{}
               ::eql/query     [:a]})
            {::pcp/nodes                 {}
-            ::pcp/index-resolver->nodes {}
             ::pcp/unreachable-attrs     {:a {}}
             ::pcp/unreachable-resolvers #{}
             ::pcp/index-ast             {:a {:dispatch-key :a
@@ -1912,7 +1886,6 @@
                {::pci/index-oir '{:b {{:a {}} #{b}}}
                 ::eql/query     [:b]})
              '#::pcp{:nodes                 {}
-                     :index-resolver->nodes {}
                      :unreachable-attrs     {:b {}, :a {}}
                      :unreachable-resolvers #{b}
                      :index-ast             {:b {:dispatch-key :b
@@ -1923,7 +1896,6 @@
                {::pci/index-oir '{:b {{:a {}} #{b1 b}}}
                 ::eql/query     [:b]})
              '#::pcp{:nodes                 {}
-                     :index-resolver->nodes {}
                      :unreachable-attrs     {:a {} :b {}}
                      :unreachable-resolvers #{b b1}
                      :index-ast             {:b {:dispatch-key :b
@@ -1939,7 +1911,6 @@
                 ::eql/query [:b]
                 ::out       {::pcp/unreachable-attrs {:a {}}}})
              '#::pcp{:nodes                 {}
-                     :index-resolver->nodes {}
                      :unreachable-attrs     {:a {} :b {}}
                      :unreachable-resolvers #{b}
                      :index-ast             {:b {:dispatch-key :b
@@ -1955,7 +1926,6 @@
                               ::pco/output  [:c]}]
                 ::eql/query [:c]})
              '#::pcp{:nodes                 {}
-                     :index-resolver->nodes {}
                      :unreachable-attrs     {:a {} :b {} :c {}}
                      :unreachable-resolvers #{b c}
                      :index-ast             {:c {:dispatch-key :c
@@ -1973,7 +1943,6 @@
                               ::pco/output  [:c]}]
                 ::eql/query [:c]})
              '#::pcp{:nodes                 {}
-                     :index-resolver->nodes {}
                      :unreachable-attrs     {:c {}, :b {}, :a {}}
                      :unreachable-resolvers #{b c}
                      :index-ast             {:c {:dispatch-key :c
@@ -2013,8 +1982,6 @@
                 ::eql/query          [:a]
                 ::pcp/available-data {:a {}}})
              {::pcp/nodes                 {}
-              ::pcp/index-resolver->nodes {}
-              ::pcp/unreachable-attrs     {}
               ::pcp/unreachable-resolvers #{}
               ::pcp/index-ast             {:a {:dispatch-key :a
                                                :key          :a
@@ -2026,8 +1993,6 @@
                   ::eql/query          [{:a [:bar]}]
                   ::pcp/available-data {:a {}}})
                {::pcp/nodes                    {}
-                ::pcp/index-resolver->nodes    {}
-                ::pcp/unreachable-attrs        {}
                 ::pcp/unreachable-resolvers    #{}
                 ::pcp/nested-available-process #{:a}
                 ::pcp/index-ast                {:a {:children     [{:dispatch-key :bar
@@ -2043,9 +2008,7 @@
            {::pci/index-oir '{}
             ::eql/query     [(list 'foo {})]})
          '{::pcp/nodes                 {}
-           ::pcp/index-resolver->nodes {}
            ::pcp/unreachable-resolvers #{}
-           ::pcp/unreachable-attrs     {}
            ::pcp/mutations             [{:dispatch-key foo
                                          :key          foo
                                          :params       {}
@@ -2068,7 +2031,6 @@
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  1
              ::pcp/idents                #{[:foo "bar"]}
              ::pcp/index-attrs           {:a 1}
@@ -2091,7 +2053,6 @@
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  1
              ::pcp/idents                #{[:foo "bar"]}
              ::pcp/index-attrs           {:a 1}
@@ -2118,7 +2079,6 @@
                             ::pco/output  [:b]}]
               ::eql/query [:a]})
            '#::pcp{:nodes                 {},
-                   :index-resolver->nodes {},
                    :unreachable-resolvers #{a b},
                    :unreachable-attrs     {:b {}, :a {}},
                    :index-ast             {:a {:type         :prop,
@@ -2137,7 +2097,6 @@
                             ::pco/output  [:c]}]
               ::eql/query [:a]})
            '#::pcp{:nodes                 {}
-                   :index-resolver->nodes {}
                    :unreachable-attrs     {:c {}, :b {}, :a {}}
                    :unreachable-resolvers #{a b c}
                    :index-ast             {:a {:type         :prop,
@@ -2193,7 +2152,6 @@
                                 {::pco/op-name users
                                  ::pco/output  [{:users [:user/id]}]}]}))
            '{::pcp/nodes                 {}
-             ::pcp/index-resolver->nodes {}
              ::pcp/unreachable-resolvers #{scores-sum}
              ::pcp/unreachable-attrs     {:scores-sum {}
                                           :users      {:user/score {}}}
@@ -2232,7 +2190,6 @@
              :com.wsscode.pathom3.connect.planner/index-resolver->nodes
                                                                         {scores-sum #{1}, users #{2}},
              :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
              :com.wsscode.pathom3.connect.planner/index-ast             {:scores-sum {:type :prop, :dispatch-key :scores-sum, :key :scores-sum},
                                                                          :users      {:type         :join
                                                                                       :key          :users
@@ -2263,7 +2220,6 @@
                                                                                 :com.wsscode.pathom3.connect.planner/source-for-attrs #{:scores-sum}}},
                                                   :index-resolver->nodes    {scores-sum #{1}},
                                                   :unreachable-resolvers    #{},
-                                                  :unreachable-attrs        {},
                                                   :nested-available-process #{:users}
                                                   :index-attrs              {:scores-sum 1}
                                                   :root                     1
@@ -2307,7 +2263,6 @@
                                                   :index-resolver->nodes    {scores-sum #{1},
                                                                              other      #{2}},
                                                   :unreachable-resolvers    #{},
-                                                  :unreachable-attrs        {},
                                                   :nested-available-process #{:users}
                                                   :index-ast                {:scores-sum {:type         :prop,
                                                                                           :dispatch-key :scores-sum,
@@ -2345,7 +2300,6 @@
              :com.wsscode.pathom3.connect.planner/index-resolver->nodes
                                                                         {scores-sum #{1}},
              :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
              :com.wsscode.pathom3.connect.planner/index-ast
                                                                         {:scores-sum
                                                                          {:type :prop, :dispatch-key :scores-sum, :key :scores-sum}},
@@ -2454,7 +2408,6 @@
              :com.wsscode.pathom3.connect.planner/index-resolver->nodes
                                                                         {scores-sum #{1}, users #{2}, age-sum #{4}},
              :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
              :com.wsscode.pathom3.connect.planner/index-ast
                                                                         {:scores-sum
                                                                                   {:type :prop, :dispatch-key :scores-sum, :key :scores-sum},
@@ -2538,7 +2491,6 @@
                                                                                                   :run-next 1}},
                                                   :index-resolver->nodes {foo #{1}, x #{2}, y #{3}},
                                                   :unreachable-resolvers #{},
-                                                  :unreachable-attrs {},
                                                   :index-ast {:foo {:type         :prop,
                                                                     :dispatch-key :foo,
                                                                     :key          :foo}},
@@ -2588,7 +2540,6 @@
                                                                                :com.wsscode.pathom3.connect.planner/run-next         1}},
                                                     :index-resolver->nodes {foo #{1}, y #{2}},
                                                     :unreachable-resolvers #{},
-                                                    :unreachable-attrs     {},
                                                     :index-ast             {:foo {:type         :prop,
                                                                                   :dispatch-key :foo,
                                                                                   :key          :foo}},
@@ -2600,26 +2551,23 @@
     (is (= (compute-run-graph
              {::pci/index-oir '{:a {{} #{a}}}
               ::eql/query     [{:>/p1 [:a]}]})
-           '{:com.wsscode.pathom3.connect.planner/nodes
-                                                                        {1
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
-             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
-             :com.wsscode.pathom3.connect.planner/index-ast
-                                                                        {:>/p1
-                                                                         {:type         :join,
-                                                                          :dispatch-key :>/p1,
-                                                                          :key          :>/p1,
-                                                                          :query        [:a],
-                                                                          :children     [{:type :prop, :dispatch-key :a, :key :a}]}},
-             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1}
-             :com.wsscode.pathom3.connect.planner/root                  1,
-             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1}})))
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
+                                                  :unreachable-resolvers #{},
+                                                  :index-ast #:>{:p1 {:type :join,
+                                                                      :dispatch-key :>/p1,
+                                                                      :key :>/p1,
+                                                                      :query [:a],
+                                                                      :children [{:type :prop,
+                                                                                  :dispatch-key :a,
+                                                                                  :key :a}]}},
+                                                  :placeholders #{:>/p1},
+                                                  :index-resolver->nodes {a #{1}},
+                                                  :root 1,
+                                                  :index-attrs {:a 1}})))
 
 
   (testing "placeholder + external"
@@ -2628,72 +2576,68 @@
                                 :b {{} #{b}}}
               ::eql/query     [:a
                                {:>/p1 [:b]}]})
-           '{:com.wsscode.pathom3.connect.planner/nodes
-                                                                        {1
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
-                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
-                                                                         2
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        b,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          2,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:b {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
-                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
-                                                                         3
-                                                                         {:com.wsscode.pathom3.connect.planner/node-id 3,
-                                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}, :a {}},
-                                                                          :com.wsscode.pathom3.connect.planner/run-and #{1 2}}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-                                                                        {a #{1}, b #{2}},
-             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
-             :com.wsscode.pathom3.connect.planner/index-ast
-                                                                        {:a {:type :prop, :dispatch-key :a, :key :a},
-                                                                         :>/p1
-                                                                            {:type         :join,
-                                                                             :dispatch-key :>/p1,
-                                                                             :key          :>/p1,
-                                                                             :query        [:b],
-                                                                             :children     [{:type :prop, :dispatch-key :b, :key :b}]}},
-             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1, :b 2},
-             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1},
-             :com.wsscode.pathom3.connect.planner/root                  3})))
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{3}},
+                                                          2 {:com.wsscode.pathom3.connect.operation/op-name b,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:b {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{3}},
+                                                          3 #:com.wsscode.pathom3.connect.planner{:node-id 3,
+                                                                                                  :expects {:b {},
+                                                                                                            :a {}},
+                                                                                                  :run-and #{1
+                                                                                                             2}}},
+                                                  :unreachable-resolvers #{},
+                                                  :index-ast {:a {:type :prop,
+                                                                  :dispatch-key :a,
+                                                                  :key :a},
+                                                              :>/p1 {:type :join,
+                                                                     :dispatch-key :>/p1,
+                                                                     :key :>/p1,
+                                                                     :query [:b],
+                                                                     :children [{:type :prop,
+                                                                                 :dispatch-key :b,
+                                                                                 :key :b}]}},
+                                                  :index-resolver->nodes {a #{1}, b #{2}},
+                                                  :index-attrs {:a 1, :b 2},
+                                                  :placeholders #{:>/p1},
+                                                  :root 3})))
 
   (testing "multiple placeholders repeating"
     (is (= (compute-run-graph
              {::pci/index-oir '{:a {{} #{a}}}
               ::eql/query     [{:>/p1 [:a]}
                                {:>/p2 [:a]}]})
-           '{:com.wsscode.pathom3.connect.planner/nodes
-                                                                        {1
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
-             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
-             :com.wsscode.pathom3.connect.planner/index-ast
-                                                                        {:>/p1
-                                                                         {:type         :join,
-                                                                          :dispatch-key :>/p1,
-                                                                          :key          :>/p1,
-                                                                          :query        [:a],
-                                                                          :children     [{:type :prop, :dispatch-key :a, :key :a}]},
-                                                                         :>/p2
-                                                                         {:type         :join,
-                                                                          :dispatch-key :>/p2,
-                                                                          :key          :>/p2,
-                                                                          :query        [:a],
-                                                                          :children     [{:type :prop, :dispatch-key :a, :key :a}]}},
-             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1 :>/p2},
-             :com.wsscode.pathom3.connect.planner/root                  1,
-             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1}})))
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
+                                                  :unreachable-resolvers #{},
+                                                  :index-ast #:>{:p1 {:type :join,
+                                                                      :dispatch-key :>/p1,
+                                                                      :key :>/p1,
+                                                                      :query [:a],
+                                                                      :children [{:type :prop,
+                                                                                  :dispatch-key :a,
+                                                                                  :key :a}]},
+                                                                 :p2 {:type :join,
+                                                                      :dispatch-key :>/p2,
+                                                                      :key :>/p2,
+                                                                      :query [:a],
+                                                                      :children [{:type :prop,
+                                                                                  :dispatch-key :a,
+                                                                                  :key :a}]}},
+                                                  :placeholders #{:>/p1 :>/p2},
+                                                  :index-resolver->nodes {a #{1}},
+                                                  :root 1,
+                                                  :index-attrs {:a 1}})))
 
   (testing "nested placeholders"
     (is (= (compute-run-graph
@@ -2702,45 +2646,42 @@
               ::eql/query     [{:>/p1
                                 [:a
                                  {:>/p2 [:b]}]}]})
-           '{:com.wsscode.pathom3.connect.planner/nodes
-                                                                        {1
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        a,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          1,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:a {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
-                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
-                                                                         2
-                                                                         {:com.wsscode.pathom3.connect.operation/op-name        b,
-                                                                          :com.wsscode.pathom3.connect.planner/node-id          2,
-                                                                          :com.wsscode.pathom3.connect.planner/expects          {:b {}},
-                                                                          :com.wsscode.pathom3.connect.planner/input            {},
-                                                                          :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
-                                                                          :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
-                                                                         3
-                                                                         {:com.wsscode.pathom3.connect.planner/node-id 3,
-                                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}, :a {}},
-                                                                          :com.wsscode.pathom3.connect.planner/run-and #{1 2}}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-                                                                        {a #{1}, b #{2}},
-             :com.wsscode.pathom3.connect.planner/unreachable-resolvers #{},
-             :com.wsscode.pathom3.connect.planner/unreachable-attrs     {},
-             :com.wsscode.pathom3.connect.planner/index-ast
-                                                                        {:>/p1
-                                                                         {:type         :join,
-                                                                          :dispatch-key :>/p1,
-                                                                          :key          :>/p1,
-                                                                          :query        [:a {:>/p2 [:b]}],
-                                                                          :children
-                                                                                        [{:type :prop, :dispatch-key :a, :key :a}
-                                                                                         {:type         :join,
-                                                                                          :dispatch-key :>/p2,
-                                                                                          :key          :>/p2,
-                                                                                          :query        [:b],
-                                                                                          :children     [{:type :prop, :dispatch-key :b, :key :b}]}]}},
-             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1 :>/p2},
-             :com.wsscode.pathom3.connect.planner/index-attrs           {:a 1, :b 2},
-             :com.wsscode.pathom3.connect.planner/root                  3})))
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{3}},
+                                                          2 {:com.wsscode.pathom3.connect.operation/op-name b,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:b {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{3}},
+                                                          3 #:com.wsscode.pathom3.connect.planner{:node-id 3,
+                                                                                                  :expects {:b {},
+                                                                                                            :a {}},
+                                                                                                  :run-and #{1
+                                                                                                             2}}},
+                                                  :unreachable-resolvers #{},
+                                                  :index-ast #:>{:p1 {:type :join,
+                                                                      :dispatch-key :>/p1,
+                                                                      :key :>/p1,
+                                                                      :query [:a #:>{:p2 [:b]}],
+                                                                      :children [{:type :prop,
+                                                                                  :dispatch-key :a,
+                                                                                  :key :a}
+                                                                                 {:type :join,
+                                                                                  :dispatch-key :>/p2,
+                                                                                  :key :>/p2,
+                                                                                  :query [:b],
+                                                                                  :children [{:type :prop,
+                                                                                              :dispatch-key :b,
+                                                                                              :key :b}]}]}},
+                                                  :placeholders #{:>/p1 :>/p2},
+                                                  :index-resolver->nodes {a #{1}, b #{2}},
+                                                  :index-attrs {:a 1, :b 2},
+                                                  :root 3})))
 
   #_(testing "conflict between params"
       (is (= (compute-run-graph
@@ -2763,7 +2704,6 @@
                                              ::pcp/source-for-attrs #{:a}}}
              ::pcp/index-resolver->nodes {a #{1}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/root                  1
              ::pcp/index-attrs           {:a 1}
              ::pcp/index-ast             {:a {:type         :prop,
@@ -2785,7 +2725,6 @@
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
                ::pcp/unreachable-resolvers #{}
-               ::pcp/unreachable-attrs     {}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -2809,7 +2748,6 @@
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
                ::pcp/unreachable-resolvers #{}
-               ::pcp/unreachable-attrs     {}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -2834,7 +2772,6 @@
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
                ::pcp/unreachable-resolvers #{}
-               ::pcp/unreachable-attrs     {}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -2859,7 +2796,6 @@
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
                ::pcp/unreachable-resolvers #{}
-               ::pcp/unreachable-attrs     {}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -2887,7 +2823,6 @@
                                                ::pcp/source-for-attrs #{:a :b}}}
                ::pcp/index-resolver->nodes {a #{1}}
                ::pcp/unreachable-resolvers #{}
-               ::pcp/unreachable-attrs     {}
                ::pcp/index-attrs           {:a 1 :b 1}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
@@ -2909,7 +2844,6 @@
               ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}}
               ::eql/query           [:release/script]})
            {::pcp/nodes                 {}
-            ::pcp/index-resolver->nodes {}
             ::pcp/unreachable-resolvers #{}
             ::pcp/unreachable-attrs     {:db/id {}}
             ::pcp/index-ast             {:release/script {:type         :prop,
@@ -2935,7 +2869,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [:release/script])}}
             ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/root                  1
             ::pcp/index-attrs           {:release/script 1}
             ::pcp/index-ast             {:release/script {:type         :prop,
@@ -2966,7 +2899,6 @@
                                                                       :type     :root}}}
               ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
               ::pcp/unreachable-resolvers #{}
-              ::pcp/unreachable-attrs     {}
               ::pcp/root                  1
               ::pcp/index-attrs           {:release/script 1}
 
@@ -2995,7 +2927,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [:release/script :label/type])}}
             ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/index-attrs           {:release/script 1 :label/type 1}
             ::pcp/index-ast             {:release/script {:type         :prop,
                                                           :dispatch-key :release/script,
@@ -3033,7 +2964,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{3} id #{2}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/index-attrs           {:db/id 2 :release/script 3 :label/type 3}
             ::pcp/index-ast             {:release/script {:type         :prop,
                                                           :dispatch-key :release/script,
@@ -3062,7 +2992,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [:a :b])}}
             ::pcp/index-resolver->nodes {'dynamic-resolver #{2}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/root                  2
             ::pcp/index-attrs           {:a 2 :b 2}
             ::pcp/index-ast             {:b {:type         :prop,
@@ -3088,7 +3017,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [:a :b :c])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{3}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/root                  3
             ::pcp/index-attrs           {:a 3 :b 3 :c 3}
             ::pcp/index-ast             {:c {:type         :prop,
@@ -3122,7 +3050,6 @@
                                             ::pcp/run-next         2}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{2} z #{3}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/root                  3
             ::pcp/index-attrs           {:z 3 :a 2 :b 2}
             ::pcp/index-ast             {:b {:type         :prop,
@@ -3158,7 +3085,6 @@
                                               ::pcp/foreign-ast      (eql/query->ast [:a :b])}}
               ::pcp/index-resolver->nodes '{z #{1} dynamic-resolver #{3}}
               ::pcp/unreachable-resolvers #{}
-              ::pcp/unreachable-attrs     {}
               ::pcp/root                  3
               ::pcp/index-attrs           {:a 3 :b 3 :z 1}
               ::pcp/index-ast             {:z {:type         :prop,
@@ -3204,7 +3130,6 @@
                                                                                                                                      :b
                                                                                                                                      :c}}}
                                                   :root                  2
-                                                  :unreachable-attrs     {}
                                                   :unreachable-resolvers #{}})))
 
   (testing "multiple calls to dynamic resolver"
@@ -3244,7 +3169,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [:a])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{1 3} b #{2}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/root                  3
             ::pcp/index-attrs           {:a 3 :b 2 :c 1}
             ::pcp/index-ast             {:c {:type         :prop,
@@ -3289,7 +3213,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
             ::pcp/index-resolver->nodes '{dynamic-resolver #{4} id #{2} complex #{3}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/index-attrs           {:db/id          2
                                          :release/script 4
                                          :label/type     4
@@ -3329,7 +3252,6 @@
                                               ::pcp/foreign-ast      (eql/query->ast [:b :a :c :d])}}
               ::pcp/index-resolver->nodes '{dyn #{6}}
               ::pcp/unreachable-resolvers #{}
-              ::pcp/unreachable-attrs     {}
               ::pcp/index-attrs           {:c 6 :d 6 :a 6 :b 6}
               ::pcp/root                  6})))
 
@@ -3371,7 +3293,6 @@
                                             ::pcp/run-next 1}}
             ::pcp/index-resolver->nodes '{dyn #{1 2} l1 #{3}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/index-attrs           {:d2 2 :l1 3 :d1 1}
             ::pcp/index-ast             {:d1 {:type         :prop,
                                               :dispatch-key :d1,
@@ -3402,7 +3323,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
@@ -3437,7 +3357,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
@@ -3496,7 +3415,6 @@
              ::pcp/index-resolver->nodes {dynamic-1->local     #{1}
                                           dynamic-parser-42276 #{2}}
              ::pcp/unreachable-resolvers #{}
-             ::pcp/unreachable-attrs     {}
              ::pcp/index-attrs           {:dynamic-1 2
                                           :local     1
                                           :dynamic-2 2}
@@ -3534,7 +3452,6 @@
                                               ::pcp/foreign-ast      (eql/query->ast [{:a [:b :c]}])}}
               ::pcp/index-resolver->nodes '{dyn #{1}}
               ::pcp/unreachable-resolvers #{}
-              ::pcp/unreachable-attrs     {}
               ::pcp/root                  1
               ::pcp/index-attrs           {:a 1}
               ::pcp/index-ast             {:a {:type         :join,
@@ -3610,7 +3527,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [{:b [:c]}]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
@@ -3650,7 +3566,6 @@
                                               ::pcp/foreign-ast      (eql/query->ast [{:a [{:b [:c]}]}])}}
               ::pcp/index-resolver->nodes '{dyn #{1}}
               ::pcp/unreachable-resolvers #{}
-              ::pcp/unreachable-attrs     {}
               ::pcp/root                  1
               ::pcp/index-attrs           {:a 1}
               ::pcp/index-ast             {:a {:type         :join,
@@ -3692,7 +3607,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:c]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
@@ -3725,7 +3639,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
@@ -3763,7 +3676,6 @@
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
             ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-attrs     {}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a 1}
             ::pcp/index-ast             {:a {:type         :join,
