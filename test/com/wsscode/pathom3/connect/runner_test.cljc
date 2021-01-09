@@ -257,7 +257,7 @@
                                            {::pco/output [:value]}
                                            (fn [_ _]
                                              (swap! spy inc)
-                                             {:value 1}))])
+                                             {:value 2}))])
                           [:value]
                           {})
                {:value 1}))
