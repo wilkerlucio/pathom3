@@ -15,17 +15,18 @@
              2 {::pcr/resolver-run-start-ms  0
                 ::pcr/resolver-run-finish-ms 10}
              3 {::pcr/resolver-run-start-ms  0
-                ::pcr/resolver-run-finish-ms 100}}})
+                ::pcr/resolver-run-finish-ms 100}}}
+           {})
          {::pcrs/resolver-accumulated-duration-ms 111})))
 
 (deftest overhead-duration-test
-  (is (= (pcrs/overhead-duration {::pcr/graph-process-duration-ms         100
+  (is (= (pcrs/overhead-duration {::pcr/graph-run-duration-ms             100
                                   ::pcrs/resolver-accumulated-duration-ms 90})
          {::pcrs/overhead-duration-ms 10})))
 
 (deftest overhead-pct-test
-  (is (= (pcrs/overhead-pct {::pcr/graph-process-duration-ms 100
-                             ::pcrs/overhead-duration-ms     20})
+  (is (= (pcrs/overhead-pct {::pcr/graph-run-duration-ms 100
+                             ::pcrs/overhead-duration-ms 20})
          {::pcrs/overhead-duration-percentage 0.2})))
 
 (def err (ex-info "Error" {}))
