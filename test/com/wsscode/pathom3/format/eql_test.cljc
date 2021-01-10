@@ -74,6 +74,19 @@
                               [{:foo [:b]}])
            {:foo [{:b 2} {:b 1} {} 3]})))
 
+  (testing "recursive query"
+    (is (= (pf.eql/map-select {}
+                              {:x "a"
+                               :y "aa"
+                               :c [{:x   "b"
+                                    :bla "bb"
+                                    :c   [{:x        "c"
+                                           :whatever "d"}]}]}
+                              [:x {:c '...}])
+           {:x "a"
+            :c [{:x "b"
+                 :c [{:x "c"}]}]})))
+
   (testing "retain set type"
     (is (= (pf.eql/map-select {} {:foo #{{:a 1 :b 2}
                                          {:c 1 :b 1}}}

@@ -83,10 +83,14 @@
   ; TODO consider merging issues when key is repeated
   (coll/index-by :key children))
 
+(defn recursive-query? [query]
+  (or (= '... query) (int? query)))
+
 (defn map-select-entry
-  [env source {:keys [key] :as ast}]
+  [env source {:keys [key query] :as ast}]
   (if-let [x (find source key)]
     (let [val (val x)
+          ast (if (recursive-query? query) (:parent-ast ast) ast)
           ast (update ast :children #(or % [{:key          '*
                                              :dispatch-key '*}]))]
       (coll/make-map-entry
@@ -130,7 +134,7 @@
   (if (map? source)
     (let [start (with-meta {} (meta source))]
       (into start (keep #(p.plugin/run-with-plugins env ::wrap-map-select-entry
-                           map-select-entry env source %))
+                           map-select-entry env source (assoc % :parent-ast ast)))
             (-> ast
                 (pick-union-entry source)
                 :children
