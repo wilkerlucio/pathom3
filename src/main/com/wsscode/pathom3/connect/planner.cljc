@@ -1150,16 +1150,34 @@
   [{::keys [index-attrs]} attrs]
   (into #{} (filter #(contains? index-attrs %)) attrs))
 
-(defn merge-nested-missing-ast [graph {::keys [available-data]} missing]
-  (reduce-kv
-    (fn [g attr shape]
-      (cond-> (update-in g [::index-ast attr] pf.eql/merge-ast-children
-                (-> (pfsd/shape-descriptor->ast shape)
-                    (assoc :type :prop :key attr :dispatch-key attr)))
-        (contains? available-data attr)
-        (mark-attribute-process-sub-query {:key attr :children []})))
-    graph
-    (coll/filter-vals seq missing)))
+(defn merge-nested-missing-ast [graph {::keys [available-data resolvers] :as env} missing]
+  ; TODO: maybe optimize this in the future with indexes to avoid this scan
+  (let [recursive-joins
+        (into {}
+              (comp (map #(pci/resolver-config env %))
+                    (mapcat ::pco/input)
+                    (keep (fn [x] (if (and (map? x) (pf.eql/recursive-query? (first (vals x))))
+                                    (first x)))))
+              resolvers)]
+    (reduce-kv
+      (fn [g attr shape]
+        (let [recur (get recursive-joins attr)]
+          (if recur
+            (-> (update-in g [::index-ast attr] assoc
+                  :type :join
+                  :key attr
+                  :dispatch-key attr
+                  :query recur)
+                (mark-attribute-process-sub-query {:key attr :children []}))
+
+            (cond-> (update-in g [::index-ast attr] pf.eql/merge-ast-children
+                      (-> (pfsd/shape-descriptor->ast shape)
+                          (assoc :type :prop :key attr :dispatch-key attr)))
+              (contains? available-data attr)
+              (mark-attribute-process-sub-query {:key attr :children []})))))
+      graph
+      (->> missing
+           (into {} (filter (fn [[k v]] (or (contains? recursive-joins k) (seq v)))))))))
 
 (defn merge-missing-chain [graph graph' env missing missing-flat]
   (let [missing-with-nodes (attributes-with-nodes graph' missing-flat)
@@ -1206,7 +1224,7 @@
             still-missing (into {} (remove #(required-input-reachable? graph' env %)) missing)
             all-provided? (empty? still-missing)]
         (if all-provided?
-          (merge-missing-chain graph graph' env missing missing-flat)
+          (merge-missing-chain graph graph' (assoc env ::resolvers resolvers) missing missing-flat)
           (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
                 unreachable-attrs (unreachable-attrs-after-missing-check env unreachable-resolvers still-missing)]
             (update out' ::unreachable-paths pfsd/merge-shapes unreachable-attrs))))

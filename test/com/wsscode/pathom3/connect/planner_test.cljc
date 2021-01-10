@@ -2371,7 +2371,43 @@
                                                                                    :type         :join}},
              :com.wsscode.pathom3.connect.planner/index-attrs
                                                                         {:users 2, :scores-sum 1, :age-sum 4},
-             :com.wsscode.pathom3.connect.planner/root                  2}))))
+             :com.wsscode.pathom3.connect.planner/root                  2})))
+
+  (testing "recursive nested input"
+    (is (= (compute-run-graph
+             (-> {::eql/query [:names]
+                  ::resolvers '[{::pco/op-name nested-input-recursive
+                                 ::pco/input   [:name {:children ...}]
+                                 ::pco/output  [:names]}
+                                {::pco/op-name from-name
+                                 ::pco/input   [:name]
+                                 ::pco/output  [{:children [:name]}]}]
+                  ::pcp/available-data {:name {}}}))
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name nested-input-recursive,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:names {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:name {},
+                                                                                                         :children {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{2},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:names}},
+                                                          2 {:com.wsscode.pathom3.connect.operation/op-name from-name,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:children {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:name {}},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:children},
+                                                             :com.wsscode.pathom3.connect.planner/run-next 1}},
+                                                  :index-ast {:names {:type :prop,
+                                                                      :dispatch-key :names,
+                                                                      :key :names},
+                                                              :children {:type :join,
+                                                                         :key :children,
+                                                                         :dispatch-key :children,
+                                                                         :query ...}},
+                                                  :index-resolver->nodes {nested-input-recursive #{1},
+                                                                          from-name #{2}},
+                                                  :index-attrs {:children 2, :names 1},
+                                                  :nested-available-process #{:children},
+                                                  :root 2}))))
 
 (deftest compute-run-graph-optional-inputs-test
   (testing "plan continues when optional thing is missing"

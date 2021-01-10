@@ -983,7 +983,6 @@
            {:name "a",
             :children [{:name "b", :children [{:name "e"}]} {:name "c", :children [{:name "d"}]}]})))
 
-  #_
   (testing "recursive nested input"
     (is (= (run-graph
              (pci/register
@@ -1001,11 +1000,17 @@
                    "f" {:children [{:name "g"}]}
                    "c" {:children [{:name "d"}]}})])
              [:names]
-             {:name "b"})
-           {:name     "a",
-            :children [{:name     "b",
-                        :children [{:name "e", :children [{:name "f", :children [{:name "g"}]}]}]}
-                       {:name "c", :children [{:name "d"}]}]}))))
+             {:name "a"})
+           {:name "a",
+            :children [{:name "b",
+                        :children [{:name "e",
+                                    :children [{:name "f",
+                                                :children [{:name "g"}],
+                                                :names ["f" "g"]}],
+                                    :names ["e" "f" "g"]}],
+                        :names ["b" "e" "f" "g"]}
+                       {:name "c", :children [{:name "d"}], :names ["c" "d"]}],
+            :names ["a" "b" "e" "f" "g" "c" "d"]}))))
 
 (deftest run-graph!-mutations-test
   (testing "simple call"
