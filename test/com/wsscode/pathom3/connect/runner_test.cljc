@@ -1005,30 +1005,7 @@
            {:name     "a",
             :children [{:name     "b",
                         :children [{:name "e", :children [{:name "f", :children [{:name "g"}]}]}]}
-                       {:name "c", :children [{:name "d"}]}]}))
-
-    (testing "indirect"
-      (is (= (run-graph
-               (pci/register
-                 [(pco/resolver 'nested-input-recursive
-                    {::pco/input  [:name {:nest [{:children '...}]}]
-                     ::pco/output [:names]}
-                    (fn [_ input]
-                      {:names
-                       (mapv :name (tree-seq :children :children input))}))
-                  (pbir/static-table-resolver :name
-                    {"a" {:nest {:children [{:name "b"}
-                                            {:name "c"}]}}
-                     "b" {:nest {:children [{:name "e"}]}}
-                     "e" {:nest {:children [{:name "f"}]}}
-                     "f" {:nest {:children [{:name "g"}]}}
-                     "c" {:nest {:children [{:name "d"}]}}})])
-               [:names]
-               {:name "b"})
-             {:name     "a",
-              :children [{:name     "b",
-                          :children [{:name "e", :children [{:name "f", :children [{:name "g"}]}]}]}
-                         {:name "c", :children [{:name "d"}]}]})))))
+                       {:name "c", :children [{:name "d"}]}]}))))
 
 (deftest run-graph!-mutations-test
   (testing "simple call"

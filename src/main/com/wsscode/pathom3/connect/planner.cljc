@@ -1096,24 +1096,25 @@
   are met in the new sub graph. In case of nested dependencies, a new graph must run
   to verify that the sub query dependencies are possible to met, otherwise the path
   is discarded."
-  [{::keys [index-attrs index-ast] :as graph} {::keys [available-data] :as env} required]
+  [{::keys [index-attrs] :as graph} {::keys [available-data] :as env} required]
   (let [attr (key required)
         sub  (val required)]
     (if (seq sub)
       ; check if subquery is realizable
       (let [available-sub-data (get available-data attr)]
         (if-let [node-id (get index-attrs attr)]
-          (let [provides (->> (get-node graph node-id ::pco/op-name)
-                              (pci/resolver-config env)
-                              ::pco/provides
-                              attr)
+          (let [provides  (->> (get-node graph node-id ::pco/op-name)
+                               (pci/resolver-config env)
+                               ::pco/provides
+                               attr)
 
-                graph'   (compute-run-graph
-                           (-> (reset-env env)
-                               (assoc
-                                 ::available-data (pfsd/merge-shapes available-sub-data provides)
-                                 :edn-query-language.ast/node (pfsd/shape-descriptor->ast sub))))]
-            (every? #(required-input-reachable? graph' env %) sub))
+                available (pfsd/merge-shapes available-sub-data provides)
+                graph'    (compute-run-graph
+                            (-> (reset-env env)
+                                (assoc
+                                  ::available-data available
+                                  :edn-query-language.ast/node (pfsd/shape-descriptor->ast sub))))]
+            (every? #(required-input-reachable? graph' (assoc env ::available-data available) %) sub))
 
           ; there is no node from the graph, but still gonna look in current data
           (let [graph' (compute-run-graph
@@ -1121,10 +1122,10 @@
                              (assoc
                                ::available-data (or available-sub-data {})
                                :edn-query-language.ast/node (pfsd/shape-descriptor->ast sub))))]
-            (every? #(required-input-reachable? graph' env %) sub))))
+            (every? #(required-input-reachable? graph' (assoc env ::available-data (or available-sub-data {})) %) sub))))
 
       (or (contains? index-attrs attr)
-          (contains? index-ast attr)))))
+          (contains? available-data attr)))))
 
 (defn unreachable-attrs-after-missing-check
   "Mark which attributes are unreachable, given the unreachable resolvers.
