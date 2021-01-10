@@ -1105,7 +1105,7 @@
 
 (defn sub-required-input-reachable?
   [{::keys [index-attrs] :as graph} {::keys [available-data] :as env} attr sub]
-  (let [available-sub-data (get available-data attr)]
+  (let [available-sub-data (get available-data attr {})]
     (if-let [node-id (get index-attrs attr)]
       (let [provides  (->> (get-node graph node-id ::pco/op-name)
                            (pci/resolver-config env)
@@ -1115,7 +1115,7 @@
         (sub-required-input-reachable?* env sub available))
 
       ; there is no node from the graph, but still gonna look in current data
-      (sub-required-input-reachable?* env sub (or available-sub-data {})))))
+      (sub-required-input-reachable?* env sub available-sub-data))))
 
 (defn required-input-reachable?
   "After running a sub graph for dependencies, the planner checks if all required inputs
