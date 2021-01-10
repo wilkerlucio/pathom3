@@ -1114,7 +1114,8 @@
                                 (assoc
                                   ::available-data available
                                   :edn-query-language.ast/node (pfsd/shape-descriptor->ast sub))))]
-            (every? #(required-input-reachable? graph' (assoc env ::available-data available) %) sub))
+            (every? #(required-input-reachable? graph' (assoc env ::available-data available) %)
+              (pfsd/missing available sub)))
 
           ; there is no node from the graph, but still gonna look in current data
           (let [graph' (compute-run-graph
@@ -1122,10 +1123,10 @@
                              (assoc
                                ::available-data (or available-sub-data {})
                                :edn-query-language.ast/node (pfsd/shape-descriptor->ast sub))))]
-            (every? #(required-input-reachable? graph' (assoc env ::available-data (or available-sub-data {})) %) sub))))
+            (every? #(required-input-reachable? graph' env %)
+              (pfsd/missing (or available-sub-data {}) sub)))))
 
-      (or (contains? index-attrs attr)
-          (contains? available-data attr)))))
+      (contains? index-attrs attr))))
 
 (defn unreachable-attrs-after-missing-check
   "Mark which attributes are unreachable, given the unreachable resolvers.
