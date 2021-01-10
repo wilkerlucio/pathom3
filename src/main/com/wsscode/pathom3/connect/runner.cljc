@@ -259,16 +259,17 @@
 
 (defn priority-sort [{::pcp/keys [graph] :as env} node-ids]
   (let [nodes-data (->> node-ids
-                        (map #(-> graph
-                                  (pcp/find-leaf-node (pcp/get-node graph %))
-                                  (assoc ::source-node-path %)))
-                        (map (fn [{::keys [source-node-path] :as node}]
-                               (if-let [branches (pcp/node-branches node)]
-                                 (-> graph
-                                     (pcp/get-node (first (priority-sort env branches)))
-                                     (assoc ::source-node-path source-node-path))
-                                 node)))
-                        (keep #(pcp/node-with-resolver-config graph env %)))]
+                        (into []
+                              (comp (map #(-> graph
+                                              (pcp/find-leaf-node (pcp/get-node graph %))
+                                              (assoc ::source-node-path %)))
+                                    (map (fn [{::keys [source-node-path] :as node}]
+                                           (if-let [branches (pcp/node-branches node)]
+                                             (-> graph
+                                                 (pcp/get-node (first (priority-sort env branches)))
+                                                 (assoc ::source-node-path source-node-path))
+                                             node)))
+                                    (keep #(pcp/node-with-resolver-config graph env %)))))]
     (mapv ::source-node-path (sort-by #(or (::pco/priority %) 0) #(compare %2 %) nodes-data))))
 
 (defn default-choose-path [env _or-node node-ids]
@@ -418,6 +419,17 @@
     ::graph-run-finish-ms (time/now-ms)
     ::node-run-stats (some-> env ::node-run-stats* deref)))
 
+(defn mark-batch-errors [e env batch-op batch-items]
+  (p.plugin/run-with-plugins env ::wrap-batch-resolver-error
+    (fn [_ _ _]) env [batch-op batch-items] e)
+
+  (doseq [{env'       ::env
+           ::pcp/keys [node]} batch-items]
+    (p.plugin/run-with-plugins env' ::wrap-resolver-error
+      mark-resolver-error env' node (ex-info "Batch error" {::batch-error? true} e)))
+
+  ::node-error)
+
 (defn run-batches! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
@@ -431,14 +443,7 @@
             responses (try
                         (pco.prot/-resolve resolver batch-env inputs)
                         (catch #?(:clj Throwable :cljs :default) e
-                          (p.plugin/run-with-plugins env ::wrap-batch-resolver-error
-                            (fn [_ _ _]) env [batch-op batch-items] e)
-
-                          (doseq [{env'       ::env
-                                   ::pcp/keys [node]} batch-items]
-                            (p.plugin/run-with-plugins env' ::wrap-resolver-error
-                              mark-resolver-error env' node (ex-info "Batch error" {::batch-error? true} e)))
-                          ::node-error))
+                          (mark-batch-errors e env batch-op batch-items)))
             finish    (time/now-ms)]
 
         (when-not (refs/kw-identical? ::node-error responses)
