@@ -90,7 +90,7 @@
                    (= '... query)
                    (vec (vals (::pcp/index-ast graph)))
 
-                   (and (int? query) (pos-int? (dec query)))
+                   (pos-int? query)
                    (-> graph ::pcp/index-ast
                        (update-in [k :query] dec)
                        vals vec)

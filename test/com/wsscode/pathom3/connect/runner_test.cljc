@@ -981,7 +981,8 @@
               {:children 2}]
              {:name "a"})
            {:name "a",
-            :children [{:name "b", :children [{:name "e"}]} {:name "c", :children [{:name "d"}]}]})))
+            :children [{:name "b", :children [{:name "e", :children [{:name "f"}]}]}
+                       {:name "c", :children [{:name "d"}]}]})))
 
   (testing "recursive nested input"
     (is (= (run-graph
