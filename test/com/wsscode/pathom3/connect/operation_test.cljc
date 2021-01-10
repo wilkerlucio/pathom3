@@ -456,6 +456,26 @@
                                                            :input  [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
+     (testing "explicit input"
+       (is (= (macroexpand-1
+                `(pco/defresolver ~'foo ~'[input] {::pco/input [:foo]} {:bar "baz"}))
+              '(def foo
+                 (com.wsscode.pathom3.connect.operation/resolver
+                   'user/foo
+                   #:com.wsscode.pathom3.connect.operation{:output [:bar],
+                                                           :input  [:foo]}
+                   (clojure.core/fn foo [_ input] {:bar "baz"}))))))
+
+     (testing "recursive nested inputs"
+       (is (= (macroexpand-1
+                `(pco/defresolver ~'foo ~'[input] {::pco/input [:foo {:bar ~'...}]} {:bar "baz"}))
+              '(def foo
+                 (com.wsscode.pathom3.connect.operation/resolver
+                   'user/foo
+                   #:com.wsscode.pathom3.connect.operation{:output [:bar],
+                                                           :input  [:foo {:bar ...}]}
+                   (clojure.core/fn foo [_ input] {:bar "baz"}))))))
+
      (testing "unform options to retain data"
        (s/def ::or-thing (s/or :foo int? :bar string?))
 
