@@ -97,5 +97,4 @@
 
 (defn run-stats-env [stats]
   (-> stats
-      (pci/register stats-index)
-      (assoc :com.wsscode.pathom3.interface.smart-map/keys-mode :com.wsscode.pathom3.interface.smart-map/keys-mode-reachable)))
+      (pci/register stats-index)))
