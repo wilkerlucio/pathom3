@@ -82,11 +82,23 @@
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
     :as        env} entity k v]
-  [(s/keys :opt [:edn-query-language.ast/node]) map? ::p.path/path-entry any?
+  [(s/keys :req [::pcp/graph]) map? ::p.path/path-entry any?
    => any?]
-  (let [ast (pcp/entry-ast graph k)
-        env (p.path/append-path env k)]
-    (if (:children ast)
+  (let [{:keys [query] :as ast} (pcp/entry-ast graph k)
+        env      (p.path/append-path env k)
+        children (cond
+                   (= '... query)
+                   (vec (vals (::pcp/index-ast graph)))
+
+                   (pos-int? query)
+                   (-> graph ::pcp/index-ast
+                       (update-in [k :query] dec)
+                       vals vec)
+
+                   :else
+                   (:children ast))
+        ast      (assoc ast :children children)]
+    (if children
       (cond
         (map? v)
         (if (process-map-container? ast v)

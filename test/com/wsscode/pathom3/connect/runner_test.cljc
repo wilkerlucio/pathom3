@@ -928,6 +928,37 @@
               :>/m4 {:x 10
                      :y 40}})))))
 
+(deftest run-graph!-recursive-test
+  (testing "unbounded recursive query"
+    (is (= (run-graph
+             (pci/register
+               [(pbir/static-table-resolver :name
+                  {"a" {:children [{:name "b"}
+                                   {:name "c"}]}
+                   "b" {:children [{:name "e"}]}
+                   "e" {:children [{:name "f"}]}
+                   "f" {:children [{:name "g"}]}
+                   "c" {:children [{:name "d"}]}})])
+             [:name
+              {:children '...}]
+             {:name "a"})
+           {:name     "a",
+            :children [{:name     "b",
+                        :children [{:name "e", :children [{:name "f", :children [{:name "g"}]}]}]}
+                       {:name "c", :children [{:name "d"}]}]})))
+
+  (testing "bounded recursive query"
+    (is (= (run-graph
+             (pci/register
+               [(pbir/static-table-resolver :name
+                  {"a" {:children [{:name "b"}
+                                   {:name "c"}]}
+                   "c" {:children [{:name "d"}]}})])
+             [:name
+              {:children 2}]
+             {:name "a"})
+           {:name "a", :children [{:name "b"} {:name "c", :children [{:name "d"}]}]}))))
+
 (deftest run-graph!-mutations-test
   (testing "simple call"
     (is (= (run-graph (pci/register (pco/mutation 'call {}
