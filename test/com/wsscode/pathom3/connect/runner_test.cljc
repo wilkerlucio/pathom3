@@ -982,7 +982,25 @@
              {:name "a"})
            {:name "a",
             :children [{:name "b", :children [{:name "e", :children [{:name "f"}]}]}
-                       {:name "c", :children [{:name "d"}]}]})))
+                       {:name "c", :children [{:name "d"}]}]}))
+
+    (is (= (run-graph
+             (pci/register
+               [(pbir/static-table-resolver :name
+                  {"a" {:children [{:name "b"}
+                                   {:name "c"}]}
+                   "b" {:children [{:name "e"}]}
+                   "e" {:children [{:name "f"}]}
+                   "f" {:children [{:name "g"}]}
+                   "c" {:children [{:name "d"}]}})
+                (pbir/single-attr-resolver :name :name+ #(str % "+"))])
+             [:name+
+              {:children 1}]
+             {:name "a"})
+           {:name "a",
+            :name+ "a+",
+            :children [{:name "b", :name+ "b+", :children [{:name "e"}]}
+                       {:name "c", :name+ "c+", :children [{:name "d"}]}]})))
 
   (testing "recursive nested input"
     (is (= (run-graph
