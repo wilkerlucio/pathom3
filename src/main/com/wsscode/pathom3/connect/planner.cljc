@@ -1096,7 +1096,7 @@
   are met in the new sub graph. In case of nested dependencies, a new graph must run
   to verify that the sub query dependencies are possible to met, otherwise the path
   is discarded."
-  [{::keys [index-attrs] :as graph} {::keys [available-data] :as env} required]
+  [{::keys [index-attrs index-ast] :as graph} {::keys [available-data] :as env} required]
   (let [attr (key required)
         sub  (val required)]
     (if (seq sub)
@@ -1123,7 +1123,8 @@
                                :edn-query-language.ast/node (pfsd/shape-descriptor->ast sub))))]
             (every? #(required-input-reachable? graph' env %) sub))))
 
-      (contains? index-attrs attr))))
+      (or (contains? index-attrs attr)
+          (contains? index-ast attr)))))
 
 (defn unreachable-attrs-after-missing-check
   "Mark which attributes are unreachable, given the unreachable resolvers.

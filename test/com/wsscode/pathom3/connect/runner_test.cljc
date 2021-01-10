@@ -470,6 +470,26 @@
              {:users [{:user/id 1}
                       {:user/id 2}]})
            {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
+            :total-score 30})))
+
+  (testing "deep nesting"
+    (is (= (run-graph
+             (pci/register
+               [(pbir/static-table-resolver :user/id
+                                            {1 {:user/scores [{:user/score 10}]}
+                                             2 {:user/scores [{:user/score 20}]}})
+                (pco/resolver 'total-score
+                  {::pco/input  [{:users [{:user/scores [:user/score]}]}]
+                   ::pco/output [:total-score]}
+                  (fn [_ {:keys [users]}]
+                    {:total-score (reduce + 0 (->> users
+                                                   (mapcat :user/scores)
+                                                   (map :user/score)))}))])
+             [:total-score]
+             {:users [{:user/id 1}
+                      {:user/id 2}]})
+           {:users [#:user{:id 1, :scores [#:user{:score 10}]}
+                    #:user{:id 2, :scores [#:user{:score 20}]}],
             :total-score 30}))))
 
 (deftest run-graph!-optional-inputs-test
@@ -963,6 +983,7 @@
            {:name "a",
             :children [{:name "b", :children [{:name "e"}]} {:name "c", :children [{:name "d"}]}]})))
 
+  #_
   (testing "recursive nested input"
     (is (= (run-graph
              (pci/register
@@ -984,7 +1005,30 @@
            {:name     "a",
             :children [{:name     "b",
                         :children [{:name "e", :children [{:name "f", :children [{:name "g"}]}]}]}
-                       {:name "c", :children [{:name "d"}]}]}))))
+                       {:name "c", :children [{:name "d"}]}]}))
+
+    (testing "indirect"
+      (is (= (run-graph
+               (pci/register
+                 [(pco/resolver 'nested-input-recursive
+                    {::pco/input  [:name {:nest [{:children '...}]}]
+                     ::pco/output [:names]}
+                    (fn [_ input]
+                      {:names
+                       (mapv :name (tree-seq :children :children input))}))
+                  (pbir/static-table-resolver :name
+                    {"a" {:nest {:children [{:name "b"}
+                                            {:name "c"}]}}
+                     "b" {:nest {:children [{:name "e"}]}}
+                     "e" {:nest {:children [{:name "f"}]}}
+                     "f" {:nest {:children [{:name "g"}]}}
+                     "c" {:nest {:children [{:name "d"}]}}})])
+               [:names]
+               {:name "b"})
+             {:name     "a",
+              :children [{:name     "b",
+                          :children [{:name "e", :children [{:name "f", :children [{:name "g"}]}]}]}
+                         {:name "c", :children [{:name "d"}]}]})))))
 
 (deftest run-graph!-mutations-test
   (testing "simple call"
