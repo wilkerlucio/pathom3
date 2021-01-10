@@ -20,19 +20,6 @@
            {:foo {:bar {}}
             :baz {}})))
 
-  (testing "recursive queries"
-    (is (= (psd/query->shape-descriptor
-             [{:foo '...} :baz])
-           {:foo {}
-            :baz {}}))
-
-    (is (= (-> (psd/query->shape-descriptor
-                 [{:foo '...} :baz])
-               :foo meta ::psd/recursive)
-           {:foo {'... {:foo {}
-                        :baz {}}}
-            :baz {}})))
-
   (testing "combining union queries"
     (is (= (psd/query->shape-descriptor
              [{:foo {:a [:x] :b [:y]}}])
