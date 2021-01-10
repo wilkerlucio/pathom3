@@ -181,8 +181,10 @@
 (def pc-attr ::p.attr/attribute)
 (def pc-input ::pco/input)
 
-(declare compute-run-graph compute-run-graph* compute-root-and collapse-nodes-chain node-ancestors
-         compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes mark-attribute-process-sub-query)
+(declare
+  compute-run-graph compute-run-graph* compute-root-and collapse-nodes-chain node-ancestors
+  compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes mark-attribute-process-sub-query
+  required-input-reachable?)
 
 (defn add-snapshot!
   ([graph {::keys [snapshots*]} event-details]
@@ -1091,41 +1093,41 @@
     (first-common-ancestor graph
                            (into #{} (map (partial get-attribute-node graph)) missing))))
 
+(defn sub-required-input-reachable?*
+  [env sub available]
+  (let [graph' (compute-run-graph
+                 (-> (reset-env env)
+                     (assoc
+                       ::available-data available
+                       :edn-query-language.ast/node (pfsd/shape-descriptor->ast sub))))]
+    (every? #(required-input-reachable? graph' env %)
+      (pfsd/missing available sub))))
+
+(defn sub-required-input-reachable?
+  [{::keys [index-attrs] :as graph} {::keys [available-data] :as env} attr sub]
+  (let [available-sub-data (get available-data attr)]
+    (if-let [node-id (get index-attrs attr)]
+      (let [provides  (->> (get-node graph node-id ::pco/op-name)
+                           (pci/resolver-config env)
+                           ::pco/provides
+                           attr)
+            available (pfsd/merge-shapes available-sub-data provides)]
+        (sub-required-input-reachable?* env sub available))
+
+      ; there is no node from the graph, but still gonna look in current data
+      (sub-required-input-reachable?* env sub (or available-sub-data {})))))
+
 (defn required-input-reachable?
   "After running a sub graph for dependencies, the planner checks if all required inputs
   are met in the new sub graph. In case of nested dependencies, a new graph must run
   to verify that the sub query dependencies are possible to met, otherwise the path
   is discarded."
-  [{::keys [index-attrs] :as graph} {::keys [available-data] :as env} required]
+  [{::keys [index-attrs] :as graph} env required]
   (let [attr (key required)
         sub  (val required)]
     (if (seq sub)
       ; check if subquery is realizable
-      (let [available-sub-data (get available-data attr)]
-        (if-let [node-id (get index-attrs attr)]
-          (let [provides  (->> (get-node graph node-id ::pco/op-name)
-                               (pci/resolver-config env)
-                               ::pco/provides
-                               attr)
-
-                available (pfsd/merge-shapes available-sub-data provides)
-                graph'    (compute-run-graph
-                            (-> (reset-env env)
-                                (assoc
-                                  ::available-data available
-                                  :edn-query-language.ast/node (pfsd/shape-descriptor->ast sub))))]
-            (every? #(required-input-reachable? graph' (assoc env ::available-data available) %)
-              (pfsd/missing available sub)))
-
-          ; there is no node from the graph, but still gonna look in current data
-          (let [graph' (compute-run-graph
-                         (-> (reset-env env)
-                             (assoc
-                               ::available-data (or available-sub-data {})
-                               :edn-query-language.ast/node (pfsd/shape-descriptor->ast sub))))]
-            (every? #(required-input-reachable? graph' env %)
-              (pfsd/missing (or available-sub-data {}) sub)))))
-
+      (sub-required-input-reachable? graph env attr sub)
       (contains? index-attrs attr))))
 
 (defn unreachable-attrs-after-missing-check
