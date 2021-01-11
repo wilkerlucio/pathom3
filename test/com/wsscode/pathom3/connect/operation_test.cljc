@@ -595,4 +595,8 @@
   (is (= (pco/describe-input [:foo {:baz [:x (pco/? :y)]}])
          {::pco/requires  {:foo {}
                            :baz {:x {}}}
-          ::pco/optionals {:baz {:y {}}}})))
+          ::pco/optionals {:baz {:y {}}}}))
+
+  (is (= (pco/describe-input [:foo {(pco/? :baz) [:x :y]}])
+         {::pco/requires  {:foo {}}
+          ::pco/optionals {:baz {:x {} :y {}}}})))

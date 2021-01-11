@@ -105,17 +105,18 @@
   (pop/-operation-type operation))
 
 (defn describe-input*
-  [ast path outs*]
+  [ast path outs* opt-parent?]
   (doseq [{:keys [key params] :as node} (:children ast)]
-    (if (::optional? params)
-      (vswap! outs* assoc-in (concat [::optionals] path [key]) {})
-      (vswap! outs* assoc-in (concat [::requires] path [key]) {}))
-    (describe-input* node (conj path key) outs*)))
+    (let [opt? (or opt-parent? (::optional? params))]
+      (if opt?
+        (vswap! outs* assoc-in (concat [::optionals] path [key]) {})
+        (vswap! outs* assoc-in (concat [::requires] path [key]) {}))
+      (describe-input* node (conj path key) outs* opt?))))
 
 (defn describe-input [input]
   (let [input-ast (eql/query->ast input)
         outs* (volatile! {::requires {}})]
-    (describe-input* input-ast [] outs*)
+    (describe-input* input-ast [] outs* false)
     @outs*))
 
 (>defn resolver
