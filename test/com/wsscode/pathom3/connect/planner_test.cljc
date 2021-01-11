@@ -1961,7 +1961,21 @@
                                                     :dispatch-key :a
                                                     :key          :a
                                                     :query        [:bar]
-                                                    :type         :join}}}))))))
+                                                    :type         :join}}}))
+
+        (is (= (compute-run-graph
+                 {::pci/index-oir      '{}
+                  ::eql/query          [:a {:b '...}]
+                  ::pcp/available-data {:a {} :b {}}})
+               {::pcp/nodes                    {}
+                ::pcp/nested-available-process #{:b}
+                ::pcp/index-ast                {:a {:type         :prop,
+                                                    :dispatch-key :a,
+                                                    :key          :a},
+                                                :b {:type         :join,
+                                                    :dispatch-key :b,
+                                                    :key          :b,
+                                                    :query        '...}}}))))))
 
 (deftest compute-run-graph-mutations-test
   (is (= (compute-run-graph

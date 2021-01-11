@@ -1412,8 +1412,8 @@
   "Add information about attribute that is present but requires further processing
   due to subquery, this is created so the runner can quickly know which attributes
   need to have the subquery processing done."
-  [graph {:keys [key children]}]
-  (if children
+  [graph {:keys [key children query]}]
+  (if (or children query)
     (update graph ::nested-available-process coll/sconj key)
     graph))
 

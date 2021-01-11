@@ -1002,6 +1002,25 @@
             :children [{:name "b", :name+ "b+", :children [{:name "e"}]}
                        {:name "c", :name+ "c+", :children [{:name "d"}]}]})))
 
+  (testing "recursion over known data"
+    (is (= (run-graph
+             (pci/register
+               [(pbir/single-attr-resolver :name :name+ #(str % "+"))])
+             [:name+
+              {:children '...}]
+             {:name "a",
+              :children [{:name "b",
+                          :children [{:name "e"}]}
+                         {:name "c"}]})
+           {:name     "a"
+            :name+    "a+"
+            :children [{:name     "b"
+                        :name+    "b+"
+                        :children [{:name "e"
+                                    :name+ "e+"}]}
+                       {:name "c"
+                        :name+ "c+"}]})))
+
   (testing "recursive nested input"
     (is (= (run-graph
              (pci/register
