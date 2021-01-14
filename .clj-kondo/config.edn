@@ -1,29 +1,28 @@
-{:lint-as {clojure.test.check.clojure-test/defspec           clojure.core/def
-           clojure.test.check.properties/for-all             clojure.core/let
-           com.fulcrologic.guardrails.core/>def              clojure.spec.alpha/def
-           com.fulcrologic.guardrails.core/>defn             clojure.core/defn
-           com.wsscode.pathom3.connect.operation/defmutation clojure.core/defn
-           com.wsscode.pathom3.connect.operation/defresolver clojure.core/defn
-           com.wsscode.pathom3.plugin/defplugin              clojure.core/def
-           potemkin.collections/def-map-type                 clojure.core/deftype}
- :linters {:unsorted-required-namespaces {:level :warning}
-           :invalid-arity                {:level :error}
-           :missing-else-branch          {:level :off}
-           :consistent-alias             {:level   :warning
-                                          :aliases {com.wsscode.async.processing  wap
-                                                    clojure.test.check.generators gen
-                                                    clojure.test.check.properties prop}}
-           :unused-namespace             {:level   :warning
-                                          :exclude [com.fulcrologic.guardrails.core
-                                                    com.wsscode.async.async-clj
-                                                    com.wsscode.async.async-cljs]}
-           :unused-referred-var          {:level   :warning
-                                          :exclude {com.wsscode.async.async-clj     [let-chan let-chan*
-                                                                                     go go-catch go-promise
-                                                                                     <! <? <?maybe <!maybe]
-                                                    com.wsscode.async.async-cljs    [let-chan let-chan* <!p
-                                                                                     go go-catch go-promise
-                                                                                     <! <? <?maybe <!maybe]
-                                                    com.fulcrologic.guardrails.core [>def >defn >fdef => | <- ?]
-                                                    clojure.test                    [deftest is are run-tests testing]
-                                                    cljs.test                       [deftest is are run-tests testing]}}}}
+{:lint-as      {clojure.test.check.clojure-test/defspec           clojure.core/def
+                clojure.test.check.properties/for-all             clojure.core/let
+                com.fulcrologic.guardrails.core/>def              clojure.spec.alpha/def
+                com.fulcrologic.guardrails.core/>defn             clojure.core/defn
+                potemkin.collections/def-map-type                 clojure.core/deftype}
+ :config-paths ["com.wsscode/async"
+                "../resources/clj-kondo.exports/com.wsscode/pathom3"]
+ :linters      {:unsorted-required-namespaces {:level :warning}
+                :invalid-arity                {:level :error}
+                :missing-else-branch          {:level :off}
+                :consistent-alias             {:level   :warning
+                                               :aliases {com.wsscode.async.processing  wap
+                                                         clojure.test.check.generators gen
+                                                         clojure.test.check.properties prop}}
+                :unused-namespace             {:level   :warning
+                                               :exclude [com.fulcrologic.guardrails.core
+                                                         com.wsscode.async.async-clj
+                                                         com.wsscode.async.async-cljs]}
+                :unused-referred-var          {:level   :warning
+                                               :exclude {com.wsscode.async.async-clj     [let-chan let-chan*
+                                                                                          go go-catch go-promise
+                                                                                          <! <? <?maybe <!maybe]
+                                                         com.wsscode.async.async-cljs    [let-chan let-chan* <!p
+                                                                                          go go-catch go-promise
+                                                                                          <! <? <?maybe <!maybe]
+                                                         com.fulcrologic.guardrails.core [>def >defn >fdef => | <- ?]
+                                                         clojure.test                    [deftest is are run-tests testing]
+                                                         cljs.test                       [deftest is are run-tests testing]}}}}
