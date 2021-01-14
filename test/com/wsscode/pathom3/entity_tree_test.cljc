@@ -23,6 +23,11 @@
   (let [tree* (atom {:a 1})]
     (is (= (p.e/swap-entity! {::p.e/entity-tree* tree*} assoc :b 2)
            {:a 1, :b 2}
+           @tree*)))
+
+  (let [tree* (atom {:a 1})]
+    (is (= (p.e/swap-entity! {::p.e/entity-tree* tree*} assoc :b 2 :c 3 :d 4 :e 5 :f 6)
+           {:a 1, :b 2 :c 3 :d 4 :e 5 :f 6}
            @tree*))))
 
 (deftest vswap-entity!-test
