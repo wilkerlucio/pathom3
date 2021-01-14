@@ -1,10 +1,10 @@
-{:lint-as      {clojure.test.check.clojure-test/defspec           clojure.core/def
+{:config-paths ["com.wsscode/async"
+                "../resources/clj-kondo.exports/com.wsscode/pathom3"]
+ :lint-as      {clojure.test.check.clojure-test/defspec           clojure.core/def
                 clojure.test.check.properties/for-all             clojure.core/let
                 com.fulcrologic.guardrails.core/>def              clojure.spec.alpha/def
                 com.fulcrologic.guardrails.core/>defn             clojure.core/defn
                 potemkin.collections/def-map-type                 clojure.core/deftype}
- :config-paths ["com.wsscode/async"
-                "../resources/clj-kondo.exports/com.wsscode/pathom3"]
  :linters      {:unsorted-required-namespaces {:level :warning}
                 :invalid-arity                {:level :error}
                 :missing-else-branch          {:level :off}
