@@ -1,6 +1,6 @@
 # Pathom 3
 
-![Pathom Logo](resources/pathom-banner-padded.png)
+![Pathom Logo](repo-resources/pathom-banner-padded.png)
 
 Logic engine for attribute processing for Clojure and Clojurescript.
 
