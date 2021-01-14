@@ -79,7 +79,7 @@
            [::color]))))
 
 (deftest edn-file-resolver-test
-  (let [[resolver :as resolvers] (pbir/edn-file-resolver "resources/sample-config.edn")]
+  (let [[resolver :as resolvers] (pbir/edn-file-resolver "test/resources/sample-config.edn")]
     (is (= (::pco/output (pco/operation-config resolver))
            [:my.system/generic-db :my.system/initial-path :my.system/port]))
 
