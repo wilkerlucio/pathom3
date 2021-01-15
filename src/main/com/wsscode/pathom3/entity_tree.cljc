@@ -24,6 +24,11 @@
   [map? map? => map?]
   (assoc env ::entity-tree* (atom entity-tree)))
 
+(>defn reset-entity!
+  [{::keys [entity-tree*]} entity-tree]
+  [(s/keys :req [::entity-tree*]) ::entity-tree => ::entity-tree]
+  (reset! entity-tree* entity-tree))
+
 (>defn swap-entity!
   "Swap cache-tree at the current path. Returns the updated whole cache-tree."
   ([{::keys [entity-tree*]} f]

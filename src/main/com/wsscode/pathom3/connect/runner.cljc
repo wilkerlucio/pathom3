@@ -16,9 +16,49 @@
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]))
 
+(>def ::batch-error? boolean?)
+(>def ::batch-hold (s/keys))
+(>def ::batch-pending* any?)
+(>def ::batch-run-finish-ms number?)
+(>def ::batch-run-start-ms number?)
+
+(>def ::compute-plan-run-finish-ms number?)
+(>def ::compute-plan-run-start-ms number?)
+
+(>def ::env map?)
+
+(>def ::graph-run-finish-ms number?)
+(>def ::graph-run-start-ms number?)
+
 (>def ::map-container? boolean?)
 (>def ::merge-attribute fn?)
+
 (>def ::node-error any?)
+(>def ::node-run-finish-ms number?)
+(>def ::node-run-input map?)
+(>def ::node-run-output map?)
+(>def ::node-run-start-ms number?)
+
+(>def ::node-run-stats map?)
+(>def ::node-run-stats* any?)
+
+(>def ::nodes-with-error ::pcp/node-id-set)
+
+(>def ::resolver-cache* any?)
+(>def ::resolver-run-start-ms number?)
+(>def ::resolver-run-finish-ms number?)
+
+(>def ::run-stats map?)
+
+(>def ::source-node-id ::pcp/node-id)
+(>def ::success-path ::pcp/node-id)
+
+(>def ::wrap-batch-resolver-error fn?)
+(>def ::wrap-merge-attribute fn?)
+(>def ::wrap-mutate fn?)
+(>def ::wrap-resolve fn?)
+(>def ::wrap-resolver-error fn?)
+(>def ::wrap-run-graph! fn?)
 
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
@@ -79,14 +119,8 @@
   (or (-> v meta ::map-container?)
       (-> ast :params ::map-container?)))
 
-(>defn process-attr-subquery
-  [{::pcp/keys [graph]
-    :as        env} entity k v]
-  [(s/keys :req [::pcp/graph]) map? ::p.path/path-entry any?
-   => any?]
-  (let [{:keys [query] :as ast} (pcp/entry-ast graph k)
-        env      (p.path/append-path env k)
-        children (cond
+(defn normalize-ast-recursive-query [{:keys [query] :as ast} graph k]
+  (let [children (cond
                    (= '... query)
                    (vec (vals (::pcp/index-ast graph)))
 
@@ -96,8 +130,22 @@
                        vals vec)
 
                    :else
-                   (:children ast))
-        ast      (assoc ast :children children)]
+                   (:children ast))]
+    (assoc ast :children children)))
+
+(defn entry-ast
+  "Get AST entry and pulls recursive query when needed."
+  [graph k]
+  (-> (pcp/entry-ast graph k)
+      (normalize-ast-recursive-query graph k)))
+
+(>defn process-attr-subquery
+  [{::pcp/keys [graph]
+    :as        env} entity k v]
+  [(s/keys :req [::pcp/graph]) map? ::p.path/path-entry any?
+   => any?]
+  (let [{:keys [children] :as ast} (entry-ast graph k)
+        env (p.path/append-path env k)]
     (if children
       (cond
         (map? v)
@@ -262,15 +310,15 @@
                         (into []
                               (comp (map #(-> graph
                                               (pcp/find-leaf-node (pcp/get-node graph %))
-                                              (assoc ::source-node-path %)))
-                                    (map (fn [{::keys [source-node-path] :as node}]
+                                              (assoc ::source-node-id %)))
+                                    (map (fn [{::keys [source-node-id] :as node}]
                                            (if-let [branches (pcp/node-branches node)]
                                              (-> graph
                                                  (pcp/get-node (first (priority-sort env branches)))
-                                                 (assoc ::source-node-path source-node-path))
+                                                 (assoc ::source-node-id source-node-id))
                                              node)))
                                     (keep #(pcp/node-with-resolver-config graph env %)))))]
-    (mapv ::source-node-path (sort-by #(or (::pco/priority %) 0) #(compare %2 %) nodes-data))))
+    (mapv ::source-node-id (sort-by #(or (::pco/priority %) 0) #(compare %2 %) nodes-data))))
 
 (defn default-choose-path [env _or-node node-ids]
   (-> (priority-sort env node-ids)
