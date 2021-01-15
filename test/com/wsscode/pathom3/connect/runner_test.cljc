@@ -89,11 +89,11 @@
           ::geo/half-width 15
           ::geo/center-x   25})))
 
-(defn run-graph [env query tree]
+(defn run-graph [env tree query]
   (let [ast (eql/query->ast query)]
     (pcr/run-graph! env ast (p.ent/create-entity tree))))
 
-(defn run-graph-async [env query tree]
+(defn run-graph-async [env tree query]
   (let [ast (eql/query->ast query)]
     (pcra/run-graph! env ast (p.ent/create-entity tree))))
 
@@ -105,12 +105,12 @@
 
 (defn graph-response? [env tree query expected]
   (if (fn? expected)
-    (and (expected (run-graph env query tree))
-         #?(:clj (let [res (<!! (run-graph-async env query tree))]
+    (and (expected (run-graph env tree query))
+         #?(:clj (let [res (<!! (run-graph-async env tree query))]
                    ;(println res)
                    (expected res))))
-    (= (run-graph env query tree)
-       #?(:clj (let [res (<!! (run-graph-async env query tree))]
+    (= (run-graph env tree query)
+       #?(:clj (let [res (<!! (run-graph-async env tree query))]
                  ;(println res)
                  res))
        expected)))
@@ -179,8 +179,8 @@
                                           (fn [_ _] {:a "a"}))
                                         (pco/resolver 'b {::pco/output [:b]}
                                           (fn [_ _] {}))])
-                         [:a]
-                         {})]
+                         {}
+                         [:a])]
       (is (= res {}))
       (is (= (-> res meta ::pcr/run-stats
                  ::pcr/node-run-stats
@@ -276,8 +276,8 @@
                                            (fn [_ _]
                                              (swap! spy inc)
                                              {:value 2}))])
-                          [:value]
-                          {})
+                          {}
+                          [:value])
                {:value 1}))
         (is (= @spy 1))))
 
@@ -289,8 +289,8 @@
                                              (swap! spy inc)
                                              (throw (ex-info "Error" {}))))
                                          (pbir/constantly-resolver :error "value")])
-                          [:error]
-                          {})
+                          {}
+                          [:error])
                {:error "value"}))
         (is (= @spy 1))))
 
@@ -632,8 +632,8 @@
           (-> (run-graph
                 (pci/register
                   [batch-fetch])
-                [:v]
-                {:id 1}) meta ::pcr/run-stats))))
+                {:id 1}
+                [:v]) meta ::pcr/run-stats))))
 
   (testing "params"
     (is (graph-response?
@@ -664,8 +664,8 @@
     (is (some? (-> (run-graph
                      (pci/register
                        [batch-fetch])
-                     [{'(:>/id {:id 1}) [:v]}]
-                     {})
+                     {}
+                     [{'(:>/id {:id 1}) [:v]}])
                    :>/id meta ::pcr/run-stats))))
 
   (testing "different plan"
@@ -769,8 +769,8 @@
                                              [{:id 1}
                                               {:id 2}
                                               {:id 3}])])
-                [:v]
-                {:id 1})]
+                {:id 1}
+                [:v])]
       (is (= res
              {:id 1}))
       ; TODO: match error
@@ -1114,8 +1114,8 @@
         stats (-> (run-graph (pci/register
                                (pco/resolver 'error {::pco/output [:error]}
                                  (fn [_ _] (throw error))))
-                    [:error]
-                    {})
+                    {}
+                    [:error])
                   meta ::pcr/run-stats)
         env   (pcrs/run-stats-env stats)]
     (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
