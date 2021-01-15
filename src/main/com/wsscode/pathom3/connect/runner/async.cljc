@@ -21,14 +21,14 @@
 
 (declare run-node! run-graph!)
 
-(defn reduce-async [f init coll]
+(defn- reduce-async [f init coll]
   (reduce
     (fn [d item]
       (p/then d #(f % item)))
     (p/resolved init)
     coll))
 
-(defn reduce-kv-async [f init coll]
+(defn- reduce-kv-async [f init coll]
   (reduce-kv
     (fn [d k v]
       (p/then d #(f % k v)))
