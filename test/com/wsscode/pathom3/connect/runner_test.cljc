@@ -1153,25 +1153,24 @@
              {:z true})
            {:>/p1 {:z true :x 10}}))))
 
-(deftest run-graph!-async-tests
-  (is (= @(run-graph-async (pci/register
-                             (pco/resolver 'async {::pco/output [:foo]}
-                               (fn [_ _] (p/resolved {:foo "foo"}))))
-            {}
-            [:foo])
-         {:foo "foo"}))
+#?(:clj
+   (deftest run-graph!-async-tests
+     (is (= @(run-graph-async (pci/register
+                                (pco/resolver 'async {::pco/output [:foo]}
+                                  (fn [_ _] (p/resolved {:foo "foo"}))))
+               {}
+               [:foo])
+            {:foo "foo"}))
 
-  (testing "error"
-    (let [error (ex-info "Error" {})
-          stats (-> (run-graph-async (pci/register
+     (testing "error"
+       (let [error (ex-info "Error" {})
+             stats @(run-graph-async (pci/register
                                        (pco/resolver 'error {::pco/output [:error]}
                                          (fn [_ _] (p/resolved (throw error)))))
                       {}
                       [:error])
-                    deref
-                    meta ::pcr/run-stats)
-          env   (pcrs/run-stats-env stats)]
-      (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
-                 ::pcrs/attribute-error)
-             {::pcr/node-error       error
-              ::pcrs/node-error-type ::pcrs/node-error-type-direct})))))
+             env   (pcrs/run-stats-env (-> stats meta ::pcr/run-stats))]
+         (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
+                    ::pcrs/attribute-error)
+                {::pcr/node-error       error
+                 ::pcrs/node-error-type ::pcrs/node-error-type-direct}))))))
