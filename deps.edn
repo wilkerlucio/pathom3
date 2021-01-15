@@ -6,6 +6,7 @@
   com.wsscode/async          {:mvn/version "2021.01.15"}
   com.wsscode/cljc-misc      {:mvn/version "2021.01.15"}
   org.clojure/core.async     {:mvn/version "1.3.610"}
+  funcool/promesa            {:mvn/version "6.0.0"}
   edn-query-language/eql     {:mvn/version "1.0.0"}
   potemkin/potemkin          {:mvn/version "0.4.5"}}
 

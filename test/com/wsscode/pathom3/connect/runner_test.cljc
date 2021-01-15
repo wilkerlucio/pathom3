@@ -10,6 +10,7 @@
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
+    [com.wsscode.pathom3.connect.runner.async-promesa :as pcrap]
     [com.wsscode.pathom3.connect.runner.stats :as pcrs]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
@@ -99,6 +100,10 @@
   (let [ast (eql/query->ast query)]
     (pcra/run-graph! env ast (p.ent/create-entity tree))))
 
+(defn run-graph-async-promesa [env tree query]
+  (let [ast (eql/query->ast query)]
+    (pcrap/run-graph! env ast (p.ent/create-entity tree))))
+
 (defn coords-resolver [c]
   (pco/resolver 'coords-resolver {::pco/output [::coords]}
     (fn [_ _] {::coords c})))
@@ -108,11 +113,18 @@
 (defn graph-response? [env tree query expected]
   (if (fn? expected)
     (and (expected (run-graph env tree query))
+         #?(:clj (let [res @(run-graph-async-promesa env tree query)]
+                   ;(println res)
+                   (expected res)))
+         #_
          #?(:clj (let [res (<!! (run-graph-async env tree query))]
                    ;(println res)
                    (expected res))))
     (= (run-graph env tree query)
-       #?(:clj (let [res (<!! (run-graph-async env tree query))]
+       #?(:clj (let [res @(run-graph-async-promesa env tree query)]
+                 ;(println res)
+                 res))
+       #_ #?(:clj (let [res (<!! (run-graph-async env tree query))]
                  ;(println res)
                  res))
        expected)))
