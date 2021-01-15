@@ -481,6 +481,18 @@
 
   ::node-error)
 
+(defn cache-batch-item
+  [{env'       ::env
+    ::keys     [node-run-input]
+    ::pco/keys [cache? cache-store]
+    :as        batch-item}
+   batch-op
+   response]
+  (if cache?
+    (p.cache/cached cache-store env'
+      [batch-op node-run-input (pco/params batch-item)]
+      (fn [] response))))
+
 (defn run-batches! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
@@ -502,20 +514,18 @@
             (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
 
           (doseq [[{env'       ::env
-                    :keys      [::node-run-input]
-                    ::pco/keys [cache? cache-store]
                     ::pcp/keys [node]
                     :as        batch-item} response] (map vector batch-items responses)]
-            (if cache?
-              (p.cache/cached cache-store env'
-                [batch-op node-run-input (pco/params batch-item)]
-                (fn [] response)))
+            (cache-batch-item batch-item batch-op response)
+
             (merge-node-stats! env' node {::batch-run-start-ms  start
                                           ::batch-run-finish-ms finish
                                           ::node-run-output     response})
+
             (merge-resolver-response! env' response)
             (run-next-node! env' node)
-            (if (seq (::p.path/path env'))
+
+            (when-not (p.path/root? env')
               (p.ent/swap-entity! env assoc-in (::p.path/path env')
                 (-> (p.ent/entity env')
                     (include-meta-stats env' (::pcp/graph env')))))))))))

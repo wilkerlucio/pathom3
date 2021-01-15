@@ -395,21 +395,16 @@
 
             (reduce-async
               (fn [_ [{env'       ::pcr/env
-                       ::pcr/keys [node-run-input]
-                       ::pco/keys [cache? cache-store]
                        ::pcp/keys [node]
                        :as        batch-item} response]]
-                (if cache?
-                  (p.cache/cached cache-store env'
-                    [batch-op node-run-input (pco/params batch-item)]
-                    (fn [] response)))
+                (pcr/cache-batch-item batch-item batch-op response)
                 (merge-node-stats! env' node {::pcr/batch-run-start-ms  start
                                               ::pcr/batch-run-finish-ms finish
                                               ::pcr/node-run-output     response})
                 (p/do!
                   (merge-resolver-response! env' response)
                   (run-next-node! env' node)
-                  (if (seq (::p.path/path env'))
+                  (when-not (p.path/root? env')
                     (p.ent/swap-entity! env assoc-in (::p.path/path env')
                       (-> (p.ent/entity env')
                           (pcr/include-meta-stats env' (::pcp/graph env')))))))
