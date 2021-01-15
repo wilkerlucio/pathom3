@@ -1,16 +1,12 @@
 (ns com.wsscode.pathom3.connect.runner-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
-    [#?(:clj  com.wsscode.async.async-clj
-        :cljs com.wsscode.async.async-cljs)
-     :refer [deftest-async go go-promise <? #?(:clj <!!)]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
-    [com.wsscode.pathom3.connect.runner.async-promesa :as pcrap]
-    [com.wsscode.pathom3.connect.runner.core-async :as pcra]
+    [com.wsscode.pathom3.connect.runner.async :as pcra]
     [com.wsscode.pathom3.connect.runner.stats :as pcrs]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
@@ -101,10 +97,6 @@
   (let [ast (eql/query->ast query)]
     (pcra/run-graph! env ast (p.ent/create-entity tree))))
 
-(defn run-graph-async-promesa [env tree query]
-  (let [ast (eql/query->ast query)]
-    (pcrap/run-graph! env ast (p.ent/create-entity tree))))
-
 (defn coords-resolver [c]
   (pco/resolver 'coords-resolver {::pco/output [::coords]}
     (fn [_ _] {::coords c})))
@@ -114,26 +106,19 @@
 (defn graph-response? [env tree query expected]
   (if (fn? expected)
     (and (expected (run-graph env tree query))
-         #?(:clj (let [res @(run-graph-async-promesa env tree query)]
-                   ;(println res)
-                   (expected res)))
-         #_
-         #?(:clj (let [res (<!! (run-graph-async env tree query))]
+         #?(:clj (let [res @(run-graph-async env tree query)]
                    ;(println res)
                    (expected res))))
     (= (run-graph env tree query)
-       #?(:clj (let [res @(run-graph-async-promesa env tree query)]
-                 ;(println res)
-                 res))
-       #_ #?(:clj (let [res (<!! (run-graph-async env tree query))]
+       #?(:clj (let [res @(run-graph-async env tree query)]
                  ;(println res)
                  res))
        expected)))
 
 (comment
   (time
-    @(run-graph-async-promesa (pci/register
-                                (pbir/single-attr-resolver :id :x #(p/delay 100 (inc %))))
+    @(run-graph-async (pci/register
+                        (pbir/single-attr-resolver :id :x #(p/delay 100 (inc %))))
        {:items [{:id 1} {:id 2} {:id 3}]}
        [{:items [:x]}])))
 
@@ -1168,22 +1153,22 @@
              {:z true})
            {:>/p1 {:z true :x 10}}))))
 
-(deftest-async run-graph!-async-tests
-  (is (= (<? (run-graph-async (pci/register
-                                (pco/resolver 'async {::pco/output [:foo]}
-                                  (fn [_ _] (go {:foo "foo"}))))
-               {}
-               [:foo]))
+(deftest run-graph!-async-tests
+  (is (= @(run-graph-async (pci/register
+                             (pco/resolver 'async {::pco/output [:foo]}
+                               (fn [_ _] (p/resolved {:foo "foo"}))))
+            {}
+            [:foo])
          {:foo "foo"}))
 
   (testing "error"
     (let [error (ex-info "Error" {})
           stats (-> (run-graph-async (pci/register
                                        (pco/resolver 'error {::pco/output [:error]}
-                                         (fn [_ _] (go-promise (throw error)))))
+                                         (fn [_ _] (p/resolved (throw error)))))
                       {}
                       [:error])
-                    <?
+                    deref
                     meta ::pcr/run-stats)
           env   (pcrs/run-stats-env stats)]
       (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
