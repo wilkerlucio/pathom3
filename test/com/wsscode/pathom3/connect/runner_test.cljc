@@ -3,7 +3,7 @@
     [clojure.test :refer [deftest is are run-tests testing]]
     [#?(:clj  com.wsscode.async.async-clj
         :cljs com.wsscode.async.async-cljs)
-     :refer [deftest-async go <? #?(:clj <!!)]]
+     :refer [deftest-async go go-promise <? #?(:clj <!!)]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
@@ -1154,4 +1154,19 @@
                                   (fn [_ _] (go {:foo "foo"}))))
                {}
                [:foo]))
-         {:foo "foo"})))
+         {:foo "foo"}))
+
+  (testing "error"
+    (let [error (ex-info "Error" {})
+          stats (-> (run-graph-async (pci/register
+                                       (pco/resolver 'error {::pco/output [:error]}
+                                         (fn [_ _] (go-promise (throw error)))))
+                      {}
+                      [:error])
+                    <?
+                    meta ::pcr/run-stats)
+          env   (pcrs/run-stats-env stats)]
+      (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
+                 ::pcrs/attribute-error)
+             {::pcr/node-error       error
+              ::pcrs/node-error-type ::pcrs/node-error-type-direct})))))

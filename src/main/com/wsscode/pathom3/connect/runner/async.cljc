@@ -184,17 +184,17 @@
                                                ::pcr/env            env}}
 
                             cache?
-                            (p.cache/cached cache-store env
-                              [op-name input-data params]
-                              #(pco.prot/-resolve resolver env input-data))
+                            (<?maybe
+                              (p.cache/cached cache-store env
+                                [op-name input-data params]
+                                #(pco.prot/-resolve resolver env input-data)))
 
                             :else
-                            (pco.prot/-resolve resolver env input-data)))
+                            (<?maybe (pco.prot/-resolve resolver env input-data))))
                         (catch #?(:clj Throwable :cljs :default) e
                           (p.plugin/run-with-plugins env ::pcr/wrap-resolver-error
                             mark-resolver-error env node e)
                           ::pcr/node-error))
-          result      (<?maybe result)
           finish      (time/now-ms)]
       (merge-node-stats! env node
                          {::pcr/resolver-run-start-ms  start
