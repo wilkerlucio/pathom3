@@ -467,6 +467,9 @@
     ::graph-run-finish-ms (time/now-ms)
     ::node-run-stats (some-> env ::node-run-stats* deref)))
 
+(defn include-meta-stats [result env plan]
+  (vary-meta result assoc ::run-stats (assoc-end-plan-stats env plan)))
+
 (defn mark-batch-errors [e env batch-op batch-items]
   (p.plugin/run-with-plugins env ::wrap-batch-resolver-error
     (fn [_ _ _]) env [batch-op batch-items] e)
@@ -515,8 +518,7 @@
             (if (seq (::p.path/path env'))
               (p.ent/swap-entity! env assoc-in (::p.path/path env')
                 (-> (p.ent/entity env')
-                    (vary-meta assoc ::run-stats
-                               (assoc-end-plan-stats env' (::pcp/graph env'))))))))))))
+                    (include-meta-stats env' (::pcp/graph env')))))))))))
 
 (defn setup-runner-env [env entity-tree* cache-type]
   (-> env
@@ -543,7 +545,7 @@
 
     ; return result with run stats in meta
     (-> (p.ent/entity env)
-        (vary-meta assoc ::run-stats (assoc-end-plan-stats env plan)))))
+        (include-meta-stats env plan))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST

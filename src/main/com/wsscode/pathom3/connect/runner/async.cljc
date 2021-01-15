@@ -394,8 +394,7 @@
               (if (seq (::p.path/path env'))
                 (p.ent/swap-entity! env assoc-in (::p.path/path env')
                   (-> (p.ent/entity env')
-                      (vary-meta assoc ::pcr/run-stats
-                                 (pcr/assoc-end-plan-stats env' (::pcp/graph env')))))))))))))
+                      (pcr/include-meta-stats env' (::pcp/graph env'))))))))))))
 
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]
@@ -410,7 +409,7 @@
 
       ; return result with run stats in meta
       (-> (p.ent/entity env)
-          (vary-meta assoc ::pcr/run-stats (pcr/assoc-end-plan-stats env plan))))))
+          (pcr/include-meta-stats env plan)))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
