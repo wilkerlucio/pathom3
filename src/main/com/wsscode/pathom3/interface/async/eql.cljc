@@ -54,7 +54,7 @@
 
 (>defn process-ast-promesa
   [env ast]
-  [(s/keys) :edn-query-language.ast/node => map?]
+  [(s/keys) :edn-query-language.ast/node => p/promise?]
   (p/let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
           result    (pcrap/run-graph! env ast ent-tree*)]
     (as-> result <>
@@ -84,8 +84,8 @@
 
   For more options around processing check the docs on the connect runner."
   ([env tx]
-   [(s/keys) ::eql/query => map?]
+   [(s/keys) ::eql/query => p/promise?]
    (process-ast-promesa env (eql/query->ast tx)))
   ([env entity tx]
-   [(s/keys) map? ::eql/query => map?]
+   [(s/keys) map? ::eql/query => p/promise?]
    (process-ast-promesa (p.ent/with-entity env entity) (eql/query->ast tx))))

@@ -218,9 +218,9 @@
                            {::pcr/resolver-run-start-ms  start
                             ::pcr/resolver-run-finish-ms finish
                             ::pcr/node-run-input         input-data
-                            ::pcr/node-run-output        (if (::pcr/batch-hold result)
+                            ::pcr/node-run-output        (if (::pcr/batch-hold res)
                                                            ::pcr/batch-hold
-                                                           result)}))
+                                                           res)}))
       res)))
 
 (defn run-resolver-node!
