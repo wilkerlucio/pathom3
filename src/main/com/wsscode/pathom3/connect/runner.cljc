@@ -518,19 +518,22 @@
                     (vary-meta assoc ::run-stats
                                (assoc-end-plan-stats env' (::pcp/graph env'))))))))))))
 
+(defn setup-runner-env [env entity-tree* cache-type]
+  (-> env
+      ; due to recursion those need to be defined only on the first time
+      (coll/merge-defaults {::pcp/plan-cache* (cache-type {})
+                            ::batch-pending*  (cache-type {})
+                            ::resolver-cache* (cache-type {})
+                            ::p.path/path     []})
+      ; these need redefinition at each recursive call
+      (assoc
+        ::graph-run-start-ms (time/now-ms)
+        ::p.ent/entity-tree* entity-tree*
+        ::node-run-stats* (cache-type ^::map-container? {}))))
+
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]
-  (let [env  (-> env
-                 ; due to recursion those need to be defined only on the first time
-                 (coll/merge-defaults {::pcp/plan-cache* (volatile! {})
-                                       ::batch-pending*  (volatile! {})
-                                       ::resolver-cache* (volatile! {})
-                                       ::p.path/path     []})
-                 ; these need redefinition at each recursive call
-                 (assoc
-                   ::graph-run-start-ms (time/now-ms)
-                   ::p.ent/entity-tree* entity-tree*
-                   ::node-run-stats* (volatile! ^::map-container? {})))
+  (let [env  (setup-runner-env env entity-tree* volatile!)
         plan (plan-and-run! env ast-or-graph entity-tree*)]
 
     ; run batches on root path only

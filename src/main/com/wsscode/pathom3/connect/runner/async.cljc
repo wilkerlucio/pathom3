@@ -17,40 +17,17 @@
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
-    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]))
 
-(>defn all-requires-ready?
-  "Check if all requirements from the node are present in the current entity."
-  [env {::pcp/keys [expects]}]
-  [map? (s/keys :req [::pcp/expects])
-   => boolean?]
-  (let [entity (p.ent/entity env)]
-    (every? #(contains? entity %) (keys expects))))
-
 (declare run-node! run-graph!)
-
-(defn union-key-on-data? [{:keys [union-key]} m]
-  (contains? m union-key))
-
-(defn pick-union-entry
-  "Check if ast children is a union type. If so, makes a decision to choose a path and
-  return that AST."
-  [ast m]
-  (if (pf.eql/union-children? ast)
-    (some (fn [ast']
-            (if (union-key-on-data? ast' m)
-              (pf.eql/union->root ast')))
-      (pf.eql/union-children ast))
-    ast))
 
 (defn process-map-subquery
   [env ast m]
   (if (map? m)
     (let [cache-tree* (p.ent/create-entity m)
-          ast         (pick-union-entry ast m)]
+          ast         (pcr/pick-union-entry ast m)]
       (run-graph! env ast cache-tree*))
     m))
 
@@ -87,32 +64,12 @@
   (or (-> v meta ::pcr/map-container?)
       (-> ast :params ::pcr/map-container?)))
 
-(defn normalize-ast-recursive-query [{:keys [query] :as ast} graph k]
-  (let [children (cond
-                   (= '... query)
-                   (vec (vals (::pcp/index-ast graph)))
-
-                   (pos-int? query)
-                   (-> graph ::pcp/index-ast
-                       (update-in [k :query] dec)
-                       vals vec)
-
-                   :else
-                   (:children ast))]
-    (assoc ast :children children)))
-
-(defn entry-ast
-  "Get AST entry and pulls recursive query when needed."
-  [graph k]
-  (-> (pcp/entry-ast graph k)
-      (normalize-ast-recursive-query graph k)))
-
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
     :as        env} entity k v]
   [(s/keys :req [::pcp/graph]) map? ::p.path/path-entry any?
    => any?]
-  (let [{:keys [children] :as ast} (entry-ast graph k)
+  (let [{:keys [children] :as ast} (pcr/entry-ast graph k)
         env (p.path/append-path env k)]
     (if children
       (cond
@@ -191,15 +148,6 @@
       (swap! assoc-in [node-id ::pcr/node-error] error)
       (swap! update ::pcr/nodes-with-error coll/sconj node-id))))
 
-(defn choose-cache-store [env cache-store]
-  (if cache-store
-    (if (contains? env cache-store)
-      cache-store
-      (do
-        (println "WARN: Tried to use an undefined cache store" cache-store ". Falling back to default resolver-cache*.")
-        ::pcr/resolver-cache*))
-    ::pcr/resolver-cache*))
-
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
@@ -221,7 +169,7 @@
           input-shape (pfsd/data->shape-descriptor input-data)
           params      (pco/params env)
           start       (time/now-ms)
-          cache-store (choose-cache-store env cache-store)
+          cache-store (pcr/choose-cache-store env cache-store)
           result      (try
                         (if (pfsd/missing input-shape input)
                           (throw (ex-info "Insufficient data" {:required  input
@@ -263,7 +211,7 @@
   First it checks if the expected results from the resolver are already available. In
   case they are, the resolver call is skipped."
   [env node]
-  (if (all-requires-ready? env node)
+  (if (pcr/all-requires-ready? env node)
     (run-next-node! env node)
     (go-promise
       (let [{::pcr/keys [batch-hold] :as response}
@@ -281,29 +229,10 @@
             (<?maybe (merge-resolver-response! env response))
             (<?maybe (run-next-node! env node))))))))
 
-(defn priority-sort [{::pcp/keys [graph] :as env} node-ids]
-  (let [nodes-data (->> node-ids
-                        (into []
-                              (comp (map #(-> graph
-                                              (pcp/find-leaf-node (pcp/get-node graph %))
-                                              (assoc ::pcr/source-node-id %)))
-                                    (map (fn [{::pcr/keys [source-node-id] :as node}]
-                                           (if-let [branches (pcp/node-branches node)]
-                                             (-> graph
-                                                 (pcp/get-node (first (priority-sort env branches)))
-                                                 (assoc ::pcr/source-node-id source-node-id))
-                                             node)))
-                                    (keep #(pcp/node-with-resolver-config graph env %)))))]
-    (mapv ::pcr/source-node-id (sort-by #(or (::pco/priority %) 0) #(compare %2 %) nodes-data))))
-
-(defn default-choose-path [env _or-node node-ids]
-  (-> (priority-sort env node-ids)
-      first))
-
 (>defn run-or-node!
   [{::pcp/keys [graph]
     ::pcr/keys [choose-path]
-    :or        {choose-path default-choose-path}
+    :or        {choose-path pcr/default-choose-path}
     :as        env} {::pcp/keys [run-or] :as or-node}]
   [(s/keys :req [::pcp/graph]) ::pcp/node => w.async/chan?]
   (go-promise
@@ -316,7 +245,7 @@
                             (println "Path function failed to return a path, picking first option.")
                             (first nodes)))]
           (<?maybe (run-node! env (pcp/get-node graph node-id)))
-          (if (all-requires-ready? env or-node)
+          (if (pcr/all-requires-ready? env or-node)
             (merge-node-stats! env or-node {::pcr/success-path node-id})
             (recur (disj nodes node-id))))))
 
@@ -356,21 +285,6 @@
     (run-or-node! env node)
 
     nil))
-
-(defn placeholder-merge-entity
-  "Create an entity to process the placeholder demands. This consider if the placeholder
-  has params, params in placeholders means that you want some specific data at that
-  point."
-  [{::pcp/keys [graph]} source-ent]
-  (reduce
-    (fn [out ph]
-      (let [data (:params (pcp/entry-ast graph ph))]
-        (assoc out ph
-          ; TODO maybe check for possible optimization when there are no conflicts
-          ; between different placeholder levels
-          (merge source-ent data))))
-    {}
-    (::pcp/placeholders graph)))
 
 (defn invoke-mutation!
   "Run mutation from AST."
@@ -416,7 +330,7 @@
         (<?maybe (run-node! env root)))
 
       ; placeholders
-      (<?maybe (merge-resolver-response! env (placeholder-merge-entity env source-ent)))
+      (<?maybe (merge-resolver-response! env (pcr/placeholder-merge-entity env source-ent)))
 
       graph)))
 
@@ -442,23 +356,6 @@
         ::pcp/graph graph
         ::p.ent/entity-tree* entity-tree*))))
 
-(defn assoc-end-plan-stats [env plan]
-  (assoc plan
-    ::pcr/graph-run-start-ms (::pcr/graph-run-start-ms env)
-    ::pcr/graph-run-finish-ms (time/now-ms)
-    ::pcr/node-run-stats (some-> env ::pcr/node-run-stats* deref)))
-
-(defn mark-batch-errors [e env batch-op batch-items]
-  (p.plugin/run-with-plugins env ::pcr/wrap-batch-resolver-error
-    (fn [_ _ _]) env [batch-op batch-items] e)
-
-  (doseq [{env'       ::pcr/env
-           ::pcp/keys [node]} batch-items]
-    (p.plugin/run-with-plugins env' ::pcr/wrap-resolver-error
-      mark-resolver-error env' node (ex-info "Batch error" {::pcr/batch-error? true} e)))
-
-  ::pcr/node-error)
-
 (defn run-batches! [env]
   (let [batches* (-> env ::pcr/batch-pending*)
         batches  @batches*]
@@ -473,7 +370,7 @@
               responses (try
                           (<?maybe (pco.prot/-resolve resolver batch-env inputs))
                           (catch #?(:clj Throwable :cljs :default) e
-                            (mark-batch-errors e env batch-op batch-items)))
+                            (pcr/mark-batch-errors e env batch-op batch-items)))
               finish    (time/now-ms)]
 
           (when-not (refs/kw-identical? ::pcr/node-error responses)
@@ -498,22 +395,12 @@
                 (p.ent/swap-entity! env assoc-in (::p.path/path env')
                   (-> (p.ent/entity env')
                       (vary-meta assoc ::pcr/run-stats
-                                 (assoc-end-plan-stats env' (::pcp/graph env')))))))))))))
+                                 (pcr/assoc-end-plan-stats env' (::pcp/graph env')))))))))))))
 
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]
   (go-promise
-    (let [env  (-> env
-                   ; due to recursion those need to be defined only on the first time
-                   (coll/merge-defaults {::pcp/plan-cache*     (atom {})
-                                         ::pcr/batch-pending*  (atom {})
-                                         ::pcr/resolver-cache* (atom {})
-                                         ::p.path/path         []})
-                   ; these need redefinition at each recursive call
-                   (assoc
-                     ::pcr/graph-run-start-ms (time/now-ms)
-                     ::p.ent/entity-tree* entity-tree*
-                     ::pcr/node-run-stats* (atom ^::pcr/map-container? {})))
+    (let [env  (pcr/setup-runner-env env entity-tree* atom)
           plan (<?maybe (plan-and-run! env ast-or-graph entity-tree*))]
 
       ; run batches on root path only
@@ -523,7 +410,7 @@
 
       ; return result with run stats in meta
       (-> (p.ent/entity env)
-          (vary-meta assoc ::pcr/run-stats (assoc-end-plan-stats env plan))))))
+          (vary-meta assoc ::pcr/run-stats (pcr/assoc-end-plan-stats env plan))))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
