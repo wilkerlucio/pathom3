@@ -1,7 +1,9 @@
 (ns com.wsscode.pathom3.connect.runner-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
-    #?(:clj [com.wsscode.async.async-clj :refer [<!!]])
+    [#?(:clj  com.wsscode.async.async-clj
+        :cljs com.wsscode.async.async-cljs)
+     :refer [deftest-async go <? #?(:clj <!!)]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
@@ -1145,3 +1147,11 @@
               ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})}
              {:z true})
            {:>/p1 {:z true :x 10}}))))
+
+(deftest-async run-graph!-async-tests
+  (is (= (<? (run-graph-async (pci/register
+                                (pco/resolver 'async {::pco/output [:foo]}
+                                  (fn [_ _] (go {:foo "foo"}))))
+               {}
+               [:foo]))
+         {:foo "foo"})))
