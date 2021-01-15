@@ -1,9 +1,6 @@
 (ns com.wsscode.pathom3.connect.foreign
   (:require
     [clojure.string :as str]
-    [#?(:clj  com.wsscode.async.async-clj
-        :cljs com.wsscode.async.async-cljs)
-     :refer [let-chan go-promise <? <?maybe <!maybe]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
@@ -57,12 +54,12 @@
   (coll/map-keys #(into (pop path) (cond-> % join-node next)) errors))
 
 (defn call-foreign-parser [env parser]
-  (let [{::keys [query join-node] :as foreign-call} (compute-foreign-query env)]
-    (let-chan [response (parser {} query)]
-      (if-let [errors (::p.err/errors response)]
-        (->> (internalize-foreign-errors (merge env foreign-call) errors)
-             (swap! (::p.err/errors* env) merge)))
-      (cond-> response join-node (get join-node)))))
+  (let [{::keys [query join-node] :as foreign-call} (compute-foreign-query env)
+        response (parser {} query)]
+    (if-let [errors (::p.err/errors response)]
+      (->> (internalize-foreign-errors (merge env foreign-call) errors)
+           (swap! (::p.err/errors* env) merge)))
+    (cond-> response join-node (get join-node))))
 
 (defn internalize-parser-index*
   ([indexes] (internalize-parser-index* indexes nil))
