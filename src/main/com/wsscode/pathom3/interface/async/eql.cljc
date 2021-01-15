@@ -6,8 +6,8 @@
         :cljs com.wsscode.async.async-cljs)
      :as w.async
      :refer [go-promise go-catch <? <?maybe <!maybe]]
-    [com.wsscode.pathom3.connect.runner.async :as pcra]
     [com.wsscode.pathom3.connect.runner.async-promesa :as pcrap]
+    [com.wsscode.pathom3.connect.runner.core-async :as pcra]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [edn-query-language.core :as eql]

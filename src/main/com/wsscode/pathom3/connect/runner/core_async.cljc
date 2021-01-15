@@ -1,4 +1,4 @@
-(ns com.wsscode.pathom3.connect.runner.async
+(ns com.wsscode.pathom3.connect.runner.core-async
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
