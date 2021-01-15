@@ -1,4 +1,6 @@
 (ns com.wsscode.pathom3.connect.runner.async-promesa
+  "WARN: this part of the library is under experimentation process, the design, interface
+  and performance characteristics might change."
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
@@ -49,14 +51,12 @@
 
 (defn process-sequence-subquery
   [env ast s]
-  (-> (reduce-async
-        (fn [[seq idx] entry]
-          (p/let [sub-res (process-map-subquery (p.path/append-path env idx) ast entry)]
-            [(conj seq sub-res)
-             (inc idx)]))
-        [(empty s) 0]
-        s)
-      (p/then first)))
+  (-> (into []
+            (map-indexed (fn [idx entry]
+                           (process-map-subquery (p.path/append-path env idx) ast entry)))
+            s)
+      p/all
+      (p/then #(into (empty s) %))))
 
 (defn process-map-container-subquery
   "Build a new map where the values are replaced with the map process of the subquery."
@@ -281,11 +281,7 @@
   (p/do!
     (merge-node-stats! env and-node {::pcr/node-run-start-ms (time/now-ms)})
 
-    (reduce-async
-      (fn [_ node-id]
-        (run-node! env (pcp/get-node graph node-id)))
-      nil
-      run-and)
+    (p/all (mapv #(run-node! env (pcp/get-node graph %)) run-and))
 
     (merge-node-stats! env and-node {::pcr/node-run-finish-ms (time/now-ms)})
 

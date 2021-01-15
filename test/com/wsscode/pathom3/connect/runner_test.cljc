@@ -17,7 +17,8 @@
     [com.wsscode.pathom3.interface.smart-map :as psm]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
-    [edn-query-language.core :as eql]))
+    [edn-query-language.core :as eql]
+    [promesa.core :as p]))
 
 (deftest all-requires-ready?-test
   (is (= (pcr/all-requires-ready? (p.ent/with-entity {} {:a 1})
@@ -128,6 +129,13 @@
                  ;(println res)
                  res))
        expected)))
+
+(comment
+  (time
+    @(run-graph-async-promesa (pci/register
+                                (pbir/single-attr-resolver :id :x #(p/delay 100 (inc %))))
+       {:items [{:id 1} {:id 2} {:id 3}]}
+       [{:items [:x]}])))
 
 (deftest run-graph!-test
   (is (graph-response? (pci/register geo/registry)
