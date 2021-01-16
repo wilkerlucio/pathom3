@@ -56,6 +56,8 @@
          (coll/make-map-entry key "Protected value")
          (mst env source ast))))})
 
+(defrecord RecordSample [foo])
+
 (deftest map-select-test
   (is (= (pf.eql/map-select {} {} [:foo :bar])
          {}))
@@ -116,7 +118,12 @@
 
     (is (= (pf.eql/map-select (p.plugin/register elide-specials) {:deep {:foo "bar"}}
                               [:deep])
-           {:deep {:foo "Protected value"}}))))
+           {:deep {:foo "Protected value"}})))
+
+  (testing "custom records"
+    (let [record (->RecordSample "bar")]
+      (is (= (pf.eql/map-select {} {:foo record} [:foo])
+             {:foo record})))))
 
 (deftest data->query-test
   (is (= (pf.eql/data->query {}) []))

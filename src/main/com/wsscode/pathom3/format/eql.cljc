@@ -131,7 +131,7 @@
   [env source ast]
   [map? any? (s/keys :opt-un [:edn-query-language.ast/children])
    => any?]
-  (if (map? source)
+  (if (coll/native-map? source)
     (let [start (with-meta {} (meta source))]
       (into start (keep #(p.plugin/run-with-plugins env ::wrap-map-select-entry
                            map-select-entry env source (assoc % :parent-ast ast)))
