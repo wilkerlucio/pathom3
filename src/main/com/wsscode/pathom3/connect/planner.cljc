@@ -1075,12 +1075,15 @@
           nodes'     (into #{} (remove ancestors') node-ids)]
       (if (not= (count node-ids) (count nodes'))
         (first-common-ancestor graph nodes')
-        (->> (reduce
-               (fn [node-chain new-chain]
-                 (let [chain-set (set node-chain)]
-                   (filter chain-set new-chain)))
-               ancestors)
-             first)))))
+        (let [options      (reduce
+                             (fn [node-chain new-chain]
+                               (let [chain-set (set node-chain)]
+                                 (filter chain-set new-chain)))
+                             ancestors)
+              option-nodes (mapv #(get-node graph %) options)]
+          (or (first (->> (remove ::run-or option-nodes)
+                          (map ::node-id)))
+              (first options)))))))
 
 (>defn find-missing-ancestor
   "Find the first common AND node ancestors from missing list, missing is a list

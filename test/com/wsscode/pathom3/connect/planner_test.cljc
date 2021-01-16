@@ -4222,6 +4222,22 @@
              #{1 2})
            2)))
 
+  (testing "goes back when OR is at parent"
+    (is (= (pcp/first-common-ancestor
+             '{::pcp/nodes {5  {::pcp/node-id 5
+                                ::pcp/node-parents #{12 19}}
+                            9  {::pcp/node-id 9
+                                ::pcp/node-parents #{5}}
+                            12 {::pcp/node-id 12
+                                ::pcp/node-parents #{19}
+                                ::pcp/run-or       #{5 18}}
+                            18 {::pcp/node-id 18
+                                ::pcp/node-parents #{12}}
+                            19 {::pcp/node-id 19
+                                ::pcp/run-and #{12 5}}}}
+             #{9 18})
+           19)))
+
   #_(testing "or with internal dependency"
       (is (= (pcp/first-common-ancestor
                '{::pcp/nodes {1 {::pcp/node-parents #{4}}
