@@ -275,7 +275,11 @@
   (p/do!
     (merge-node-stats! env and-node {::pcr/node-run-start-ms (time/now-ms)})
 
-    (p/all (mapv #(run-node! env (pcp/get-node graph %)) run-and))
+    (reduce-async
+      (fn [_ node-id]
+        (run-node! env (pcp/get-node graph node-id)))
+      nil
+      run-and)
 
     (merge-node-stats! env and-node {::pcr/node-run-finish-ms (time/now-ms)})
 
