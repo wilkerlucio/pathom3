@@ -86,6 +86,8 @@
 (defn recursive-query? [query]
   (or (= '... query) (int? query)))
 
+(defn coll-append-ahead? [s] (not (or (vector? s) (set? s))))
+
 (defn map-select-entry
   [env source {:keys [key query] :as ast}]
   (if-let [x (find source key)]
@@ -101,7 +103,10 @@
 
           (or (sequential? val)
               (set? val))
-          (into (empty val) (map #(map-select-ast env % ast)) val)
+          (into (empty val) (map #(map-select-ast env % ast))
+                (cond-> val
+                  (coll-append-ahead? val)
+                  reverse))
 
           :else
           val)))))

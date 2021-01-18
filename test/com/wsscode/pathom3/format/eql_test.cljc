@@ -95,6 +95,11 @@
                               [{:foo [:b]}])
            {:foo #{{:b 2} {:b 1}}})))
 
+  (testing "retain list order"
+    (is (= (pf.eql/map-select {} {:foo (list 1 2)}
+                              [:foo])
+           {:foo (list 1 2)})))
+
   (testing "union"
     (is (= (pf.eql/map-select {} {:foo [{:a 1 :aa 2 :aaa 3}
                                         {:b 2 :bb 10 :bbb 20}
