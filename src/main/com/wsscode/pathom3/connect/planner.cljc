@@ -429,8 +429,8 @@
 (defn optimize-merge?
   "Check if node and graph point to same run-next."
   [graph {::keys [node-id]}]
-  (let [root-next (get-in graph [::nodes (::root graph) ::run-next])
-        node-next (get-in graph [::nodes node-id ::run-next])]
+  (let [root-next (get-node graph (::root graph) ::run-next)
+        node-next (get-node graph node-id ::run-next)]
     (and root-next (= root-next node-next))))
 
 (defn resolver-provides
@@ -528,6 +528,22 @@
         branches)
       graph)))
 
+(defn remove-from-parent-branches [graph {::keys [node-id node-parents]}]
+  (reduce
+    (fn [g nid]
+      (let [n (get-node graph nid)]
+        (cond
+          (contains? (::run-and n) node-id)
+          (update-node graph nid ::run-and disj node-id)
+
+          (contains? (::run-or n) node-id)
+          (update-node graph nid ::run-or disj node-id)
+
+          :else
+          g)))
+    graph
+    node-parents))
+
 (defn remove-node
   "Remove a node from the graph. In case of resolver nodes it also removes them
   from the ::index-syms and after node references."
@@ -538,13 +554,15 @@
                 node-parents)
               true)
       "Tried to remove node that still contains references pointing to it. Move
-      the run-next references from the pointer nodes before removing it.")
+      the run-next references from the pointer nodes before removing it. Also check if
+      parent is branch and trying to ")
     (-> graph
         (cond->
           (pc-sym node)
           (update-in [::index-resolver->nodes (pc-sym node)] disj node-id))
         (remove-branch-node-after-nodes node-id)
         (remove-after-node run-next node-id)
+        (remove-from-parent-branches node)
         (update ::nodes dissoc node-id))))
 
 (defn merge-node-expects
@@ -731,25 +749,14 @@
             (add-after-node node-id root)
             (cond->
               (refs/kw-identical? branch-type ::run-and)
-              (merge-node-expects root node)
-
-              (optimize-merge? graph node)
-              (update-in [::nodes node-id] dissoc ::run-next)))))))
+              (merge-node-expects root node)))))))
 
 (defn create-branch-node
   [{::keys [root] :as graph} env node branch-node]
-  (let [root-next      (get-in graph [::nodes root ::run-next])
-        optimize-next? (optimize-merge? graph node)
-        branch-node    (cond-> branch-node
-                         optimize-next?
-                         (assoc ::run-next root-next))
-        branch-node-id (::node-id branch-node)]
+  (let [branch-node-id (::node-id branch-node)]
     (-> graph
         (assoc-in [::nodes branch-node-id] branch-node)
         (add-after-node root branch-node-id)
-        (cond-> optimize-next?
-          (-> (update-in [::nodes root] dissoc ::run-next)
-              (set-after-node root-next branch-node-id)))
         (set-root-node branch-node-id)
         (add-branch-node env node))))
 
@@ -841,8 +848,11 @@
             (add-snapshot! env {::snapshot-message (str "Root node is branch, adding a branch there")}))
 
         :else
-        (-> (create-branch-node graph env next-node (branch-node-factory))
-            (add-snapshot! env {::snapshot-message (str "Create new branch node for " node-id " and " root)
+        (-> (add-snapshot! graph env {::snapshot-message (str "Star branch node" node-id " and " root)
+                                      ::branch-type      branch-type
+                                      ::highlight-nodes  #{node-id root}})
+            (create-branch-node env next-node (branch-node-factory))
+            (add-snapshot! env {::snapshot-message (str "Created new branch node for " node-id " and " root)
                                 ::branch-type      branch-type
                                 ::highlight-nodes  #{node-id root}}))))
     graph))
@@ -1253,7 +1263,8 @@
                                        (remove
                                          (fn [x]
                                            (let [item (-> x first last)]
-                                             (contains? path-inner-nodes item))))
+                                             (and (not (branch-node? (get-node graph item)))
+                                                  (contains? path-inner-nodes item)))))
                                        ancestors-path-groups)
           ; remove paths containing OR, except if the OR is the end of chain
           ; in case there is no path avoiding the OR in the middle, stick to original
@@ -1263,7 +1274,7 @@
                                             new-seq
                                             %)) ancestors-path-groups')]
       (or (first (first-common-ancestors* without-or-paths))
-          (first (first-common-ancestors* ancestors-path-groups))))))
+          (first (first-common-ancestors* ancestors-path-groups'))))))
 
 (>defn find-missing-ancestor
   "Find the first common AND node ancestors from missing list, missing is a list

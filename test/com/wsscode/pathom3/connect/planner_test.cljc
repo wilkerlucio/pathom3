@@ -4733,3 +4733,111 @@
   (is (= (pcp/graph-provides
            {::pcp/index-attrs {:a 1 :b 2}})
          #{:a :b})))
+
+#_
+(deftest repl-tools-repro-tests
+  (is (= (compute-run-graph
+           (-> '{::pci/index-oir
+                             {:editor/range
+                              {{:editor/data {}}
+                               #{repl-tooling.commands-to-repl.pathom3/separate-data}},
+                              :editor/filename
+                              {{:editor/data {}}
+                               #{repl-tooling.commands-to-repl.pathom3/separate-data}},
+                              :editor/current-var-range
+                              {{:editor/contents {}, :editor/range {}}
+                               #{repl-tooling.commands-to-repl.pathom3/var-from-editor}},
+                              :editor/namespace
+                              {{:editor/contents {}, :editor/range {}}
+                               #{repl-tooling.commands-to-repl.pathom3/namespace-from-editor-data}},
+                              :var/spec
+                              {{:var/fqn {}, :repl/aux {}}
+                               #{repl-tooling.commands-to-repl.pathom3/spec-for-var}},
+                              :repl/clj
+                              {{:cljs/required? {}}
+                               #{repl-tooling.commands-to-repl.pathom3/repls-for-evaluation}},
+                              :repl/namespace
+                              {{:editor/namespace {}, :cljs/required? {}}
+                               #{repl-tooling.commands-to-repl.pathom3/namespace-from-editor}},
+                              :editor/current-var
+                              {{:editor/contents {}, :editor/range {}}
+                               #{repl-tooling.commands-to-repl.pathom3/var-from-editor}},
+                              :editor/config
+                              {{} #{repl-tooling.commands-to-repl.pathom3/get-config}},
+                              :editor/contents
+                              {{:editor/data {}}
+                               #{repl-tooling.commands-to-repl.pathom3/separate-data}},
+                              :repl/eval
+                              {{:cljs/required? {}}
+                               #{repl-tooling.commands-to-repl.pathom3/repls-for-evaluation}},
+                              :kondo/analysis
+                              {{:editor/config {}}
+                               #{repl-tooling.commands-to-repl.pathom3/analysis-from-kondo}},
+                              :var/fqn
+                              {{:repl/namespace     {},
+                                :editor/current-var {},
+                                :editor/filename    {},
+                                :repl/aux           {}}
+                               #{repl-tooling.commands-to-repl.pathom3/fqn-var},
+                               {:kondo/analysis {}, :editor/current-var {}, :repl/namespace {}}
+                               #{repl-tooling.commands-to-repl.pathom3/fqn-from-kondo}},
+                              :repl/aux
+                              {{:cljs/required? {}}
+                               #{repl-tooling.commands-to-repl.pathom3/repls-for-evaluation}},
+                              :namespace/vars
+                              {{:repl/namespace {}, :repl/aux {}}
+                               #{repl-tooling.commands-to-repl.pathom3/all-vars-in-ns}},
+                              :cljs/env
+                              {{:repl/clj {}} #{repl-tooling.commands-to-repl.pathom3/cljs-env}},
+                              :cljs/required?
+                              {{:editor/config {}, :editor/filename {}}
+                               #{repl-tooling.commands-to-repl.pathom3/need-cljs},
+                               {:editor/config {}}
+                               #{repl-tooling.commands-to-repl.pathom3/need-cljs-from-config}},
+                              :editor/data
+                              {{} #{repl-tooling.commands-to-repl.pathom3/editor-data}},
+                              :repl/namespaces
+                              {{:repl/clj {}}
+                               #{repl-tooling.commands-to-repl.pathom3/all-namespaces}},
+                              :var/meta
+                              {{:var/fqn {}, :cljs/required? {}, :repl/aux {}, :repl/clj {}}
+                               #{repl-tooling.commands-to-repl.pathom3/meta-for-var},
+                               {:kondo/analysis {}, :var/fqn {}}
+                               #{repl-tooling.commands-to-repl.pathom3/meta-from-kondo}},
+                              :editor/ns-range
+                              {{:editor/contents {}, :editor/range {}}
+                               #{repl-tooling.commands-to-repl.pathom3/namespace-from-editor-data}}}
+                 ::eql/query [:var/meta]}))
+
+         {::pcp/nodes                 {2 {::pco/op-name          'id
+                                          ::pcp/node-id          2
+                                          ::pcp/expects          {:db/id {}}
+                                          ::pcp/input            {}
+                                          ::pcp/source-for-attrs #{:db/id}
+                                          ::pcp/run-next         4}
+                                       3 {::pco/op-name          'complex
+                                          ::pcp/node-id          3
+                                          ::pcp/expects          {:complex {}}
+                                          ::pcp/input            {:label/type {} :db/id {}}
+                                          ::pcp/node-parents     #{4}
+                                          ::pcp/source-for-attrs #{:complex}}
+                                       4 {::pco/op-name          'dynamic-resolver
+                                          ::pcp/node-id          4
+                                          ::pcp/expects          {:label/type {} :release/script {}}
+                                          ::pcp/input            {:db/id {}}
+                                          ::pcp/source-for-attrs #{:release/script :label/type}
+                                          ::pcp/node-parents     #{2}
+                                          ::pcp/run-next         3
+                                          ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
+          ::pcp/index-resolver->nodes '{dynamic-resolver #{4} id #{2} complex #{3}}
+          ::pcp/index-attrs           {:db/id          2
+                                       :release/script 4
+                                       :label/type     4
+                                       :complex        3}
+          ::pcp/index-ast             {:release/script {:type         :prop,
+                                                        :dispatch-key :release/script,
+                                                        :key          :release/script},
+                                       :complex        {:type         :prop,
+                                                        :dispatch-key :complex,
+                                                        :key          :complex}}
+          ::pcp/root                  2})))
