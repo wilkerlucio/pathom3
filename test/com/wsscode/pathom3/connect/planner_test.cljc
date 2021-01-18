@@ -3870,19 +3870,21 @@
                  ::pci/index-resolvers {'a  {::pco/provides {:a {}}}
                                         'a2 {::pco/provides {:a {}}}})
                {::pcp/node-id 3})
-             '{::pcp/root  4
-               ::pcp/nodes {2 {::pcp/node-id      2
-                               ::pco/op-name      a
-                               ::pcp/expects      {:a {}}
-                               ::pcp/node-parents #{4}}
-                            3 {::pcp/node-id      3
-                               ::pco/op-name      a2
-                               ::pcp/expects      {:a {}}
-                               ::pcp/node-parents #{4}}
-                            4 {::pcp/node-id  4
-                               ::pcp/expects  {:a {}}
-                               ::pcp/run-or   #{2 3}
-                               ::pcp/run-next 1}}}))
+             '#:com.wsscode.pathom3.connect.planner{:root 4,
+                                                    :nodes {2 {:com.wsscode.pathom3.connect.planner/node-id 2,
+                                                               :com.wsscode.pathom3.connect.operation/op-name a,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 1,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                            3 {:com.wsscode.pathom3.connect.planner/node-id 3,
+                                                               :com.wsscode.pathom3.connect.operation/op-name a2,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 1,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                            4 #:com.wsscode.pathom3.connect.planner{:node-id 4,
+                                                                                                    :expects {:a {}},
+                                                                                                    :run-or #{3
+                                                                                                              2}}}}))
 
       (testing "don't optimize when run next is different"
         (is (= (pcp/compute-root-or
@@ -4000,21 +4002,24 @@
                (assoc (base-graph-env)
                  ::pci/index-resolvers {'a3 {::pco/provides {:a {}}}})
                {::pcp/node-id 4})
-             {::pcp/root  3
-              ::pcp/nodes {1 {::pcp/node-id 1
-                              ::pco/op-name 'a
-                              ::pcp/expects {:a {}}}
-                           2 {::pcp/node-id 2
-                              ::pco/op-name 'a2
-                              ::pcp/expects {:a {}}}
-                           3 {::pcp/node-id  3
-                              ::pcp/run-or   #{1 2 4}
-                              ::pcp/expects  {:a {}}
-                              ::pcp/run-next 10}
-                           4 {::pcp/node-id      4
-                              ::pcp/node-parents #{3}
-                              ::pco/op-name      'a3
-                              ::pcp/expects      {:a {}}}}})))))
+             '#:com.wsscode.pathom3.connect.planner{:root 3,
+                                                    :nodes {1 {:com.wsscode.pathom3.connect.planner/node-id 1,
+                                                               :com.wsscode.pathom3.connect.operation/op-name a,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}}},
+                                                            2 {:com.wsscode.pathom3.connect.planner/node-id 2,
+                                                               :com.wsscode.pathom3.connect.operation/op-name a2,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}}},
+                                                            3 #:com.wsscode.pathom3.connect.planner{:node-id 3,
+                                                                                                    :run-or #{1
+                                                                                                              4
+                                                                                                              2},
+                                                                                                    :expects {:a {}},
+                                                                                                    :run-next 10},
+                                                            4 {:com.wsscode.pathom3.connect.planner/node-id 4,
+                                                               :com.wsscode.pathom3.connect.operation/op-name a3,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 10,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{3}}}})))))
 
 (deftest collapse-and-nodes-test
   (is (= (pcp/collapse-and-nodes
@@ -4732,7 +4737,7 @@
 (deftest graph-provides-test
   (is (= (pcp/graph-provides
            {::pcp/index-attrs {:a 1 :b 2}})
-         #{:a :b})))
+         #{:b :a})))
 
 #_
 (deftest repl-tools-repro-tests
