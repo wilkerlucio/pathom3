@@ -4179,6 +4179,47 @@
              1)
            3))))
 
+(deftest find-dependent-ancestor-test
+  (testing "no parents, return self"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-id 1}}}
+             1)
+           1)))
+
+  (testing "run next chain"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-parents #{2}
+                              ::pcp/node-id      1}
+                           2 {::pcp/run-next 1
+                              ::pcp/node-id  2}}}
+             1)
+           2))
+
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-id      1
+                              ::pcp/node-parents #{2}}
+                           2 {::pcp/node-id      2
+                              ::pcp/run-next     1
+                              ::pcp/node-parents #{3}}
+                           3 {::pcp/node-id  3
+                              ::pcp/run-next 2}}}
+             1)
+           3)))
+
+  (testing "stop on branching"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-parents #{2}
+                              ::pcp/node-id      1}
+                           2 {::pcp/node-id      2
+                              ::pcp/run-next     1
+                              ::pcp/node-parents #{3}}
+                           3 {::pcp/node-id 3
+                              ::pcp/run-and #{2 4}}
+                           4 {::pcp/node-id      4
+                              ::pcp/node-parents #{3}}}}
+             1)
+           2))))
+
 (deftest find-run-next-descendants-test
   (testing "return the node if that's the latest"
     (is (= (pcp/find-run-next-descendants
@@ -4847,3 +4888,28 @@
                                                         :dispatch-key :complex,
                                                         :key          :complex}}
           ::pcp/root                  2})))
+
+(deftest node-parent-run-next-test
+  (is (= (pcp/node-parent-run-next {::pcp/nodes {1 {::pcp/node-id      1
+                                                    ::pcp/node-parents #{2}}
+                                                 2 {::pcp/node-id  2
+                                                    ::pcp/run-next 1}}}
+           {::pcp/node-id      1
+            ::pcp/node-parents #{2}})
+         2))
+
+  (is (= (pcp/node-parent-run-next {::pcp/nodes {1 {::pcp/node-id      1
+                                                    ::pcp/node-parents #{3 2}}
+                                                 2 {::pcp/node-id  2
+                                                    ::pcp/run-next 1}
+                                                 3 {::pcp/run-and #{2}}}}
+           {::pcp/node-id      1
+            ::pcp/node-parents #{2}})
+         2))
+
+  (is (= (pcp/node-parent-run-next {::pcp/nodes {1 {::pcp/node-id      1
+                                                    ::pcp/node-parents #{2}}
+                                                 2 {::pcp/node-id  2}}}
+           {::pcp/node-id      1
+            ::pcp/node-parents #{2}})
+         nil)))

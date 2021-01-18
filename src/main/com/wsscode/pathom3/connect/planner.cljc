@@ -325,6 +325,19 @@
       (if (::run-and node) "AND")
       (if (::run-or node) "OR"))))
 
+(>defn node-parent-run-next
+  "Check from the node parents which links using run-next. Return nil when not found."
+  [graph {::keys [node-parents node-id]}]
+  [::graph (s/keys :req [::node-id] :opt [::node-parents])
+   => (? ::node-id)]
+  (reduce
+    (fn [_ nid]
+      (if (= node-id
+             (get-node graph nid ::run-next))
+        (reduced nid)))
+    nil
+    node-parents))
+
 (>defn compute-branch-node-chain-depth
   [graph node-id]
   [::graph ::node-id => ::graph]
@@ -1554,6 +1567,17 @@
            first)
       node-id))
 
+(defn find-dependent-ancestor
+  "For a given node N, find which node is responsible for N dependencies. This is done
+  by traversing the parents (but only when its run-next) and find tha latest in the
+  chain."
+  [graph node-id]
+  (loop [nid node-id]
+    (if-let [run-next-parent (->> (get-node graph nid)
+                                  (node-parent-run-next graph))]
+      (recur run-next-parent)
+      nid)))
+
 (>defn find-run-next-descendants
   "Return descendants by waling the run-next"
   [graph {::keys [node-id]}]
@@ -1572,7 +1596,7 @@
   (peek (find-run-next-descendants graph node)))
 
 (defn push-root-to-ancestor [graph node-id]
-  (set-root-node graph (find-furthest-ancestor graph node-id)))
+  (set-root-node graph (find-dependent-ancestor graph node-id)))
 
 (defn compute-and-unless-root-is-ancestor [{::keys [root] :as graph} env {::keys [node-id]}]
   (if (= node-id (first (find-node-direct-ancestor-chain graph root)))
