@@ -4325,6 +4325,11 @@
              1)
            [1 3 2 4]))))
 
+(deftest first-common-ancestors*-test
+  (is (= (pcp/first-common-ancestors*
+           [[[1 2]]])
+         #{2})))
+
 (deftest first-common-ancestor-test
   (is (= (pcp/first-common-ancestor
            '{::pcp/nodes {1 {::pcp/run-and #{2 3}}

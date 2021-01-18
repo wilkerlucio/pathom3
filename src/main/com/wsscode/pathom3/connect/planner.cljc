@@ -1214,25 +1214,56 @@
        (filter #(resolver-node-requires-attribute? (get-node graph %) attribute))
        first))
 
+(defn path-contains-or? [graph path]
+  (some (comp ::run-or #(get-node graph %)) path))
+
+(defn first-common-ancestors* [groups]
+  (loop [groups     groups
+         last-found #{}]
+    (let [firsts  (mapv #(into #{} (keep first) %) groups)
+          matches (apply set/intersection firsts)]
+      (if (and (seq firsts) (seq matches))
+        (recur
+          (mapv
+            #(into [] (keep (fn [x]
+                              (if (contains? matches (first x))
+                                (rest x)))) %)
+            groups)
+          matches)
+        last-found))))
+
 (>defn first-common-ancestor
   "Find first common node ancestor given a list of node ids."
   [graph node-ids]
   [::graph ::node-id-set => ::node-id]
   (if (= 1 (count node-ids))
     (first node-ids)
-    (let [ancestors  (mapv #(node-ancestors graph %) node-ids)
-          ancestors' (into #{} (mapcat #(next %)) ancestors)
-          nodes'     (into #{} (remove ancestors') node-ids)]
-      (if (not= (count node-ids) (count nodes'))
-        (first-common-ancestor graph nodes')
-        (let [options       (reduce
-                              (fn [node-chain new-chain]
-                                (let [chain-set (set node-chain)]
-                                  (filter chain-set new-chain)))
-                              ancestors)
-              _option-nodes (mapv #(get-node graph %) options)
-              selected      (first options)]
-          selected)))))
+    (let [ancestors-path-groups  (into []
+                                       (map #(-> graph
+                                                 (node-ancestors-paths %)
+                                                 (->> (mapv rseq))))
+                                       node-ids)
+
+          ; remove the nodes which are parts of other nodes paths
+          path-inner-nodes       (apply set/union (mapv (fn [x] (into #{}
+                                                                      (comp (map butlast)
+                                                                            cat)
+                                                                      x)) ancestors-path-groups))
+          ancestors-path-groups' (into []
+                                       (remove
+                                         (fn [x]
+                                           (let [item (-> x first last)]
+                                             (contains? path-inner-nodes item))))
+                                       ancestors-path-groups)
+          ; remove paths containing OR, except if the OR is the end of chain
+          ; in case there is no path avoiding the OR in the middle, stick to original
+          ; options
+          without-or-paths       (mapv #(let [new-seq (into [] (remove (fn [x] (path-contains-or? graph (rest x)))) %)]
+                                          (if (seq new-seq)
+                                            new-seq
+                                            %)) ancestors-path-groups')]
+      (or (first (first-common-ancestors* without-or-paths))
+          (first (first-common-ancestors* ancestors-path-groups))))))
 
 (>defn find-missing-ancestor
   "Find the first common AND node ancestors from missing list, missing is a list
