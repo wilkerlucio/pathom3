@@ -247,7 +247,54 @@
              ::pcp/index-attrs           {:a 3}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
-                                              :key          :a}}})))
+                                              :key          :a}}}))
+
+    (testing "OR multi paths with deps"
+      (is (= (compute-run-graph
+               '{::pci/index-oir      {:b {{:a {}} #{b}}
+                                       :c {{:b {}} #{c}}
+                                       :d {{:c {}} #{dc}
+                                           {:b {}} #{db}}}
+                 ::pcp/available-data {:a {}}
+                 ::eql/query          [:d]})
+             '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name dc,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:d {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:c {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{2}},
+                                                            2 {:com.wsscode.pathom3.connect.operation/op-name c,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:c {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{5},
+                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:c},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 1},
+                                                            3 {:com.wsscode.pathom3.connect.operation/op-name b,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 5},
+                                                            4 {:com.wsscode.pathom3.connect.operation/op-name db,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 4,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:d {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{5}},
+                                                            5 #:com.wsscode.pathom3.connect.planner{:node-id 5,
+                                                                                                    :expects {:d {}},
+                                                                                                    :node-parents #{3},
+                                                                                                    :run-or #{4
+                                                                                                              2},
+                                                                                                    :source-for-attrs #{:d}}},
+                                                    :index-ast {:d {:type :prop,
+                                                                    :dispatch-key :d,
+                                                                    :key :d}},
+                                                    :index-resolver->nodes {dc #{1},
+                                                                            c #{2},
+                                                                            b #{3},
+                                                                            db #{4}},
+                                                    :index-attrs {:b 3, :c 2, :d 5},
+                                                    :root 3}))))
 
   (testing "AND on multiple attributes"
     (is (= (compute-run-graph
@@ -4014,7 +4061,7 @@
             1
             4)))))
 
-(deftest direct-ancestor-chain-test
+(deftest find-node-direct-ancestor-chain-test
   (testing "return self on edge"
     (is (= (pcp/find-node-direct-ancestor-chain
              {::pcp/nodes {1 {}}}
@@ -4222,6 +4269,7 @@
              #{1 2})
            2)))
 
+  #_
   (testing "goes back when OR is at parent"
     (is (= (pcp/first-common-ancestor
              '{::pcp/nodes {5  {::pcp/node-id 5

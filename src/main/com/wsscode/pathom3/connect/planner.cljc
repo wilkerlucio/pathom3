@@ -182,9 +182,9 @@
 (def pc-input ::pco/input)
 
 (declare
-  compute-run-graph compute-run-graph* compute-root-and collapse-nodes-chain node-ancestors
+  compute-run-graph compute-run-graph* compute-root-and compute-root-or collapse-nodes-chain node-ancestors
   compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes mark-attribute-process-sub-query
-  required-input-reachable?)
+  required-input-reachable? find-node-direct-ancestor-chain)
 
 (defn add-snapshot!
   ([graph {::keys [snapshots*]} event-details]
@@ -600,6 +600,13 @@
         into (remove (comp requires :key)) (:children foreign-ast))
       graph)))
 
+(defn compute-root-from-branch-type [graph env node]
+  (case (::branch-type env)
+    ::run-or
+    (compute-root-or graph env node)
+
+    (compute-root-and graph env node)))
+
 (defn merge-nodes-run-next
   "Updates target-node-id run-next with the run-next of the last argument. This will do an AND
   branch operation with node-id run-next and run-next, updating the reference of node-id
@@ -608,7 +615,10 @@
   (let [merge-into-node (get-node graph target-node-id)
         run-next-node   (get-node graph run-next)]
     (if (same-resolver? merge-into-node run-next-node)
-      (collapse-dynamic-nodes graph env target-node-id run-next)
+      (-> graph
+          (add-snapshot! env {::snapshot-message "Collapse dynamic nodes"
+                              :compare           [merge-into-node run-next-node]})
+          (collapse-dynamic-nodes env target-node-id run-next))
       (-> graph
           (set-root-node (::run-next merge-into-node))
           (compute-root-and env {::node-id run-next})
@@ -780,6 +790,11 @@
           next-node (get-node graph node-id)
           root-sym  (pc-sym root-node)
           next-sym  (pc-sym next-node)]
+      (add-snapshot! graph env {::snapshot-message "Start root branch"
+                                ::branch-type      branch-type
+                                ::highlight-nodes  #{root node-id}
+                                ::root-node        root-node
+                                ::next-node        next-node})
       (cond
         ; skip, no next node
         (not next-node)
@@ -793,9 +808,12 @@
         ; same node, collapse
         (and root-sym
              (= root-sym next-sym))
-        (-> (collapse-nodes-branch graph env node-id root)
+        (-> (add-snapshot! graph env {::snapshot-message (str "Go Collapsed nodes " node-id " and " root " due to same resolver call.")
+                                      ::highlight-nodes  #{node-id root}})
+            (collapse-nodes-branch env node-id root)
             (set-root-node node-id)
-            (add-snapshot! env {::snapshot-message (str "Collapsed nodes " node-id " and " root " due to same resolver call.")}))
+            (add-snapshot! env {::snapshot-message (str "Collapsed nodes " node-id " and " root " due to same resolver call.")
+                                ::highlight-nodes  #{node-id root}}))
 
         ; merge ands
         (and (::run-and root-node)
@@ -803,7 +821,8 @@
              (can-merge-and-nodes? root-node next-node))
         (-> (collapse-and-nodes graph node-id root)
             (set-root-node node-id)
-            (add-snapshot! env {::snapshot-message (str "Merged AND nodes " node-id " with " root)}))
+            (add-snapshot! env {::snapshot-message (str "Merged AND nodes " node-id " with " root)
+                                ::highlight-nodes  #{node-id root}}))
 
         ; next node is branch type
         (and (get next-node branch-type)
@@ -823,20 +842,70 @@
 
         :else
         (-> (create-branch-node graph env next-node (branch-node-factory))
-            (add-snapshot! env {::snapshot-message (str "Create new branch node for " node-id " and " root)}))))
+            (add-snapshot! env {::snapshot-message (str "Create new branch node for " node-id " and " root)
+                                ::branch-type      branch-type
+                                ::highlight-nodes  #{node-id root}}))))
     graph))
 
-(defn compute-root-or
-  [{::keys [root] :as graph}
-   {::p.attr/keys [attribute] :as env}
-   {::keys [node-id] :as node}]
-  (if (= root node-id)
+(defn find-nodes-in-between [graph node-id node-id2]
+  (let [n1-ancestors (find-node-direct-ancestor-chain graph node-id)
+        n2-ancestors (find-node-direct-ancestor-chain graph node-id2)
+        dir1         (drop-while #(not= % node-id2) n1-ancestors)
+        dir2         (drop-while #(not= % node-id) n2-ancestors)]
+    (cond
+      (seq dir1)
+      dir1
+
+      (seq dir2)
+      dir2)))
+
+(defn convert-and-to-or
+  [graph {::p.attr/keys [attribute]} node-id]
+  (-> graph
+      (update-in [::nodes node-id] set/rename-keys {::run-and ::run-or})
+      (assoc-node node-id ::expects {attribute {}})))
+
+(defn convert-and-connection-to-or [graph env nodes-in-between]
+  (reduce
+    (fn [g node-id]
+      (let [{::keys [run-and]} (get-node graph node-id)]
+        (if run-and
+          (-> graph
+              (convert-and-to-or env node-id)
+              (add-snapshot! env {::snapshot-message "Converted AND to OR"
+                                  ::highlight-nodes  #{node-id}})
+              reduced)
+          g)))
     graph
-    (compute-root-branch graph (assoc env ::branch-type ::run-or) node
-      (fn []
-        {::node-id (next-node-id env)
-         ::expects {attribute {}}
-         ::run-or  #{(::root graph)}}))))
+    nodes-in-between))
+
+(defn compute-root-or
+  ([{::keys [root] :as graph}
+    {::p.attr/keys [attribute] :as env}
+    {::keys [node-id] :as node}]
+   (cond
+     (= root node-id)
+     graph
+
+     :else
+     (compute-root-branch graph (assoc env ::branch-type ::run-or) node
+       (fn []
+         {::node-id (next-node-id env)
+          ::expects {attribute {}}
+          ::run-or  #{(::root graph)}}))))
+  ([{::keys [root] :as graph}
+    {::p.attr/keys [attribute] :as env}
+    {::keys [node-id] :as node}
+    leave-node-id]
+   (if (and (= root node-id)
+            (some? root)
+            (-> graph (get-node root) ::expects (contains? attribute) not))
+     (let [nodes-between (and root leave-node-id
+                              (find-nodes-in-between graph root leave-node-id))]
+       (if (seq nodes-between)
+         (convert-and-connection-to-or graph env nodes-between)
+         graph))
+     (compute-root-or graph env node))))
 
 (defn compute-root-and
   [{::keys [root] :as graph} env {::keys [node-id] :as node}]
@@ -969,7 +1038,8 @@
           sym
           (update-in [::index-resolver->nodes sym] coll/sconj node-id))
         (add-snapshot! env {::snapshot-event   ::snapshot-include-node
-                            ::snapshot-message (str "Included node " sym)}))))
+                            ::snapshot-message (str "Included node " sym)
+                            ::highlight-nodes  #{node-id}}))))
 
 (>defn find-direct-node-successors
   "Direct successors of node, branch nodes and run-next, in case of branch nodes the
@@ -1037,6 +1107,21 @@
           (conj ancestors node-id')))
       ancestors)))
 
+(>defn node-ancestors-avoid-or
+  "Return all node ancestors. The order of the output will go from closest to farthest
+  nodes, like breathing out of the current node."
+  [graph node-id]
+  [::graph ::node-id
+   => (s/coll-of ::node-id :kind vector?)]
+  (loop [node-queue (coll/queue [node-id])
+         ancestors  []]
+    (if-let [node-id' (peek node-queue)]
+      (let [{::keys [node-parents]} (get-node graph node-id')]
+        (recur
+          (into (pop node-queue) node-parents)
+          (conj ancestors node-id')))
+      ancestors)))
+
 (>defn node-successors
   "Find successor nodes of node-id, node-id is included in the list. This will add
   branch nodes before run-next nodes. Returns a lazy sequence that traverse the graph
@@ -1075,15 +1160,14 @@
           nodes'     (into #{} (remove ancestors') node-ids)]
       (if (not= (count node-ids) (count nodes'))
         (first-common-ancestor graph nodes')
-        (let [options      (reduce
-                             (fn [node-chain new-chain]
-                               (let [chain-set (set node-chain)]
-                                 (filter chain-set new-chain)))
-                             ancestors)
-              option-nodes (mapv #(get-node graph %) options)]
-          (or (first (->> (remove ::run-or option-nodes)
-                          (map ::node-id)))
-              (first options)))))))
+        (let [options       (reduce
+                              (fn [node-chain new-chain]
+                                (let [chain-set (set node-chain)]
+                                  (filter chain-set new-chain)))
+                              ancestors)
+              _option-nodes (mapv #(get-node graph %) options)
+              selected      (first options)]
+          selected)))))
 
 (>defn find-missing-ancestor
   "Find the first common AND node ancestors from missing list, missing is a list
@@ -1187,13 +1271,17 @@
         graph'             (merge-nested-missing-ast graph' env missing)]
     (if (seq missing-with-nodes)
       (let [ancestor (find-missing-ancestor graph' missing-with-nodes)]
+        (add-snapshot! graph' env {::snapshot-message (str "Missing ancestor lookup for attributes " missing-with-nodes ", pick " ancestor)
+                                   ::highlight-nodes  (into #{ancestor} (map (partial get-attribute-node graph')) missing-with-nodes)
+                                   ::highlight-styles {ancestor 1}})
         (assert ancestor "Error finding ancestor during missing chain computation")
         (cond-> (merge-nodes-run-next graph' env ancestor {::run-next (::root graph)})
           (::run-and (get-root-node graph'))
           (merge-node-expects (::root graph') {::expects (zipmap missing-flat (repeat {}))})
 
           true
-          (add-snapshot! env {::snapshot-message (str "Chaining dependencies for " (pc-attr env) ", set node " (::root graph) " to run after node " ancestor)})))
+          (add-snapshot! env {::snapshot-message (str "Chaining dependencies for " (pc-attr env) ", set node " (::root graph) " to run after node " ancestor)
+                              ::highlight-nodes  #{(::root graph) ancestor}})))
       (set-root-node graph' (::root graph)))))
 
 (defn resolvers-optionals
@@ -1275,10 +1363,10 @@
   [graph
    {::keys [available-data]
     :as    env}
-   inputs resolvers]
-  (let [missing (pfsd/missing available-data inputs)
-        env     (assoc env ::input inputs)]
-    (if (contains? inputs (pc-attr env))
+   input resolvers]
+  (let [missing (pfsd/missing available-data input)
+        env     (assoc env ::input input)]
+    (if (contains? input (pc-attr env))
       graph
       (as-> graph <>
         (dissoc <> ::root)
@@ -1291,7 +1379,13 @@
         (if (::root <>)
           (-> <>
               (compute-missing-chain (assoc env ::graph-before-missing-chain graph) missing resolvers)
-              (compute-root-or env {::node-id (::root graph)}))
+              (as-> <i>
+                (add-snapshot! <i> env {::snapshot-message (str "Compute OR")
+                                        ::highlight-nodes  (into #{} [(::root graph)
+                                                                      (::root <>)
+                                                                      (::root <i>)])
+                                        ::highlight-styles {(::root <>) 1}}))
+              (compute-root-or env {::node-id (::root graph)} (::root <>)))
           (set-root-node <> (::root graph)))))))
 
 (defn find-node-for-attribute-in-chain
@@ -1320,7 +1414,7 @@
   (if-let [node-id (find-node-for-attribute-in-chain graph env (::root graph))]
     (-> graph
         (update-in [::nodes node-id ::source-for-attrs] coll/sconj attribute)
-        (update ::index-attrs assoc attribute (get-in graph [::index-attrs attribute] node-id)))
+        (update ::index-attrs assoc attribute node-id))
     graph))
 
 (defn find-node-direct-ancestor-chain
@@ -1388,12 +1482,14 @@
     (let [node-id (get-attribute-node graph attribute)]
       (-> graph
           (add-snapshot! env {::snapshot-event   ::snapshot-reuse-attribute
-                              ::snapshot-message (str "Associating previous root to attribute " attribute " on node " node-id)})
+                              ::snapshot-message (str "Associating previous root to attribute " attribute " on node " node-id)
+                              ::highlight-nodes  #{node-id}})
           (merge-node-expects node-id {attribute {}})
           (push-root-to-ancestor node-id)
           (compute-and-unless-root-is-ancestor env {::node-id root})
           (add-snapshot! env {::snapshot-event   ::snapshot-reuse-attribute-merged
-                              ::snapshot-message (str "Merged attribute " attribute " on node " node-id " with root " root)})))
+                              ::snapshot-message (str "Merged attribute " attribute " on node " node-id " with root " root)
+                              ::highlight-nodes  (into #{} [node-id root])})))
 
     :else
     (let [graph'
