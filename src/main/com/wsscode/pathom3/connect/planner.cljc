@@ -859,11 +859,38 @@
       (seq dir2)
       dir2)))
 
+(defn merge-nested-or [graph node-id]
+  (let [{::keys [expects run-or run-next]} (get-node graph node-id)
+        nested-or (->> (keep
+                         (fn [x]
+                           (let [n (get-node graph x)]
+                             (if (and (::run-or n)
+                                      (= expects (::expects n))
+                                      (= run-next (::run-next n)))
+                               n)))
+                         run-or)
+                       first)]
+    (if nested-or
+      (-> graph
+          (update-node node-id ::run-or into (::run-or nested-or))
+          (update-node node-id ::run-or disj (::node-id nested-or))
+          (as-> <>
+            (reduce
+              (fn [graph node-id]
+                (-> graph
+                    (remove-after-node node-id (::node-id nested-or))
+                    (add-after-node node-id node-id)))
+              <>
+              (::run-or nested-or)))
+          (remove-node (::node-id nested-or)))
+      graph)))
+
 (defn convert-and-to-or
   [graph {::p.attr/keys [attribute]} node-id]
   (-> graph
       (update-in [::nodes node-id] set/rename-keys {::run-and ::run-or})
-      (assoc-node node-id ::expects {attribute {}})))
+      (assoc-node node-id ::expects {attribute {}})
+      (merge-nested-or node-id)))
 
 (defn convert-and-connection-to-or [graph env nodes-in-between]
   (reduce
