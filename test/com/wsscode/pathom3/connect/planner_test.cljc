@@ -4244,6 +4244,32 @@
            6)
          [6 4 5 1 2 3])))
 
+(deftest node-ancestors-paths-test
+  (is (= (pcp/node-ancestors-paths
+           '{::pcp/nodes {1 {::pcp/node-id 1}
+                          2 {::pcp/node-parents #{1}}}}
+           2)
+         [[2 1]]))
+
+  (is (= (pcp/node-ancestors-paths
+           '{::pcp/nodes {1 {::pcp/node-id 1}
+                          2 {::pcp/node-parents #{1}}
+                          3 {::pcp/node-parents #{2}}}}
+           3)
+         [[3 2 1]]))
+
+  (is (= (pcp/node-ancestors-paths
+           '{::pcp/nodes {1 {::pcp/node-id 1}
+                          2 {::pcp/node-id 2}
+                          3 {::pcp/node-id 3}
+                          4 {::pcp/node-parents #{2 1}}
+                          5 {::pcp/node-parents #{3}}
+                          6 {::pcp/node-parents #{5 4}}}}
+           6)
+         [[6 4 1]
+          [6 4 2]
+          [6 5 3]])))
+
 (deftest node-successors-test
   (testing "leaf"
     (is (= (pcp/node-successors
@@ -4331,7 +4357,6 @@
              #{1 2})
            2)))
 
-  #_
   (testing "goes back when OR is at parent"
     (is (= (pcp/first-common-ancestor
              '{::pcp/nodes {5  {::pcp/node-id 5

@@ -889,10 +889,11 @@
   [graph {::p.attr/keys [attribute]} node-id]
   (-> graph
       (update-in [::nodes node-id] set/rename-keys {::run-and ::run-or})
-      (assoc-node node-id ::expects {attribute {}})
+      (update-node node-id ::expects select-keys [attribute])
       (merge-nested-or node-id)))
 
-(defn convert-and-connection-to-or [graph env nodes-in-between]
+(defn convert-and-connection-to-or
+  [graph env nodes-in-between]
   (reduce
     (fn [g node-id]
       (let [{::keys [run-and]} (get-node graph node-id)]
@@ -907,6 +908,14 @@
     nodes-in-between))
 
 (defn compute-root-or
+  "Combine the root node with a new graph using an OR. This is used to combine nodes
+  to allow the runner to choose between paths. This happens when there are multiple
+  possibilities to reach some attribute.
+
+  When leave-node-id is present, this means there is a chance the combination nodes
+  have the same root, because of attribute re-use. In this case, there will be an AND
+  node that should be an OR. In this case the algorithm checks if that's the case, and
+  if so it does convert the AND node into an OR node."
   ([{::keys [root] :as graph}
     {::p.attr/keys [attribute] :as env}
     {::keys [node-id] :as node}]
@@ -1133,6 +1142,35 @@
           (into (pop node-queue) node-parents)
           (conj ancestors node-id')))
       ancestors)))
+
+(>defn node-ancestors-paths
+  "Return all node ancestors paths. For when multiple parent paths in a node, there will
+  be a new path in the output."
+  [graph node-id]
+  [::graph ::node-id
+   => (s/coll-of (s/coll-of ::node-id :kind vector?) :kind vector?)]
+  (loop [node-queue (coll/queue [[node-id]])
+         paths      []]
+    (if-let [current-path (peek node-queue)]
+      (let [node-id' (peek current-path)
+            {::keys [node-parents]} (get-node graph node-id')]
+        (cond
+          (= (count node-parents) 1)
+          (let [parent-id (first node-parents)]
+            (recur
+              (conj (pop node-queue) (conj current-path parent-id))
+              paths))
+
+          (> (count node-parents) 1)
+          (recur
+            (into (pop node-queue) (map #(conj current-path %)) node-parents)
+            paths)
+
+          :else
+          (recur
+            (pop node-queue)
+            (conj paths current-path))))
+      paths)))
 
 (>defn node-ancestors-avoid-or
   "Return all node ancestors. The order of the output will go from closest to farthest
