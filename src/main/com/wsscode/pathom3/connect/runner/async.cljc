@@ -45,12 +45,14 @@
 
 (defn process-sequence-subquery
   [env ast s]
-  (-> (into []
-            (map-indexed (fn [idx entry]
-                           (process-map-subquery (p.path/append-path env idx) ast entry)))
-            s)
-      p/all
-      (p/then #(into (empty s) %))))
+  (-> (reduce-async
+        (fn [[seq idx] entry]
+          (p/let [sub-res (process-map-subquery (p.path/append-path env idx) ast entry)]
+            [(conj seq sub-res)
+             (inc idx)]))
+        [(empty s) 0]
+        s)
+      (p/then first)))
 
 (defn process-map-container-subquery
   "Build a new map where the values are replaced with the map process of the subquery."
