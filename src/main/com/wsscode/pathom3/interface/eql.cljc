@@ -43,4 +43,5 @@
    (process-ast env (eql/query->ast tx)))
   ([env entity tx]
    [(s/keys) map? ::eql/query => map?]
+   (assert (map? entity) "Entity data must be a map.")
    (process-ast (p.ent/with-entity env entity) (eql/query->ast tx))))
