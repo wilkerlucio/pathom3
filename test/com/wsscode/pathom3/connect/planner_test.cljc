@@ -247,7 +247,116 @@
              ::pcp/index-attrs           {:a 3}
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
-                                              :key          :a}}})))
+                                              :key          :a}}}))
+
+    (testing "OR multi paths with deps"
+      (is (= (compute-run-graph
+               '{::pci/index-oir      {:b {{:a {}} #{b}}
+                                       :c {{:b {}} #{c}}
+                                       :d {{:c {}} #{dc}
+                                           {:b {}} #{db}}}
+                 ::pcp/available-data {:a {}}
+                 ::eql/query          [:d]})
+             '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name dc,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:d {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:c {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{2}},
+                                                            2 {:com.wsscode.pathom3.connect.operation/op-name c,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:c {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{5},
+                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:c},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 1},
+                                                            3 {:com.wsscode.pathom3.connect.operation/op-name b,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 5},
+                                                            4 {:com.wsscode.pathom3.connect.operation/op-name    db,
+                                                               :com.wsscode.pathom3.connect.planner/node-id      4,
+                                                               :com.wsscode.pathom3.connect.planner/expects      {:d {}},
+                                                               :com.wsscode.pathom3.connect.planner/input        {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{5}},
+                                                            5 #:com.wsscode.pathom3.connect.planner{:node-id          5,
+                                                                                                    :expects          {:d {}},
+                                                                                                    :node-parents     #{3},
+                                                                                                    :run-or           #{4
+                                                                                                                        2},
+                                                                                                    :source-for-attrs #{:d}}},
+                                                    :index-ast {:d {:type         :prop,
+                                                                    :dispatch-key :d,
+                                                                    :key          :d}},
+                                                    :index-resolver->nodes {dc #{1},
+                                                                            c  #{2},
+                                                                            b  #{3},
+                                                                            db #{4}},
+                                                    :index-attrs {:b 3, :c 2, :d 5},
+                                                    :root 3}))
+
+      (is (= (compute-run-graph
+               '{::pci/index-oir {:b {{} #{b}}
+                                  :a {{:b {}} #{a}}
+                                  :c {{:b {}} #{c}}
+                                  :d {{:b {}} #{db}
+                                      {:c {}} #{dc}
+                                      {:a {}} #{da}}}
+                 ::eql/query     [:d]})
+             '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name db,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:d {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{1}},
+                                                            2 {:com.wsscode.pathom3.connect.operation/op-name b,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {},
+                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 8},
+                                                            3 {:com.wsscode.pathom3.connect.operation/op-name dc,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:d {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:c {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                            4 {:com.wsscode.pathom3.connect.operation/op-name c,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 4,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:c {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:c},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 3,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                            6 {:com.wsscode.pathom3.connect.operation/op-name da,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 6,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:d {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{7}},
+                                                            7 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                               :com.wsscode.pathom3.connect.planner/node-id 7,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{8},
+                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 6},
+                                                            8 #:com.wsscode.pathom3.connect.planner{:node-id 8,
+                                                                                                    :expects {:d {}},
+                                                                                                    :node-parents #{2},
+                                                                                                    :run-or #{7
+                                                                                                              1
+                                                                                                              4},
+                                                                                                    :source-for-attrs #{:d}}},
+                                                    :index-ast {:d {:type :prop,
+                                                                    :dispatch-key :d,
+                                                                    :key :d}},
+                                                    :index-resolver->nodes {db #{1},
+                                                                            b #{2},
+                                                                            dc #{3},
+                                                                            c #{4},
+                                                                            da #{6},
+                                                                            a #{7}},
+                                                    :index-attrs {:b 2, :c 4, :a 7, :d 8},
+                                                    :root 2}))))
 
   (testing "AND on multiple attributes"
     (is (= (compute-run-graph
@@ -540,268 +649,6 @@
                                                                                 :key          :a}},
                                                     :index-attrs           {:d 2, :c 3, :b 4, :a 1},
                                                     :root                  2})))
-
-    (testing "request again for attr already in graph"
-      (is (= (compute-run-graph
-               '{::pci/index-oir {:a {{:c {} :b {}} #{a}
-                                      {:e {}}       #{a1}}
-                                  :b {{} #{b}}
-                                  :c {{:d {}} #{c c2 c3}}
-                                  :d {{:c {} :b {}} #{d}
-                                      {:a {}}       #{d2}}
-                                  :e {{:b {} :f {}} #{e}}
-                                  :f {{} #{f}}}
-                 ::eql/query     [:a :e]})
-             '{::pcp/nodes                 {10 {::pco/op-name          a1
-                                                ::pcp/node-id          10
-                                                ::pcp/expects          {:a {}}
-                                                ::pcp/input            {:e {}}
-                                                ::pcp/node-parents     #{11}
-                                                ::pcp/source-for-attrs #{:a}}
-                                            11 {::pco/op-name          e
-                                                ::pcp/node-id          11
-                                                ::pcp/expects          {:e {}}
-                                                ::pcp/input            {:b {} :f {}}
-                                                ::pcp/node-parents     #{14}
-                                                ::pcp/source-for-attrs #{:e}
-                                                ::pcp/run-next         10}
-                                            12 {::pco/op-name          b
-                                                ::pcp/node-id          12
-                                                ::pcp/expects          {:b {}}
-                                                ::pcp/input            {}
-                                                ::pcp/source-for-attrs #{:b}
-                                                ::pcp/node-parents     #{14}}
-                                            13 {::pco/op-name          f
-                                                ::pcp/node-id          13
-                                                ::pcp/expects          {:f {}}
-                                                ::pcp/input            {}
-                                                ::pcp/source-for-attrs #{:f}
-                                                ::pcp/node-parents     #{14}}
-                                            14 {::pcp/node-id  14
-                                                ::pcp/expects  {:f {} :e {} :b {}}
-                                                ::pcp/run-and  #{13 12}
-                                                ::pcp/run-next 11}}
-               ::pcp/index-resolver->nodes {a1 #{10} e #{11} b #{12} f #{13}}
-               ::pcp/unreachable-resolvers #{a d2 c3 c2 c d}
-               ::pcp/unreachable-paths     {:c {} :d {}}
-               ::pcp/index-attrs           {:b 12 :f 13 :e 11 :a 10}
-               ::pcp/index-ast             {:a {:type         :prop,
-                                                :dispatch-key :a,
-                                                :key          :a},
-                                            :e {:type         :prop,
-                                                :dispatch-key :e,
-                                                :key          :e}}
-               ::pcp/root                  14}))
-
-      (is (= (compute-run-graph
-               '{::pci/index-oir {:a {{:c {} :b {}} #{a}
-                                      {:e {}}       #{a1}}
-                                  :b {{} #{b}}
-                                  :c {{:d {}} #{c c2 c3}}
-                                  :d {{:c {} :b {}} #{d}
-                                      {:a {}}       #{d2}}
-                                  :e {{:b {} :f {}} #{e}}
-                                  :f {{} #{f}}}
-                 ::eql/query     [:a :e :a :f]})
-             '{::pcp/nodes                 {10 {::pco/op-name          a1
-                                                ::pcp/node-id          10
-                                                ::pcp/expects          {:a {}}
-                                                ::pcp/input            {:e {}}
-                                                ::pcp/node-parents     #{11}
-                                                ::pcp/source-for-attrs #{:a}}
-                                            11 {::pco/op-name          e
-                                                ::pcp/node-id          11
-                                                ::pcp/expects          {:e {}}
-                                                ::pcp/input            {:b {} :f {}}
-                                                ::pcp/node-parents     #{14}
-                                                ::pcp/source-for-attrs #{:e}
-                                                ::pcp/run-next         10}
-                                            12 {::pco/op-name          b
-                                                ::pcp/node-id          12
-                                                ::pcp/expects          {:b {}}
-                                                ::pcp/input            {}
-                                                ::pcp/source-for-attrs #{:b}
-                                                ::pcp/node-parents     #{14}}
-                                            13 {::pco/op-name          f
-                                                ::pcp/node-id          13
-                                                ::pcp/expects          {:f {}}
-                                                ::pcp/input            {}
-                                                ::pcp/source-for-attrs #{:f}
-                                                ::pcp/node-parents     #{14}}
-                                            14 {::pcp/node-id  14
-                                                ::pcp/expects  {:f {} :e {} :b {}}
-                                                ::pcp/run-and  #{13 12}
-                                                ::pcp/run-next 11}}
-               ::pcp/index-resolver->nodes {a1 #{10} e #{11} b #{12} f #{13}}
-               ::pcp/unreachable-resolvers #{a d2 c3 c2 c d}
-               ::pcp/unreachable-paths     {:c {} :d {}}
-               ::pcp/index-attrs           {:b 12 :f 13 :e 11 :a 10}
-               ::pcp/index-ast             {:a {:type         :prop,
-                                                :dispatch-key :a,
-                                                :key          :a},
-                                            :e {:type         :prop,
-                                                :dispatch-key :e,
-                                                :key          :e}
-                                            :f {:type         :prop,
-                                                :dispatch-key :f,
-                                                :key          :f}}
-               ::pcp/root                  14})))
-
-    (is (= (compute-run-graph
-             '{::pci/index-oir {:a {{:c {} :b {}} #{a}}
-                                :b {{} #{b}}
-                                :c {{} #{c}}
-                                :d {{:c {} :b {}} #{d}}
-                                :e {{:c {} :b {} :f {}} #{e}}
-                                :f {{} #{f}}}
-               ::eql/query     [:a :d :e]})
-           '#:com.wsscode.pathom3.connect.planner{:nodes {7 #:com.wsscode.pathom3.connect.planner{:node-id 7,
-                                                                                                  :expects {:a {},
-                                                                                                            :d {}},
-                                                                                                  :run-and #{1
-                                                                                                             5},
-                                                                                                  :node-parents #{4}},
-                                                          1 {:com.wsscode.pathom3.connect.operation/op-name a,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:a {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {:c {},
-                                                                                                         :b {}},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{7},
-                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}},
-                                                          4 #:com.wsscode.pathom3.connect.planner{:node-id 4,
-                                                                                                  :expects {:b {},
-                                                                                                            :c {}},
-                                                                                                  :run-and #{3
-                                                                                                             2},
-                                                                                                  :run-next 7,
-                                                                                                  :node-parents #{11}},
-                                                          3 {:com.wsscode.pathom3.connect.operation/op-name b,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 3,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:b {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {},
-                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{4
-                                                                                                                 9}},
-                                                          2 {:com.wsscode.pathom3.connect.operation/op-name c,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:c {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {},
-                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:c},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{4
-                                                                                                                 9}},
-                                                          11 #:com.wsscode.pathom3.connect.planner{:node-id 11,
-                                                                                                   :expects {:b {},
-                                                                                                             :c {},
-                                                                                                             :f {}},
-                                                                                                   :run-and #{4
-                                                                                                              9}},
-                                                          9 #:com.wsscode.pathom3.connect.planner{:node-id 9,
-                                                                                                  :expects {:b {},
-                                                                                                            :c {},
-                                                                                                            :f {}},
-                                                                                                  :run-and #{3
-                                                                                                             2
-                                                                                                             10},
-                                                                                                  :run-next 8,
-                                                                                                  :node-parents #{11}},
-                                                          5 {:com.wsscode.pathom3.connect.operation/op-name d,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 5,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:d {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {:c {},
-                                                                                                         :b {}},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{7}},
-                                                          10 {:com.wsscode.pathom3.connect.operation/op-name f,
-                                                              :com.wsscode.pathom3.connect.planner/node-id 10,
-                                                              :com.wsscode.pathom3.connect.planner/expects {:f {}},
-                                                              :com.wsscode.pathom3.connect.planner/input {},
-                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:f},
-                                                              :com.wsscode.pathom3.connect.planner/node-parents #{9}},
-                                                          8 {:com.wsscode.pathom3.connect.operation/op-name e,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 8,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:e {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {:c {},
-                                                                                                         :b {},
-                                                                                                         :f {}},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{9},
-                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:e}}},
-                                                  :index-ast {:a {:type :prop,
-                                                                  :dispatch-key :a,
-                                                                  :key :a},
-                                                              :d {:type :prop,
-                                                                  :dispatch-key :d,
-                                                                  :key :d},
-                                                              :e {:type :prop,
-                                                                  :dispatch-key :e,
-                                                                  :key :e}},
-                                                  :index-resolver->nodes {a #{1},
-                                                                          c #{2},
-                                                                          b #{3},
-                                                                          d #{5},
-                                                                          e #{8},
-                                                                          f #{10}},
-                                                  :index-attrs {:c 2, :b 3, :a 1, :f 10, :e 8},
-                                                  :root 11}))
-
-    (is (= (compute-run-graph
-             '{::pci/index-oir {:a {{:c {} :b {}} #{a}}
-                                :b {{} #{b}}
-                                :c {{} #{c}}
-                                :d {{:e {} :b {}} #{d}}
-                                :e {{} #{e}}
-                                :f {{} #{f}}}
-               ::eql/query     [:a :d]})
-           '{::pcp/nodes                 {1 {::pco/op-name          a
-                                             ::pcp/node-id          1
-                                             ::pcp/expects          {:a {}}
-                                             ::pcp/input            {:c {} :b {}}
-                                             ::pcp/node-parents     #{4}
-                                             ::pcp/source-for-attrs #{:a}}
-                                          2 {::pco/op-name          c
-                                             ::pcp/node-id          2
-                                             ::pcp/expects          {:c {}}
-                                             ::pcp/input            {}
-                                             ::pcp/source-for-attrs #{:c}
-                                             ::pcp/node-parents     #{4}}
-                                          3 {::pco/op-name          b
-                                             ::pcp/node-id          3
-                                             ::pcp/expects          {:b {}}
-                                             ::pcp/input            {}
-                                             ::pcp/source-for-attrs #{:b}
-                                             ::pcp/node-parents     #{7 4}}
-                                          4 {::pcp/node-id      4
-                                             ::pcp/expects      {:b {} :c {}}
-                                             ::pcp/run-and      #{3 2}
-                                             ::pcp/run-next     1
-                                             ::pcp/node-parents #{8}}
-                                          5 {::pco/op-name          d
-                                             ::pcp/node-id          5
-                                             ::pcp/expects          {:d {}}
-                                             ::pcp/input            {:e {} :b {}}
-                                             ::pcp/node-parents     #{7}
-                                             ::pcp/source-for-attrs #{:d}}
-                                          6 {::pco/op-name          e
-                                             ::pcp/node-id          6
-                                             ::pcp/expects          {:e {}}
-                                             ::pcp/input            {}
-                                             ::pcp/source-for-attrs #{:e}
-                                             ::pcp/node-parents     #{7}}
-                                          7 {::pcp/node-id      7
-                                             ::pcp/expects      {:b {} :e {}}
-                                             ::pcp/run-and      #{3 6}
-                                             ::pcp/run-next     5
-                                             ::pcp/node-parents #{8}}
-                                          8 {::pcp/node-id 8
-                                             ::pcp/expects {:b {} :e {} :c {}}
-                                             ::pcp/run-and #{7 4}}}
-             ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5} e #{6}}
-             ::pcp/index-attrs           {:c 2 :b 3 :a 1 :e 6 :d 5}
-             ::pcp/index-ast             {:a {:type         :prop,
-                                              :dispatch-key :a,
-                                              :key          :a},
-                                          :d {:type         :prop,
-                                              :dispatch-key :d,
-                                              :key          :d}}
-             ::pcp/root                  8}))
 
     ; TODO complex case
     #_(is (= (compute-run-graph
@@ -1990,6 +1837,269 @@
                                              :key          foo
                                              :params       {}
                                              :type         :call}}})))
+
+(deftest compute-run-graph-reuse-attr-tests
+  (testing "request again for attr already in graph"
+    (is (= (compute-run-graph
+             '{::pci/index-oir {:a {{:c {} :b {}} #{a}
+                                    {:e {}}       #{a1}}
+                                :b {{} #{b}}
+                                :c {{:d {}} #{c c2 c3}}
+                                :d {{:c {} :b {}} #{d}
+                                    {:a {}}       #{d2}}
+                                :e {{:b {} :f {}} #{e}}
+                                :f {{} #{f}}}
+               ::eql/query     [:a :e]})
+           '{::pcp/nodes                 {10 {::pco/op-name          a1
+                                              ::pcp/node-id          10
+                                              ::pcp/expects          {:a {}}
+                                              ::pcp/input            {:e {}}
+                                              ::pcp/node-parents     #{11}
+                                              ::pcp/source-for-attrs #{:a}}
+                                          11 {::pco/op-name          e
+                                              ::pcp/node-id          11
+                                              ::pcp/expects          {:e {}}
+                                              ::pcp/input            {:b {} :f {}}
+                                              ::pcp/node-parents     #{14}
+                                              ::pcp/source-for-attrs #{:e}
+                                              ::pcp/run-next         10}
+                                          12 {::pco/op-name          b
+                                              ::pcp/node-id          12
+                                              ::pcp/expects          {:b {}}
+                                              ::pcp/input            {}
+                                              ::pcp/source-for-attrs #{:b}
+                                              ::pcp/node-parents     #{14}}
+                                          13 {::pco/op-name          f
+                                              ::pcp/node-id          13
+                                              ::pcp/expects          {:f {}}
+                                              ::pcp/input            {}
+                                              ::pcp/source-for-attrs #{:f}
+                                              ::pcp/node-parents     #{14}}
+                                          14 {::pcp/node-id  14
+                                              ::pcp/expects  {:f {} :e {} :b {}}
+                                              ::pcp/run-and  #{13 12}
+                                              ::pcp/run-next 11}}
+             ::pcp/index-resolver->nodes {a1 #{10} e #{11} b #{12} f #{13}}
+             ::pcp/unreachable-resolvers #{a d2 c3 c2 c d}
+             ::pcp/unreachable-paths     {:c {} :d {}}
+             ::pcp/index-attrs           {:b 12 :f 13 :e 11 :a 10}
+             ::pcp/index-ast             {:a {:type         :prop,
+                                              :dispatch-key :a,
+                                              :key          :a},
+                                          :e {:type         :prop,
+                                              :dispatch-key :e,
+                                              :key          :e}}
+             ::pcp/root                  14}))
+
+    (is (= (compute-run-graph
+             '{::pci/index-oir {:a {{:c {} :b {}} #{a}
+                                    {:e {}}       #{a1}}
+                                :b {{} #{b}}
+                                :c {{:d {}} #{c c2 c3}}
+                                :d {{:c {} :b {}} #{d}
+                                    {:a {}}       #{d2}}
+                                :e {{:b {} :f {}} #{e}}
+                                :f {{} #{f}}}
+               ::eql/query     [:a :e :a :f]})
+           '{::pcp/nodes                 {10 {::pco/op-name          a1
+                                              ::pcp/node-id          10
+                                              ::pcp/expects          {:a {}}
+                                              ::pcp/input            {:e {}}
+                                              ::pcp/node-parents     #{11}
+                                              ::pcp/source-for-attrs #{:a}}
+                                          11 {::pco/op-name          e
+                                              ::pcp/node-id          11
+                                              ::pcp/expects          {:e {}}
+                                              ::pcp/input            {:b {} :f {}}
+                                              ::pcp/node-parents     #{14}
+                                              ::pcp/source-for-attrs #{:e}
+                                              ::pcp/run-next         10}
+                                          12 {::pco/op-name          b
+                                              ::pcp/node-id          12
+                                              ::pcp/expects          {:b {}}
+                                              ::pcp/input            {}
+                                              ::pcp/source-for-attrs #{:b}
+                                              ::pcp/node-parents     #{14}}
+                                          13 {::pco/op-name          f
+                                              ::pcp/node-id          13
+                                              ::pcp/expects          {:f {}}
+                                              ::pcp/input            {}
+                                              ::pcp/source-for-attrs #{:f}
+                                              ::pcp/node-parents     #{14}}
+                                          14 {::pcp/node-id  14
+                                              ::pcp/expects  {:f {} :e {} :b {}}
+                                              ::pcp/run-and  #{13 12}
+                                              ::pcp/run-next 11}}
+             ::pcp/index-resolver->nodes {a1 #{10} e #{11} b #{12} f #{13}}
+             ::pcp/unreachable-resolvers #{a d2 c3 c2 c d}
+             ::pcp/unreachable-paths     {:c {} :d {}}
+             ::pcp/index-attrs           {:b 12 :f 13 :e 11 :a 10}
+             ::pcp/index-ast             {:a {:type         :prop,
+                                              :dispatch-key :a,
+                                              :key          :a},
+                                          :e {:type         :prop,
+                                              :dispatch-key :e,
+                                              :key          :e}
+                                          :f {:type         :prop,
+                                              :dispatch-key :f,
+                                              :key          :f}}
+             ::pcp/root                  14}))
+
+    (is (= (compute-run-graph
+             '{::pci/index-oir {:a {{:c {} :b {}} #{a}}
+                                :b {{} #{b}}
+                                :c {{} #{c}}
+                                :d {{:c {} :b {}} #{d}}
+                                :e {{:c {} :b {} :f {}} #{e}}
+                                :f {{} #{f}}}
+               ::eql/query     [:a :d :e]})
+           '#:com.wsscode.pathom3.connect.planner{:nodes {7 #:com.wsscode.pathom3.connect.planner{:node-id 7,
+                                                                                                  :expects {:a {},
+                                                                                                            :d {}},
+                                                                                                  :run-and #{1
+                                                                                                             5},
+                                                                                                  :node-parents #{4}},
+                                                          1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:c {},
+                                                                                                         :b {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{7},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}},
+                                                          4 #:com.wsscode.pathom3.connect.planner{:node-id 4,
+                                                                                                  :expects {:b {},
+                                                                                                            :c {}},
+                                                                                                  :run-and #{3
+                                                                                                             2},
+                                                                                                  :run-next 7,
+                                                                                                  :node-parents #{11}},
+                                                          3 {:com.wsscode.pathom3.connect.operation/op-name b,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:b {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{4
+                                                                                                                 9}},
+                                                          2 {:com.wsscode.pathom3.connect.operation/op-name c,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:c {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:c},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{4
+                                                                                                                 9}},
+                                                          11 #:com.wsscode.pathom3.connect.planner{:node-id 11,
+                                                                                                   :expects {:b {},
+                                                                                                             :c {},
+                                                                                                             :f {}},
+                                                                                                   :run-and #{4
+                                                                                                              9}},
+                                                          9 #:com.wsscode.pathom3.connect.planner{:node-id 9,
+                                                                                                  :expects {:b {},
+                                                                                                            :c {},
+                                                                                                            :f {}},
+                                                                                                  :run-and #{3
+                                                                                                             2
+                                                                                                             10},
+                                                                                                  :run-next 8,
+                                                                                                  :node-parents #{11}},
+                                                          5 {:com.wsscode.pathom3.connect.operation/op-name d,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 5,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:d {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:c {},
+                                                                                                         :b {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{7}},
+                                                          10 {:com.wsscode.pathom3.connect.operation/op-name f,
+                                                              :com.wsscode.pathom3.connect.planner/node-id 10,
+                                                              :com.wsscode.pathom3.connect.planner/expects {:f {}},
+                                                              :com.wsscode.pathom3.connect.planner/input {},
+                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:f},
+                                                              :com.wsscode.pathom3.connect.planner/node-parents #{9}},
+                                                          8 {:com.wsscode.pathom3.connect.operation/op-name e,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 8,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:e {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {:c {},
+                                                                                                         :b {},
+                                                                                                         :f {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{9},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:e}}},
+                                                  :index-ast {:a {:type :prop,
+                                                                  :dispatch-key :a,
+                                                                  :key :a},
+                                                              :d {:type :prop,
+                                                                  :dispatch-key :d,
+                                                                  :key :d},
+                                                              :e {:type :prop,
+                                                                  :dispatch-key :e,
+                                                                  :key :e}},
+                                                  :index-resolver->nodes {a #{1},
+                                                                          c #{2},
+                                                                          b #{3},
+                                                                          d #{5},
+                                                                          e #{8},
+                                                                          f #{10}},
+                                                  :index-attrs {:c 2, :b 3, :a 1, :f 10, :e 8},
+                                                  :root 11}))
+
+    (is (= (compute-run-graph
+             '{::pci/index-oir {:a {{:c {} :b {}} #{a}}
+                                :b {{} #{b}}
+                                :c {{} #{c}}
+                                :d {{:e {} :b {}} #{d}}
+                                :e {{} #{e}}
+                                :f {{} #{f}}}
+               ::eql/query     [:a :d]})
+           '{::pcp/nodes                 {1 {::pco/op-name          a
+                                             ::pcp/node-id          1
+                                             ::pcp/expects          {:a {}}
+                                             ::pcp/input            {:c {} :b {}}
+                                             ::pcp/node-parents     #{4}
+                                             ::pcp/source-for-attrs #{:a}}
+                                          2 {::pco/op-name          c
+                                             ::pcp/node-id          2
+                                             ::pcp/expects          {:c {}}
+                                             ::pcp/input            {}
+                                             ::pcp/source-for-attrs #{:c}
+                                             ::pcp/node-parents     #{4}}
+                                          3 {::pco/op-name          b
+                                             ::pcp/node-id          3
+                                             ::pcp/expects          {:b {}}
+                                             ::pcp/input            {}
+                                             ::pcp/source-for-attrs #{:b}
+                                             ::pcp/node-parents     #{7 4}}
+                                          4 {::pcp/node-id      4
+                                             ::pcp/expects      {:b {} :c {}}
+                                             ::pcp/run-and      #{3 2}
+                                             ::pcp/run-next     1
+                                             ::pcp/node-parents #{8}}
+                                          5 {::pco/op-name          d
+                                             ::pcp/node-id          5
+                                             ::pcp/expects          {:d {}}
+                                             ::pcp/input            {:e {} :b {}}
+                                             ::pcp/node-parents     #{7}
+                                             ::pcp/source-for-attrs #{:d}}
+                                          6 {::pco/op-name          e
+                                             ::pcp/node-id          6
+                                             ::pcp/expects          {:e {}}
+                                             ::pcp/input            {}
+                                             ::pcp/source-for-attrs #{:e}
+                                             ::pcp/node-parents     #{7}}
+                                          7 {::pcp/node-id      7
+                                             ::pcp/expects      {:b {} :e {}}
+                                             ::pcp/run-and      #{3 6}
+                                             ::pcp/run-next     5
+                                             ::pcp/node-parents #{8}}
+                                          8 {::pcp/node-id 8
+                                             ::pcp/expects {:b {} :e {} :c {}}
+                                             ::pcp/run-and #{7 4}}}
+             ::pcp/index-resolver->nodes {a #{1} c #{2} b #{3} d #{5} e #{6}}
+             ::pcp/index-attrs           {:c 2 :b 3 :a 1 :e 6 :d 5}
+             ::pcp/index-ast             {:a {:type         :prop,
+                                              :dispatch-key :a,
+                                              :key          :a},
+                                          :d {:type         :prop,
+                                              :dispatch-key :d,
+                                              :key          :d}}
+             ::pcp/root                  8}))))
 
 (deftest compute-run-graph-idents-test
   (testing "separate idents"
@@ -3761,19 +3871,21 @@
                  ::pci/index-resolvers {'a  {::pco/provides {:a {}}}
                                         'a2 {::pco/provides {:a {}}}})
                {::pcp/node-id 3})
-             '{::pcp/root  4
-               ::pcp/nodes {2 {::pcp/node-id      2
-                               ::pco/op-name      a
-                               ::pcp/expects      {:a {}}
-                               ::pcp/node-parents #{4}}
-                            3 {::pcp/node-id      3
-                               ::pco/op-name      a2
-                               ::pcp/expects      {:a {}}
-                               ::pcp/node-parents #{4}}
-                            4 {::pcp/node-id  4
-                               ::pcp/expects  {:a {}}
-                               ::pcp/run-or   #{2 3}
-                               ::pcp/run-next 1}}}))
+             '#:com.wsscode.pathom3.connect.planner{:root 4,
+                                                    :nodes {2 {:com.wsscode.pathom3.connect.planner/node-id 2,
+                                                               :com.wsscode.pathom3.connect.operation/op-name a,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 1,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                            3 {:com.wsscode.pathom3.connect.planner/node-id 3,
+                                                               :com.wsscode.pathom3.connect.operation/op-name a2,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 1,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                            4 #:com.wsscode.pathom3.connect.planner{:node-id 4,
+                                                                                                    :expects {:a {}},
+                                                                                                    :run-or #{3
+                                                                                                              2}}}}))
 
       (testing "don't optimize when run next is different"
         (is (= (pcp/compute-root-or
@@ -3891,21 +4003,24 @@
                (assoc (base-graph-env)
                  ::pci/index-resolvers {'a3 {::pco/provides {:a {}}}})
                {::pcp/node-id 4})
-             {::pcp/root  3
-              ::pcp/nodes {1 {::pcp/node-id 1
-                              ::pco/op-name 'a
-                              ::pcp/expects {:a {}}}
-                           2 {::pcp/node-id 2
-                              ::pco/op-name 'a2
-                              ::pcp/expects {:a {}}}
-                           3 {::pcp/node-id  3
-                              ::pcp/run-or   #{1 2 4}
-                              ::pcp/expects  {:a {}}
-                              ::pcp/run-next 10}
-                           4 {::pcp/node-id      4
-                              ::pcp/node-parents #{3}
-                              ::pco/op-name      'a3
-                              ::pcp/expects      {:a {}}}}})))))
+             '#:com.wsscode.pathom3.connect.planner{:root 3,
+                                                    :nodes {1 {:com.wsscode.pathom3.connect.planner/node-id 1,
+                                                               :com.wsscode.pathom3.connect.operation/op-name a,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}}},
+                                                            2 {:com.wsscode.pathom3.connect.planner/node-id 2,
+                                                               :com.wsscode.pathom3.connect.operation/op-name a2,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}}},
+                                                            3 #:com.wsscode.pathom3.connect.planner{:node-id 3,
+                                                                                                    :run-or #{1
+                                                                                                              4
+                                                                                                              2},
+                                                                                                    :expects {:a {}},
+                                                                                                    :run-next 10},
+                                                            4 {:com.wsscode.pathom3.connect.planner/node-id 4,
+                                                               :com.wsscode.pathom3.connect.operation/op-name a3,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/run-next 10,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{3}}}})))))
 
 (deftest collapse-and-nodes-test
   (is (= (pcp/collapse-and-nodes
@@ -4014,7 +4129,7 @@
             1
             4)))))
 
-(deftest direct-ancestor-chain-test
+(deftest find-node-direct-ancestor-chain-test
   (testing "return self on edge"
     (is (= (pcp/find-node-direct-ancestor-chain
              {::pcp/nodes {1 {}}}
@@ -4061,6 +4176,42 @@
                               ::pcp/node-parents #{3}}
                            3 {::pcp/node-parents #{4}}
                            4 {::pcp/run-and #{}}}}
+             1)
+           3))))
+
+(deftest find-dependent-ancestor-test
+  (testing "no parents, return self"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-id 1}}}
+             1)
+           1)))
+
+  (testing "no dependencies, return self"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-id 1
+                              ::pcp/input   {}}}}
+             1)
+           1)))
+
+  (testing "traverse chain"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-id      1
+                              ::pcp/input        {:a {}}
+                              ::pcp/node-parents #{2}}
+                           2 {::pcp/node-id 2
+                              ::pcp/expects {:a {}}}}}
+             1)
+           2)))
+
+  (testing "multiple paths"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-id      1
+                              ::pcp/input        {:a {}}
+                              ::pcp/node-parents #{2 3}}
+                           2 {::pcp/node-id 2
+                              ::pcp/expects {}}
+                           3 {::pcp/node-id 3
+                              ::pcp/expects {:a {}}}}}
              1)
            3))))
 
@@ -4135,6 +4286,32 @@
            6)
          [6 4 5 1 2 3])))
 
+(deftest node-ancestors-paths-test
+  (is (= (pcp/node-ancestors-paths
+           '{::pcp/nodes {1 {::pcp/node-id 1}
+                          2 {::pcp/node-parents #{1}}}}
+           2)
+         [[2 1]]))
+
+  (is (= (pcp/node-ancestors-paths
+           '{::pcp/nodes {1 {::pcp/node-id 1}
+                          2 {::pcp/node-parents #{1}}
+                          3 {::pcp/node-parents #{2}}}}
+           3)
+         [[3 2 1]]))
+
+  (is (= (pcp/node-ancestors-paths
+           '{::pcp/nodes {1 {::pcp/node-id 1}
+                          2 {::pcp/node-id 2}
+                          3 {::pcp/node-id 3}
+                          4 {::pcp/node-parents #{2 1}}
+                          5 {::pcp/node-parents #{3}}
+                          6 {::pcp/node-parents #{5 4}}}}
+           6)
+         [[6 4 1]
+          [6 4 2]
+          [6 5 3]])))
+
 (deftest node-successors-test
   (testing "leaf"
     (is (= (pcp/node-successors
@@ -4190,6 +4367,11 @@
              1)
            [1 3 2 4]))))
 
+(deftest first-common-ancestors*-test
+  (is (= (pcp/first-common-ancestors*
+           [[[1 2]]])
+         #{2})))
+
 (deftest first-common-ancestor-test
   (is (= (pcp/first-common-ancestor
            '{::pcp/nodes {1 {::pcp/run-and #{2 3}}
@@ -4221,6 +4403,22 @@
                             2 {::pcp/node-parents #{1}}}}
              #{1 2})
            2)))
+
+  (testing "goes back when OR is at parent"
+    (is (= (pcp/first-common-ancestor
+             '{::pcp/nodes {5  {::pcp/node-id 5
+                                ::pcp/node-parents #{12 19}}
+                            9  {::pcp/node-id 9
+                                ::pcp/node-parents #{5}}
+                            12 {::pcp/node-id 12
+                                ::pcp/node-parents #{19}
+                                ::pcp/run-or       #{5 18}}
+                            18 {::pcp/node-id 18
+                                ::pcp/node-parents #{12}}
+                            19 {::pcp/node-id 19
+                                ::pcp/run-and #{12 5}}}}
+             #{9 18})
+           19)))
 
   #_(testing "or with internal dependency"
       (is (= (pcp/first-common-ancestor
@@ -4576,4 +4774,137 @@
 (deftest graph-provides-test
   (is (= (pcp/graph-provides
            {::pcp/index-attrs {:a 1 :b 2}})
-         #{:a :b})))
+         #{:b :a})))
+
+#_
+(deftest repl-tools-repro-tests
+  (is (= (compute-run-graph
+           (-> '{::pci/index-oir
+                             {:editor/range
+                              {{:editor/data {}}
+                               #{repl-tooling.commands-to-repl.pathom3/separate-data}},
+                              :editor/filename
+                              {{:editor/data {}}
+                               #{repl-tooling.commands-to-repl.pathom3/separate-data}},
+                              :editor/current-var-range
+                              {{:editor/contents {}, :editor/range {}}
+                               #{repl-tooling.commands-to-repl.pathom3/var-from-editor}},
+                              :editor/namespace
+                              {{:editor/contents {}, :editor/range {}}
+                               #{repl-tooling.commands-to-repl.pathom3/namespace-from-editor-data}},
+                              :var/spec
+                              {{:var/fqn {}, :repl/aux {}}
+                               #{repl-tooling.commands-to-repl.pathom3/spec-for-var}},
+                              :repl/clj
+                              {{:cljs/required? {}}
+                               #{repl-tooling.commands-to-repl.pathom3/repls-for-evaluation}},
+                              :repl/namespace
+                              {{:editor/namespace {}, :cljs/required? {}}
+                               #{repl-tooling.commands-to-repl.pathom3/namespace-from-editor}},
+                              :editor/current-var
+                              {{:editor/contents {}, :editor/range {}}
+                               #{repl-tooling.commands-to-repl.pathom3/var-from-editor}},
+                              :editor/config
+                              {{} #{repl-tooling.commands-to-repl.pathom3/get-config}},
+                              :editor/contents
+                              {{:editor/data {}}
+                               #{repl-tooling.commands-to-repl.pathom3/separate-data}},
+                              :repl/eval
+                              {{:cljs/required? {}}
+                               #{repl-tooling.commands-to-repl.pathom3/repls-for-evaluation}},
+                              :kondo/analysis
+                              {{:editor/config {}}
+                               #{repl-tooling.commands-to-repl.pathom3/analysis-from-kondo}},
+                              :var/fqn
+                              {{:repl/namespace     {},
+                                :editor/current-var {},
+                                :editor/filename    {},
+                                :repl/aux           {}}
+                               #{repl-tooling.commands-to-repl.pathom3/fqn-var},
+                               {:kondo/analysis {}, :editor/current-var {}, :repl/namespace {}}
+                               #{repl-tooling.commands-to-repl.pathom3/fqn-from-kondo}},
+                              :repl/aux
+                              {{:cljs/required? {}}
+                               #{repl-tooling.commands-to-repl.pathom3/repls-for-evaluation}},
+                              :namespace/vars
+                              {{:repl/namespace {}, :repl/aux {}}
+                               #{repl-tooling.commands-to-repl.pathom3/all-vars-in-ns}},
+                              :cljs/env
+                              {{:repl/clj {}} #{repl-tooling.commands-to-repl.pathom3/cljs-env}},
+                              :cljs/required?
+                              {{:editor/config {}, :editor/filename {}}
+                               #{repl-tooling.commands-to-repl.pathom3/need-cljs},
+                               {:editor/config {}}
+                               #{repl-tooling.commands-to-repl.pathom3/need-cljs-from-config}},
+                              :editor/data
+                              {{} #{repl-tooling.commands-to-repl.pathom3/editor-data}},
+                              :repl/namespaces
+                              {{:repl/clj {}}
+                               #{repl-tooling.commands-to-repl.pathom3/all-namespaces}},
+                              :var/meta
+                              {{:var/fqn {}, :cljs/required? {}, :repl/aux {}, :repl/clj {}}
+                               #{repl-tooling.commands-to-repl.pathom3/meta-for-var},
+                               {:kondo/analysis {}, :var/fqn {}}
+                               #{repl-tooling.commands-to-repl.pathom3/meta-from-kondo}},
+                              :editor/ns-range
+                              {{:editor/contents {}, :editor/range {}}
+                               #{repl-tooling.commands-to-repl.pathom3/namespace-from-editor-data}}}
+                 ::eql/query [:var/meta]}))
+
+         {::pcp/nodes                 {2 {::pco/op-name          'id
+                                          ::pcp/node-id          2
+                                          ::pcp/expects          {:db/id {}}
+                                          ::pcp/input            {}
+                                          ::pcp/source-for-attrs #{:db/id}
+                                          ::pcp/run-next         4}
+                                       3 {::pco/op-name          'complex
+                                          ::pcp/node-id          3
+                                          ::pcp/expects          {:complex {}}
+                                          ::pcp/input            {:label/type {} :db/id {}}
+                                          ::pcp/node-parents     #{4}
+                                          ::pcp/source-for-attrs #{:complex}}
+                                       4 {::pco/op-name          'dynamic-resolver
+                                          ::pcp/node-id          4
+                                          ::pcp/expects          {:label/type {} :release/script {}}
+                                          ::pcp/input            {:db/id {}}
+                                          ::pcp/source-for-attrs #{:release/script :label/type}
+                                          ::pcp/node-parents     #{2}
+                                          ::pcp/run-next         3
+                                          ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
+          ::pcp/index-resolver->nodes '{dynamic-resolver #{4} id #{2} complex #{3}}
+          ::pcp/index-attrs           {:db/id          2
+                                       :release/script 4
+                                       :label/type     4
+                                       :complex        3}
+          ::pcp/index-ast             {:release/script {:type         :prop,
+                                                        :dispatch-key :release/script,
+                                                        :key          :release/script},
+                                       :complex        {:type         :prop,
+                                                        :dispatch-key :complex,
+                                                        :key          :complex}}
+          ::pcp/root                  2})))
+
+(deftest node-parent-run-next-test
+  (is (= (pcp/node-parent-run-next {::pcp/nodes {1 {::pcp/node-id      1
+                                                    ::pcp/node-parents #{2}}
+                                                 2 {::pcp/node-id  2
+                                                    ::pcp/run-next 1}}}
+           {::pcp/node-id      1
+            ::pcp/node-parents #{2}})
+         2))
+
+  (is (= (pcp/node-parent-run-next {::pcp/nodes {1 {::pcp/node-id      1
+                                                    ::pcp/node-parents #{3 2}}
+                                                 2 {::pcp/node-id  2
+                                                    ::pcp/run-next 1}
+                                                 3 {::pcp/run-and #{2}}}}
+           {::pcp/node-id      1
+            ::pcp/node-parents #{2}})
+         2))
+
+  (is (= (pcp/node-parent-run-next {::pcp/nodes {1 {::pcp/node-id      1
+                                                    ::pcp/node-parents #{2}}
+                                                 2 {::pcp/node-id  2}}}
+           {::pcp/node-id      1
+            ::pcp/node-parents #{2}})
+         nil)))

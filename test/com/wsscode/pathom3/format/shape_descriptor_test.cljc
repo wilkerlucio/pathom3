@@ -108,6 +108,35 @@
   (is (= (psd/missing {:foo {:bar {}}} {:foo {:bar {} :baz {}}})
          {:foo {:baz {}}})))
 
+(deftest difference-test
+  (is (= (psd/difference {} {})
+         {}))
+
+  (is (= (psd/difference {:a {}} {})
+         {:a {}}))
+
+  (is (= (psd/difference {:a {}} {:b {}})
+         {:a {}}))
+
+  (is (= (psd/difference {:a {}} {:a {}})
+         {}))
+
+  (testing "nested"
+    (is (= (psd/difference {:a {:b {}}} {:a {}})
+           {}))
+
+    (is (= (psd/difference {:a {}} {:a {:b {}}})
+           {}))
+
+    (is (= (psd/difference {:a {:b {}}} {:a {:b {}}})
+           {}))
+
+    (is (= (psd/difference {:a {:b {}}} {:a {:c {}}})
+           {:a {:b {}}}))
+
+    (is (= (psd/difference {:a {:b {} :c {}}} {:a {:b {}}})
+           {:a {:c {}}}))))
+
 (deftest select-shape-test
   (is (= (psd/select-shape {} {})
          {}))

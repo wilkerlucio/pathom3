@@ -101,7 +101,10 @@
 
           (or (sequential? val)
               (set? val))
-          (into (empty val) (map #(map-select-ast env % ast)) val)
+          (into (empty val) (map #(map-select-ast env % ast))
+                (cond-> val
+                  (coll/coll-append-at-head? val)
+                  reverse))
 
           :else
           val)))))
@@ -131,7 +134,7 @@
   [env source ast]
   [map? any? (s/keys :opt-un [:edn-query-language.ast/children])
    => any?]
-  (if (map? source)
+  (if (coll/native-map? source)
     (let [start (with-meta {} (meta source))]
       (into start (keep #(p.plugin/run-with-plugins env ::wrap-map-select-entry
                            map-select-entry env source (assoc % :parent-ast ast)))

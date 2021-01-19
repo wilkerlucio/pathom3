@@ -16,6 +16,8 @@
                          cond->                             [[:inner 0]]
                          conj                               [[:inner 0]]
                          defrecord                          [[:inner 0]]
+                         merge-node-stats!                  [[:inner 0]]
+                         pcr/merge-node-stats!              [[:inner 0]]
                          deftype                            [[:inner 0]]
                          every?                             [[:inner 0]]
                          fp/defsc                           [[:inner 0]]

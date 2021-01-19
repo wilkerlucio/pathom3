@@ -16,9 +16,50 @@
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]))
 
+(>def ::batch-error? boolean?)
+(>def ::batch-hold (s/keys))
+(>def ::batch-pending* any?)
+(>def ::batch-run-finish-ms number?)
+(>def ::batch-run-start-ms number?)
+
+(>def ::compute-plan-run-finish-ms number?)
+(>def ::compute-plan-run-start-ms number?)
+
+(>def ::env map?)
+
+(>def ::graph-run-finish-ms number?)
+(>def ::graph-run-start-ms number?)
+
 (>def ::map-container? boolean?)
 (>def ::merge-attribute fn?)
+
 (>def ::node-error any?)
+(>def ::node-run-finish-ms number?)
+(>def ::node-resolver-input map?)
+(>def ::node-resolver-output map?)
+(>def ::node-run-start-ms number?)
+
+(>def ::node-run-stats map?)
+(>def ::node-run-stats* any?)
+
+(>def ::nodes-with-error ::pcp/node-id-set)
+
+(>def ::resolver-cache* any?)
+(>def ::resolver-run-start-ms number?)
+(>def ::resolver-run-finish-ms number?)
+
+(>def ::run-stats map?)
+(>def ::run-stats-omit-resolver-io? boolean?)
+
+(>def ::source-node-id ::pcp/node-id)
+(>def ::success-path ::pcp/node-id)
+
+(>def ::wrap-batch-resolver-error fn?)
+(>def ::wrap-merge-attribute fn?)
+(>def ::wrap-mutate fn?)
+(>def ::wrap-resolve fn?)
+(>def ::wrap-resolver-error fn?)
+(>def ::wrap-run-graph! fn?)
 
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
@@ -57,7 +98,9 @@
   (into
     (empty s)
     (map-indexed #(process-map-subquery (p.path/append-path env %) ast %2))
-    s))
+    (cond-> s
+      (coll/coll-append-at-head? s)
+      reverse)))
 
 (defn process-map-container-subquery
   "Build a new map where the values are replaced with the map process of the subquery."
@@ -79,14 +122,8 @@
   (or (-> v meta ::map-container?)
       (-> ast :params ::map-container?)))
 
-(>defn process-attr-subquery
-  [{::pcp/keys [graph]
-    :as        env} entity k v]
-  [(s/keys :req [::pcp/graph]) map? ::p.path/path-entry any?
-   => any?]
-  (let [{:keys [query] :as ast} (pcp/entry-ast graph k)
-        env      (p.path/append-path env k)
-        children (cond
+(defn normalize-ast-recursive-query [{:keys [query] :as ast} graph k]
+  (let [children (cond
                    (= '... query)
                    (vec (vals (::pcp/index-ast graph)))
 
@@ -96,8 +133,22 @@
                        vals vec)
 
                    :else
-                   (:children ast))
-        ast      (assoc ast :children children)]
+                   (:children ast))]
+    (assoc ast :children children)))
+
+(defn entry-ast
+  "Get AST entry and pulls recursive query when needed."
+  [graph k]
+  (-> (pcp/entry-ast graph k)
+      (normalize-ast-recursive-query graph k)))
+
+(>defn process-attr-subquery
+  [{::pcp/keys [graph]
+    :as        env} entity k v]
+  [(s/keys :req [::pcp/graph]) map? ::p.path/path-entry any?
+   => any?]
+  (let [{:keys [children] :as ast} (entry-ast graph k)
+        env (p.path/append-path env k)]
     (if children
       (cond
         (map? v)
@@ -179,6 +230,22 @@
         ::resolver-cache*))
     ::resolver-cache*))
 
+(defn report-resolver-stats
+  [{::keys [run-stats-omit-resolver-io?]} start finish input-shape input-data result]
+  (cond-> {::resolver-run-start-ms  start
+           ::resolver-run-finish-ms finish}
+    run-stats-omit-resolver-io?
+    (assoc
+      ::node-resolver-input-shape input-shape
+      ::node-resolver-output-shape (pfsd/data->shape-descriptor result))
+
+    (not run-stats-omit-resolver-io?)
+    (assoc
+      ::node-resolver-input input-data
+      ::node-resolver-output (if (::batch-hold result)
+                               ::batch-hold
+                               result))))
+
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
@@ -206,12 +273,12 @@
                                                              :available input-shape}))
                         (cond
                           batch?
-                          {::batch-hold {::pco/op-name     op-name
-                                         ::pcp/node        node
-                                         ::pco/cache?      cache?
-                                         ::pco/cache-store cache-store
-                                         ::node-run-input  input-data
-                                         ::env             env}}
+                          {::batch-hold {::pco/op-name         op-name
+                                         ::pcp/node            node
+                                         ::pco/cache?          cache?
+                                         ::pco/cache-store     cache-store
+                                         ::node-resolver-input input-data
+                                         ::env                 env}}
 
                           cache?
                           (p.cache/cached cache-store env
@@ -226,12 +293,7 @@
                         ::node-error))
         finish      (time/now-ms)]
     (merge-node-stats! env node
-                       {::resolver-run-start-ms  start
-                        ::resolver-run-finish-ms finish
-                        ::node-run-input         input-data
-                        ::node-run-output        (if (::batch-hold result)
-                                                   ::batch-hold
-                                                   result)})
+      (report-resolver-stats env start finish input-shape input-data result))
     result))
 
 (defn run-resolver-node!
@@ -257,24 +319,31 @@
           (merge-resolver-response! env response)
           (run-next-node! env node))))))
 
-(defn priority-sort [{::pcp/keys [graph] :as env} node-ids]
-  (let [nodes-data (->> node-ids
-                        (into []
-                              (comp (map #(-> graph
-                                              (pcp/find-leaf-node (pcp/get-node graph %))
-                                              (assoc ::source-node-path %)))
-                                    (map (fn [{::keys [source-node-path] :as node}]
-                                           (if-let [branches (pcp/node-branches node)]
-                                             (-> graph
-                                                 (pcp/get-node (first (priority-sort env branches)))
-                                                 (assoc ::source-node-path source-node-path))
-                                             node)))
-                                    (keep #(pcp/node-with-resolver-config graph env %)))))]
-    (mapv ::source-node-path (sort-by #(or (::pco/priority %) 0) #(compare %2 %) nodes-data))))
+(defn priority-sort
+  "Sort nodes based on the priority of the node successors. This scans all successors
+  and choose which one has a node with the highest priority number.
+
+  Returns the paths and their highest priority, in order with the highest priority as
+  first. For example:
+
+      [[6 1] [4 2]]
+
+  Means the first path is choosing node-id 6, and highest priority is 1."
+  [{::pcp/keys [graph] :as env} node-ids]
+  (let [paths (mapv
+                (fn [nid]
+                  [nid
+                   (->> (pcp/node-successors graph nid)
+                        (keep #(pcp/node-with-resolver-config graph env {::pcp/node-id %}))
+                        (map #(or (::pco/priority %) 0))
+                        (apply max))])
+                node-ids)]
+    (->> paths
+         (sort-by second #(compare %2 %)))))
 
 (defn default-choose-path [env _or-node node-ids]
   (-> (priority-sort env node-ids)
-      first))
+      ffirst))
 
 (>defn run-or-node!
   [{::pcp/keys [graph]
@@ -286,10 +355,12 @@
 
   (loop [nodes run-or]
     (if (seq nodes)
-      (let [node-id (or (choose-path env or-node nodes)
-                        (do
-                          (println "Path function failed to return a path, picking first option.")
-                          (first nodes)))]
+      (let [picked-node-id (choose-path env or-node nodes)
+            node-id        (if (contains? nodes picked-node-id)
+                             picked-node-id
+                             (do
+                               (println "Path function failed to return a valid path, picking first option.")
+                               (first nodes)))]
         (run-node! env (pcp/get-node graph node-id))
         (if (all-requires-ready? env or-node)
           (merge-node-stats! env or-node {::success-path node-id})
@@ -419,6 +490,9 @@
     ::graph-run-finish-ms (time/now-ms)
     ::node-run-stats (some-> env ::node-run-stats* deref)))
 
+(defn include-meta-stats [result env plan]
+  (vary-meta result assoc ::run-stats (assoc-end-plan-stats env plan)))
+
 (defn mark-batch-errors [e env batch-op batch-items]
   (p.plugin/run-with-plugins env ::wrap-batch-resolver-error
     (fn [_ _ _]) env [batch-op batch-items] e)
@@ -430,12 +504,24 @@
 
   ::node-error)
 
+(defn cache-batch-item
+  [{env'       ::env
+    ::keys     [node-resolver-input]
+    ::pco/keys [cache? cache-store]
+    :as        batch-item}
+   batch-op
+   response]
+  (if cache?
+    (p.cache/cached cache-store env'
+      [batch-op node-resolver-input (pco/params batch-item)]
+      (fn [] response))))
+
 (defn run-batches! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
     (vreset! batches* {})
     (doseq [[batch-op batch-items] batches]
-      (let [inputs    (mapv ::node-run-input batch-items)
+      (let [inputs    (mapv ::node-resolver-input batch-items)
             resolver  (pci/resolver env batch-op)
             batch-env (-> batch-items first ::env
                           (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
@@ -451,38 +537,38 @@
             (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
 
           (doseq [[{env'       ::env
-                    :keys      [::node-run-input]
-                    ::pco/keys [cache? cache-store]
                     ::pcp/keys [node]
                     :as        batch-item} response] (map vector batch-items responses)]
-            (if cache?
-              (p.cache/cached cache-store env'
-                [batch-op node-run-input (pco/params batch-item)]
-                (fn [] response)))
-            (merge-node-stats! env' node {::batch-run-start-ms  start
-                                          ::batch-run-finish-ms finish
-                                          ::node-run-output     response})
+            (cache-batch-item batch-item batch-op response)
+
+            (merge-node-stats! env' node {::batch-run-start-ms   start
+                                          ::batch-run-finish-ms  finish
+                                          ::node-resolver-output response})
+
             (merge-resolver-response! env' response)
             (run-next-node! env' node)
-            (if (seq (::p.path/path env'))
+
+            (when-not (p.path/root? env')
               (p.ent/swap-entity! env assoc-in (::p.path/path env')
                 (-> (p.ent/entity env')
-                    (vary-meta assoc ::run-stats
-                               (assoc-end-plan-stats env' (::pcp/graph env'))))))))))))
+                    (include-meta-stats env' (::pcp/graph env')))))))))))
+
+(defn setup-runner-env [env entity-tree* cache-type]
+  (-> env
+      ; due to recursion those need to be defined only on the first time
+      (coll/merge-defaults {::pcp/plan-cache* (cache-type {})
+                            ::batch-pending*  (cache-type {})
+                            ::resolver-cache* (cache-type {})
+                            ::p.path/path     []})
+      ; these need redefinition at each recursive call
+      (assoc
+        ::graph-run-start-ms (time/now-ms)
+        ::p.ent/entity-tree* entity-tree*
+        ::node-run-stats* (cache-type ^::map-container? {}))))
 
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]
-  (let [env  (-> env
-                 ; due to recursion those need to be defined only on the first time
-                 (coll/merge-defaults {::pcp/plan-cache* (volatile! {})
-                                       ::batch-pending*  (volatile! {})
-                                       ::resolver-cache* (volatile! {})
-                                       ::p.path/path     []})
-                 ; these need redefinition at each recursive call
-                 (assoc
-                   ::graph-run-start-ms (time/now-ms)
-                   ::p.ent/entity-tree* entity-tree*
-                   ::node-run-stats* (volatile! ^::map-container? {})))
+  (let [env  (setup-runner-env env entity-tree* volatile!)
         plan (plan-and-run! env ast-or-graph entity-tree*)]
 
     ; run batches on root path only
@@ -492,7 +578,7 @@
 
     ; return result with run stats in meta
     (-> (p.ent/entity env)
-        (vary-meta assoc ::run-stats (assoc-end-plan-stats env plan)))))
+        (include-meta-stats env plan))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
