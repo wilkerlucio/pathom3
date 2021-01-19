@@ -93,15 +93,13 @@
       (run-graph! env ast cache-tree*))
     m))
 
-(defn coll-append-ahead? [s] (not (or (vector? s) (set? s))))
-
 (defn process-sequence-subquery
   [env ast s]
   (into
     (empty s)
     (map-indexed #(process-map-subquery (p.path/append-path env %) ast %2))
     (cond-> s
-      (coll-append-ahead? s)
+      (coll/coll-append-at-head? s)
       reverse)))
 
 (defn process-map-container-subquery
