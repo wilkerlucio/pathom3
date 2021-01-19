@@ -321,7 +321,17 @@
           (merge-resolver-response! env response)
           (run-next-node! env node))))))
 
-(defn priority-sort [{::pcp/keys [graph] :as env} node-ids]
+(defn priority-sort
+  "Sort nodes based on the priority of the node successors. This scans all successors
+  and choose which one has a node with the highest priority number.
+
+  Returns the paths and their highest priority, in order with the highest priority as
+  first. For example:
+
+      [[6 1] [4 2]]
+
+  Means the first path is choosing node-id 6, and highest priority is 1."
+  [{::pcp/keys [graph] :as env} node-ids]
   (let [paths (mapv
                 (fn [nid]
                   [nid
