@@ -209,13 +209,13 @@
     (p/let [res result]
       (let [finish (time/now-ms)]
         (merge-node-stats! env node
-                           (cond-> {::pcr/resolver-run-start-ms  start
-                                    ::pcr/resolver-run-finish-ms finish}
-                             (not (::pcr/run-stats-omit-resolver-io? env))
-                             (assoc ::pcr/node-resolver-input input-data
-                               ::pcr/node-resolver-output (if (::pcr/batch-hold result)
-                                                            ::pcr/batch-hold
-                                                            result)))))
+          (cond-> {::pcr/resolver-run-start-ms  start
+                   ::pcr/resolver-run-finish-ms finish}
+            (not (::pcr/run-stats-omit-resolver-io? env))
+            (assoc ::pcr/node-resolver-input input-data
+              ::pcr/node-resolver-output (if (::pcr/batch-hold result)
+                                           ::pcr/batch-hold
+                                           result)))))
       res)))
 
 (defn run-resolver-node!

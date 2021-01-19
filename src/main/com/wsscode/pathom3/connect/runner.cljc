@@ -279,19 +279,19 @@
                         ::node-error))
         finish      (time/now-ms)]
     (merge-node-stats! env node
-                       (cond-> {::resolver-run-start-ms      start
-                                ::resolver-run-finish-ms     finish}
-                         (::run-stats-omit-resolver-io? env)
-                         (assoc
-                           ::node-resolver-input-shape  input-shape
-                           ::node-resolver-output-shape (pfsd/data->shape-descriptor result))
+      (cond-> {::resolver-run-start-ms  start
+               ::resolver-run-finish-ms finish}
+        (::run-stats-omit-resolver-io? env)
+        (assoc
+          ::node-resolver-input-shape input-shape
+          ::node-resolver-output-shape (pfsd/data->shape-descriptor result))
 
-                         (not (::run-stats-omit-resolver-io? env))
-                         (assoc
-                           ::node-resolver-input input-data
-                           ::node-resolver-output (if (::batch-hold result)
-                                                    ::batch-hold
-                                                    result))))
+        (not (::run-stats-omit-resolver-io? env))
+        (assoc
+          ::node-resolver-input input-data
+          ::node-resolver-output (if (::batch-hold result)
+                                   ::batch-hold
+                                   result))))
     result))
 
 (defn run-resolver-node!
