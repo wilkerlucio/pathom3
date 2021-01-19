@@ -183,12 +183,12 @@
                                                                     :available input-shape}))
                           (cond
                             batch?
-                            {::pcr/batch-hold {::pco/op-name        op-name
-                                               ::pcp/node           node
-                                               ::pco/cache?         cache?
-                                               ::pco/cache-store    cache-store
-                                               ::pcr/node-run-input input-data
-                                               ::pcr/env            env}}
+                            {::pcr/batch-hold {::pco/op-name             op-name
+                                               ::pcp/node                node
+                                               ::pco/cache?              cache?
+                                               ::pco/cache-store         cache-store
+                                               ::pcr/node-resolver-input input-data
+                                               ::pcr/env                 env}}
 
                             cache?
                             (p.cache/cached cache-store env
@@ -209,12 +209,13 @@
     (p/let [res result]
       (let [finish (time/now-ms)]
         (merge-node-stats! env node
-                           {::pcr/resolver-run-start-ms  start
-                            ::pcr/resolver-run-finish-ms finish
-                            ::pcr/node-run-input         input-data
-                            ::pcr/node-run-output        (if (::pcr/batch-hold res)
-                                                           ::pcr/batch-hold
-                                                           res)}))
+                           (cond-> {::pcr/resolver-run-start-ms  start
+                                    ::pcr/resolver-run-finish-ms finish}
+                             (not (::pcr/run-stats-omit-resolver-io? env))
+                             (assoc ::pcr/node-resolver-input input-data
+                               ::pcr/node-resolver-output (if (::pcr/batch-hold result)
+                                                            ::pcr/batch-hold
+                                                            result)))))
       res)))
 
 (defn run-resolver-node!
@@ -384,7 +385,7 @@
 
     (reduce-async
       (fn [_ [batch-op batch-items]]
-        (p/let [inputs    (mapv ::pcr/node-run-input batch-items)
+        (p/let [inputs    (mapv ::pcr/node-resolver-input batch-items)
                 resolver  (pci/resolver env batch-op)
                 batch-env (-> batch-items first ::pcr/env
                               (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
@@ -402,9 +403,9 @@
                        ::pcp/keys [node]
                        :as        batch-item} response]]
                 (pcr/cache-batch-item batch-item batch-op response)
-                (merge-node-stats! env' node {::pcr/batch-run-start-ms  start
-                                              ::pcr/batch-run-finish-ms finish
-                                              ::pcr/node-run-output     response})
+                (merge-node-stats! env' node {::pcr/batch-run-start-ms   start
+                                              ::pcr/batch-run-finish-ms  finish
+                                              ::pcr/node-resolver-output response})
                 (p/do!
                   (merge-resolver-response! env' response)
                   (run-next-node! env' node)

@@ -89,8 +89,8 @@
       ::pcr/resolver-run-finish-ms
       ::pcr/batch-run-start-ms
       ::pcr/batch-run-finish-ms
-      ::pcr/node-run-input
-      ::pcr/node-run-output
+      ::pcr/node-resolver-input
+      ::pcr/node-resolver-output
       ::pcr/node-error])])
 
 (def stats-index (pci/register stats-registry))

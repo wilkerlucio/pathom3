@@ -35,8 +35,8 @@
 
 (>def ::node-error any?)
 (>def ::node-run-finish-ms number?)
-(>def ::node-run-input map?)
-(>def ::node-run-output map?)
+(>def ::node-resolver-input map?)
+(>def ::node-resolver-output map?)
 (>def ::node-run-start-ms number?)
 
 (>def ::node-run-stats map?)
@@ -49,6 +49,7 @@
 (>def ::resolver-run-finish-ms number?)
 
 (>def ::run-stats map?)
+(>def ::run-stats-omit-resolver-io? boolean?)
 
 (>def ::source-node-id ::pcp/node-id)
 (>def ::success-path ::pcp/node-id)
@@ -258,12 +259,12 @@
                                                              :available input-shape}))
                         (cond
                           batch?
-                          {::batch-hold {::pco/op-name     op-name
-                                         ::pcp/node        node
-                                         ::pco/cache?      cache?
-                                         ::pco/cache-store cache-store
-                                         ::node-run-input  input-data
-                                         ::env             env}}
+                          {::batch-hold {::pco/op-name         op-name
+                                         ::pcp/node            node
+                                         ::pco/cache?          cache?
+                                         ::pco/cache-store     cache-store
+                                         ::node-resolver-input input-data
+                                         ::env                 env}}
 
                           cache?
                           (p.cache/cached cache-store env
@@ -278,12 +279,19 @@
                         ::node-error))
         finish      (time/now-ms)]
     (merge-node-stats! env node
-                       {::resolver-run-start-ms  start
-                        ::resolver-run-finish-ms finish
-                        ::node-run-input         input-data
-                        ::node-run-output        (if (::batch-hold result)
-                                                   ::batch-hold
-                                                   result)})
+                       (cond-> {::resolver-run-start-ms      start
+                                ::resolver-run-finish-ms     finish}
+                         (::run-stats-omit-resolver-io? env)
+                         (assoc
+                           ::node-resolver-input-shape  input-shape
+                           ::node-resolver-output-shape (pfsd/data->shape-descriptor result))
+
+                         (not (::run-stats-omit-resolver-io? env))
+                         (assoc
+                           ::node-resolver-input input-data
+                           ::node-resolver-output (if (::batch-hold result)
+                                                    ::batch-hold
+                                                    result))))
     result))
 
 (defn run-resolver-node!
@@ -487,14 +495,14 @@
 
 (defn cache-batch-item
   [{env'       ::env
-    ::keys     [node-run-input]
+    ::keys     [node-resolver-input]
     ::pco/keys [cache? cache-store]
     :as        batch-item}
    batch-op
    response]
   (if cache?
     (p.cache/cached cache-store env'
-      [batch-op node-run-input (pco/params batch-item)]
+      [batch-op node-resolver-input (pco/params batch-item)]
       (fn [] response))))
 
 (defn run-batches! [env]
@@ -502,7 +510,7 @@
         batches  @batches*]
     (vreset! batches* {})
     (doseq [[batch-op batch-items] batches]
-      (let [inputs    (mapv ::node-run-input batch-items)
+      (let [inputs    (mapv ::node-resolver-input batch-items)
             resolver  (pci/resolver env batch-op)
             batch-env (-> batch-items first ::env
                           (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
@@ -522,9 +530,9 @@
                     :as        batch-item} response] (map vector batch-items responses)]
             (cache-batch-item batch-item batch-op response)
 
-            (merge-node-stats! env' node {::batch-run-start-ms  start
-                                          ::batch-run-finish-ms finish
-                                          ::node-run-output     response})
+            (merge-node-stats! env' node {::batch-run-start-ms   start
+                                          ::batch-run-finish-ms  finish
+                                          ::node-resolver-output response})
 
             (merge-resolver-response! env' response)
             (run-next-node! env' node)
