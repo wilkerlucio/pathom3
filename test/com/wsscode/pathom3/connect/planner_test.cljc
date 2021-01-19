@@ -4191,23 +4191,7 @@
              {::pcp/nodes {1 {::pcp/node-id 1
                               ::pcp/input   {}}}}
              1)
-           1)))
-
-
-
-  (testing "stop on branching"
-    (is (= (pcp/find-dependent-ancestor
-             {::pcp/nodes {1 {::pcp/node-parents #{2}
-                              ::pcp/node-id      1}
-                           2 {::pcp/node-id      2
-                              ::pcp/run-next     1
-                              ::pcp/node-parents #{3}}
-                           3 {::pcp/node-id 3
-                              ::pcp/run-and #{2 4}}
-                           4 {::pcp/node-id      4
-                              ::pcp/node-parents #{3}}}}
-             1)
-           2))))
+           1))))
 
 (deftest find-run-next-descendants-test
   (testing "return the node if that's the latest"

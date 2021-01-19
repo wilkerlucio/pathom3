@@ -812,7 +812,7 @@
           next-sym  (pc-sym next-node)]
       (add-snapshot! graph env {::snapshot-message "Start root branch"
                                 ::branch-type      branch-type
-                                ::highlight-nodes  #{root node-id}
+                                ::highlight-nodes  (into #{} [root node-id])
                                 ::root-node        root-node
                                 ::next-node        next-node})
       (cond
@@ -829,11 +829,11 @@
         (and root-sym
              (= root-sym next-sym))
         (-> (add-snapshot! graph env {::snapshot-message (str "Go Collapsed nodes " node-id " and " root " due to same resolver call.")
-                                      ::highlight-nodes  #{node-id root}})
+                                      ::highlight-nodes  (into #{} [node-id root])})
             (collapse-nodes-branch env node-id root)
             (set-root-node node-id)
             (add-snapshot! env {::snapshot-message (str "Collapsed nodes " node-id " and " root " due to same resolver call.")
-                                ::highlight-nodes  #{node-id root}}))
+                                ::highlight-nodes  (into #{} [node-id root])}))
 
         ; merge ands
         (and (::run-and root-node)
@@ -842,7 +842,7 @@
         (-> (collapse-and-nodes graph node-id root)
             (set-root-node node-id)
             (add-snapshot! env {::snapshot-message (str "Merged AND nodes " node-id " with " root)
-                                ::highlight-nodes  #{node-id root}}))
+                                ::highlight-nodes  (into #{} [node-id root])}))
 
         ; next node is branch type
         (and (get next-node branch-type)
@@ -863,11 +863,11 @@
         :else
         (-> (add-snapshot! graph env {::snapshot-message (str "Star branch node" node-id " and " root)
                                       ::branch-type      branch-type
-                                      ::highlight-nodes  #{node-id root}})
+                                      ::highlight-nodes  (into #{} [node-id root])})
             (create-branch-node env next-node (branch-node-factory))
             (add-snapshot! env {::snapshot-message (str "Created new branch node for " node-id " and " root)
                                 ::branch-type      branch-type
-                                ::highlight-nodes  #{node-id root}}))))
+                                ::highlight-nodes  (into #{} [node-id root])}))))
     graph))
 
 (defn find-nodes-in-between [graph node-id node-id2]
@@ -1401,7 +1401,7 @@
 
           true
           (add-snapshot! env {::snapshot-message (str "Chaining dependencies for " (pc-attr env) ", set node " (::root graph) " to run after node " ancestor)
-                              ::highlight-nodes  #{(::root graph) ancestor}})))
+                              ::highlight-nodes  (into #{} [(::root graph) ancestor])})))
       (set-root-node graph' (::root graph)))))
 
 (defn resolvers-optionals
@@ -1589,15 +1589,8 @@
                            paths)]
         (if (int? fulfilled-at)
           fulfilled-at
-          (throw (ex-info "Failed to find node in which all attributes dependencies are fulfilled"
-                          {::node-id node-id}))))
-      node-id)
-
-    #_(loop [nid node-id]
-        (if-let [run-next-parent (->> (get-node graph nid)
-                                      (node-parent-run-next graph))]
-          (recur run-next-parent)
-          nid))))
+          node-id))
+      node-id)))
 
 (>defn find-run-next-descendants
   "Return descendants by waling the run-next"
@@ -1620,7 +1613,7 @@
   (let [ancestor (find-dependent-ancestor graph node-id)]
     (-> graph
         (add-snapshot! env {::snapshot-message (str "Pushing root to attribute ancestor dependency")
-                            ::highlight-nodes  #{node-id ancestor}
+                            ::highlight-nodes  (into #{} [node-id ancestor])
                             ::highlight-styles {ancestor 1}})
         (set-root-node ancestor))))
 
