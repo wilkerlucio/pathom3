@@ -1577,19 +1577,21 @@
     (if (seq required)
       (let [fulfilled-at (some
                            (fn [path]
-                             (reduce
-                               (fn [missing nid]
-                                 (let [expects (get-node graph nid ::expects)
-                                       remain  (pfsd/difference missing expects)]
-                                   (if (seq remain)
-                                     remain
-                                     (reduced nid))))
-                               required
-                               (rest path)))
+                             (let [red (reduce
+                                         (fn [missing nid]
+                                           (let [expects (get-node graph nid ::expects)
+                                                 remain  (pfsd/difference missing expects)]
+                                             (if (seq remain)
+                                               remain
+                                               (reduced nid))))
+                                         required
+                                         (rest path))]
+                               (if (map? red)
+                                 nil
+                                 red)))
                            paths)]
-        (if (int? fulfilled-at)
-          fulfilled-at
-          node-id))
+        (or fulfilled-at
+            node-id))
       node-id)))
 
 (>defn find-run-next-descendants

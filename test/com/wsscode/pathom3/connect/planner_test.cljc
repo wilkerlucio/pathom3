@@ -4191,7 +4191,29 @@
              {::pcp/nodes {1 {::pcp/node-id 1
                               ::pcp/input   {}}}}
              1)
-           1))))
+           1)))
+
+  (testing "traverse chain"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-id      1
+                              ::pcp/input        {:a {}}
+                              ::pcp/node-parents #{2}}
+                           2 {::pcp/node-id 2
+                              ::pcp/expects {:a {}}}}}
+             1)
+           2)))
+
+  (testing "multiple paths"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-id      1
+                              ::pcp/input        {:a {}}
+                              ::pcp/node-parents #{2 3}}
+                           2 {::pcp/node-id 2
+                              ::pcp/expects {}}
+                           3 {::pcp/node-id 3
+                              ::pcp/expects {:a {}}}}}
+             1)
+           3))))
 
 (deftest find-run-next-descendants-test
   (testing "return the node if that's the latest"
