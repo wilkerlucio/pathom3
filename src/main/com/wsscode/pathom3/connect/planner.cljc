@@ -1567,6 +1567,23 @@
            first)
       node-id))
 
+(defn find-dependent-ancestor*
+  "Traverse path until all required data is fulfilled. Returns node in which the data
+  is done. If it can't fulfill all the data, returns nil."
+  [graph required path]
+  (let [red (reduce
+              (fn [missing nid]
+                (let [expects (get-node graph nid ::expects)
+                      remain  (pfsd/difference missing expects)]
+                  (if (seq remain)
+                    remain
+                    (reduced nid))))
+              required
+              (rest path))]
+    (if (map? red)
+      nil
+      red)))
+
 (defn find-dependent-ancestor
   "For a given node N, find which node is responsible for N dependencies. This is done
   by traversing the parents (but only when its run-next) and find tha latest in the
@@ -1575,21 +1592,7 @@
   (let [paths    (node-ancestors-paths graph node-id)
         required (get-node graph node-id ::input)]
     (if (seq required)
-      (let [fulfilled-at (some
-                           (fn [path]
-                             (let [red (reduce
-                                         (fn [missing nid]
-                                           (let [expects (get-node graph nid ::expects)
-                                                 remain  (pfsd/difference missing expects)]
-                                             (if (seq remain)
-                                               remain
-                                               (reduced nid))))
-                                         required
-                                         (rest path))]
-                               (if (map? red)
-                                 nil
-                                 red)))
-                           paths)]
+      (let [fulfilled-at (some #(find-dependent-ancestor* graph required %) paths)]
         (or fulfilled-at
             node-id))
       node-id)))
