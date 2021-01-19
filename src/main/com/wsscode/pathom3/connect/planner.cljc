@@ -1572,11 +1572,32 @@
   by traversing the parents (but only when its run-next) and find tha latest in the
   chain."
   [graph node-id]
-  (loop [nid node-id]
-    (if-let [run-next-parent (->> (get-node graph nid)
-                                  (node-parent-run-next graph))]
-      (recur run-next-parent)
-      nid)))
+  (let [paths    (node-ancestors-paths graph node-id)
+        required (get-node graph node-id ::input)]
+    (if (seq required)
+      (let [fulfilled-at (some
+                           (fn [path]
+                             (reduce
+                               (fn [missing nid]
+                                 (let [expects (get-node graph nid ::expects)
+                                       remain  (pfsd/difference missing expects)]
+                                   (if (seq remain)
+                                     remain
+                                     (reduced nid))))
+                               required
+                               (rest path)))
+                           paths)]
+        (if (int? fulfilled-at)
+          fulfilled-at
+          (throw (ex-info "Failed to find node in which all attributes dependencies are fulfilled"
+                          {::node-id node-id}))))
+      node-id)
+
+    #_(loop [nid node-id]
+        (if-let [run-next-parent (->> (get-node graph nid)
+                                      (node-parent-run-next graph))]
+          (recur run-next-parent)
+          nid))))
 
 (>defn find-run-next-descendants
   "Return descendants by waling the run-next"
@@ -1595,8 +1616,13 @@
   [::graph ::node => ::node]
   (peek (find-run-next-descendants graph node)))
 
-(defn push-root-to-ancestor [graph node-id]
-  (set-root-node graph (find-dependent-ancestor graph node-id)))
+(defn push-root-to-ancestor [graph env node-id]
+  (let [ancestor (find-dependent-ancestor graph node-id)]
+    (-> graph
+        (add-snapshot! env {::snapshot-message (str "Pushing root to attribute ancestor dependency")
+                            ::highlight-nodes  #{node-id ancestor}
+                            ::highlight-styles {ancestor 1}})
+        (set-root-node ancestor))))
 
 (defn compute-and-unless-root-is-ancestor [{::keys [root] :as graph} env {::keys [node-id]}]
   (if (= node-id (first (find-node-direct-ancestor-chain graph root)))
@@ -1616,7 +1642,7 @@
                               ::snapshot-message (str "Associating previous root to attribute " attribute " on node " node-id)
                               ::highlight-nodes  #{node-id}})
           (merge-node-expects node-id {attribute {}})
-          (push-root-to-ancestor node-id)
+          (push-root-to-ancestor env node-id)
           (compute-and-unless-root-is-ancestor env {::node-id root})
           (add-snapshot! env {::snapshot-event   ::snapshot-reuse-attribute-merged
                               ::snapshot-message (str "Merged attribute " attribute " on node " node-id " with root " root)

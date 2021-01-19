@@ -4186,25 +4186,14 @@
              1)
            1)))
 
-  (testing "run next chain"
+  (testing "no dependencies, return self"
     (is (= (pcp/find-dependent-ancestor
-             {::pcp/nodes {1 {::pcp/node-parents #{2}
-                              ::pcp/node-id      1}
-                           2 {::pcp/run-next 1
-                              ::pcp/node-id  2}}}
+             {::pcp/nodes {1 {::pcp/node-id 1
+                              ::pcp/input   {}}}}
              1)
-           2))
+           1)))
 
-    (is (= (pcp/find-dependent-ancestor
-             {::pcp/nodes {1 {::pcp/node-id      1
-                              ::pcp/node-parents #{2}}
-                           2 {::pcp/node-id      2
-                              ::pcp/run-next     1
-                              ::pcp/node-parents #{3}}
-                           3 {::pcp/node-id  3
-                              ::pcp/run-next 2}}}
-             1)
-           3)))
+
 
   (testing "stop on branching"
     (is (= (pcp/find-dependent-ancestor
