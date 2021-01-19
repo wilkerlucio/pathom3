@@ -206,17 +206,11 @@
                             (p.plugin/run-with-plugins env ::pcr/wrap-resolver-error
                               mark-resolver-error env node error)
                             ::pcr/node-error)))]
-    (p/let [res result]
+    (p/let [result result]
       (let [finish (time/now-ms)]
         (merge-node-stats! env node
-          (cond-> {::pcr/resolver-run-start-ms  start
-                   ::pcr/resolver-run-finish-ms finish}
-            (not (::pcr/run-stats-omit-resolver-io? env))
-            (assoc ::pcr/node-resolver-input input-data
-              ::pcr/node-resolver-output (if (::pcr/batch-hold result)
-                                           ::pcr/batch-hold
-                                           result)))))
-      res)))
+          (pcr/report-resolver-stats env start finish input-shape input-data result)))
+      result)))
 
 (defn run-resolver-node!
   "This function evaluates the resolver associated with the node.

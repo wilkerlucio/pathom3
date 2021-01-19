@@ -794,42 +794,46 @@
     (testing "partial error")))
 
 (deftest run-graph!-run-stats
-  (let [stats (-> (run-graph (pci/register
-                               [(pco/resolver 'a {::pco/output [:a]} (fn [_ _] {:a 1}))
-                                (pco/resolver 'b {::pco/output [:b]
-                                                  ::pco/input  [:a]} (fn [_ _] {:b 2}))])
-                    {}
-                    [:b])
-                  meta ::pcr/run-stats)]
-    (is (= (-> (get-in stats [::pcr/node-run-stats 2])
-               (select-keys [::pcr/node-resolver-input
-                             ::pcr/node-resolver-output]))
-           {::pcr/node-resolver-input  {}
-            ::pcr/node-resolver-output {:a 1}}))
-    (is (= (-> (get-in stats [::pcr/node-run-stats 1])
-               (select-keys [::pcr/node-resolver-input
-                             ::pcr/node-resolver-output]))
-           {::pcr/node-resolver-input  {:a 1}
-            ::pcr/node-resolver-output {:b 2}})))
+  (is (graph-response?
+        (pci/register
+          [(pco/resolver 'a {::pco/output [:a]} (fn [_ _] {:a 1}))
+           (pco/resolver 'b {::pco/output [:b]
+                             ::pco/input  [:a]} (fn [_ _] {:b 2}))])
+        {}
+        [:b]
+        (fn [res]
+          (let [stats (-> res meta ::pcr/run-stats)]
+            (and (= (-> (get-in stats [::pcr/node-run-stats 2])
+                        (select-keys [::pcr/node-resolver-input
+                                      ::pcr/node-resolver-output]))
+                    {::pcr/node-resolver-input  {}
+                     ::pcr/node-resolver-output {:a 1}})
+                 (= (-> (get-in stats [::pcr/node-run-stats 1])
+                        (select-keys [::pcr/node-resolver-input
+                                      ::pcr/node-resolver-output]))
+                    {::pcr/node-resolver-input  {:a 1}
+                     ::pcr/node-resolver-output {:b 2}}))))))
 
-  (let [stats (-> (run-graph (pci/register
-                               {::pcr/run-stats-omit-resolver-io? true}
-                               [(pco/resolver 'a {::pco/output [:a]} (fn [_ _] {:a 1}))
-                                (pco/resolver 'b {::pco/output [:b]
-                                                  ::pco/input  [:a]} (fn [_ _] {:b 2}))])
-                    {}
-                    [:b])
-                  meta ::pcr/run-stats)]
-    (is (= (-> (get-in stats [::pcr/node-run-stats 2])
-               (select-keys [::pcr/node-resolver-input-shape
-                             ::pcr/node-resolver-output-shape]))
-           {::pcr/node-resolver-input-shape  {}
-            ::pcr/node-resolver-output-shape {:a {}}}))
-    (is (= (-> (get-in stats [::pcr/node-run-stats 1])
-               (select-keys [::pcr/node-resolver-input-shape
-                             ::pcr/node-resolver-output-shape]))
-           {::pcr/node-resolver-input-shape  {:a {}}
-            ::pcr/node-resolver-output-shape {:b {}}}))))
+  (is (graph-response?
+        (pci/register
+          {::pcr/run-stats-omit-resolver-io? true}
+          [(pco/resolver 'a {::pco/output [:a]} (fn [_ _] {:a 1}))
+           (pco/resolver 'b {::pco/output [:b]
+                             ::pco/input  [:a]} (fn [_ _] {:b 2}))])
+        {}
+        [:b]
+        (fn [res]
+          (let [stats (-> res meta ::pcr/run-stats)]
+            (and (= (-> (get-in stats [::pcr/node-run-stats 2])
+                        (select-keys [::pcr/node-resolver-input-shape
+                                      ::pcr/node-resolver-output-shape]))
+                    {::pcr/node-resolver-input-shape  {}
+                     ::pcr/node-resolver-output-shape {:a {}}})
+                 (= (-> (get-in stats [::pcr/node-run-stats 1])
+                        (select-keys [::pcr/node-resolver-input-shape
+                                      ::pcr/node-resolver-output-shape]))
+                    {::pcr/node-resolver-input-shape  {:a {}}
+                     ::pcr/node-resolver-output-shape {:b {}}})))))))
 
 (def mock-todos-db
   [{::todo-message "Write demo on params"

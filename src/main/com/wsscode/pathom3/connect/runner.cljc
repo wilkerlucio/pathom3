@@ -232,6 +232,22 @@
         ::resolver-cache*))
     ::resolver-cache*))
 
+(defn report-resolver-stats
+  [{::keys [run-stats-omit-resolver-io?]} start finish input-shape input-data result]
+  (cond-> {::resolver-run-start-ms  start
+           ::resolver-run-finish-ms finish}
+    run-stats-omit-resolver-io?
+    (assoc
+      ::node-resolver-input-shape input-shape
+      ::node-resolver-output-shape (pfsd/data->shape-descriptor result))
+
+    (not run-stats-omit-resolver-io?)
+    (assoc
+      ::node-resolver-input input-data
+      ::node-resolver-output (if (::batch-hold result)
+                               ::batch-hold
+                               result))))
+
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
@@ -279,19 +295,7 @@
                         ::node-error))
         finish      (time/now-ms)]
     (merge-node-stats! env node
-      (cond-> {::resolver-run-start-ms  start
-               ::resolver-run-finish-ms finish}
-        (::run-stats-omit-resolver-io? env)
-        (assoc
-          ::node-resolver-input-shape input-shape
-          ::node-resolver-output-shape (pfsd/data->shape-descriptor result))
-
-        (not (::run-stats-omit-resolver-io? env))
-        (assoc
-          ::node-resolver-input input-data
-          ::node-resolver-output (if (::batch-hold result)
-                                   ::batch-hold
-                                   result))))
+      (report-resolver-stats env start finish input-shape input-data result))
     result))
 
 (defn run-resolver-node!
