@@ -322,22 +322,6 @@
           (run-next-node! env node))))))
 
 (defn priority-sort [{::pcp/keys [graph] :as env} node-ids]
-
-
-  #_(let [nodes-data (->> node-ids
-                          (into []
-                                (comp (map #(-> graph
-                                                (pcp/find-leaf-node (pcp/get-node graph %))
-                                                (assoc ::source-node-id %)))
-                                      (map (fn [{::keys [source-node-id] :as node}]
-                                             (if-let [branches (pcp/node-branches node)]
-                                               (-> graph
-                                                   (pcp/get-node (first (priority-sort env branches)))
-                                                   (assoc ::source-node-id source-node-id))
-                                               node)))
-                                      (keep #(pcp/node-with-resolver-config graph env %)))))]
-      (mapv ::source-node-id (sort-by #(or (::pco/priority %) 0) #(compare %2 %) nodes-data)))
-
   (let [paths (mapv
                 (fn [nid]
                   [nid
