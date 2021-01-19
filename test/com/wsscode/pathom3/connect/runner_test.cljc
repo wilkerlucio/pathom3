@@ -385,6 +385,29 @@
                 {:c     3
                  :value 2})))
 
+        (testing "priority in the middle"
+          (is (graph-response?
+                (pci/register
+                  [(pco/resolver `value
+                     {::pco/input  [:a :b]
+                      ::pco/output [:value]}
+                     (fn [_ _]
+                       {:value 1}))
+                   (pco/resolver `value2
+                     {::pco/input  [:c]
+                      ::pco/output [:value]}
+                     (fn [_ _]
+                       {:value 2}))
+                   (pbir/constantly-resolver :a 1)
+                   (pbir/constantly-resolver :b 2)
+                   (pco/update-config
+                     (pbir/constantly-resolver :c 3)
+                     assoc ::pco/priority 1)])
+                {}
+                [:value]
+                {:c     3
+                 :value 2})))
+
         (testing "leaf is a branch"
           (is (graph-response?
                 (pci/register

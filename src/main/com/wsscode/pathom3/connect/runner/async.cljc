@@ -243,11 +243,13 @@
    or-node
    nodes]
   (if (seq nodes)
-    (p/let [node-id (or (choose-path env or-node nodes)
-                        (do
-                          (println "Path function failed to return a valid path, picking first option.")
-                          (first nodes)))
-            _       (run-node! env (pcp/get-node graph node-id))]
+    (p/let [picked-node-id (choose-path env or-node nodes)
+            node-id        (if (contains? nodes picked-node-id)
+                             picked-node-id
+                             (do
+                               (println "Path function failed to return a valid path, picking first option.")
+                               (first nodes)))
+            _              (run-node! env (pcp/get-node graph node-id))]
       (if (pcr/all-requires-ready? env or-node)
         (merge-node-stats! env or-node {::pcr/success-path node-id})
         (run-or-node!* env or-node (disj nodes node-id))))))

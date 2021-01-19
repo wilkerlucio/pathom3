@@ -322,23 +322,36 @@
           (run-next-node! env node))))))
 
 (defn priority-sort [{::pcp/keys [graph] :as env} node-ids]
-  (let [nodes-data (->> node-ids
-                        (into []
-                              (comp (map #(-> graph
-                                              (pcp/find-leaf-node (pcp/get-node graph %))
-                                              (assoc ::source-node-id %)))
-                                    (map (fn [{::keys [source-node-id] :as node}]
-                                           (if-let [branches (pcp/node-branches node)]
-                                             (-> graph
-                                                 (pcp/get-node (first (priority-sort env branches)))
-                                                 (assoc ::source-node-id source-node-id))
-                                             node)))
-                                    (keep #(pcp/node-with-resolver-config graph env %)))))]
-    (mapv ::source-node-id (sort-by #(or (::pco/priority %) 0) #(compare %2 %) nodes-data))))
+
+
+  #_(let [nodes-data (->> node-ids
+                          (into []
+                                (comp (map #(-> graph
+                                                (pcp/find-leaf-node (pcp/get-node graph %))
+                                                (assoc ::source-node-id %)))
+                                      (map (fn [{::keys [source-node-id] :as node}]
+                                             (if-let [branches (pcp/node-branches node)]
+                                               (-> graph
+                                                   (pcp/get-node (first (priority-sort env branches)))
+                                                   (assoc ::source-node-id source-node-id))
+                                               node)))
+                                      (keep #(pcp/node-with-resolver-config graph env %)))))]
+      (mapv ::source-node-id (sort-by #(or (::pco/priority %) 0) #(compare %2 %) nodes-data)))
+
+  (let [paths (mapv
+                (fn [nid]
+                  [nid
+                   (->> (pcp/node-successors graph nid)
+                        (keep #(pcp/node-with-resolver-config graph env {::pcp/node-id %}))
+                        (map #(or (::pco/priority %) 0))
+                        (apply max))])
+                node-ids)]
+    (->> paths
+         (sort-by second #(compare %2 %)))))
 
 (defn default-choose-path [env _or-node node-ids]
   (-> (priority-sort env node-ids)
-      first))
+      ffirst))
 
 (>defn run-or-node!
   [{::pcp/keys [graph]
@@ -350,10 +363,12 @@
 
   (loop [nodes run-or]
     (if (seq nodes)
-      (let [node-id (or (choose-path env or-node nodes)
-                        (do
-                          (println "Path function failed to return a path, picking first option.")
-                          (first nodes)))]
+      (let [picked-node-id (choose-path env or-node nodes)
+            node-id        (if (contains? nodes picked-node-id)
+                             picked-node-id
+                             (do
+                               (println "Path function failed to return a valid path, picking first option.")
+                               (first nodes)))]
         (run-node! env (pcp/get-node graph node-id))
         (if (all-requires-ready? env or-node)
           (merge-node-stats! env or-node {::success-path node-id})
