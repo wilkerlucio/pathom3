@@ -1637,17 +1637,14 @@
 
     (testing "unless they add something new"
       (is (= (compute-run-graph
-               (-> {::eql/query          [:name :other]
-                    ::pcp/available-data {:id {}}
-                    ::resolvers          [{::pco/op-name 'from-id
-                                           ::pco/input   [:id]
-                                           ::pco/output  [:id :name :other-id]}
-                                          {::pco/op-name 'from-other-id
-                                           ::pco/input   [:other-id]
-                                           ::pco/output  [:other-id2]}
-                                          {::pco/op-name 'from-other-id2
-                                           ::pco/input   [:other-id2]
-                                           ::pco/output  [:id :name :other]}]}))
+               (-> '{::eql/query          [:name :other]
+                     ::pcp/available-data {:id {}}
+                     ::pci/index-oir      {:name      {{:id {}}        #{from-id},
+                                                       {:other-id2 {}} #{from-other-id2}},
+                                           :other-id  {{:id {}} #{from-id}},
+                                           :other-id2 {{:other-id {}} #{from-other-id}},
+                                           :id        {{:other-id2 {}} #{from-other-id2}},
+                                           :other     {{:other-id2 {}} #{from-other-id2}}}}))
              '{::pcp/nodes                 {1 {::pco/op-name          from-id
                                                ::pcp/node-id          1
                                                ::pcp/expects          {:name {} :other-id {}}
@@ -1686,8 +1683,8 @@
               ::eql/query     [:a]})
            {::pcp/nodes             {}
             ::pcp/unreachable-paths {:a {}}
-            ::pcp/index-ast         {:a {:dispatch-key :a
-                                             :key          :a
+            ::pcp/index-ast         {:a {:dispatch-key     :a
+                                         :key              :a
                                              :type         :prop}}}))
 
     (testing "broken chain"
@@ -4213,7 +4210,32 @@
                            3 {::pcp/node-id 3
                               ::pcp/expects {:a {}}}}}
              1)
-           3))))
+           3)))
+
+  (testing "accumulate dependencies"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-id      1
+                              ::pcp/input        {:a {}}
+                              ::pcp/node-parents #{2}}
+                           2 {::pcp/node-id      2
+                              ::pcp/input        {:b {}}
+                              ::pcp/expects      {:a {}}
+                              ::pcp/node-parents #{3}}
+                           3 {::pcp/node-id 3
+                              ::pcp/expects {:b {}}}}}
+             1)
+           3)))
+
+  (testing "get latest when not available"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-id      1
+                              ::pcp/input        {:a {}}
+                              ::pcp/node-parents #{2}}
+                           2 {::pcp/node-id      2
+                              ::pcp/input        {:b {}}
+                              ::pcp/expects      {:a {}}}}}
+             1)
+           2))))
 
 (deftest find-run-next-descendants-test
   (testing "return the node if that's the latest"

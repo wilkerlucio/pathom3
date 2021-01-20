@@ -135,7 +135,7 @@
 (>defn difference
   "Like set/difference, for shapes."
   [s1 s2]
-  [::shape-descriptor ::shape-descriptor => ::shape-descriptor]
+  [(? ::shape-descriptor) (? ::shape-descriptor) => ::shape-descriptor]
   (reduce-kv
     (fn [out k sub]
       (if-let [x (find s2 k)]
