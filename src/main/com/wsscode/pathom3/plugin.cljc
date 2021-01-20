@@ -19,9 +19,9 @@
         (s/coll-of ::plugin-or-plugins)))
 
 (>def ::plugin-actions "Compiled list of actions for a given plugin type"
-  (s/coll-of fn? :kind vector?))
+  (s/map-of keyword? (s/coll-of fn? :kind vector?)))
 
-(>def ::plugin-order (s/coll-of ::id :kind vector?))
+(>def ::plugin-order (s/coll-of ::plugin :kind vector?))
 
 (defn compile-extensions
   "Given a function and a list of extension wrappers, call then in order to create

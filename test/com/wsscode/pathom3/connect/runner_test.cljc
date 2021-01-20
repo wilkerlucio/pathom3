@@ -12,7 +12,9 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.interface.smart-map :as psm]
     [com.wsscode.pathom3.path :as p.path]
+    [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
+    [com.wsscode.promesa.macros :refer [clet]]
     [edn-query-language.core :as eql]
     [promesa.core :as p]))
 
@@ -1246,3 +1248,26 @@
                     ::pcrs/attribute-error)
                 {::pcr/node-error       error
                  ::pcrs/node-error-type ::pcrs/node-error-type-direct}))))))
+
+(defn set-done [k]
+  (fn [process]
+    (fn [env ast-or-graph entity-tree*]
+      (clet [res (process env ast-or-graph entity-tree*)]
+        (assoc res k true)))))
+
+(deftest plugin-extensions-tests
+  (testing "wrap graph execution"
+    (is (graph-response? (p.plugin/register
+                           [{::p.plugin/id         'wrap
+                             ::pcr/wrap-run-graph! (set-done :done?)}])
+          {:foo {:bar "baz"}}
+          [{:foo [:bar]}]
+          {:foo {:bar "baz", :done? true}, :done? true})))
+
+  (testing "wrap graph root execution"
+    (is (graph-response? (p.plugin/register
+                           [{::p.plugin/id              'wrap
+                             ::pcr/wrap-root-run-graph! (set-done :done?)}])
+          {:foo {:bar "baz"}}
+          [{:foo [:bar]}]
+          {:foo {:bar "baz"}, :done? true}))))

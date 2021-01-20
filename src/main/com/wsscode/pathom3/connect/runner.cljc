@@ -580,6 +580,16 @@
     (-> (p.ent/entity env)
         (include-meta-stats env plan))))
 
+(defn run-graph-with-plugins [env ast-or-graph entity-tree* impl!]
+  (if (p.path/root? env)
+    (p.plugin/run-with-plugins env ::wrap-root-run-graph!
+      (fn [e a t]
+        (p.plugin/run-with-plugins env ::wrap-run-graph!
+          impl! e a t))
+      env ast-or-graph entity-tree*)
+    (p.plugin/run-with-plugins env ::wrap-run-graph!
+      impl! env ast-or-graph entity-tree*)))
+
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
   and the entity-tree*."
@@ -587,8 +597,7 @@
   [(s/keys) (s/or :ast :edn-query-language.ast/node
                   :graph ::pcp/graph) ::p.ent/entity-tree*
    => (s/keys)]
-  (p.plugin/run-with-plugins env ::wrap-run-graph!
-    run-graph-impl! env ast-or-graph entity-tree*))
+  (run-graph-with-plugins env ast-or-graph entity-tree* run-graph-impl!))
 
 (>defn with-resolver-cache
   ([env] [map? => map?] (with-resolver-cache env (atom {})))

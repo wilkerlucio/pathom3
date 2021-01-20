@@ -439,5 +439,4 @@
   [(s/keys) (s/or :ast :edn-query-language.ast/node
                   :graph ::pcp/graph) ::p.ent/entity-tree*
    => p/promise?]
-  (p.plugin/run-with-plugins env ::pcr/wrap-run-graph!
-    run-graph-impl! env ast-or-graph entity-tree*))
+  (pcr/run-graph-with-plugins (assoc env ::async-runner? true) ast-or-graph entity-tree* run-graph-impl!))
