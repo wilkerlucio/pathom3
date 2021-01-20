@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
@@ -41,8 +42,11 @@
   For more options around processing check the docs on the connect runner."
   ([env tx]
    [(s/keys) ::eql/query => p/promise?]
-   (process-ast env (eql/query->ast tx)))
+   (process-ast (assoc env ::pcr/root-query tx) (eql/query->ast tx)))
   ([env entity tx]
    [(s/keys) map? ::eql/query => p/promise?]
    (assert (map? entity) "Entity data must be a map.")
-   (process-ast (p.ent/with-entity env entity) (eql/query->ast tx))))
+   (process-ast (-> env
+                    (assoc ::pcr/root-query tx)
+                    (p.ent/with-entity entity))
+                (eql/query->ast tx))))

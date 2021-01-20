@@ -54,6 +54,8 @@
 (>def ::source-node-id ::pcp/node-id)
 (>def ::success-path ::pcp/node-id)
 
+(>def ::root-query vector?)
+
 (>def ::wrap-batch-resolver-error fn?)
 (>def ::wrap-merge-attribute fn?)
 (>def ::wrap-mutate fn?)

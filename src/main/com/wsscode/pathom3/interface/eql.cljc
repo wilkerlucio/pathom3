@@ -40,8 +40,11 @@
   For more options around processing check the docs on the connect runner."
   ([env tx]
    [(s/keys) ::eql/query => map?]
-   (process-ast env (eql/query->ast tx)))
+   (process-ast (assoc env ::pcr/root-query tx) (eql/query->ast tx)))
   ([env entity tx]
    [(s/keys) map? ::eql/query => map?]
    (assert (map? entity) "Entity data must be a map.")
-   (process-ast (p.ent/with-entity env entity) (eql/query->ast tx))))
+   (process-ast (-> env
+                    (assoc ::pcr/root-query tx)
+                    (p.ent/with-entity entity))
+                (eql/query->ast tx))))
