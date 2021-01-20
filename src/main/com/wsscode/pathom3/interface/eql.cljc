@@ -5,15 +5,20 @@
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
+    [com.wsscode.pathom3.plugin :as p.plugin]
     [edn-query-language.core :as eql]))
 
-(>defn process-ast
-  [env ast]
-  [(s/keys) :edn-query-language.ast/node => map?]
+(defn process-ast* [env ast]
   (let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
         result    (pcr/run-graph! env ast ent-tree*)]
     (as-> result <>
       (pf.eql/map-select-ast env <> ast))))
+
+(>defn process-ast
+  [env ast]
+  [(s/keys) :edn-query-language.ast/node => map?]
+  (p.plugin/run-with-plugins env ::wrap-process-ast
+    process-ast* env ast))
 
 (>defn process
   "Evaluate EQL expression.

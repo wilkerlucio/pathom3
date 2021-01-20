@@ -6,16 +6,22 @@
     [com.wsscode.pathom3.connect.runner.async :as pcra]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
+    [com.wsscode.pathom3.interface.eql :as p.eql]
+    [com.wsscode.pathom3.plugin :as p.plugin]
     [edn-query-language.core :as eql]
     [promesa.core :as p]))
 
-(>defn process-ast
-  [env ast]
-  [(s/keys) :edn-query-language.ast/node => p/promise?]
+(defn process-ast* [env ast]
   (p/let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
           result    (pcra/run-graph! env ast ent-tree*)]
     (as-> result <>
       (pf.eql/map-select-ast env <> ast))))
+
+(>defn process-ast
+  [env ast]
+  [(s/keys) :edn-query-language.ast/node => p/promise?]
+  (p.plugin/run-with-plugins env ::p.eql/wrap-process-ast
+    process-ast* env ast))
 
 (>defn process
   "Evaluate EQL expression using async runner.
