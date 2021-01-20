@@ -422,15 +422,14 @@
           plan (plan-and-run! env ast-or-graph entity-tree*)]
 
     ; run batches on root path only
-    (p/do!
-      (when (p.path/root? env)
-        (p/loop [_ (p/resolved nil)]
-          (when (seq @(::pcr/batch-pending* env))
-            (p/recur (run-batches! env)))))
+    (when (p.path/root? env)
+      (p/loop [_ (p/resolved nil)]
+        (when (seq @(::pcr/batch-pending* env))
+          (p/recur (run-batches! env)))))
 
-      ; return result with run stats in meta
-      (-> (p.ent/entity env)
-          (pcr/include-meta-stats env plan)))))
+    ; return result with run stats in meta
+    (-> (p.ent/entity env)
+        (pcr/include-meta-stats env plan))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
