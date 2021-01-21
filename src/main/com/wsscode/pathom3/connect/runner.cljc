@@ -52,7 +52,7 @@
 (>def ::run-stats-omit-resolver-io? boolean?)
 
 (>def ::source-node-id ::pcp/node-id)
-(>def ::attempted-paths ::pcp/node-id-set)
+(>def ::taken-paths ::pcp/node-id-set)
 (>def ::success-path ::pcp/node-id)
 
 (>def ::root-query vector?)
@@ -213,7 +213,7 @@
    {::pcp/keys [node-id]}
    data]
   (if node-run-stats*
-    (vswap! node-run-stats* update node-id merge data)))
+    (refs/gswap! node-run-stats* update node-id merge data)))
 
 (defn mark-resolver-error
   [{::keys [node-run-stats*]}
@@ -221,8 +221,8 @@
    error]
   (if node-run-stats*
     (doto node-run-stats*
-      (vswap! assoc-in [node-id ::node-error] error)
-      (vswap! update ::nodes-with-error coll/sconj node-id))))
+      (refs/gswap! assoc-in [node-id ::node-error] error)
+      (refs/gswap! update ::nodes-with-error coll/sconj node-id))))
 
 (defn choose-cache-store [env cache-store]
   (if cache-store
@@ -313,8 +313,8 @@
       (cond
         batch-hold
         (let [batch-pending (::batch-pending* env)]
-          (vswap! batch-pending update (::pco/op-name batch-hold) coll/vconj
-                  batch-hold)
+          (refs/gswap! batch-pending update (::pco/op-name batch-hold) coll/vconj
+                       batch-hold)
           nil)
 
         (not (refs/kw-identical? ::node-error response))
@@ -348,6 +348,10 @@
   (-> (priority-sort env node-ids)
       ffirst))
 
+(defn add-taken-path!
+  [{::keys [node-run-stats*]} {::pcp/keys [node-id]} taken-path-id]
+  (refs/gswap! node-run-stats* update-in [node-id ::taken-paths] coll/sconj taken-path-id))
+
 (>defn run-or-node!
   [{::pcp/keys [graph]
     ::keys     [choose-path]
@@ -364,7 +368,7 @@
                              (do
                                (println "Path function failed to return a valid path, picking first option.")
                                (first nodes)))]
-        (vswap! (::node-run-stats* env) update-in [(::pcp/node-id or-node) ::attempted-paths] coll/sconj node-id)
+        (add-taken-path! env or-node node-id)
         (run-node! env (pcp/get-node graph node-id))
         (if (all-requires-ready? env or-node)
           (merge-node-stats! env or-node {::success-path node-id})

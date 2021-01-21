@@ -143,22 +143,6 @@
   (if run-next
     (run-node! env (pcp/get-node graph run-next))))
 
-(defn merge-node-stats!
-  [{::pcr/keys [node-run-stats*]}
-   {::pcp/keys [node-id]}
-   data]
-  (if node-run-stats*
-    (swap! node-run-stats* update node-id merge data)))
-
-(defn mark-resolver-error
-  [{::pcr/keys [node-run-stats*]}
-   {::pcp/keys [node-id]}
-   error]
-  (if node-run-stats*
-    (doto node-run-stats*
-      (swap! assoc-in [node-id ::pcr/node-error] error)
-      (swap! update ::pcr/nodes-with-error coll/sconj node-id))))
-
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
@@ -206,11 +190,11 @@
                         (p/catch
                           (fn [error]
                             (p.plugin/run-with-plugins env ::pcr/wrap-resolver-error
-                              mark-resolver-error env node error)
+                              pcr/mark-resolver-error env node error)
                             ::pcr/node-error)))]
     (p/let [result result]
       (let [finish (time/now-ms)]
-        (merge-node-stats! env node
+        (pcr/merge-node-stats! env node
           (pcr/report-resolver-stats env start finish input-shape input-data result)))
       result)))
 
@@ -228,8 +212,8 @@
       (cond
         batch-hold
         (let [batch-pending (::pcr/batch-pending* env)]
-          (swap! batch-pending update (::pco/op-name batch-hold) coll/vconj
-            batch-hold)
+          (refs/gswap! batch-pending update (::pco/op-name batch-hold) coll/vconj
+                       batch-hold)
           nil)
 
         (not (refs/kw-identical? ::pcr/node-error response))
@@ -251,21 +235,21 @@
                              (do
                                (println "Path function failed to return a valid path, picking first option.")
                                (first nodes)))
-            _              (swap! (::pcr/node-run-stats* env) update-in [(::pcp/node-id or-node) ::pcr/attempted-paths] coll/sconj node-id)
+            _              (pcr/add-taken-path! env or-node node-id)
             _              (run-node! env (pcp/get-node graph node-id))]
       (if (pcr/all-requires-ready? env or-node)
-        (merge-node-stats! env or-node {::pcr/success-path node-id})
+        (pcr/merge-node-stats! env or-node {::pcr/success-path node-id})
         (run-or-node!* env or-node (disj nodes node-id))))))
 
 (>defn run-or-node!
   [env {::pcp/keys [run-or] :as or-node}]
   [(s/keys :req [::pcp/graph]) ::pcp/node => p/promise?]
   (p/do!
-    (merge-node-stats! env or-node {::pcr/node-run-start-ms (time/now-ms)})
+    (pcr/merge-node-stats! env or-node {::pcr/node-run-start-ms (time/now-ms)})
 
     (run-or-node!* env or-node run-or)
 
-    (merge-node-stats! env or-node {::pcr/node-run-finish-ms (time/now-ms)})
+    (pcr/merge-node-stats! env or-node {::pcr/node-run-finish-ms (time/now-ms)})
     (run-next-node! env or-node)))
 
 (>defn run-and-node!
@@ -273,7 +257,7 @@
   [{::pcp/keys [graph] :as env} {::pcp/keys [run-and] :as and-node}]
   [(s/keys :req [::pcp/graph]) ::pcp/node => p/promise?]
   (p/do!
-    (merge-node-stats! env and-node {::pcr/node-run-start-ms (time/now-ms)})
+    (pcr/merge-node-stats! env and-node {::pcr/node-run-start-ms (time/now-ms)})
 
     (reduce-async
       (fn [_ node-id]
@@ -281,7 +265,7 @@
       nil
       run-and)
 
-    (merge-node-stats! env and-node {::pcr/node-run-finish-ms (time/now-ms)})
+    (pcr/merge-node-stats! env and-node {::pcr/node-run-finish-ms (time/now-ms)})
 
     (run-next-node! env and-node)))
 
@@ -402,9 +386,9 @@
                        ::pcp/keys [node]
                        :as        batch-item} response]]
                 (pcr/cache-batch-item batch-item batch-op response)
-                (merge-node-stats! env' node {::pcr/batch-run-start-ms   start
-                                              ::pcr/batch-run-finish-ms  finish
-                                              ::pcr/node-resolver-output response})
+                (pcr/merge-node-stats! env' node {::pcr/batch-run-start-ms   start
+                                                  ::pcr/batch-run-finish-ms  finish
+                                                  ::pcr/node-resolver-output response})
                 (p/do!
                   (merge-resolver-response! env' response)
                   (run-next-node! env' node)

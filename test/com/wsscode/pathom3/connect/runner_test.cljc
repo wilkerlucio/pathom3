@@ -345,8 +345,8 @@
             [:value]
             (fn [res]
               (mcs/match?
-                {::pcr/attempted-paths #{1}
-                 ::pcr/success-path    1}
+                {::pcr/taken-paths  #{1}
+                 ::pcr/success-path 1}
                 (-> res meta ::pcr/run-stats ::pcr/node-run-stats (get 3)))))))
 
     (testing "standard priority"
