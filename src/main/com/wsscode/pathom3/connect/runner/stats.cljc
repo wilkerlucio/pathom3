@@ -93,7 +93,9 @@
       ::pcr/node-resolver-input-shape
       ::pcr/node-resolver-output
       ::pcr/node-resolver-output-shape
-      ::pcr/node-error])])
+      ::pcr/node-error
+      ::pcr/attempted-paths
+      ::pcr/success-path])])
 
 (def stats-index (pci/register stats-registry))
 

@@ -52,6 +52,7 @@
 (>def ::run-stats-omit-resolver-io? boolean?)
 
 (>def ::source-node-id ::pcp/node-id)
+(>def ::attempted-paths ::pcp/node-id-set)
 (>def ::success-path ::pcp/node-id)
 
 (>def ::root-query vector?)
@@ -363,6 +364,7 @@
                              (do
                                (println "Path function failed to return a valid path, picking first option.")
                                (first nodes)))]
+        (vswap! (::node-run-stats* env) update-in [(::pcp/node-id or-node) ::attempted-paths] coll/sconj node-id)
         (run-node! env (pcp/get-node graph node-id))
         (if (all-requires-ready? env or-node)
           (merge-node-stats! env or-node {::success-path node-id})

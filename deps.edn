@@ -20,6 +20,9 @@
   :graph-render
   {:extra-deps {macroz/tangle {:mvn/version "0.2.1"}}}
 
+  :test-deps
+  {:extra-deps {nubank/matcher-combinators {:mvn/version "3.1.4"}}}
+
   :test
   {:extra-paths ["test"]
    :extra-deps  {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"

@@ -251,6 +251,7 @@
                              (do
                                (println "Path function failed to return a valid path, picking first option.")
                                (first nodes)))
+            _              (swap! (::pcr/node-run-stats* env) update-in [(::pcp/node-id or-node) ::pcr/attempted-paths] coll/sconj node-id)
             _              (run-node! env (pcp/get-node graph node-id))]
       (if (pcr/all-requires-ready? env or-node)
         (merge-node-stats! env or-node {::pcr/success-path node-id})

@@ -16,6 +16,8 @@
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
     [com.wsscode.promesa.macros :refer [clet]]
     [edn-query-language.core :as eql]
+    [matcher-combinators.standalone :as mcs]
+    [matcher-combinators.test]
     [promesa.core :as p]))
 
 (deftest all-requires-ready?-test
@@ -328,6 +330,24 @@
             {}
             [:value]
             {:value 2})))
+
+    (testing "stats"
+      (is (graph-response?
+            (pci/register [(pco/resolver `value
+                             {::pco/output [:value]}
+                             (fn [_ _]
+                               {:value 1}))
+                           (pco/resolver `value2
+                             {::pco/output [:value]}
+                             (fn [_ _]
+                               {:value 2}))])
+            {}
+            [:value]
+            (fn [res]
+              (mcs/match?
+                {::pcr/attempted-paths #{1}
+                 ::pcr/success-path    1}
+                (-> res meta ::pcr/run-stats ::pcr/node-run-stats (get 3)))))))
 
     (testing "standard priority"
       (is (graph-response?
