@@ -458,6 +458,21 @@
                 {:a "b2"
                  :b 2})))))))
 
+(deftest run-graph!-and-test
+  (testing "stats"
+    (is (graph-response?
+          (pci/register [(pco/resolver `value
+                           {::pco/output [:value]}
+                           (fn [_ _]
+                             {:value 1}))
+                         (pco/resolver `value2
+                           {::pco/output [:value2]}
+                           (fn [_ _]
+                             {:value2 2}))])
+          {}
+          [:value :value2]
+          {:value 1 :value2 2}))))
+
 (deftest run-graph!-unions-test
   (is (graph-response?
         (pci/register
