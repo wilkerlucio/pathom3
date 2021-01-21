@@ -26,6 +26,7 @@
     ::keys-mode-reachable})
 
 (>def ::wrap-nested? boolean?)
+(>def ::smart-map? boolean?)
 
 (>defn with-error-mode
   "This configures what happens when some error occur during the Pathom process to
@@ -189,6 +190,7 @@
 ; region type definition
 
 #?(:cljs
+   #_{:clj-kondo/ignore [:private-call]}
    (deftype SmartMapEntry [env key]
      Object
      (indexOf [coll x]
@@ -201,14 +203,14 @@
                   (-lastIndexOf coll x start))
 
      IMapEntry
-     (-key [node] key)
-     (-val [node] (sm-get env key))
+     (-key [_node] key)
+     (-val [_node] (sm-get env key))
 
      IEquiv
      (-equiv [coll other] (equiv-sequential coll other))
 
      IMeta
-     (-meta [node] nil)
+     (-meta [_node] nil)
 
      IWithMeta
      (-with-meta [node meta]
@@ -217,13 +219,13 @@
      IStack
      (-peek [node] (-val node))
 
-     (-pop [node] [key])
+     (-pop [_node] [key])
 
      ICollection
-     (-conj [node o] [key val o])
+     (-conj [_node o] [key val o])
 
      IEmptyableCollection
-     (-empty [node] nil)
+     (-empty [_node] nil)
 
      ISequential
      ISeqable
@@ -233,7 +235,7 @@
      (-rseq [node] (IndexedSeq. #js [(-val node) key] 0 nil))
 
      ICounted
-     (-count [node] 2)
+     (-count [_node] 2)
 
      IIndexed
      (-nth [node n]
@@ -253,7 +255,7 @@
      IAssociative
      (-assoc [node k v]
              (assoc [key (-val node)] k v))
-     (-contains-key? [node k]
+     (-contains-key? [_node k]
                      (or (== k 0) (== k 1)))
 
      IFind
@@ -293,6 +295,7 @@
      (entryAt [_ k] (sm-find env k)))
 
    :cljs
+   #_{:clj-kondo/ignore [:private-call]}
    (deftype SmartMap [env]
      Object
      (toString [_] (pr-str* (p.ent/entity env)))
@@ -365,7 +368,7 @@
                  (reduce-kv (fn [cur k v] (f cur k (wrap-smart-map env v))) init (p.ent/entity env)))
 
      IIterable
-     (-iterator [this]
+     (-iterator [_this]
                 (transformer-iterator (map #(SmartMapEntry. env %))
                                       (-iterator (sm-keys env)) false))
 
@@ -509,9 +512,10 @@
     map? => ::smart-map]
    (->SmartMap
      (-> env
+         (assoc ::smart-map? true)
          (coll/merge-defaults
-           (cond-> {:com.wsscode.pathom3.connect.planner/plan-cache* (volatile! {})}
+           (cond-> {:com.wsscode.pathom3.connect.planner/plan-cache* (atom {})}
              persistent-cache?
-             (assoc ::pcr/resolver-cache* (volatile! {}))))
+             (assoc ::pcr/resolver-cache* (atom {}))))
          (p.ent/with-entity context)
          (assoc ::source-context context)))))
