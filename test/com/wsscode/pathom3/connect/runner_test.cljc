@@ -107,6 +107,7 @@
 
 (defn graph-response? [env tree query expected]
   (if (fn? expected)
+    #_{:clj-kondo/ignore [:single-logical-operand]}
     (and (expected (run-graph env tree query))
          #?(:clj (let [res @(run-graph-async env tree query)]
                    ;(println res)
