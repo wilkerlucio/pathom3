@@ -266,7 +266,19 @@
                         {::pco/output [{::x [::z]}]}
                         (fn [_ _]))])]
       (is (= (pci/reachable-paths register {})
-             {::x {::y {} ::z {}}}))))
+             {::x {::y {} ::z {}}})))
+
+    (is (= (pci/reachable-paths
+             (pci/register
+               [(pco/resolver 'x
+                  {::pco/output [::x]}
+                  (fn [_ _]))
+                (pco/resolver 'yz
+                  {::pco/input  [::x]
+                   ::pco/output [{::y [::z]}]}
+                  (fn [_ _]))])
+             {})
+           {::x {} ::y {::z {}}})))
 
   (testing "multi dependency"
     (is (= (pci/reachable-paths
