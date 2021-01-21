@@ -315,6 +315,42 @@
             (reachable-attributes-for-groups* env (attrs-multi-deps env new-attrs) new-attrs)))
         attrs))))
 
+(defn reachable-paths*
+  [{::keys [index-io] :as env} queue paths]
+  (if (seq queue)
+    (let [[[attr sub] & rest] queue
+          attrs (update paths attr pfsd/merge-shapes sub)]
+      (recur env
+        (into rest (remove #(contains? attrs %)) (-> index-io (get #{attr})))
+        attrs))
+    paths))
+
+(defn reachable-paths-for-groups*
+  [{::keys [index-io]} groups attributes]
+  (->> (reduce
+         (fn [group attr]
+           (pfsd/merge-shapes group (get index-io attr)))
+         {}
+         (filterv #(every? (fn [x] (contains? attributes x)) %) groups))
+       (coll/remove-keys #(contains? attributes %))))
+
+(>defn reachable-paths
+  "Discover which paths are available, given an index and a data context.
+
+  Also includes the attributes from available-data."
+  [{::keys [index-io] :as env} available-data]
+  [(s/keys) ::pfsd/shape-descriptor
+   => ::pfsd/shape-descriptor]
+  (let [queue (pfsd/merge-shapes (get index-io #{}) available-data)]
+    (loop [paths         (reachable-paths* env queue {})
+           group-reaches (reachable-paths-for-groups* env (attrs-multi-deps env (keys paths)) paths)]
+      (if (seq group-reaches)
+        (let [new-attrs (reachable-paths* env group-reaches paths)]
+          (recur
+            new-attrs
+            (reachable-paths-for-groups* env (attrs-multi-deps env (keys new-attrs)) new-attrs)))
+        paths))))
+
 (>defn attribute-reachable?
   "Discover which attributes are available, given an index and a data context."
   [env available-data attr]

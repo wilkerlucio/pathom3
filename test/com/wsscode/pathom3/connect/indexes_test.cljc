@@ -31,18 +31,18 @@
                                   ::pco/output   [:c]
                                   ::pco/provides {:c {}}
                                   ::pco/requires {:a {} :b {}}})
-           '{#{:b :a} #:com.wsscode.pathom3.connect.indexes{:attr-id #{:b :a},
+           '{#{:b :a} #:com.wsscode.pathom3.connect.indexes{:attr-id       #{:b :a},
                                                             :attr-provides {:c #{x}},
                                                             :attr-input-in #{x}},
-             :b #:com.wsscode.pathom3.connect.indexes{:attr-id :b,
-                                                      :attr-combinations #{#{:b :a}},
-                                                      :attr-input-in #{x}},
-             :a #:com.wsscode.pathom3.connect.indexes{:attr-id :a,
-                                                      :attr-combinations #{#{:b :a}},
-                                                      :attr-input-in #{x}},
-             :c #:com.wsscode.pathom3.connect.indexes{:attr-id :c,
-                                                      :attr-reach-via {#{:b :a} #{x}},
-                                                      :attr-output-in #{x}}}))))
+             :b       #:com.wsscode.pathom3.connect.indexes{:attr-id           :b,
+                                                            :attr-combinations #{#{:b :a}},
+                                                            :attr-input-in     #{x}},
+             :a       #:com.wsscode.pathom3.connect.indexes{:attr-id           :a,
+                                                            :attr-combinations #{#{:b :a}},
+                                                            :attr-input-in     #{x}},
+             :c       #:com.wsscode.pathom3.connect.indexes{:attr-id        :c,
+                                                            :attr-reach-via {#{:b :a} #{x}},
+                                                            :attr-output-in #{x}}}))))
 
 (deftest register-test
   (testing "resolver"
@@ -79,7 +79,13 @@
                    (fn [_ _]))
                  (pci/register)
                  ::pci/index-oir)
-             {:total-score {{:users {:score {}}} #{'r}}}))))
+             {:total-score {{:users {:score {}}} #{'r}}})))
+
+    (testing "nested outputs"
+      (is (= (-> (pco/resolver 'r {::pco/output [{:item [:detail]}]} (fn [_ _]))
+                 (pci/register)
+                 ::pci/index-io)
+             {#{} {:item {:detail {}}}}))))
 
   (testing "mutation"
     (let [mutation (pco/mutation 'm {::pco/output [:foo]
@@ -184,13 +190,14 @@
              #{::x ::y}))))
 
   (testing "multi dependency"
-    (let [register (pci/register (pco/resolver 'xyz
-                                   {::pco/input  [::x ::y]
-                                    ::pco/output [::z]}
-                                   (fn [_ _])))]
-      (is (= (pci/reachable-attributes register {::x {}
-                                                 ::y {}})
-             #{::x ::y ::z})))
+    (is (= (pci/reachable-attributes
+             (pci/register (pco/resolver 'xyz
+                             {::pco/input  [::x ::y]
+                              ::pco/output [::z]}
+                             (fn [_ _])))
+             {::x {}
+              ::y {}})
+           #{::x ::y ::z}))
 
     (testing "no go"
       (let [register (pci/register (pco/resolver 'xyz
@@ -224,6 +231,85 @@
         (is (= (pci/reachable-attributes register {::x {}
                                                    ::y {}})
                #{::x ::y ::z ::a ::c}))))))
+
+(deftest reachable-paths-test
+  (testing "all blanks"
+    (is (= (pci/reachable-paths {} {})
+           {})))
+
+  (testing "context data is always in"
+    (is (= (pci/reachable-paths {} {::x {}})
+           {::x {}})))
+
+  (testing "globals"
+    (let [register (pci/register (pbir/constantly-resolver ::x {}))]
+      (is (= (pci/reachable-paths register {})
+             {::x {}}))))
+
+  (testing "single dependency"
+    (let [register (pci/register (pbir/single-attr-resolver ::x ::y inc))]
+      (is (= (pci/reachable-paths register {::x {}})
+             {::x {} ::y {}}))))
+
+  (testing "nested dependencies"
+    (let [register (pci/register (pco/resolver 'xy
+                                   {::pco/output [{::x [::y]}]}
+                                   (fn [_ _])))]
+      (is (= (pci/reachable-paths register {})
+             {::x {::y {}}})))
+
+    (let [register (pci/register
+                     [(pco/resolver 'xy
+                        {::pco/output [{::x [::y]}]}
+                        (fn [_ _]))
+                      (pco/resolver 'xz
+                        {::pco/output [{::x [::z]}]}
+                        (fn [_ _]))])]
+      (is (= (pci/reachable-paths register {})
+             {::x {::y {} ::z {}}}))))
+
+  (testing "multi dependency"
+    (is (= (pci/reachable-paths
+             (pci/register (pco/resolver 'xyz
+                             {::pco/input  [::x ::y]
+                              ::pco/output [::z]}
+                             (fn [_ _])))
+             {::x {}
+              ::y {}})
+           {::x {} ::y {} ::z {}}))
+
+    (testing "no go"
+      (let [register (pci/register (pco/resolver 'xyz
+                                     {::pco/input  [::x ::y]
+                                      ::pco/output [::z]}
+                                     (fn [_ _])))]
+        (is (= (pci/reachable-paths register {::x {}})
+               {::x {}}))))
+
+    (testing "extended dependency"
+      (let [register (pci/register
+                       [(pco/resolver 'xyz
+                          {::pco/input  [::x ::y]
+                           ::pco/output [::z]}
+                          (fn [_ _]))
+                        (pbir/alias-resolver ::z ::a)])]
+        (is (= (pci/reachable-paths register {::x {}
+                                              ::y {}})
+               {::x {} ::y {} ::z {} ::a {}})))
+
+      (let [register (pci/register
+                       [(pco/resolver 'xyz
+                          {::pco/input  [::x ::y]
+                           ::pco/output [::z]}
+                          (fn [_ _]))
+                        (pbir/alias-resolver ::z ::a)
+                        (pco/resolver 'axc
+                          {::pco/input  [::a ::x]
+                           ::pco/output [::c]}
+                          (fn [_ _]))])]
+        (is (= (pci/reachable-paths register {::x {}
+                                              ::y {}})
+               {::x {} ::y {} ::z {} ::a {} ::c {}}))))))
 
 (deftest attribute-reachable?-test
   (let [register (pci/register
