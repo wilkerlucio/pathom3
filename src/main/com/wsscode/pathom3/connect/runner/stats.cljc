@@ -102,3 +102,6 @@
 (defn run-stats-env [stats]
   (-> stats
       (pci/register stats-index)))
+
+(defn get-attribute-error [smart-stats attr]
+  (get (assoc smart-stats ::p.attr/attribute attr) ::attribute-error))
