@@ -12,6 +12,7 @@
 (declare map-select-ast)
 
 (>def ::prop->ast (s/map-of any? :edn-query-language.ast/node))
+(>def ::map-select-include ::p.attr/attributes-set)
 
 (defn query-root-properties
   "Returns a vector with the properties at the root of the query.
@@ -129,9 +130,14 @@
       children
       (keys source))))
 
+(defn include-extra-attrs [children attrs]
+  (into children (map (fn [k] {:type         :prop
+                               :key          k
+                               :dispatch-key k})) attrs))
+
 (>defn map-select-ast
   "Same as map-select, but using AST as source."
-  [env source ast]
+  [{::keys [map-select-include] :as env} source ast]
   [map? any? (s/keys :opt-un [:edn-query-language.ast/children])
    => any?]
   (if (coll/native-map? source)
@@ -141,6 +147,9 @@
             (-> ast
                 (pick-union-entry source)
                 :children
+                (cond->
+                  map-select-include
+                  (include-extra-attrs map-select-include))
                 (cond->>
                   (ast-contains-wildcard? ast)
                   (extend-ast-with-wildcard source)))))
