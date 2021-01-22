@@ -160,6 +160,10 @@
    (apply (compile-env-extensions env plugin-type f) a1 a2 a3 a4 a5 a6 a7 a8 args)))
 
 #?(:clj
-   (defmacro defplugin [id options]
-     (let [fqsym (macros/full-symbol id (str *ns*))]
-       `(def ~id (merge {::id '~fqsym} ~options)))))
+   (defmacro defplugin
+     ([id doc options]
+      (let [fqsym (macros/full-symbol id (str *ns*))]
+        `(def ~id ~doc (merge {::id '~fqsym} ~options))))
+     ([id options]
+      (let [fqsym (macros/full-symbol id (str *ns*))]
+        `(def ~id (merge {::id '~fqsym} ~options))))))

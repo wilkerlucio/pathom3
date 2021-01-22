@@ -8,6 +8,7 @@
    (fn [op] (fn [x] (conj (op (conj x :e1)) :x1)))})
 
 (p.plugin/defplugin op-plugin2
+  "With some docs"
   {::wrap-operation
    (fn [op] (fn [x] (conj (op (conj x :e2)) :x2)))})
 
