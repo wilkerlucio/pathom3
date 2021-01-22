@@ -5,6 +5,7 @@
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.misc.time :as time]
+    [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.cache :as p.cache]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
@@ -15,6 +16,8 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]))
+
+(>def ::attribute-errors (s/map-of ::p.attr/attribute any?))
 
 (>def ::batch-error? boolean?)
 (>def ::batch-hold (s/keys))
