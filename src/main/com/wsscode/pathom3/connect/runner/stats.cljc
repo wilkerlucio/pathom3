@@ -89,6 +89,8 @@
       ::pcr/resolver-run-finish-ms
       ::pcr/batch-run-start-ms
       ::pcr/batch-run-finish-ms
+      ::pcr/node-run-start-ms
+      ::pcr/node-run-finish-ms
       ::pcr/node-resolver-input
       ::pcr/node-resolver-input-shape
       ::pcr/node-resolver-output

@@ -19,28 +19,33 @@
 
 (>def ::attribute-errors (s/map-of ::p.attr/attribute any?))
 
+(>def ::choose-path fn?)
+
 (>def ::batch-error? boolean?)
 (>def ::batch-hold (s/keys))
 (>def ::batch-pending* any?)
 (>def ::batch-run-finish-ms number?)
 (>def ::batch-run-start-ms number?)
 
-(>def ::compute-plan-run-finish-ms number?)
+(>def ::compute-plan-run-duration-ms number?)
 (>def ::compute-plan-run-start-ms number?)
+(>def ::compute-plan-run-finish-ms number?)
 
 (>def ::env map?)
 
-(>def ::graph-run-finish-ms number?)
+(>def ::graph-run-duration-ms number?)
 (>def ::graph-run-start-ms number?)
+(>def ::graph-run-finish-ms number?)
 
 (>def ::map-container? boolean?)
 (>def ::merge-attribute fn?)
 
 (>def ::node-error any?)
+(>def ::node-run-duration-ms number?)
+(>def ::node-run-start-ms number?)
 (>def ::node-run-finish-ms number?)
 (>def ::node-resolver-input map?)
 (>def ::node-resolver-output map?)
-(>def ::node-run-start-ms number?)
 
 (>def ::node-run-stats map?)
 (>def ::node-run-stats* any?)
@@ -48,6 +53,7 @@
 (>def ::nodes-with-error ::pcp/node-id-set)
 
 (>def ::resolver-cache* any?)
+(>def ::resolver-run-duration-ms number?)
 (>def ::resolver-run-start-ms number?)
 (>def ::resolver-run-finish-ms number?)
 
