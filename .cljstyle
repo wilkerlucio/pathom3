@@ -15,6 +15,7 @@
                          compute-run-graph*                 [[:inner 0]]
                          cond->                             [[:inner 0]]
                          conj                               [[:inner 0]]
+                         clet                               [[:inner 0]]
                          defrecord                          [[:inner 0]]
                          merge-node-stats!                  [[:inner 0]]
                          pcr/merge-node-stats!              [[:inner 0]]
