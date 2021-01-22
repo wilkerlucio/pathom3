@@ -307,7 +307,8 @@
   [env node]
   (if (all-requires-ready? env node)
     (run-next-node! env node)
-    (let [{::keys [batch-hold] :as response}
+    (let [_ (merge-node-stats! env node {::node-run-start-ms (time/now-ms)})
+          {::keys [batch-hold] :as response}
           (p.plugin/run-with-plugins env ::wrap-resolve
             invoke-resolver-from-node env node)]
       (cond
@@ -320,6 +321,7 @@
         (not (refs/kw-identical? ::node-error response))
         (do
           (merge-resolver-response! env response)
+          (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
           (run-next-node! env node))))))
 
 (defn priority-sort

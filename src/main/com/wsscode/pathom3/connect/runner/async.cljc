@@ -206,7 +206,8 @@
   [env node]
   (if (pcr/all-requires-ready? env node)
     (run-next-node! env node)
-    (p/let [{::pcr/keys [batch-hold] :as response}
+    (p/let [_ (pcr/merge-node-stats! env node {::pcr/node-run-start-ms (time/now-ms)})
+            {::pcr/keys [batch-hold] :as response}
             (p.plugin/run-with-plugins env ::pcr/wrap-resolve
               invoke-resolver-from-node env node)]
       (cond
@@ -217,9 +218,10 @@
           nil)
 
         (not (refs/kw-identical? ::pcr/node-error response))
-        (p/let [_    (merge-resolver-response! env response)
-                next (run-next-node! env node)]
-          next)))))
+        (p/do!
+          (merge-resolver-response! env response)
+          (pcr/merge-node-stats! env node {::pcr/node-run-finish-ms (time/now-ms)})
+          (run-next-node! env node))))))
 
 (defn run-or-node!*
   [{::pcp/keys [graph]
