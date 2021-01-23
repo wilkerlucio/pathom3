@@ -7,9 +7,9 @@
 
 (deftest merge-oir-test
   (is (= (pci/merge-oir
-           '{:a {#{} #{r}}}
-           '{:a {#{} #{r2}}})
-         '{:a {#{} #{r r2}}})))
+           '{:a {{} #{r}}}
+           '{:a {{} #{r2}}})
+         '{:a {{} #{r r2}}})))
 
 (deftest resolver-config-test
   (let [resolver (pco/resolver 'r {::pco/output [:foo]}
@@ -127,6 +127,29 @@
                                       :foo2 {{} #{'r2}}}
               ::pci/index-io         {#{} {:foo  {}
                                            :foo2 {}}}}))))
+
+  (testing "indexes meta"
+    (let [r1 (pco/resolver 'r {::pco/output [:foo]}
+               (fn [_ _] {:foo 42}))
+          r2 (pco/resolver 'r2 {::pco/output [:foo2]}
+               (fn [_ _] {:foo2 "val"}))]
+      (let [idx (pci/register r1)]
+        (is (= (-> idx ::pci/index-resolvers meta)
+               {:com.wsscode.pathom3.connect.runner/map-container?
+                true}))
+
+        (is (= (-> idx ::pci/index-attributes meta)
+               {:com.wsscode.pathom3.connect.runner/map-container?
+                true})))
+
+      (let [idx (pci/register [r1 r2])]
+        (is (= (-> idx ::pci/index-resolvers meta)
+               {:com.wsscode.pathom3.connect.runner/map-container?
+                true}))
+
+        (is (= (-> idx ::pci/index-attributes meta)
+               {:com.wsscode.pathom3.connect.runner/map-container?
+                true})))))
 
   (testing "adding indexes together"
     (let [r1       (pco/resolver 'r {::pco/output [:foo]}

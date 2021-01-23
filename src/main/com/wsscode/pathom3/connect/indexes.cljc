@@ -96,7 +96,7 @@
         op-group      #{op-name}
         attr-provides (zipmap provides (repeat op-group))
         input-count   (count input)]
-    (as-> {} <>
+    (as-> ^:com.wsscode.pathom3.connect.runner/map-container? {} <>
       ; inputs
       (reduce
         (fn [idx in-attr]
@@ -162,7 +162,7 @@
      (assert (nil? (com.wsscode.pathom3.connect.indexes/resolver indexes op-name))
        (str "Tried to register duplicated resolver: " op-name))
      (merge-indexes indexes
-       {::index-resolvers  {op-name resolver}
+       {::index-resolvers  ^:com.wsscode.pathom3.connect.runner/map-container? {op-name resolver}
         ::index-attributes (index-attributes op-config)
         ::index-io         {input' (pfsd/query->shape-descriptor output)}
         ::index-oir        (reduce (fn [indexes out-attr]
