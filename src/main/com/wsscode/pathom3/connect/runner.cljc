@@ -24,6 +24,7 @@
 (>def ::batch-error? boolean?)
 (>def ::batch-hold (s/keys))
 (>def ::batch-pending* any?)
+(>def ::batch-run-duration-ms number?)
 (>def ::batch-run-finish-ms number?)
 (>def ::batch-run-start-ms number?)
 
