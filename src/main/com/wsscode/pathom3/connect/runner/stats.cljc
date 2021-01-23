@@ -1,11 +1,16 @@
 (ns com.wsscode.pathom3.connect.runner.stats
   (:require
+    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]))
+
+(>def ::process-run-start-ms number?)
+(>def ::process-run-finish-ms number?)
+(>def ::process-run-duration-ms number?)
 
 ; region performance
 
@@ -67,6 +72,9 @@
    overhead-duration
    overhead-pct
    attribute-error
+   (pbir/alias-resolver ::pcr/compute-plan-run-start-ms ::process-run-start-ms)
+   (pbir/alias-resolver ::pcr/graph-run-finish-ms ::process-run-finish-ms)
+   (duration-resolver ::process-run)
    (duration-resolver ::pcr/node-run)
    (duration-resolver ::pcr/resolver-run)
    (duration-resolver ::pcr/batch-run)
@@ -89,6 +97,7 @@
       ::pcr/resolver-run-finish-ms
       ::pcr/batch-run-start-ms
       ::pcr/batch-run-finish-ms
+      ::pcp/nested-process
       ::pcr/node-run-start-ms
       ::pcr/node-run-finish-ms
       ::pcr/node-resolver-input
