@@ -336,7 +336,12 @@
         (do
           (merge-resolver-response! env response)
           (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
-          (run-next-node! env node))))))
+          (run-next-node! env node))
+
+        :else
+        (do
+          (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
+          nil)))))
 
 (defn priority-sort
   "Sort nodes based on the priority of the node successors. This scans all successors

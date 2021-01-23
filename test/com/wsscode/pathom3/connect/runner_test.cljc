@@ -934,6 +934,23 @@
                     {::pcr/node-resolver-input-shape  {:a {}}
                      ::pcr/node-resolver-output-shape {:b {}}}))))))
 
+  (testing "error"
+    (is (graph-response?
+          (pci/register
+            [(pco/resolver 'a {::pco/output [:x]}
+               (fn [_ _] (throw (ex-info "Err" {}))))])
+          {}
+          [:x]
+          #(mcs/match?
+             {::pcr/node-run-stats {1 {::pcr/node-run-start-ms      number?
+                                       ::pcr/node-run-finish-ms     number?
+                                       ::pcr/resolver-run-start-ms  number?
+                                       ::pcr/resolver-run-finish-ms number?
+                                       ::pcr/node-resolver-output   any?
+                                       ::pcr/node-resolver-input    map?
+                                       ::pcr/node-error             any?}}}
+             (-> % meta ::pcr/run-stats)))))
+
   (testing "batch"
     (is (graph-response?
           (pci/register
