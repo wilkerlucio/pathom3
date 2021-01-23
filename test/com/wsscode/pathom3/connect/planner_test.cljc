@@ -1797,9 +1797,9 @@
                  {::pci/index-oir      '{}
                   ::eql/query          [{:a [:bar]}]
                   ::pcp/available-data {:a {}}})
-               {::pcp/nodes                    {}
-                ::pcp/nested-available-process #{:a}
-                ::pcp/index-ast                {:a {:children     [{:dispatch-key :bar
+               {::pcp/nodes          {}
+                ::pcp/nested-process #{:a}
+                ::pcp/index-ast      {:a {:children     [{:dispatch-key :bar
                                                                     :key          :bar
                                                                     :type         :prop}]
                                                     :dispatch-key :a
@@ -1811,9 +1811,9 @@
                  {::pci/index-oir      '{}
                   ::eql/query          [:a {:b '...}]
                   ::pcp/available-data {:a {} :b {}}})
-               {::pcp/nodes                    {}
-                ::pcp/nested-available-process #{:b}
-                ::pcp/index-ast                {:a {:type         :prop,
+               {::pcp/nodes          {}
+                ::pcp/nested-process #{:b}
+                ::pcp/index-ast      {:a {:type         :prop,
                                                     :dispatch-key :a,
                                                     :key          :a},
                                                 :b {:type         :join,
@@ -2286,16 +2286,16 @@
                                          {::pco/op-name user
                                           ::pco/input   [:user/id]
                                           ::pco/output  [:user/score]}]}))
-           '#:com.wsscode.pathom3.connect.planner{:nodes                    {1 {:com.wsscode.pathom3.connect.operation/op-name        scores-sum,
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name        scores-sum,
                                                                                 :com.wsscode.pathom3.connect.planner/node-id          1,
                                                                                 :com.wsscode.pathom3.connect.planner/expects          {:scores-sum {}},
                                                                                 :com.wsscode.pathom3.connect.planner/input            {:users #:user{:score {}}}
                                                                                 :com.wsscode.pathom3.connect.planner/source-for-attrs #{:scores-sum}}},
-                                                  :index-resolver->nodes    {scores-sum #{1}},
-                                                  :nested-available-process #{:users}
-                                                  :index-attrs              {:scores-sum 1}
-                                                  :root                     1
-                                                  :index-ast                {:scores-sum {:type         :prop,
+                                                  :index-resolver->nodes {scores-sum #{1}},
+                                                  :nested-process        #{:users}
+                                                  :index-attrs           {:scores-sum 1}
+                                                  :root                  1
+                                                  :index-ast             {:scores-sum {:type         :prop,
                                                                                           :dispatch-key :scores-sum,
                                                                                           :key          :scores-sum}
                                                                              :users      {:type         :join
@@ -2319,7 +2319,7 @@
                                          {::pco/op-name user
                                           ::pco/input   [:user/id]
                                           ::pco/output  [:user/score]}]}))
-           '#:com.wsscode.pathom3.connect.planner{:nodes                    {1 {:com.wsscode.pathom3.connect.operation/op-name        scores-sum,
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name        scores-sum,
                                                                                 :com.wsscode.pathom3.connect.planner/node-id          1,
                                                                                 :com.wsscode.pathom3.connect.planner/expects          {:scores-sum {}},
                                                                                 :com.wsscode.pathom3.connect.planner/input            {:users #:user{:score {}},
@@ -2332,10 +2332,10 @@
                                                                                 :com.wsscode.pathom3.connect.planner/input            {},
                                                                                 :com.wsscode.pathom3.connect.planner/source-for-attrs #{:other},
                                                                                 :com.wsscode.pathom3.connect.planner/run-next         1}},
-                                                  :index-resolver->nodes    {scores-sum #{1},
+                                                  :index-resolver->nodes {scores-sum #{1},
                                                                              other      #{2}},
-                                                  :nested-available-process #{:users}
-                                                  :index-ast                {:scores-sum {:type         :prop,
+                                                  :nested-process        #{:users}
+                                                  :index-ast             {:scores-sum {:type         :prop,
                                                                                           :dispatch-key :scores-sum,
                                                                                           :key          :scores-sum}
                                                                              :users      {:type         :join
@@ -2344,8 +2344,8 @@
                                                                                           :children     [{:type         :prop
                                                                                                           :key          :user/score
                                                                                                           :dispatch-key :user/score}]}},
-                                                  :index-attrs              {:other 2, :scores-sum 1},
-                                                  :root                     2})))
+                                                  :index-attrs           {:other 2, :scores-sum 1},
+                                                  :root                  2})))
 
   (testing "data completely available, skip dependency"
     (is (= (compute-run-graph
@@ -2504,7 +2504,7 @@
                                  ::pco/input   [:name]
                                  ::pco/output  [{:children [:name]}]}]
                   ::pcp/available-data {:name {}}}))
-           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name nested-input-recursive,
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name nested-input-recursive,
                                                              :com.wsscode.pathom3.connect.planner/node-id 1,
                                                              :com.wsscode.pathom3.connect.planner/expects {:names {}},
                                                              :com.wsscode.pathom3.connect.planner/input {:name {},
@@ -2517,7 +2517,7 @@
                                                              :com.wsscode.pathom3.connect.planner/input {:name {}},
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:children},
                                                              :com.wsscode.pathom3.connect.planner/run-next 1}},
-                                                  :index-ast {:names {:type :prop,
+                                                  :index-ast             {:names {:type :prop,
                                                                       :dispatch-key :names,
                                                                       :key :names},
                                                               :children {:type :join,
@@ -2526,9 +2526,9 @@
                                                                          :query ...}},
                                                   :index-resolver->nodes {nested-input-recursive #{1},
                                                                           from-name #{2}},
-                                                  :index-attrs {:children 2, :names 1},
-                                                  :nested-available-process #{:children},
-                                                  :root 2}))))
+                                                  :index-attrs           {:children 2, :names 1},
+                                                  :nested-process        #{:children},
+                                                  :root                  2}))))
 
 (deftest compute-run-graph-optional-inputs-test
   (testing "plan continues when optional thing is missing"

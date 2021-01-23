@@ -325,7 +325,7 @@
       (process-mutations! env)
 
       ; compute nested available fields
-      (if-let [nested (::pcp/nested-available-process graph)]
+      (if-let [nested (::pcp/nested-process graph)]
         (merge-resolver-response! env (select-keys (p.ent/entity env) nested)))
 
       ; process idents

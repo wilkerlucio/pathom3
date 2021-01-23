@@ -158,7 +158,7 @@
   "Index to find the AST for a given property."
   ::pf.eql/prop->ast)
 
-(>def ::nested-available-process
+(>def ::nested-process
   "Which attributes need further processing due to sub-query requirements."
   ::p.attr/attributes-set)
 
@@ -1674,7 +1674,7 @@
   need to have the subquery processing done."
   [graph {:keys [key children query]}]
   (if (or children query)
-    (update graph ::nested-available-process coll/sconj key)
+    (update graph ::nested-process coll/sconj key)
     graph))
 
 (defn add-ident-process [graph {:keys [key]}]
