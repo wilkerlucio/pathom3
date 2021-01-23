@@ -16,6 +16,7 @@
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
     [com.wsscode.promesa.macros :refer [clet]]
     [edn-query-language.core :as eql]
+    [matcher-combinators.matchers :as m]
     [matcher-combinators.standalone :as mcs]
     [matcher-combinators.test]
     [promesa.core :as p]))
@@ -931,7 +932,49 @@
                         (select-keys [::pcr/node-resolver-input-shape
                                       ::pcr/node-resolver-output-shape]))
                     {::pcr/node-resolver-input-shape  {:a {}}
-                     ::pcr/node-resolver-output-shape {:b {}}})))))))
+                     ::pcr/node-resolver-output-shape {:b {}}}))))))
+
+  (testing "batch"
+    (is (graph-response?
+          (pci/register
+            [(pco/resolver 'a {::pco/input  [:id]
+                               ::pco/output [:x]
+                               ::pco/batch? true}
+               (fn [_ items] (mapv #(array-map :x (inc (:id %))) items)))])
+          {:items [{:id 1} {:id 2}]}
+          [{:items [:x]}]
+          #(mcs/match?
+             {::pcr/node-run-stats {1 {::pcr/node-run-start-ms      number?
+                                       ::pcr/node-run-finish-ms     number?
+                                       ::pcr/resolver-run-start-ms  number?
+                                       ::pcr/resolver-run-finish-ms number?
+                                       ::pcr/node-resolver-output   any?
+                                       ::pcr/node-resolver-input    map?
+                                       ::pcr/batch-run-start-ms     number?
+                                       ::pcr/batch-run-finish-ms    number?}}}
+             (-> % :items first meta ::pcr/run-stats))))
+
+    (is (graph-response?
+          (pci/register
+            {::pcr/run-stats-omit-resolver-io? true}
+            [(pco/resolver 'a {::pco/input  [:id]
+                               ::pco/output [:x]
+                               ::pco/batch? true}
+               (fn [_ items] (mapv #(array-map :x (inc (:id %))) items)))])
+          {:items [{:id 1} {:id 2}]}
+          [{:items [:x]}]
+          #(mcs/match?
+             {::pcr/node-run-stats {1 {::pcr/node-run-start-ms          number?
+                                       ::pcr/node-run-finish-ms         number?
+                                       ::pcr/resolver-run-start-ms      number?
+                                       ::pcr/resolver-run-finish-ms     number?
+                                       ::pcr/node-resolver-output       m/absent
+                                       ::pcr/node-resolver-input        m/absent
+                                       ::pcr/node-resolver-output-shape any?
+                                       ::pcr/node-resolver-input-shape  map?
+                                       ::pcr/batch-run-start-ms         number?
+                                       ::pcr/batch-run-finish-ms        number?}}}
+             (-> % :items first meta ::pcr/run-stats))))))
 
 (def mock-todos-db
   [{::todo-message "Write demo on params"

@@ -188,7 +188,10 @@
     (p/let [result result]
       (let [finish (time/now-ms)]
         (pcr/merge-node-stats! env node
-          (pcr/report-resolver-stats env start finish input-shape input-data result)))
+          (cond-> {::pcr/resolver-run-start-ms  start
+                   ::pcr/resolver-run-finish-ms finish}
+            (not (::pcr/batch-hold result))
+            (merge (pcr/report-resolver-io-stats env input-data result)))))
       result)))
 
 (defn run-resolver-node!
@@ -379,13 +382,16 @@
             (reduce-async
               (fn [_ [{env'       ::pcr/env
                        ::pcp/keys [node]
+                       ::pcr/keys [node-resolver-input]
                        :as        batch-item} response]]
                 (pcr/cache-batch-item batch-item batch-op response)
-                (pcr/merge-node-stats! env' node {::pcr/batch-run-start-ms   start
-                                                  ::pcr/batch-run-finish-ms  finish
-                                                  ::pcr/node-resolver-output response})
+                (pcr/merge-node-stats! env' node
+                  (merge {::pcr/batch-run-start-ms  start
+                          ::pcr/batch-run-finish-ms finish}
+                         (pcr/report-resolver-io-stats env' node-resolver-input response)))
                 (p/do!
                   (merge-resolver-response! env' response)
+                  (pcr/merge-node-stats! env' node {::pcr/node-run-finish-ms (time/now-ms)})
                   (run-next-node! env' node)
                   (when-not (p.path/root? env')
                     (p.ent/swap-entity! env assoc-in (::p.path/path env')
