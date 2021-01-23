@@ -140,7 +140,7 @@
   mentioned by the resolver input. This is important to ensure that the resolver is
   not using some key that came accidentally due to execution order, that would lead to
   brittle executions."
-  [env
+  [{::pcr/keys [resolver-cache*] :as env}
    {::pco/keys [op-name]
     ::pcp/keys [input]
     :as        node}]
@@ -159,12 +159,14 @@
                                                                     :available input-shape}))
                           (cond
                             batch?
-                            {::pcr/batch-hold {::pco/op-name             op-name
-                                               ::pcp/node                node
-                                               ::pco/cache?              cache?
-                                               ::pco/cache-store         cache-store
-                                               ::pcr/node-resolver-input input-data
-                                               ::pcr/env                 env}}
+                            (if-let [x (find @resolver-cache* [op-name input-data params])]
+                              (val x)
+                              {::pcr/batch-hold {::pco/op-name             op-name
+                                                 ::pcp/node                node
+                                                 ::pco/cache?              cache?
+                                                 ::pco/cache-store         cache-store
+                                                 ::pcr/node-resolver-input input-data
+                                                 ::pcr/env                 env}})
 
                             cache?
                             (p.cache/cached cache-store env

@@ -836,6 +836,24 @@
                   {:items [{:id 3, :v 30} {:id 4, :v 40}]}
                   {:items [{:id 5, :v 50} {:id 6, :v 60}]}]})))
 
+  (testing "cache"
+    (is (graph-response?
+          (pci/register
+            {::pcr/resolver-cache*
+             (volatile!
+               {[`batch-fetch {:id 1} {}] {:v 100}
+                [`batch-fetch {:id 3} {}] {:v 300}})}
+            [batch-fetch])
+          {:list
+           [{:id 1}
+            {:id 2}
+            {:id 3}]}
+          [{:list [:v]}]
+          {:list
+           [{:id 1 :v 100}
+            {:id 2 :v 20}
+            {:id 3 :v 300}]})))
+
   (testing "errors"
     (let [res (run-graph
                 (pci/register
