@@ -450,6 +450,11 @@
   [::smart-map map? => ::smart-map]
   (smart-map (sm-env sm) new-context))
 
+(defn sm-entity
+  "Return the source cached entity for the smart map"
+  [sm]
+  (-> sm sm-env p.ent/entity))
+
 (>defn sm-assoc!
   "Assoc on the smart map in place, this function mutates the current cache and return
   the same instance of smart map.
