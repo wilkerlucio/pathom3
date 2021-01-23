@@ -64,16 +64,6 @@
     (empty m)
     m))
 
-(defn process-map-container?
-  "Check if the map should be processed as a map-container, this means the sub-query
-  should apply to the map values instead of the map itself.
-
-  This can be dictated by adding the ::pcr/map-container? meta data on the value, or
-  requested by the query as part of the param."
-  [ast v]
-  (or (-> v meta ::pcr/map-container?)
-      (-> ast :params ::pcr/map-container?)))
-
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
     :as        env} entity k v]
@@ -84,7 +74,7 @@
     (if children
       (cond
         (map? v)
-        (if (process-map-container? ast v)
+        (if (pcr/process-map-container? ast v)
           (process-map-container-subquery env ast v)
           (process-map-subquery env ast v))
 
