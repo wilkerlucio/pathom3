@@ -1,6 +1,7 @@
 (ns com.wsscode.promesa.macros
-  (:require
-    #?(:clj [promesa.core :as p]))
+  #?(:clj
+     (:require
+       [promesa.core :as p]))
   #?(:cljs
      (:require-macros
        [com.wsscode.promesa.macros])))
