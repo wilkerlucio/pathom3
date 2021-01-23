@@ -114,6 +114,10 @@
   "Vector containing nodes ids to run in a AND branch."
   ::node-id-set)
 
+(>def ::run-or
+  "Vector containing nodes ids to run in a AND branch."
+  ::node-id-set)
+
 (>def ::run-next
   "A node-id that points to the next node to run."
   ::node-id)
@@ -121,10 +125,6 @@
 (>def ::run-next-trail
   "A set containing node ids already in consideration when computing dependencies."
   (s/coll-of ::node-id :kind set?))
-
-(>def ::run-or
-  "Vector containing nodes ids to run in a AND branch."
-  ::node-id-set)
 
 (>def ::source-for-attrs
   "Set of attributes that are provided by this node."
@@ -395,7 +395,7 @@
 (defn compute-node-depth
   "Calculate depth of node-id, this returns a graph in which that node has
   the key ::node-depth associated in the node. The depth is calculated by
-  following the ::after-nodes chain, in the process all the parent node depths
+  following the ::node-parents chain, in the process all the parent node depths
   are also calculated and set, this makes it efficient to scan the list calculating
   the depths, given each node will be visited at max once."
   [graph node-id]
@@ -464,19 +464,19 @@
       (some #(if (= node-sym (get-in graph [::nodes % pc-sym])) %)
         (get-in graph [::nodes root branch-type])))))
 
-(defn add-after-node [graph node-id after-node-id]
-  (assert after-node-id "Tried to add after node with nil value")
-  (update-node graph node-id ::node-parents coll/sconj after-node-id))
+(defn add-node-parent [graph node-id node-parent-id]
+  (assert node-parent-id "Tried to add after node with nil value")
+  (update-node graph node-id ::node-parents coll/sconj node-parent-id))
 
-(defn set-after-node [graph node-id after-node-id]
-  (assert after-node-id "Tried to set after node with nil value")
-  (assoc-node graph node-id ::node-parents #{after-node-id}))
+(defn set-node-parents [graph node-id node-parent-id]
+  (assert node-parent-id "Tried to set after node with nil value")
+  (assoc-node graph node-id ::node-parents #{node-parent-id}))
 
-(defn remove-after-node [graph node-id after-node-id]
+(defn remove-node-parent [graph node-id node-parent-id]
   (let [node         (get-node graph node-id)
-        after-nodes' (disj (::node-parents node #{}) after-node-id)]
-    (if (seq after-nodes')
-      (assoc-node graph node-id ::node-parents after-nodes')
+        node-parents' (disj (::node-parents node #{}) node-parent-id)]
+    (if (seq node-parents')
+      (assoc-node graph node-id ::node-parents node-parents')
       (if node
         (update-in graph [::nodes node-id] dissoc ::node-parents)
         graph))))
@@ -498,12 +498,12 @@
     (update-in graph [::nodes node-id] dissoc ::run-next)))
 
 (defn set-node-run-next
-  "Set the node run next value and add the after-node counter part. Noop if target
+  "Set the node run next value and add the node-parent counter part. Noop if target
   and run next are the same node."
   [graph target-node-id run-next]
   (let [{target-run-next ::run-next} (get-node graph target-node-id)
         graph (if target-run-next
-                (remove-after-node graph target-run-next target-node-id)
+                (remove-node-parent graph target-run-next target-node-id)
                 graph)]
     (cond
       (not run-next)
@@ -512,7 +512,7 @@
       (and run-next (not= target-node-id run-next))
       (-> graph
           (set-node-run-next* target-node-id run-next)
-          (add-after-node run-next target-node-id))
+          (add-node-parent run-next target-node-id))
 
       :else
       graph)))
@@ -529,14 +529,14 @@
 
       (set-node-run-next graph target-node-id run-next))))
 
-(defn remove-branch-node-after-nodes
-  "When node-id is a branch node, remove all after-nodes associated from its children."
+(defn remove-branch-node-parents
+  "When node-id is a branch node, remove all node-parents associated from its children."
   [graph node-id]
   (let [node (get-node graph node-id)]
     (if-let [branches (node-branches node)]
       (reduce
         (fn [g n-id]
-          (remove-after-node g n-id node-id))
+          (remove-node-parent g n-id node-id))
         graph
         branches)
       graph)))
@@ -573,8 +573,8 @@
         (cond->
           (pc-sym node)
           (update-in [::index-resolver->nodes (pc-sym node)] disj node-id))
-        (remove-branch-node-after-nodes node-id)
-        (remove-after-node run-next node-id)
+        (remove-branch-node-parents node-id)
+        (remove-node-parent run-next node-id)
         (remove-from-parent-branches node)
         (update ::nodes dissoc node-id))))
 
@@ -669,7 +669,7 @@
             source-for-attrs)))
     graph))
 
-(defn transfer-node-after-nodes
+(defn transfer-node-parents
   "Set the run next for each after node to be target-node-id."
   [graph target-node-id {::keys [node-parents]}]
   (if (seq node-parents)
@@ -691,7 +691,7 @@
           (merge-nodes-params target-node-id node)
           (merge-nodes-run-next env target-node-id node)
           (transfer-node-source-attrs target-node-id node)
-          (transfer-node-after-nodes target-node-id node)
+          (transfer-node-parents target-node-id node)
           (remove-node node-id)))))
 
 (defn collapse-dynamic-nodes
@@ -705,7 +705,7 @@
           (merge-nodes-params target-node-id node)
           (merge-nodes-run-next env target-node-id node)
           (transfer-node-source-attrs target-node-id node)
-          (transfer-node-after-nodes target-node-id node)
+          (transfer-node-parents target-node-id node)
           (remove-node node-id)))))
 
 (defn collapse-nodes-chain
@@ -723,7 +723,7 @@
           (merge-node-expects target-node-id node)
           (merge-nodes-params target-node-id node)
           (set-node-run-next target-node-id (::run-next node))
-          (transfer-node-after-nodes target-node-id node)
+          (transfer-node-parents target-node-id node)
           (transfer-node-source-attrs target-node-id node)
           (remove-node node-id)))))
 
@@ -759,7 +759,7 @@
             (remove-node node-id))
         (-> graph
             (update-in [::nodes root branch-type] coll/sconj node-id)
-            (add-after-node node-id root)
+            (add-node-parent node-id root)
             (cond->
               (refs/kw-identical? branch-type ::run-and)
               (merge-node-expects root node)))))))
@@ -769,13 +769,13 @@
   (let [branch-node-id (::node-id branch-node)]
     (-> graph
         (assoc-in [::nodes branch-node-id] branch-node)
-        (add-after-node root branch-node-id)
+        (add-node-parent root branch-node-id)
         (set-root-node branch-node-id)
         (add-branch-node env node))))
 
 (defn branch-add-and-node [graph branch-node-id node-id]
   (-> (update-in graph [::nodes branch-node-id ::run-and] coll/sconj node-id)
-      (add-after-node node-id branch-node-id)))
+      (add-node-parent node-id branch-node-id)))
 
 (defn can-merge-and-nodes? [n1 n2]
   (or (= (::run-next n1) (::run-next n2))
@@ -796,7 +796,7 @@
             graph
             run-and)
           (set-node-run-next* target-node-id (or run-next (::run-next target-node)))
-          (transfer-node-after-nodes target-node-id node)
+          (transfer-node-parents target-node-id node)
           (remove-node node-id))
       graph)))
 
@@ -901,8 +901,8 @@
             (reduce
               (fn [graph node-id]
                 (-> graph
-                    (remove-after-node node-id (::node-id nested-or))
-                    (add-after-node node-id node-id)))
+                    (remove-node-parent node-id (::node-id nested-or))
+                    (add-node-parent node-id node-id)))
               <>
               (::run-or nested-or)))
           (remove-node (::node-id nested-or)))
@@ -1539,7 +1539,7 @@
 
 (defn find-node-direct-ancestor-chain
   "Computes ancestor chain for a given node, it only walks as long as there is a single
-  parent on the node, if there is a fork (multiple after-nodes) it will stop."
+  parent on the node, if there is a fork (multiple node-parents) it will stop."
   [graph node-id]
   (loop [node-id' node-id
          visited  #{}
@@ -1558,7 +1558,7 @@
           (conj chain node-id'))))))
 
 (defn find-furthest-ancestor
-  "Traverse node after-node chain and returns the most distant resolver ancestor of node id.
+  "Traverse node node-parent chain and returns the most distant resolver ancestor of node id.
   This only walks though resolver nodes, branch nodes are removed."
   [graph node-id]
   (or (->> (find-node-direct-ancestor-chain graph node-id)
@@ -1749,13 +1749,13 @@
                                    ::requires         {:a {}}
                                    ::input            {}
                                    ::source-for-attrs #{:a}
-                                   ::after-nodes      #{3}}
+                                   ::node-parents      #{3}}
                                 2 {::pco/op-name          b
                                    ::node-id          2
                                    ::requires         {:b {}}
                                    ::input            {}
                                    ::source-for-attrs #{:b}
-                                   ::after-nodes      #{3}}
+                                   ::node-parents      #{3}}
                                 3 {::node-id  3
                                    ::requires {:b {} :a {} :c {}}
                                    ::run-and  #{2 1 4}}
@@ -1764,7 +1764,7 @@
                                    ::requires         {:c {}}
                                    ::input            {}
                                    ::source-for-attrs #{:c}
-                                   ::after-nodes      #{3}}}
+                                   ::node-parents      #{3}}}
        ::index-resolver->nodes {a #{1} b #{2} c #{4}}
        ::unreachable-resolvers #{}
        ::unreachable-attrs     #{}
