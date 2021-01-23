@@ -180,7 +180,7 @@
      (assert (nil? (com.wsscode.pathom3.connect.indexes/mutation indexes op-name))
        (str "Tried to register duplicated mutation: " op-name))
      (merge-indexes indexes
-       {::index-mutations  {op-name mutation}
+       {::index-mutations  ^:com.wsscode.pathom3.connect.runner/map-container? {op-name mutation}
         ::index-attributes (as-> {} <>
                              (reduce
                                (fn [idx attribute]

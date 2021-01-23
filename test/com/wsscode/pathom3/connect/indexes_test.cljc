@@ -132,7 +132,10 @@
     (let [r1 (pco/resolver 'r {::pco/output [:foo]}
                (fn [_ _] {:foo 42}))
           r2 (pco/resolver 'r2 {::pco/output [:foo2]}
-               (fn [_ _] {:foo2 "val"}))]
+               (fn [_ _] {:foo2 "val"}))
+          mutation (pco/mutation 'm {::pco/output [:foo]
+                                     ::pco/params [:bla]}
+                                 (fn [_ _] {:foo 42}))]
       (let [idx (pci/register r1)]
         (is (= (-> idx ::pci/index-resolvers meta)
                {:com.wsscode.pathom3.connect.runner/map-container?
@@ -142,12 +145,16 @@
                {:com.wsscode.pathom3.connect.runner/map-container?
                 true})))
 
-      (let [idx (pci/register [r1 r2])]
+      (let [idx (pci/register [r1 r2 mutation])]
         (is (= (-> idx ::pci/index-resolvers meta)
                {:com.wsscode.pathom3.connect.runner/map-container?
                 true}))
 
         (is (= (-> idx ::pci/index-attributes meta)
+               {:com.wsscode.pathom3.connect.runner/map-container?
+                true}))
+
+        (is (= (-> idx ::pci/index-mutations meta)
                {:com.wsscode.pathom3.connect.runner/map-container?
                 true})))))
 
