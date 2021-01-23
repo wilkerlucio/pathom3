@@ -852,7 +852,26 @@
           {:list
            [{:id 1 :v 100}
             {:id 2 :v 20}
-            {:id 3 :v 300}]})))
+            {:id 3 :v 300}]}))
+
+    (testing "custom cache store"
+      (is (graph-response?
+            (pci/register
+              {::custom-cache*
+               (volatile!
+                 {[`batch-fetch {:id 1} {}] {:v 100}
+                  [`batch-fetch {:id 3} {}] {:v 300}})}
+              [(pco/update-config batch-fetch
+                                  assoc ::pco/cache-store ::custom-cache*)])
+            {:list
+             [{:id 1}
+              {:id 2}
+              {:id 3}]}
+            [{:list [:v]}]
+            {:list
+             [{:id 1 :v 100}
+              {:id 2 :v 20}
+              {:id 3 :v 300}]}))))
 
   (testing "errors"
     (let [res (run-graph

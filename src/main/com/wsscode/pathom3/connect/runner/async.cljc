@@ -140,50 +140,51 @@
   mentioned by the resolver input. This is important to ensure that the resolver is
   not using some key that came accidentally due to execution order, that would lead to
   brittle executions."
-  [{::pcr/keys [resolver-cache*] :as env}
+  [env
    {::pco/keys [op-name]
     ::pcp/keys [input]
     :as        node}]
-  (let [resolver    (pci/resolver env op-name)
+  (let [resolver        (pci/resolver env op-name)
         {::pco/keys [op-name batch? cache? cache-store optionals]
          :or        {cache? true}} (pco/operation-config resolver)
-        env         (assoc env ::pcp/node node)
-        entity      (p.ent/entity env)
-        input-data  (pfsd/select-shape entity (pfsd/merge-shapes input optionals))
-        input-shape (pfsd/data->shape-descriptor input-data)
-        params      (pco/params env)
-        start       (time/now-ms)
-        cache-store (pcr/choose-cache-store env cache-store)
-        result      (-> (if (pfsd/missing input-shape input)
-                          (p/rejected (ex-info "Insufficient data" {:required  input
-                                                                    :available input-shape}))
-                          (cond
-                            batch?
-                            (if-let [x (find @resolver-cache* [op-name input-data params])]
-                              (val x)
-                              {::pcr/batch-hold {::pco/op-name             op-name
-                                                 ::pcp/node                node
-                                                 ::pco/cache?              cache?
-                                                 ::pco/cache-store         cache-store
-                                                 ::pcr/node-resolver-input input-data
-                                                 ::pcr/env                 env}})
+        env             (assoc env ::pcp/node node)
+        entity          (p.ent/entity env)
+        input-data      (pfsd/select-shape entity (pfsd/merge-shapes input optionals))
+        input-shape     (pfsd/data->shape-descriptor input-data)
+        params          (pco/params env)
+        start           (time/now-ms)
+        cache-store     (pcr/choose-cache-store env cache-store)
+        resolver-cache* (get env cache-store)
+        result          (-> (if (pfsd/missing input-shape input)
+                              (p/rejected (ex-info "Insufficient data" {:required  input
+                                                                        :available input-shape}))
+                              (cond
+                                batch?
+                                (if-let [x (find @resolver-cache* [op-name input-data params])]
+                                  (val x)
+                                  {::pcr/batch-hold {::pco/op-name             op-name
+                                                     ::pcp/node                node
+                                                     ::pco/cache?              cache?
+                                                     ::pco/cache-store         cache-store
+                                                     ::pcr/node-resolver-input input-data
+                                                     ::pcr/env                 env}})
 
-                            cache?
-                            (p.cache/cached cache-store env
-                              [op-name input-data params]
-                              #(try
-                                 (pco.prot/-resolve resolver env input-data)
-                                 (catch #?(:clj Throwable :cljs :default) e e)))
+                                cache?
+                                (p.cache/cached cache-store env
+                                  [op-name input-data params]
+                                  #(try
+                                     (pco.prot/-resolve resolver env input-data)
+                                     (catch #?(:clj Throwable :cljs :default) e e)))
 
-                            :else
-                            (try
-                              (pco.prot/-resolve resolver env input-data)
-                              (catch #?(:clj Throwable :cljs :default) e e))))
-                        (p/catch
-                          (fn [error]
-                            (p.plugin/run-with-plugins env ::pcr/wrap-resolver-error
-                              pcr/mark-resolver-error env node error)
-                            ::pcr/node-error)))]
+                                :else
+                                (try
+                                  (pco.prot/-resolve resolver env input-data)
+                                  (catch #?(:clj Throwable :cljs :default) e e))))
+                            (p/catch
+                              (fn [error]
+                                (p.plugin/run-with-plugins env ::pcr/wrap-resolver-error
+                                  pcr/mark-resolver-error env node error)
+                                ::pcr/node-error)))]
     (p/let [result result]
       (let [finish (time/now-ms)]
         (pcr/merge-node-stats! env node

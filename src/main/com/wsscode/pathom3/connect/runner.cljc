@@ -269,46 +269,47 @@
   mentioned by the resolver input. This is important to ensure that the resolver is
   not using some key that came accidentally due to execution order, that would lead to
   brittle executions."
-  [{::keys [resolver-cache*] :as env}
+  [env
    {::pco/keys [op-name]
     ::pcp/keys [input]
     :as        node}]
-  (let [resolver    (pci/resolver env op-name)
+  (let [resolver        (pci/resolver env op-name)
         {::pco/keys [op-name batch? cache? cache-store optionals]
          :or        {cache? true}} (pco/operation-config resolver)
-        entity      (p.ent/entity env)
-        input-data  (pfsd/select-shape entity (pfsd/merge-shapes input optionals))
-        input-shape (pfsd/data->shape-descriptor input-data)
-        params      (pco/params env)
-        start       (time/now-ms)
-        cache-store (choose-cache-store env cache-store)
-        result      (try
-                      (if (pfsd/missing input-shape input)
-                        (throw (ex-info "Insufficient data" {:required  input
-                                                             :available input-shape}))
-                        (cond
-                          batch?
-                          (if-let [x (find @resolver-cache* [op-name input-data params])]
-                            (val x)
-                            {::batch-hold {::pco/op-name         op-name
-                                           ::pcp/node            node
-                                           ::pco/cache?          cache?
-                                           ::pco/cache-store     cache-store
-                                           ::node-resolver-input input-data
-                                           ::env                 env}})
+        entity          (p.ent/entity env)
+        input-data      (pfsd/select-shape entity (pfsd/merge-shapes input optionals))
+        input-shape     (pfsd/data->shape-descriptor input-data)
+        params          (pco/params env)
+        start           (time/now-ms)
+        cache-store     (choose-cache-store env cache-store)
+        resolver-cache* (get env cache-store)
+        result          (try
+                          (if (pfsd/missing input-shape input)
+                            (throw (ex-info "Insufficient data" {:required  input
+                                                                 :available input-shape}))
+                            (cond
+                              batch?
+                              (if-let [x (find @resolver-cache* [op-name input-data params])]
+                                (val x)
+                                {::batch-hold {::pco/op-name         op-name
+                                               ::pcp/node            node
+                                               ::pco/cache?          cache?
+                                               ::pco/cache-store     cache-store
+                                               ::node-resolver-input input-data
+                                               ::env                 env}})
 
-                          cache?
-                          (p.cache/cached cache-store env
-                            [op-name input-data params]
-                            #(pco.prot/-resolve resolver env input-data))
+                              cache?
+                              (p.cache/cached cache-store env
+                                [op-name input-data params]
+                                #(pco.prot/-resolve resolver env input-data))
 
-                          :else
-                          (pco.prot/-resolve resolver env input-data)))
-                      (catch #?(:clj Throwable :cljs :default) e
-                        (p.plugin/run-with-plugins env ::wrap-resolver-error
-                          mark-resolver-error env node e)
-                        ::node-error))
-        finish      (time/now-ms)]
+                              :else
+                              (pco.prot/-resolve resolver env input-data)))
+                          (catch #?(:clj Throwable :cljs :default) e
+                            (p.plugin/run-with-plugins env ::wrap-resolver-error
+                              mark-resolver-error env node e)
+                            ::node-error))
+        finish          (time/now-ms)]
     (merge-node-stats! env node
       (report-resolver-stats env start finish input-shape input-data result))
     result))
