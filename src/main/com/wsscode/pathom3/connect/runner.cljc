@@ -238,6 +238,11 @@
       (refs/gswap! assoc-in [node-id ::node-error] error)
       (refs/gswap! update ::nodes-with-error coll/sconj node-id))))
 
+(defn mark-resolver-error-with-plugins
+  [env node e]
+  (p.plugin/run-with-plugins env ::wrap-resolver-error
+    mark-resolver-error env node e))
+
 (defn choose-cache-store [env cache-store]
   (if cache-store
     (if (contains? env cache-store)
@@ -302,8 +307,7 @@
                               :else
                               (pco.prot/-resolve resolver env input-data)))
                           (catch #?(:clj Throwable :cljs :default) e
-                            (p.plugin/run-with-plugins env ::wrap-resolver-error
-                              mark-resolver-error env node e)
+                            (mark-resolver-error-with-plugins env node e)
                             ::node-error))
         finish          (time/now-ms)]
     (merge-node-stats! env node

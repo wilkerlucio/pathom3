@@ -186,8 +186,7 @@
                                   (catch #?(:clj Throwable :cljs :default) e e))))
                             (p/catch
                               (fn [error]
-                                (p.plugin/run-with-plugins env ::pcr/wrap-resolver-error
-                                  pcr/mark-resolver-error env node error)
+                                (pcr/mark-resolver-error-with-plugins env node error)
                                 ::pcr/node-error)))]
     (p/let [result result]
       (let [finish (time/now-ms)]
