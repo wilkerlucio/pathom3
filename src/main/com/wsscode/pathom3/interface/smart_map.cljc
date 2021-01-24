@@ -93,7 +93,7 @@
     (pcrs/run-stats-env run-stats)
     run-stats))
 
-(defn sm-get
+(defn sm-env-get
   "Get a property from a smart map.
 
   First it checks if the property is available in the cache-tree, if not it triggers
@@ -103,7 +103,7 @@
 
   Repeated lookups will use the cache-tree and should be as fast as reading from a
   regular Clojure map."
-  ([env k] (sm-get env k nil))
+  ([env k] (sm-env-get env k nil))
   ([{::p.ent/keys [entity-tree*] :as env} k default-value]
    (let [ent-tree @entity-tree*]
      (if-let [x (find ent-tree k)]
@@ -121,7 +121,7 @@
            (throw error))
          (wrap-smart-map env (get @entity-tree* k default-value)))))))
 
-(defn sm-assoc
+(defn sm-env-assoc
   "Creates a new smart map by adding k v to the initial context.
 
   When you read information in the smart map, that information is cached into an internal
@@ -135,7 +135,7 @@
     (-> (::source-context env)
         (assoc k v))))
 
-(defn sm-dissoc
+(defn sm-env-dissoc
   "Creates a new smart map by adding k v to the initial context.
 
   When you read information in the smart map, that information is cached into an internal
@@ -149,7 +149,7 @@
     (-> (::source-context env)
         (dissoc k))))
 
-(defn sm-keys
+(defn sm-env-keys
   "Retrieve the keys in the smart map cache-tree."
   [{::keys [keys-mode] :as env}]
   (case keys-mode
@@ -158,34 +158,34 @@
 
     (keys (p.ent/entity env))))
 
-(defn sm-contains?
+(defn sm-env-contains?
   "Check if a property is present in the cache-tree."
   [env k]
-  (let [ks (into #{} (sm-keys env))]
+  (let [ks (into #{} (sm-env-keys env))]
     (contains? ks k)))
 
-(defn sm-meta
+(defn sm-env-meta
   "Returns meta data of smart map, which is the same as the meta data from context
    map used to create the smart map."
   [env]
   (meta (p.ent/entity env)))
 
-(defn sm-with-meta
+(defn sm-env-with-meta
   "Return a new smart-map with the given meta."
   [env meta]
   (smart-map env (with-meta (p.ent/entity env) meta)))
 
-(defn sm-find
+(defn sm-env-find
   "Check if attribute can be found in the smart map."
   [env k]
-  (if (or (sm-contains? env k)
+  (if (or (sm-env-contains? env k)
           (pci/attribute-reachable? env (p.ent/entity env) k))
-    (coll/make-map-entry k (sm-get env k))))
+    (coll/make-map-entry k (sm-env-get env k))))
 
-(defn sm-empty
+(defn sm-env-empty
   "Return a new smart map with the same environment and an empty map context."
   [env]
-  (smart-map env (with-meta {} (sm-meta env))))
+  (smart-map env (with-meta {} (sm-env-meta env))))
 
 ; region type definition
 
@@ -204,7 +204,7 @@
 
      IMapEntry
      (-key [_node] key)
-     (-val [_node] (sm-get env key))
+     (-val [_node] (sm-env-get env key))
 
      IEquiv
      (-equiv [coll other] (equiv-sequential coll other))
@@ -285,14 +285,14 @@
 
 #?(:clj
    (def-map-type SmartMap [env]
-     (get [_ k default-value] (sm-get env k default-value))
-     (assoc [_ k v] (sm-assoc env k v))
-     (dissoc [_ k] (sm-dissoc env k))
-     (keys [_] (sm-keys env))
-     (meta [_] (sm-meta env))
-     (empty [_] (sm-empty env))
-     (with-meta [_ new-meta] (sm-with-meta env new-meta))
-     (entryAt [_ k] (sm-find env k)))
+     (get [_ k default-value] (sm-env-get env k default-value))
+     (assoc [_ k v] (sm-env-assoc env k v))
+     (dissoc [_ k] (sm-env-dissoc env k))
+     (keys [_] (sm-env-keys env))
+     (meta [_] (sm-env-meta env))
+     (empty [_] (sm-env-empty env))
+     (with-meta [_ new-meta] (sm-env-with-meta env new-meta))
+     (entryAt [_ k] (sm-env-find env k)))
 
    :cljs
    #_{:clj-kondo/ignore [:private-call]}
@@ -302,10 +302,10 @@
      (equiv [_ other] (-equiv (p.ent/entity env) other))
 
      ;; ES6
-     (keys [_] (es6-iterator (sm-keys env)))
+     (keys [_] (es6-iterator (sm-env-keys env)))
      (entries [_] (es6-entries-iterator (seq (p.ent/entity env))))
      (values [_] (es6-iterator (vals (p.ent/entity env))))
-     (has [_ k] (sm-contains? env k))
+     (has [_ k] (sm-env-contains? env k))
      (get [_ k not-found] (-lookup (p.ent/entity env) k not-found))
      (forEach [_ f] (doseq [[k v] (p.ent/entity env)] (f v k)))
 
@@ -313,10 +313,10 @@
      (-clone [_] (smart-map env (p.ent/entity env)))
 
      IWithMeta
-     (-with-meta [_ new-meta] (sm-with-meta env new-meta))
+     (-with-meta [_ new-meta] (sm-env-with-meta env new-meta))
 
      IMeta
-     (-meta [_] (sm-meta env))
+     (-meta [_] (sm-env-meta env))
 
      ICollection
      (-conj [coll entry]
@@ -333,7 +333,7 @@
                       (throw (js/Error. "conj on a map takes map entries or seqables of map entries"))))))))
 
      IEmptyableCollection
-     (-empty [_] (sm-empty env))
+     (-empty [_] (sm-env-empty env))
 
      IEquiv
      (-equiv [_ other] (-equiv (p.ent/entity env) other))
@@ -343,25 +343,25 @@
 
      ISeqable
      (-seq [_]
-           (some->> (seq (sm-keys env))
+           (some->> (seq (sm-env-keys env))
                     (map #(SmartMapEntry. env %))))
 
      ICounted
      (-count [_] (count (p.ent/entity env)))
 
      ILookup
-     (-lookup [_ k] (sm-get env k nil))
-     (-lookup [_ k not-found] (sm-get env k not-found))
+     (-lookup [_ k] (sm-env-get env k nil))
+     (-lookup [_ k not-found] (sm-env-get env k not-found))
 
      IAssociative
-     (-assoc [_ k v] (sm-assoc env k v))
-     (-contains-key? [_ k] (sm-contains? env k))
+     (-assoc [_ k v] (sm-env-assoc env k v))
+     (-contains-key? [_ k] (sm-env-contains? env k))
 
      IFind
-     (-find [_ k] (sm-find env k))
+     (-find [_ k] (sm-env-find env k))
 
      IMap
-     (-dissoc [_ k] (sm-dissoc env k))
+     (-dissoc [_ k] (sm-env-dissoc env k))
 
      IKVReduce
      (-kv-reduce [_ f init]
@@ -370,15 +370,15 @@
      IIterable
      (-iterator [_this]
                 (transformer-iterator (map #(SmartMapEntry. env %))
-                                      (-iterator (sm-keys env)) false))
+                                      (-iterator (sm-env-keys env)) false))
 
      IReduce
      (-reduce [coll f] (iter-reduce coll f))
      (-reduce [coll f start] (iter-reduce coll f start))
 
      IFn
-     (-invoke [_ k] (sm-get env k))
-     (-invoke [_ k not-found] (sm-get env k not-found))
+     (-invoke [_ k] (sm-env-get env k))
+     (-invoke [_ k not-found] (sm-env-get env k not-found))
 
      IPrintWithWriter
      (-pr-writer [_ writer opts]
