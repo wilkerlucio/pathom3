@@ -40,7 +40,7 @@
   (if (map? m)
     (let [cache-tree* (p.ent/create-entity m)
           ast         (pcr/pick-union-entry ast m)]
-      (run-graph! env ast cache-tree*))
+      (run-graph! (dissoc env ::pcp/node) ast cache-tree*))
     m))
 
 (defn process-sequence-subquery
@@ -72,18 +72,22 @@
   (let [{:keys [children] :as ast} (pcr/entry-ast graph k)
         env (p.path/append-path env k)]
     (if children
-      (cond
-        (map? v)
-        (if (pcr/process-map-container? ast v)
-          (process-map-container-subquery env ast v)
-          (process-map-subquery env ast v))
+      (do
+        (if-let [{::pcp/keys [node-id]} (::pcp/node env)]
+          (-> env ::pcr/node-run-stats*
+              (refs/gswap! update-in [node-id ::pcp/nested-process] coll/sconj k)))
+        (cond
+          (map? v)
+          (if (pcr/process-map-container? ast v)
+            (process-map-container-subquery env ast v)
+            (process-map-subquery env ast v))
 
-        (or (sequential? v)
-            (set? v))
-        (process-sequence-subquery env ast v)
+          (or (sequential? v)
+              (set? v))
+          (process-sequence-subquery env ast v)
 
-        :else
-        v)
+          :else
+          v))
       (if-let [x (find entity k)]
         (val x)
         v))))
@@ -281,17 +285,18 @@
   [env node]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*]) ::pcp/node
    => (? p/promise?)]
-  (case (pcp/node-kind node)
-    ::pcp/node-resolver
-    (run-resolver-node! env node)
+  (let [env (assoc env ::pcp/node node)]
+    (case (pcp/node-kind node)
+      ::pcp/node-resolver
+      (run-resolver-node! env node)
 
-    ::pcp/node-and
-    (run-and-node! env node)
+      ::pcp/node-and
+      (run-and-node! env node)
 
-    ::pcp/node-or
-    (run-or-node! env node)
+      ::pcp/node-or
+      (run-or-node! env node)
 
-    nil))
+      nil)))
 
 (defn invoke-mutation!
   "Run mutation from AST."
