@@ -1,7 +1,7 @@
 (ns com.wsscode.promesa.macros
-  #?(:clj
-     (:require
-       [promesa.core :as p]))
+  #_{:clj-kondo/ignore [:unused-namespace]}
+  (:require
+    [promesa.core :as p])
   #?(:cljs
      (:require-macros
        [com.wsscode.promesa.macros])))
