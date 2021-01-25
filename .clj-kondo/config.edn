@@ -18,7 +18,8 @@
                 :unused-namespace             {:level   :warning
                                                :exclude [com.fulcrologic.guardrails.core
                                                          com.wsscode.async.async-clj
-                                                         com.wsscode.async.async-cljs]}
+                                                         com.wsscode.async.async-cljs
+                                                         promesa.core]}
                 :unused-referred-var          {:level   :warning
                                                :exclude {com.wsscode.async.async-clj     [let-chan let-chan*
                                                                                           go go-catch go-promise
