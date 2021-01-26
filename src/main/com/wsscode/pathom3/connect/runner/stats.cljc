@@ -68,8 +68,8 @@
    overhead-duration
    overhead-pct
    attribute-error
-   (pbir/alias-resolver ::pcr/compute-plan-run-start-ms ::process-run-start-ms)
-   (pbir/alias-resolver ::pcr/graph-run-finish-ms ::process-run-finish-ms)
+   (pbir/alias-resolver ::pcr/compute-plan-run-start-ms ::pcr/process-run-start-ms)
+   (pbir/alias-resolver ::pcr/graph-run-finish-ms ::pcr/process-run-finish-ms)
    (duration-resolver ::pcr/process-run)
    (duration-resolver ::pcr/node-run)
    (duration-resolver ::pcr/resolver-run)

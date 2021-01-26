@@ -19,11 +19,20 @@
 
 (>def ::attribute-errors (s/map-of ::p.attr/attribute any?))
 
-(>def ::choose-path fn?)
+(>def ::choose-path
+  "A function to determine which path to take when picking a path for a OR node."
+  fn?)
 
 (>def ::batch-error? boolean?)
-(>def ::batch-hold (s/keys))
-(>def ::batch-pending* any?)
+
+(>def ::batch-hold
+  "A map containing information to trigger a batch for a resolver node."
+  (s/keys))
+
+(>def ::batch-pending*
+  "Atom with batches pending to run."
+  any?)
+
 (>def ::batch-run-duration-ms number?)
 (>def ::batch-run-finish-ms number?)
 (>def ::batch-run-start-ms number?)
@@ -62,10 +71,18 @@
 (>def ::run-stats-omit-resolver-io? boolean?)
 
 (>def ::source-node-id ::pcp/node-id)
-(>def ::taken-paths ::pcp/node-id-set)
-(>def ::success-path ::pcp/node-id)
 
-(>def ::root-query vector?)
+(>def ::taken-paths
+  "Set with node-ids for attempted paths in a OR node."
+  ::pcp/node-id-set)
+
+(>def ::success-path
+  "Path that succeed in a OR node."
+  ::pcp/node-id)
+
+(>def ::root-query
+  "Query used to start the process. Not always available."
+  vector?)
 
 (>def ::wrap-batch-resolver-error fn?)
 (>def ::wrap-merge-attribute fn?)
