@@ -74,6 +74,10 @@
 (>def ::wrap-resolver-error fn?)
 (>def ::wrap-run-graph! fn?)
 
+(>def ::process-run-start-ms number?)
+(>def ::process-run-finish-ms number?)
+(>def ::process-run-duration-ms number?)
+
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
   [env {::pcp/keys [expects]}]

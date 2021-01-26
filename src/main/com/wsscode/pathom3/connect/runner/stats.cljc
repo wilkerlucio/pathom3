@@ -8,10 +8,6 @@
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]))
 
-(>def ::process-run-start-ms number?)
-(>def ::process-run-finish-ms number?)
-(>def ::process-run-duration-ms number?)
-
 ; region performance
 
 (defn duration-resolver [attr]
@@ -74,7 +70,7 @@
    attribute-error
    (pbir/alias-resolver ::pcr/compute-plan-run-start-ms ::process-run-start-ms)
    (pbir/alias-resolver ::pcr/graph-run-finish-ms ::process-run-finish-ms)
-   (duration-resolver ::process-run)
+   (duration-resolver ::pcr/process-run)
    (duration-resolver ::pcr/node-run)
    (duration-resolver ::pcr/resolver-run)
    (duration-resolver ::pcr/batch-run)
