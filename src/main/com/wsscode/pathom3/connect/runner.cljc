@@ -477,7 +477,9 @@
   [env {:keys [key params]}]
   (let [mutation (pci/mutation env key)
         result   (try
-                   (pco.prot/-mutate mutation env params)
+                   (if mutation
+                     (pco.prot/-mutate mutation env params)
+                     (throw (ex-info "Mutation not found" {::pco/op-name key})))
                    (catch #?(:clj Throwable :cljs :default) e
                      {::mutation-error e}))]
     (p.ent/swap-entity! env assoc key

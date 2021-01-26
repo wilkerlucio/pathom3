@@ -1333,6 +1333,21 @@
             '[{(call {:this "thing"}) [:other]}]
             {'call {::pcr/mutation-error err}}))))
 
+  (testing "mutation not found"
+    (is (graph-response?
+          (pci/register
+            [(pbir/alias-resolver :result :other)])
+          {}
+          '[(not-here {:this "thing"})]
+          (fn [res]
+            (mcs/match?
+              {'not-here {::pcr/mutation-error (fn [e]
+                                                 (and (= "Mutation not found"
+                                                         (ex-message e))
+                                                      (= {::pco/op-name 'not-here}
+                                                         (ex-data e))))}}
+              res)))))
+
   (testing "mutations run before anything else"
     (is (graph-response?
           (-> (pci/register

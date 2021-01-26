@@ -302,7 +302,9 @@
   [env {:keys [key params]}]
   (p/let [mutation (pci/mutation env key)
           result   (-> (try
-                         (pco.prot/-mutate mutation env params)
+                         (if mutation
+                           (pco.prot/-mutate mutation env params)
+                           (throw (ex-info "Mutation not found" {::pco/op-name key})))
                          (catch #?(:clj Throwable :cljs :default) e e))
                        (p/catch (fn [e] {::pcr/mutation-error e})))
           result'  (process-attr-subquery env {} key result)]
