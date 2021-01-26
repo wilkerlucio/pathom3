@@ -156,9 +156,9 @@
         input-data      (pfsd/select-shape entity (pfsd/merge-shapes input optionals))
         input-shape     (pfsd/data->shape-descriptor input-data)
         params          (pco/params env)
-        start           (time/now-ms)
         cache-store     (pcr/choose-cache-store env cache-store)
         resolver-cache* (get env cache-store)
+        start           (time/now-ms)
         result          (-> (if (pfsd/missing input-shape input)
                               (p/rejected (ex-info "Insufficient data" {:required  input
                                                                         :available input-shape}))
