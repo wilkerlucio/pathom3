@@ -8,6 +8,11 @@
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]))
 
+(>def ::node-error-id ::pcp/node-id)
+
+(>def ::node-error-type #{::node-error-type-direct
+                          ::node-error-type-ancestor})
+
 ; region performance
 
 (defn duration-resolver [attr]
@@ -55,10 +60,12 @@
        {::node-error-type ::node-error-type-direct
         ::pcr/node-error  error}}
 
-      (if-let [error (->> (pcp/node-ancestors env node-id)
-                          (some #(get-in node-run-stats [% ::pcr/node-error])))]
+      (if-let [[nid error] (->> (pcp/node-ancestors env node-id)
+                                (some #(if-let [err (get-in node-run-stats [% ::pcr/node-error])]
+                                         [% err])))]
         {::attribute-error
          {::node-error-type ::node-error-type-ancestor
+          ::node-error-id   nid
           ::pcr/node-error  error}}))))
 
 ; endregion

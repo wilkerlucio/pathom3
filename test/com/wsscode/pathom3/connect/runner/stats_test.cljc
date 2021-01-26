@@ -39,8 +39,7 @@
                            (pci/register (error-resolver :a)))
                          (psm/sm-get-with-stats :a))]
            (-> stats psm/smart-run-stats
-               (psm/sm-replace-context {:com.wsscode.pathom3.attribute/attribute :a})
-               ::pcrs/attribute-error))
+               (pcrs/get-attribute-error :a)))
          {::pcrs/node-error-type ::pcrs/node-error-type-direct
           ::pcr/node-error       err}))
 
@@ -49,7 +48,7 @@
                                           (pbir/single-attr-resolver :a :b inc)]))
                          (psm/sm-get-with-stats :b))]
            (-> stats psm/smart-run-stats
-               (psm/sm-replace-context {:com.wsscode.pathom3.attribute/attribute :b})
-               ::pcrs/attribute-error))
+               (pcrs/get-attribute-error :b)))
          {::pcrs/node-error-type ::pcrs/node-error-type-ancestor
+          ::pcrs/node-error-id   2
           ::pcr/node-error       err})))
