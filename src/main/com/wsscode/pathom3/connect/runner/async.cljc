@@ -301,6 +301,7 @@
   "Run mutation from AST."
   [env {:keys [key params]}]
   (p/let [mutation (pci/mutation env key)
+          start    (time/now-ms)
           result   (-> (try
                          (if mutation
                            (pco.prot/-mutate mutation env params)
@@ -308,6 +309,9 @@
                          (catch #?(:clj Throwable :cljs :default) e e))
                        (p/catch (fn [e] {::pcr/mutation-error e})))
           result'  (process-attr-subquery env {} key result)]
+    (pcr/merge-mutation-stats! env {::pco/op-name key}
+                               {::pcr/mutation-run-start-ms  start
+                                ::pcr/mutation-run-finish-ms (time/now-ms)})
     (p.ent/swap-entity! env assoc key result')))
 
 (defn process-mutations!

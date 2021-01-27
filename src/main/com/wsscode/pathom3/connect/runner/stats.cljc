@@ -83,6 +83,7 @@
    (duration-resolver ::pcr/batch-run)
    (duration-resolver ::pcr/graph-run)
    (duration-resolver ::pcr/compute-plan-run)
+   (duration-resolver ::pcr/mutation-run)
    (pbir/single-attr-with-env-resolver ::p.attr/attribute ::pcp/node-id
      #(get (::pcp/index-attrs %) %2 ::pco/unknown-value))
    (pbir/env-table-resolver ::pcp/nodes ::pcp/node-id

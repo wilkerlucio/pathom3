@@ -41,6 +41,10 @@
 (>def ::compute-plan-run-start-ms number?)
 (>def ::compute-plan-run-finish-ms number?)
 
+(>def ::mutation-run-duration-ms number?)
+(>def ::mutation-run-start-ms number?)
+(>def ::mutation-run-finish-ms number?)
+
 (>def ::env map?)
 
 (>def ::graph-run-duration-ms number?)
@@ -249,6 +253,13 @@
    data]
   (if node-run-stats*
     (refs/gswap! node-run-stats* update node-id merge data)))
+
+(defn merge-mutation-stats!
+  [{::keys [node-run-stats*]}
+   {::pco/keys [op-name]}
+   data]
+  (if node-run-stats*
+    (refs/gswap! node-run-stats* update op-name merge data)))
 
 (defn mark-resolver-error
   [{::keys [node-run-stats*]}
@@ -476,12 +487,16 @@
   "Run mutation from AST."
   [env {:keys [key params]}]
   (let [mutation (pci/mutation env key)
+        start    (time/now-ms)
         result   (try
                    (if mutation
                      (pco.prot/-mutate mutation env params)
                      (throw (ex-info "Mutation not found" {::pco/op-name key})))
                    (catch #?(:clj Throwable :cljs :default) e
                      {::mutation-error e}))]
+    (merge-mutation-stats! env {::pco/op-name key}
+                           {::mutation-run-start-ms  start
+                            ::mutation-run-finish-ms (time/now-ms)})
     (p.ent/swap-entity! env assoc key
       (process-attr-subquery env {} key result))))
 

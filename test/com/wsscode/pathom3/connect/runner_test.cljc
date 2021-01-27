@@ -1,5 +1,6 @@
 (ns com.wsscode.pathom3.connect.runner-test
   (:require
+    [clojure.spec.alpha :as s]
     [clojure.test :refer [deftest is are run-tests testing]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -20,6 +21,18 @@
     [matcher-combinators.standalone :as mcs]
     [matcher-combinators.test]
     [promesa.core :as p]))
+
+(defn match-keys? [ks]
+  (fn [m]
+    (reduce
+      (fn [_ k]
+        (if-let [v (find m k)]
+          (if (s/valid? k (val v))
+            true
+            (reduced false))
+          (reduced false)))
+      true
+      ks)))
 
 (deftest all-requires-ready?-test
   (is (= (pcr/all-requires-ready? (p.ent/with-entity {} {:a 1})
@@ -1012,7 +1025,19 @@
                                        ::pcr/node-resolver-input-shape  map?
                                        ::pcr/batch-run-start-ms         number?
                                        ::pcr/batch-run-finish-ms        number?}}}
-             (-> % :items first meta ::pcr/run-stats))))))
+             (-> % :items first meta ::pcr/run-stats)))))
+
+  (testing "mutations"
+    (is (graph-response?
+          (pci/register
+            [(pco/mutation 'call {}
+               (fn [_ {:keys [this]}] {:result this}))])
+          {}
+          ['(call {})]
+          #(mcs/match?
+             {::pcr/node-run-stats {'call (match-keys? [::pcr/mutation-run-start-ms
+                                                        ::pcr/mutation-run-finish-ms])}}
+             (-> % meta ::pcr/run-stats))))))
 
 (def mock-todos-db
   [{::todo-message "Write demo on params"
