@@ -302,17 +302,23 @@
   [env {:keys [key params]}]
   (p/let [mutation (pci/mutation env key)
           start    (time/now-ms)
+          _        (pcr/merge-mutation-stats! env {::pco/op-name key}
+                                              {::pcr/node-run-start-ms     start
+                                               ::pcr/mutation-run-start-ms start})
           result   (-> (try
                          (if mutation
                            (pco.prot/-mutate mutation env params)
                            (throw (ex-info "Mutation not found" {::pco/op-name key})))
                          (catch #?(:clj Throwable :cljs :default) e e))
                        (p/catch (fn [e] {::pcr/mutation-error e})))
+          _        (pcr/merge-mutation-stats! env {::pco/op-name key}
+                                              {::pcr/mutation-run-finish-ms (time/now-ms)})
           result'  (process-attr-subquery env {} key result)]
+
+    (p.ent/swap-entity! env assoc key result')
+
     (pcr/merge-mutation-stats! env {::pco/op-name key}
-                               {::pcr/mutation-run-start-ms  start
-                                ::pcr/mutation-run-finish-ms (time/now-ms)})
-    (p.ent/swap-entity! env assoc key result')))
+                               {::pcr/node-run-finish-ms (time/now-ms)})))
 
 (defn process-mutations!
   "Runs the mutations gathered by the planner."

@@ -1036,7 +1036,9 @@
           ['(call {})]
           #(mcs/match?
              {::pcr/node-run-stats {'call (match-keys? [::pcr/mutation-run-start-ms
-                                                        ::pcr/mutation-run-finish-ms])}}
+                                                        ::pcr/mutation-run-finish-ms
+                                                        ::pcr/node-run-start-ms
+                                                        ::pcr/node-run-finish-ms])}}
              (-> % meta ::pcr/run-stats))))))
 
 (def mock-todos-db

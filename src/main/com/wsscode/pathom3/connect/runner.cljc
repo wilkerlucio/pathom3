@@ -488,6 +488,9 @@
   [env {:keys [key params]}]
   (let [mutation (pci/mutation env key)
         start    (time/now-ms)
+        _        (merge-mutation-stats! env {::pco/op-name key}
+                                        {::node-run-start-ms     start
+                                         ::mutation-run-start-ms start})
         result   (try
                    (if mutation
                      (pco.prot/-mutate mutation env params)
@@ -495,10 +498,13 @@
                    (catch #?(:clj Throwable :cljs :default) e
                      {::mutation-error e}))]
     (merge-mutation-stats! env {::pco/op-name key}
-                           {::mutation-run-start-ms  start
-                            ::mutation-run-finish-ms (time/now-ms)})
+                           {::mutation-run-finish-ms (time/now-ms)})
+
     (p.ent/swap-entity! env assoc key
-      (process-attr-subquery env {} key result))))
+      (process-attr-subquery env {} key result))
+
+    (merge-mutation-stats! env {::pco/op-name key}
+                           {::node-run-finish-ms (time/now-ms)})))
 
 (defn process-mutations!
   "Runs the mutations gathered by the planner."
