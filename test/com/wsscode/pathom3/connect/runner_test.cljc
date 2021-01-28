@@ -947,27 +947,6 @@
                     {::pcr/node-resolver-input-shape  {:a {}}
                      ::pcr/node-resolver-output-shape {:b {}}}))))))
 
-  (testing "nested process"
-    (is (graph-response?
-          (pci/register
-            [(pbir/constantly-resolver :nest {:id 1})
-             (pbir/single-attr-resolver :id :x inc)])
-          {}
-          [{:nest [:x]}]
-          #(mcs/match?
-             {::pcr/node-run-stats {1 {::pcp/nested-process set?}}}
-             (-> % meta ::pcr/run-stats))))
-
-    (is (graph-response?
-          (pci/register
-            [(pbir/constantly-resolver :list [{:id 1}])
-             (pbir/single-attr-resolver :id :x inc)])
-          {}
-          [{:list [:x]}]
-          #(mcs/match?
-             {::pcr/node-run-stats {1 {::pcp/nested-process set?}}}
-             (-> % meta ::pcr/run-stats)))))
-
   (testing "error"
     (is (graph-response?
           (pci/register

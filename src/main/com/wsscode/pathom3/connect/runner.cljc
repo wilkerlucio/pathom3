@@ -128,7 +128,7 @@
   (if (map? m)
     (let [cache-tree* (p.ent/create-entity m)
           ast         (pick-union-entry ast m)]
-      (run-graph! (dissoc env ::pcp/node) ast cache-tree*))
+      (run-graph! env ast cache-tree*))
     m))
 
 (defn process-sequence-subquery
@@ -188,22 +188,18 @@
   (let [{:keys [children] :as ast} (entry-ast graph k)
         env (p.path/append-path env k)]
     (if children
-      (do
-        (if-let [{::pcp/keys [node-id]} (::pcp/node env)]
-          (-> env ::node-run-stats*
-              (refs/gswap! update-in [node-id ::pcp/nested-process] coll/sconj k)))
-        (cond
-          (map? v)
-          (if (process-map-container? ast v)
-            (process-map-container-subquery env ast v)
-            (process-map-subquery env ast v))
+      (cond
+        (map? v)
+        (if (process-map-container? ast v)
+          (process-map-container-subquery env ast v)
+          (process-map-subquery env ast v))
 
-          (or (sequential? v)
-              (set? v))
-          (process-sequence-subquery env ast v)
+        (or (sequential? v)
+            (set? v))
+        (process-sequence-subquery env ast v)
 
-          :else
-          v))
+        :else
+        v)
       (if-let [x (find entity k)]
         (val x)
         v))))
@@ -309,6 +305,7 @@
   (let [resolver        (pci/resolver env op-name)
         {::pco/keys [op-name batch? cache? cache-store optionals]
          :or        {cache? true}} (pco/operation-config resolver)
+        env             (assoc env ::pcp/node node)
         entity          (p.ent/entity env)
         input-data      (pfsd/select-shape entity (pfsd/merge-shapes input optionals))
         input-shape     (pfsd/data->shape-descriptor input-data)
@@ -455,18 +452,17 @@
   [env node]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*]) ::pcp/node
    => nil?]
-  (let [env (assoc env ::pcp/node node)]
-    (case (pcp/node-kind node)
-      ::pcp/node-resolver
-      (run-resolver-node! env node)
+  (case (pcp/node-kind node)
+    ::pcp/node-resolver
+    (run-resolver-node! env node)
 
-      ::pcp/node-and
-      (run-and-node! env node)
+    ::pcp/node-and
+    (run-and-node! env node)
 
-      ::pcp/node-or
-      (run-or-node! env node)
+    ::pcp/node-or
+    (run-or-node! env node)
 
-      nil)))
+    nil))
 
 (defn placeholder-merge-entity
   "Create an entity to process the placeholder demands. This consider if the placeholder
