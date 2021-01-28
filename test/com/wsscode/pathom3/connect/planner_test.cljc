@@ -4180,6 +4180,7 @@
   (testing "no parents, return self"
     (is (= (pcp/find-dependent-ancestor
              {::pcp/nodes {1 {::pcp/node-id 1}}}
+             {}
              1)
            1)))
 
@@ -4187,6 +4188,7 @@
     (is (= (pcp/find-dependent-ancestor
              {::pcp/nodes {1 {::pcp/node-id 1
                               ::pcp/input   {}}}}
+             {}
              1)
            1)))
 
@@ -4197,6 +4199,7 @@
                               ::pcp/node-parents #{2}}
                            2 {::pcp/node-id 2
                               ::pcp/expects {:a {}}}}}
+             {}
              1)
            2)))
 
@@ -4209,8 +4212,20 @@
                               ::pcp/expects {}}
                            3 {::pcp/node-id 3
                               ::pcp/expects {:a {}}}}}
+             {}
              1)
            3)))
+
+  (testing "considers available data"
+    (is (= (pcp/find-dependent-ancestor
+             {::pcp/nodes {1 {::pcp/node-id      1
+                              ::pcp/input        {:a {}}
+                              ::pcp/node-parents #{2}}
+                           2 {::pcp/node-id 2
+                              ::pcp/expects {:a {}}}}}
+             {::pcp/available-data {:a {}}}
+             1)
+           1)))
 
   (testing "accumulate dependencies"
     (is (= (pcp/find-dependent-ancestor
@@ -4223,9 +4238,11 @@
                               ::pcp/node-parents #{3}}
                            3 {::pcp/node-id 3
                               ::pcp/expects {:b {}}}}}
+             {}
              1)
            3)))
 
+  #_
   (testing "get latest when not available"
     (is (= (pcp/find-dependent-ancestor
              {::pcp/nodes {1 {::pcp/node-id      1
@@ -4234,6 +4251,7 @@
                            2 {::pcp/node-id      2
                               ::pcp/input        {:b {}}
                               ::pcp/expects      {:a {}}}}}
+             {}
              1)
            2))))
 

@@ -147,7 +147,7 @@
                 out))
             out))
         (assoc out k sub)))
-    (empty s1)
+    (or (empty s1) {})
     s1))
 
 (>defn select-shape

@@ -1574,12 +1574,13 @@
 (defn find-dependent-ancestor*
   "Traverse path until all required data is fulfilled. Returns node in which the data
   is done. If it can't fulfill all the data, returns nil."
-  [graph required path]
+  [graph env required path]
   (let [res (reduce
               (fn [missing nid]
                 (let [n       (get-node graph nid)
                       expects (::expects n)
-                      missing (pfsd/merge-shapes missing (::input n))
+                      input   (pfsd/difference (::input n) (::available-data env))
+                      missing (pfsd/merge-shapes missing input)
                       remain  (pfsd/difference missing expects)]
                   (if (seq remain)
                     remain
@@ -1594,11 +1595,11 @@
   "For a given node N, find which node is responsible for N dependencies. This is done
   by traversing the parents (but only when its run-next) and find tha latest in the
   chain."
-  [graph node-id]
+  [graph env node-id]
   (let [paths    (node-ancestors-paths graph node-id)
-        required (get-node graph node-id ::input)]
+        required (pfsd/difference (get-node graph node-id ::input) (::available-data env))]
     (if (seq required)
-      (let [options      (mapv #(find-dependent-ancestor* graph required %) paths)
+      (let [options      (mapv #(find-dependent-ancestor* graph env required %) paths)
             fulfilled-at (or (some #(if (int? %) %) options)
                              (->> options
                                   (sort-by (comp count first))
@@ -1625,7 +1626,7 @@
   (peek (find-run-next-descendants graph node)))
 
 (defn push-root-to-ancestor [graph env node-id]
-  (let [ancestor (find-dependent-ancestor graph node-id)]
+  (let [ancestor (find-dependent-ancestor graph env node-id)]
     (-> graph
         (add-snapshot! env {::snapshot-message (str "Pushing root to attribute ancestor dependency")
                             ::highlight-nodes  (into #{} [node-id ancestor])
