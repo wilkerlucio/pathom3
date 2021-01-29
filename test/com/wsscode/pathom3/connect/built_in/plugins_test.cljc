@@ -44,7 +44,14 @@
                {:foo {}}
                [{:foo [:error]}])
              {:foo {::pcr/attribute-errors
-                    {:error err}}})))))
+                    {:error err}}}))))
+
+  (testing "don't try to fetch errors when there are no errors"
+    (is (= (p.eql/process
+             (-> (pci/register (pbir/constantly-resolver :foo "bar"))
+                 (p.plugin/register (pbip/attribute-errors-plugin)))
+             [:foo])
+           {:foo "bar"}))))
 
 (deftest remove-stats-plugin-test
   (let [res (p.eql/process
