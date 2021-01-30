@@ -275,8 +275,8 @@
             (:error sm))))
 
     (testing "planning error"
-      (is (thrown-match?
-            {:com.wsscode.pathom3.attribute/attribute :y}
+      (is (thrown?
+            #?(:clj ExceptionInfo :cljs js/Error)
             (let [m (psm/smart-map (-> (pci/register
                                          (pbir/alias-resolver :x :y))
                                        (psm/with-error-mode ::psm/error-mode-loud))
