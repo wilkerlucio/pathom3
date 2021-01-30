@@ -8,7 +8,8 @@
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.interface.smart-map :as psm]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
-    [com.wsscode.pathom3.test.helpers :as th])
+    [com.wsscode.pathom3.test.helpers :as th]
+    [matcher-combinators.test])
   #?(:clj
      (:import
        (clojure.lang
@@ -271,7 +272,16 @@
                  (psm/smart-map))]
       (is (thrown?
             #?(:clj ExceptionInfo :cljs js/Error)
-            (:error sm))))))
+            (:error sm))))
+
+    (testing "planning error"
+      (is (thrown-match?
+            {:com.wsscode.pathom3.attribute/attribute :y}
+            (let [m (psm/smart-map (-> (pci/register
+                                         (pbir/alias-resolver :x :y))
+                                       (psm/with-error-mode ::psm/error-mode-loud))
+                      {})]
+              (:y m)))))))
 
 (deftest sm-update-env-test
   (let [sm (-> (pci/register registry)

@@ -12,6 +12,7 @@
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.stats :as pcrs]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.interface.eql :as p.eql]
     [edn-query-language.core :as eql]
     #?(:clj [potemkin.collections :refer [def-map-type]])))
 
@@ -110,12 +111,11 @@
        (wrap-smart-map env (val x))
        (let [ast   {:type     :root
                     :children [{:type :prop, :dispatch-key k, :key k}]}
-             stats (-> (pcr/run-graph! env ast entity-tree*) meta ::pcr/run-stats smart-run-stats)]
+             stats (-> (pcr/run-graph! env ast entity-tree*) meta ::pcr/run-stats)]
          (when-let [error (and (refs/kw-identical? (get env ::error-mode) ::error-mode-loud)
-                               (-> stats
-                                   (pcrs/attribute-error
-                                     {:com.wsscode.pathom3.connect.planner/node-id
-                                      (get-in stats [:com.wsscode.pathom3.connect.planner/index-attrs k])})
+                               (-> (p.eql/process (pcrs/run-stats-env stats)
+                                                  {:com.wsscode.pathom3.attribute/attribute k}
+                                                  [::pcrs/attribute-error])
                                    ::pcrs/attribute-error
                                    ::pcr/node-error))]
            (throw error))

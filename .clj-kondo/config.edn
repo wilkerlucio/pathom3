@@ -11,6 +11,7 @@
  :linters      {:unsorted-required-namespaces {:level :warning}
                 :invalid-arity                {:level :error}
                 :missing-else-branch          {:level :off}
+                :unresolved-symbol            {:exclude [match? thrown-match?]}
                 :consistent-alias             {:level   :warning
                                                :aliases {com.wsscode.async.processing  wap
                                                          clojure.test.check.generators gen

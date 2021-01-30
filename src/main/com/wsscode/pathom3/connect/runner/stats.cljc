@@ -51,22 +51,27 @@
 (pco/defresolver attribute-error
   "Find the error for a node, it first try to find the error in the node itself, but
   also walks up the graph to collect errors on previous nodes."
-  [{::pcr/keys [node-run-stats] :as env}
-   {::pcp/keys [node-id]}]
+  [{::pcr/keys [node-run-stats] ::pcp/keys [index-attrs] :as env}
+   {::p.attr/keys [attribute]}]
   {::pco/output [::attribute-error]}
-  (let [error (get-in node-run-stats [node-id ::pcr/node-error])]
-    (if error
-      {::attribute-error
-       {::node-error-type ::node-error-type-direct
-        ::pcr/node-error  error}}
-
-      (if-let [[nid error] (->> (pcp/node-ancestors env node-id)
-                                (some #(if-let [err (get-in node-run-stats [% ::pcr/node-error])]
-                                         [% err])))]
+  (if-let [node-id (get index-attrs attribute)]
+    (let [error (get-in node-run-stats [node-id ::pcr/node-error])]
+      (if error
         {::attribute-error
-         {::node-error-type ::node-error-type-ancestor
-          ::node-error-id   nid
-          ::pcr/node-error  error}}))))
+         {::node-error-type ::node-error-type-direct
+          ::pcr/node-error  error}}
+
+        (if-let [[nid error] (->> (pcp/node-ancestors env node-id)
+                                  (some #(if-let [err (get-in node-run-stats [% ::pcr/node-error])]
+                                           [% err])))]
+          {::attribute-error
+           {::node-error-type ::node-error-type-ancestor
+            ::node-error-id   nid
+            ::pcr/node-error  error}})))
+    {::attribute-error
+     {::node-error-type ::node-error-type-unreachable
+      ::pcr/node-error  (ex-info (str "Can't find a path for " attribute)
+                                 {::p.attr/attribute attribute})}}))
 
 ; endregion
 
