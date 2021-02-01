@@ -321,7 +321,9 @@
     (let [[[attr sub] & rest] queue
           attrs (update paths attr pfsd/merge-shapes sub)]
       (recur env
-        (into rest (remove #(contains? attrs %)) (-> index-io (get #{attr})))
+        (into rest
+              (remove #(contains? attrs (key %)))
+              (get index-io #{attr}))
         attrs))
     paths))
 

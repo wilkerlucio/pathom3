@@ -262,6 +262,14 @@
                                                    ::y {}})
                #{::x ::y ::z ::a ::c}))))))
 
+(comment
+  (-> (pci/register
+     (pco/resolver 'foo
+       {::pco/input [:a] ::pco/output [:a :b]}
+       (fn [_ _])))
+      ::pci/index-io
+      (get #{:a})))
+
 (deftest reachable-paths-test
   (testing "all blanks"
     (is (= (pci/reachable-paths {} {})
@@ -309,6 +317,15 @@
                   (fn [_ _]))])
              {})
            {::x {} ::y {::z {}}})))
+
+  (testing "self dependency"
+    (is (= (pci/reachable-paths
+             (pci/register
+               (pco/resolver 'foo
+                 {::pco/input [:a] ::pco/output [:a :b]}
+                 (fn [_ _])))
+             {:a {}})
+           {:a {} :b {}})))
 
   (testing "multi dependency"
     (is (= (pci/reachable-paths
