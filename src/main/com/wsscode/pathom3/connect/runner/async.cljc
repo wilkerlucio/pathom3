@@ -17,6 +17,7 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.promesa.macros :refer [clet]]
     [promesa.core :as p]))
 
 (declare run-node! run-graph!)
@@ -80,7 +81,13 @@
 
         (or (sequential? v)
             (set? v))
-        (process-sequence-subquery env ast v)
+        (process-sequence-subquery
+          (cond-> env
+            ; no batch in sequences that are not vectors because we can't reach those
+            ; paths for updating later
+            (not (vector? v))
+            (assoc ::pcr/disable-batch? true))
+          ast v)
 
         :else
         v)
@@ -133,6 +140,39 @@
   (if run-next
     (run-node! env (pcp/get-node graph run-next))))
 
+(defn- invoke-resolver-cached
+  [env cache? op-name resolver cache-store input-data params]
+  (if cache?
+    (p.cache/cached cache-store env
+      [op-name input-data params]
+      #(try
+         (pco.prot/-resolve resolver env input-data)
+         (catch #?(:clj Throwable :cljs :default) e
+           (p/rejected e))))
+
+    (try
+      (pco.prot/-resolve resolver env input-data)
+      (catch #?(:clj Throwable :cljs :default) e
+        (p/rejected e)))))
+
+(defn- invoke-resolver-cached-batch
+  [env cache? op-name resolver cache-store input-data params]
+  (pcr/warn-batch-disabled env op-name)
+  (if cache?
+    (p.cache/cached cache-store env
+      [op-name input-data params]
+      #(try
+         (clet [res (pco.prot/-resolve resolver env [input-data])]
+           (first res))
+         (catch #?(:clj Throwable :cljs :default) e
+           (p/rejected e))))
+
+    (try
+      (clet [res (pco.prot/-resolve resolver env [input-data])]
+        (first res))
+      (catch #?(:clj Throwable :cljs :default) e
+        (p/rejected e)))))
+
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
@@ -165,24 +205,14 @@
                                 batch?
                                 (if-let [x (find @resolver-cache* [op-name input-data params])]
                                   (val x)
-                                  {::pcr/batch-hold {::pco/op-name             op-name
-                                                     ::pcp/node                node
-                                                     ::pco/cache?              cache?
-                                                     ::pco/cache-store         cache-store
-                                                     ::pcr/node-resolver-input input-data
-                                                     ::pcr/env                 env}})
-
-                                cache?
-                                (p.cache/cached cache-store env
-                                  [op-name input-data params]
-                                  #(try
-                                     (pco.prot/-resolve resolver env input-data)
-                                     (catch #?(:clj Throwable :cljs :default) e e)))
+                                  (if (::pcr/disable-batch? env)
+                                    (invoke-resolver-cached-batch
+                                      env cache? op-name resolver cache-store input-data params)
+                                    (pcr/batch-hold-token env cache? op-name node cache-store input-data)))
 
                                 :else
-                                (try
-                                  (pco.prot/-resolve resolver env input-data)
-                                  (catch #?(:clj Throwable :cljs :default) e e))))
+                                (invoke-resolver-cached
+                                  env cache? op-name resolver cache-store input-data params)))
                             (p/catch
                               (fn [error]
                                 (pcr/mark-resolver-error-with-plugins env node error)

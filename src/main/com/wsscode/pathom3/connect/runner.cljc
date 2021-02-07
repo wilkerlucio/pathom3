@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.log :as l]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.misc.time :as time]
@@ -92,6 +93,12 @@
 (>def ::root-query
   "Query used to start the process. Not always available."
   vector?)
+
+(>def ::disable-batch?
+  "Flag to tell the runner that it can't use batch. This happens when navigating for
+  example into a set, in which Pathom can't determine which was the original item
+  for replacement."
+  boolean?)
 
 (>def ::wrap-batch-resolver-error fn?)
 (>def ::wrap-merge-attribute fn?)
@@ -201,7 +208,13 @@
 
         (or (sequential? v)
             (set? v))
-        (process-sequence-subquery env ast v)
+        (process-sequence-subquery
+          (cond-> env
+            ; no batch in sequences that are not vectors because we can't reach those
+            ; paths for updating later
+            (not (vector? v))
+            (assoc ::disable-batch? true))
+          ast v)
 
         :else
         v)
@@ -317,6 +330,39 @@
                  ::pcp/node        node
                  ::nested-waiting? true}})
 
+(defn- invoke-resolver-cached
+  [env cache? op-name resolver cache-store input-data params]
+  (if cache?
+    (p.cache/cached cache-store env
+      [op-name input-data params]
+      #(pco.prot/-resolve resolver env input-data))
+
+    (pco.prot/-resolve resolver env input-data)))
+
+(defn warn-batch-disabled [env op-name]
+  (l/warn ::event-batch-disabled
+          {::p.path/path (::p.path/path env)
+           ::pco/op-name op-name}))
+
+(defn- invoke-resolver-cached-batch
+  [env cache? op-name resolver cache-store input-data params]
+  (warn-batch-disabled env op-name)
+  (if cache?
+    (p.cache/cached cache-store env
+      [op-name input-data params]
+      #(first (pco.prot/-resolve resolver env [input-data])))
+
+    (first (pco.prot/-resolve resolver env [input-data]))))
+
+(defn batch-hold-token
+  [env cache? op-name node cache-store input-data]
+  {::batch-hold {::pco/op-name         op-name
+                 ::pcp/node            node
+                 ::pco/cache?          cache?
+                 ::pco/cache-store     cache-store
+                 ::node-resolver-input input-data
+                 ::env                 env}})
+
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
@@ -350,20 +396,14 @@
                               batch?
                               (if-let [x (find @resolver-cache* [op-name input-data params])]
                                 (val x)
-                                {::batch-hold {::pco/op-name         op-name
-                                               ::pcp/node            node
-                                               ::pco/cache?          cache?
-                                               ::pco/cache-store     cache-store
-                                               ::node-resolver-input input-data
-                                               ::env                 env}})
-
-                              cache?
-                              (p.cache/cached cache-store env
-                                [op-name input-data params]
-                                #(pco.prot/-resolve resolver env input-data))
+                                (if (::disable-batch? env)
+                                  (invoke-resolver-cached-batch
+                                    env cache? op-name resolver cache-store input-data params)
+                                  (batch-hold-token env cache? op-name node cache-store input-data)))
 
                               :else
-                              (pco.prot/-resolve resolver env input-data)))
+                              (invoke-resolver-cached
+                                env cache? op-name resolver cache-store input-data params)))
                           (catch #?(:clj Throwable :cljs :default) e
                             (mark-resolver-error-with-plugins env node e)
                             ::node-error))

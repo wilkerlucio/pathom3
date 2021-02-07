@@ -12,7 +12,7 @@
         :index nat-int?
         :call symbol?))
 
-(>def ::path (s/coll-of ::path-entry :kind vector?))
+(>def ::path (s/nilable (s/coll-of ::path-entry :kind vector?)))
 
 (>defn append-path
   [env path-entry]

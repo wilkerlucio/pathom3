@@ -953,7 +953,21 @@
       #_(is (= (meta res)
                {})))
 
-    (testing "partial error")))
+    (testing "partial error"))
+
+  (testing "uses batch resolver as single resolver when running under a path that batch wont work"
+    (is (graph-response?
+          (pci/register
+            [batch-fetch])
+          {:list
+           #{{:id 1}
+             {:id 2}
+             {:id 3}}}
+          [{:list [:v]}]
+          {:list
+           #{{:id 1 :v 10}
+             {:id 2 :v 20}
+             {:id 3 :v 30}}}))))
 
 (deftest run-graph!-run-stats
   (is (graph-response?
