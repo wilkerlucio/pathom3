@@ -33,6 +33,11 @@
   "Atom with batches pending to run."
   any?)
 
+(>def ::batch-waiting*
+  "This are nodes with nested inputs that are waiting for batch processes to finish
+  to fulfill nested dependencies before they run."
+  any?)
+
 (>def ::batch-run-duration-ms number?)
 (>def ::batch-run-finish-ms number?)
 (>def ::batch-run-start-ms number?)
@@ -291,6 +296,27 @@
                               ::batch-hold
                               result)}))
 
+(defn missing-maybe-in-pending-batch?
+  [{::p.path/keys [path] :as env} input]
+  (let [nested-inputs (coll/filter-vals seq input)]
+    (if (seq nested-inputs)
+      (let [pending-nested?
+            (->> env ::batch-pending* deref vals
+                 (into [] cat)
+                 (map (comp
+                        #(subvec % (count path))
+                        ::p.path/path ::env))
+                 (some
+                   (fn [path']
+                     (contains? nested-inputs (first path')))))]
+        pending-nested?)
+      false)))
+
+(defn wait-batch-response [env node]
+  {::batch-hold {::env             env
+                 ::pcp/node        node
+                 ::nested-waiting? true}})
+
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
@@ -312,11 +338,14 @@
         params          (pco/params env)
         cache-store     (choose-cache-store env cache-store)
         resolver-cache* (get env cache-store)
-        start           (time/now-ms)
+        _               (merge-node-stats! env node
+                          {::resolver-run-start-ms (time/now-ms)})
         result          (try
                           (if (pfsd/missing input-shape input)
-                            (throw (ex-info "Insufficient data" {:required  input
-                                                                 :available input-shape}))
+                            (if (missing-maybe-in-pending-batch? env input)
+                              (wait-batch-response env node)
+                              (throw (ex-info "Insufficient data" {:required  input
+                                                                   :available input-shape})))
                             (cond
                               batch?
                               (if-let [x (find @resolver-cache* [op-name input-data params])]
@@ -340,8 +369,7 @@
                             ::node-error))
         finish          (time/now-ms)]
     (merge-node-stats! env node
-      (cond-> {::resolver-run-start-ms  start
-               ::resolver-run-finish-ms finish}
+      (cond-> {::resolver-run-finish-ms finish}
         (not (::batch-hold result))
         (merge (report-resolver-io-stats env input-data result))))
     result))
@@ -360,9 +388,14 @@
             invoke-resolver-from-node env node)]
       (cond
         batch-hold
-        (let [batch-pending (::batch-pending* env)]
-          (refs/gswap! batch-pending update (::pco/op-name batch-hold) coll/vconj
-                       batch-hold)
+        (do
+          ; TODO report problem in path navigation here
+          (if (::nested-waiting? batch-hold)
+            ; add to wait
+            (refs/gswap! (::batch-waiting* env) coll/vconj batch-hold)
+            ; add to batch pending
+            (refs/gswap! (::batch-pending* env) update (::pco/op-name batch-hold)
+                         coll/vconj batch-hold))
           nil)
 
         (not (refs/kw-identical? ::node-error response))
@@ -590,7 +623,7 @@
       [batch-op node-resolver-input (pco/params batch-item)]
       (fn [] response))))
 
-(defn run-batches! [env]
+(defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
     (vreset! batches* {})
@@ -632,11 +665,30 @@
                 (-> (p.ent/entity env')
                     (include-meta-stats env' (::pcp/graph env')))))))))))
 
+(defn run-batches-waiting! [env]
+  (let [waits* (-> env ::batch-waiting*)
+        waits  @waits*]
+    (vreset! waits* {})
+    (doseq [{env' ::env ::pcp/keys [node]} waits]
+      (p.ent/reset-entity! env' (get-in (p.ent/entity env) (::p.path/path env')))
+
+      (run-node! env' node)
+
+      (when-not (p.path/root? env')
+        (p.ent/swap-entity! env assoc-in (::p.path/path env')
+          (-> (p.ent/entity env')
+              (include-meta-stats env' (::pcp/graph env'))))))))
+
+(defn run-batches! [env]
+  (run-batches-pending! env)
+  (run-batches-waiting! env))
+
 (defn setup-runner-env [env entity-tree* cache-type]
   (-> env
       ; due to recursion those need to be defined only on the first time
       (coll/merge-defaults {::pcp/plan-cache* (cache-type {})
                             ::batch-pending*  (cache-type {})
+                            ::batch-waiting*  (cache-type [])
                             ::resolver-cache* (cache-type {})
                             ::p.path/path     []})
       ; these need redefinition at each recursive call

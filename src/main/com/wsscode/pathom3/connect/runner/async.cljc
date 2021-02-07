@@ -154,10 +154,13 @@
         params          (pco/params env)
         cache-store     (pcr/choose-cache-store env cache-store)
         resolver-cache* (get env cache-store)
-        start           (time/now-ms)
+        _               (pcr/merge-node-stats! env node
+                          {::pcr/resolver-run-start-ms (time/now-ms)})
         result          (-> (if (pfsd/missing input-shape input)
-                              (p/rejected (ex-info "Insufficient data" {:required  input
-                                                                        :available input-shape}))
+                              (if (pcr/missing-maybe-in-pending-batch? env input)
+                                (pcr/wait-batch-response env node)
+                                (p/rejected (ex-info "Insufficient data" {:required  input
+                                                                          :available input-shape})))
                               (cond
                                 batch?
                                 (if-let [x (find @resolver-cache* [op-name input-data params])]
@@ -187,8 +190,7 @@
     (p/let [result result]
       (let [finish (time/now-ms)]
         (pcr/merge-node-stats! env node
-          (cond-> {::pcr/resolver-run-start-ms  start
-                   ::pcr/resolver-run-finish-ms finish}
+          (cond-> {::pcr/resolver-run-finish-ms finish}
             (not (::pcr/batch-hold result))
             (merge (pcr/report-resolver-io-stats env input-data result)))))
       result)))
@@ -208,9 +210,14 @@
               invoke-resolver-from-node env' node)]
       (cond
         batch-hold
-        (let [batch-pending (::pcr/batch-pending* env)]
-          (refs/gswap! batch-pending update (::pco/op-name batch-hold) coll/vconj
-                       batch-hold)
+        (do
+          ; TODO report problem in path navigation here
+          (if (::pcr/nested-waiting? batch-hold)
+            ; add to wait
+            (refs/gswap! (::pcr/batch-waiting* env) coll/vconj batch-hold)
+            ; add to batch pending
+            (refs/gswap! (::pcr/batch-pending* env) update (::pco/op-name batch-hold)
+                         coll/vconj batch-hold))
           nil)
 
         (not (refs/kw-identical? ::pcr/node-error response))
@@ -376,7 +383,7 @@
         ::pcp/graph graph
         ::p.ent/entity-tree* entity-tree*))))
 
-(defn run-batches! [env]
+(defn run-batches-pending! [env]
   (let [batches* (-> env ::pcr/batch-pending*)
         batches  @batches*]
     (reset! batches* {})
@@ -418,6 +425,29 @@
               (map vector batch-items responses)))))
       nil
       batches)))
+
+(defn run-batches-waiting! [env]
+  (let [waits* (-> env ::pcr/batch-waiting*)
+        waits  @waits*]
+    (reset! waits* {})
+    (reduce-async
+      (fn [_ {env' ::pcr/env ::pcp/keys [node]}]
+        (p.ent/reset-entity! env' (get-in (p.ent/entity env) (::p.path/path env')))
+
+        (p/do!
+          (run-node! env' node)
+
+          (when-not (p.path/root? env')
+            (p.ent/swap-entity! env assoc-in (::p.path/path env')
+              (-> (p.ent/entity env')
+                  (pcr/include-meta-stats env' (::pcp/graph env')))))))
+      nil
+      waits)))
+
+(defn run-batches! [env]
+  (p/do!
+    (run-batches-pending! env)
+    (run-batches-waiting! env)))
 
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]

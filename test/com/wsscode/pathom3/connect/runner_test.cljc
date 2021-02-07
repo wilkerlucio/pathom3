@@ -124,10 +124,10 @@
 (defn graph-response? [env tree query expected]
   (if (fn? expected)
     #_{:clj-kondo/ignore [:single-logical-operand]}
-    (and (expected (run-graph env tree query))
-         #?(:clj (let [res @(run-graph-async env tree query)]
-                   ;(println res)
-                   (expected res))))
+    (let [sync          (expected (run-graph env tree query))
+          async #?(:clj (expected @(run-graph-async env tree query)) :cljs true)]
+      (and sync
+           async))
     (= (run-graph env tree query)
        #?(:clj (let [res @(run-graph-async env tree query)]
                  ;(println res)
@@ -597,7 +597,57 @@
           [:total-score]
           {:users       [#:user{:id 1, :scores [#:user{:score 10}]}
                          #:user{:id 2, :scores [#:user{:score 20}]}],
-           :total-score 30}))))
+           :total-score 30})))
+
+  (testing "nested + batch"
+    (is (graph-response?
+          (pci/register
+            [(pco/resolver 'users
+               {::pco/output [{:users [:user/id]}]}
+               (fn [_ _]
+                 {:users [{:user/id 1}
+                          {:user/id 2}]}))
+             (pco/resolver 'score-from-id
+               {::pco/input  [:user/id]
+                ::pco/output [:user/score]
+                ::pco/batch? true}
+               (fn [_ items]
+                 (mapv #(hash-map :user/score (* 10 (:user/id %))) items)))
+             (pco/resolver 'total-score
+               {::pco/input  [{:users [:user/score]}]
+                ::pco/output [:total-score]}
+               (fn [_ {:keys [users]}]
+                 {:total-score (reduce + 0 (map :user/score users))}))])
+          {}
+          [:total-score]
+          {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
+           :total-score 30}))
+
+    (is (testing "waiting not at root"
+          (graph-response?
+            (pci/register
+              [(pco/resolver 'users
+                 {::pco/output [{:main-db {:users [:user/id]}}]}
+                 (fn [_ _]
+                   {:main-db
+                    {:users [{:user/id 1}
+                             {:user/id 2}]}}))
+               (pco/resolver 'score-from-id
+                 {::pco/input  [:user/id]
+                  ::pco/output [:user/score]
+                  ::pco/batch? true}
+                 (fn [_ items]
+                   (mapv #(hash-map :user/score (* 10 (:user/id %))) items)))
+               (pco/resolver 'total-score
+                 {::pco/input  [{:users [:user/score]}]
+                  ::pco/output [:total-score]}
+                 (fn [_ {:keys [users]}]
+                   {:total-score (reduce + 0 (map :user/score users))}))])
+            {}
+            [{:main-db [:total-score]}]
+            {:main-db
+             {:users [#:user{:id 1, :score 10} #:user{:id 2, :score 20}],
+              :total-score 30}})))))
 
 (deftest run-graph!-optional-inputs-test
   (testing "data from resolvers"
@@ -955,13 +1005,13 @@
           {}
           [:x]
           #(mcs/match?
-             {::pcr/node-run-stats {1 {::pcr/node-run-start-ms      number?
-                                       ::pcr/node-run-finish-ms     number?
-                                       ::pcr/resolver-run-start-ms  number?
-                                       ::pcr/resolver-run-finish-ms number?
-                                       ::pcr/node-resolver-output   any?
+             {::pcr/node-run-stats {1 {::pcr/node-error             any?
                                        ::pcr/node-resolver-input    map?
-                                       ::pcr/node-error             any?}}}
+                                       ::pcr/node-resolver-output   any?
+                                       ::pcr/node-run-finish-ms     number?
+                                       ::pcr/node-run-start-ms      number?
+                                       ::pcr/resolver-run-finish-ms number?
+                                       ::pcr/resolver-run-start-ms  number?}}}
              (-> % meta ::pcr/run-stats)))))
 
   (testing "batch"
