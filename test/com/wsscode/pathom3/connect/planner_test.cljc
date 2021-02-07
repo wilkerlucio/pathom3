@@ -2431,6 +2431,32 @@
                                                        {:users 2, :scores-sum 1},
              :com.wsscode.pathom3.connect.planner/root 2})))
 
+  (testing "self output reference in input"
+    (is (= (compute-run-graph
+             (-> {::eql/query [:b]
+                  ::resolvers '[{::pco/op-name x
+                                 ::pco/input   [{:a [:b]}]
+                                 ::pco/output  [:b]}]}))
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {},
+                                                  :index-ast             {:b {:type         :prop,
+                                                                              :dispatch-key :b,
+                                                                              :key          :b}},
+                                                  :unreachable-resolvers #{x},
+                                                  :unreachable-paths     {:a {:b {}}, :b {}}}))
+
+    (is (= (compute-run-graph
+             (-> {::eql/query          [:b]
+                  ::pcp/available-data {:a {}}
+                  ::resolvers          '[{::pco/op-name x
+                                          ::pco/input   [{:a [:b]}]
+                                          ::pco/output  [:b]}]}))
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {},
+                                                  :index-ast             {:b {:type         :prop,
+                                                                              :dispatch-key :b,
+                                                                              :key          :b}},
+                                                  :unreachable-resolvers #{x},
+                                                  :unreachable-paths     {:a {:b {}}, :b {}}})))
+
   (testing "multiple distinct nested details"
     (is (= (compute-run-graph
              (-> {::eql/query [:scores-sum :age-sum]

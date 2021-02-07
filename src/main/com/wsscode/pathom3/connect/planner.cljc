@@ -1327,7 +1327,9 @@
         (sub-required-input-reachable?* env sub available))
 
       ; there is no node from the graph, but still gonna look in current data
-      (sub-required-input-reachable?* env sub available-sub-data))))
+      (if (contains? available-data attr)
+        (sub-required-input-reachable?* env sub available-sub-data)
+        false))))
 
 (defn required-input-reachable?
   "After running a sub graph for dependencies, the planner checks if all required inputs

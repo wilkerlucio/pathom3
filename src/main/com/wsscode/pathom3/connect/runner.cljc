@@ -364,6 +364,11 @@
                  ::node-resolver-input input-data
                  ::env                 env}})
 
+(defn valid-response? [x]
+  (or (map? x)
+      (nil? x)
+      (refs/kw-identical? x ::node-error)))
+
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
@@ -409,6 +414,8 @@
                             (mark-resolver-error-with-plugins env node e)
                             ::node-error))
         finish          (time/now-ms)]
+    (if-not (valid-response? result)
+      (l/warn ::invalid-resolver-response {::pco/op-name op-name :response result}))
     (merge-node-stats! env node
       (cond-> {::resolver-run-finish-ms finish}
         (not (::batch-hold result))
