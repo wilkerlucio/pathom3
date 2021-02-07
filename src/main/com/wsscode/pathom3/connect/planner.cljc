@@ -3,6 +3,7 @@
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>def >defn >fdef => | <- ?]]
+    [com.wsscode.log :as l]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.attribute :as p.attr]
@@ -1550,7 +1551,9 @@
          chain    (list)]
     (if (contains? visited node-id')
       (do
-        (println "Ancestors Cycle detected" visited node-id')
+        (l/warn ::event-ancestor-cycle-detected
+                {:visited  visited
+                 ::node-id node-id})
         chain)
       (let [{::keys [node-parents]} (get-node graph node-id')
             next-id (first node-parents)]

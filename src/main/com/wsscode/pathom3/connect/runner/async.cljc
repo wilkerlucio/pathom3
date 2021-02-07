@@ -4,6 +4,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.log :as l]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.misc.time :as time]
@@ -273,7 +274,10 @@
             node-id        (if (contains? nodes picked-node-id)
                              picked-node-id
                              (do
-                               (println "Path function failed to return a valid path, picking first option.")
+                               (l/warn ::event-invalid-chosen-path
+                                       {:expected-one-of nodes
+                                        :chosen-attempt  picked-node-id
+                                        :actual-used     (first nodes)})
                                (first nodes)))
             _              (pcr/add-taken-path! env or-node node-id)
             _              (run-node! env (pcp/get-node graph node-id))]

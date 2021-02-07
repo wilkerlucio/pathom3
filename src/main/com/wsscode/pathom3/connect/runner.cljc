@@ -294,7 +294,8 @@
     (if (contains? env cache-store)
       cache-store
       (do
-        (println "WARN: Tried to use an undefined cache store" cache-store ". Falling back to default resolver-cache*.")
+        (l/warn ::event-attempt-use-undefined-cache-store
+                {::pco/cache-store cache-store})
         ::resolver-cache*))
     ::resolver-cache*))
 
@@ -493,7 +494,10 @@
             node-id        (if (contains? nodes picked-node-id)
                              picked-node-id
                              (do
-                               (println "Path function failed to return a valid path, picking first option.")
+                               (l/warn ::event-invalid-chosen-path
+                                       {:expected-one-of nodes
+                                        :chosen-attempt  picked-node-id
+                                        :actual-used     (first nodes)})
                                (first nodes)))]
         (add-taken-path! env or-node node-id)
         (run-node! env (pcp/get-node graph node-id))
