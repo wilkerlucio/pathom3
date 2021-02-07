@@ -87,7 +87,7 @@
             ; no batch in sequences that are not vectors because we can't reach those
             ; paths for updating later
             (not (vector? v))
-            (assoc ::pcr/disable-batch? true))
+            (assoc ::pcr/unsupported-batch? true))
           ast v)
 
         :else
@@ -158,7 +158,7 @@
 
 (defn- invoke-resolver-cached-batch
   [env cache? op-name resolver cache-store input-data params]
-  (pcr/warn-batch-disabled env op-name)
+  (pcr/warn-batch-unsupported env op-name)
   (if cache?
     (p.cache/cached cache-store env
       [op-name input-data params]
@@ -206,7 +206,7 @@
                                 batch?
                                 (if-let [x (find @resolver-cache* [op-name input-data params])]
                                   (val x)
-                                  (if (::pcr/disable-batch? env)
+                                  (if (::pcr/unsupported-batch? env)
                                     (invoke-resolver-cached-batch
                                       env cache? op-name resolver cache-store input-data params)
                                     (pcr/batch-hold-token env cache? op-name node cache-store input-data)))

@@ -94,7 +94,7 @@
   "Query used to start the process. Not always available."
   vector?)
 
-(>def ::disable-batch?
+(>def ::unsupported-batch?
   "Flag to tell the runner that it can't use batch. This happens when navigating for
   example into a set, in which Pathom can't determine which was the original item
   for replacement."
@@ -213,7 +213,7 @@
             ; no batch in sequences that are not vectors because we can't reach those
             ; paths for updating later
             (not (vector? v))
-            (assoc ::disable-batch? true))
+            (assoc ::unsupported-batch? true))
           ast v)
 
         :else
@@ -340,14 +340,14 @@
 
     (pco.prot/-resolve resolver env input-data)))
 
-(defn warn-batch-disabled [env op-name]
-  (l/warn ::event-batch-disabled
+(defn warn-batch-unsupported [env op-name]
+  (l/warn ::event-batch-unsupported
           {::p.path/path (::p.path/path env)
            ::pco/op-name op-name}))
 
 (defn- invoke-resolver-cached-batch
   [env cache? op-name resolver cache-store input-data params]
-  (warn-batch-disabled env op-name)
+  (warn-batch-unsupported env op-name)
   (if cache?
     (p.cache/cached cache-store env
       [op-name input-data params]
@@ -397,7 +397,7 @@
                               batch?
                               (if-let [x (find @resolver-cache* [op-name input-data params])]
                                 (val x)
-                                (if (::disable-batch? env)
+                                (if (::unsupported-batch? env)
                                   (invoke-resolver-cached-batch
                                     env cache? op-name resolver cache-store input-data params)
                                   (batch-hold-token env cache? op-name node cache-store input-data)))
