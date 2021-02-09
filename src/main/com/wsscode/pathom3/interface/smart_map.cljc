@@ -370,7 +370,7 @@
      IIterable
      (-iterator [_this]
                 (transformer-iterator (map #(SmartMapEntry. env %))
-                                      (-iterator (sm-env-keys env)) false))
+                                      (-iterator (vec (sm-env-keys env))) false))
 
      IReduce
      (-reduce [coll f] (iter-reduce coll f))
