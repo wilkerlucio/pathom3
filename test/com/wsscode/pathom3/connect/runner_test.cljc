@@ -1509,4 +1509,26 @@
                              ::pcr/wrap-root-run-graph! (set-done :done?)}])
           {:foo {:bar "baz"}}
           [{:foo [:bar]}]
-          {:foo {:bar "baz"}, :done? true}))))
+          {:foo {:bar "baz"}, :done? true})))
+
+  (testing "wrap mutation"
+    (let [err* (atom nil)
+          err  (ex-info "Error" {})]
+      (is (graph-response? (-> (pci/register
+                                 (pco/mutation 'foo {} (fn [_ _] (throw err))))
+                               (p.plugin/register
+                                 {::p.plugin/id
+                                  'log
+
+                                  ::pcr/wrap-mutate
+                                  (fn [mutation]
+                                    (fn [env ast]
+                                      (try
+                                        (mutation env ast)
+                                        (catch #?(:clj Throwable :cljs :default) e
+                                          (reset! err* e)
+                                          (throw e)))))}))
+            {}
+            ['(foo)]
+            (fn [_]
+              (= @err* err)))))))

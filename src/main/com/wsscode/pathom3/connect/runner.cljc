@@ -573,7 +573,8 @@
                                          ::mutation-run-start-ms start})
         result   (try
                    (if mutation
-                     (pco.prot/-mutate mutation env params)
+                     (p.plugin/run-with-plugins env ::wrap-mutate
+                       (partial pco.prot/-mutate mutation) env params)
                      (throw (ex-info "Mutation not found" {::pco/op-name key})))
                    (catch #?(:clj Throwable :cljs :default) e
                      {::mutation-error e}))]
@@ -584,16 +585,13 @@
       (process-attr-subquery env {} key result))
 
     (merge-mutation-stats! env {::pco/op-name key}
-                           {::node-run-finish-ms (time/now-ms)})
-
-    result))
+                           {::node-run-finish-ms (time/now-ms)})))
 
 (defn process-mutations!
   "Runs the mutations gathered by the planner."
   [{::pcp/keys [graph] :as env}]
   (doseq [ast (::pcp/mutations graph)]
-    (p.plugin/run-with-plugins env ::wrap-mutate
-      invoke-mutation! env ast)))
+    (invoke-mutation! env ast)))
 
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the

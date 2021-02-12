@@ -342,11 +342,11 @@
           _        (pcr/merge-mutation-stats! env {::pco/op-name key}
                                               {::pcr/node-run-start-ms     start
                                                ::pcr/mutation-run-start-ms start})
-          result   (-> (try
+          result   (-> (p/do!
                          (if mutation
-                           (pco.prot/-mutate mutation env params)
-                           (throw (ex-info "Mutation not found" {::pco/op-name key})))
-                         (catch #?(:clj Throwable :cljs :default) e e))
+                           (p.plugin/run-with-plugins env ::pcr/wrap-mutate
+                             (partial pco.prot/-mutate mutation) env params)
+                           (throw (ex-info "Mutation not found" {::pco/op-name key}))))
                        (p/catch (fn [e] {::pcr/mutation-error e})))
           _        (pcr/merge-mutation-stats! env {::pco/op-name key}
                                               {::pcr/mutation-run-finish-ms (time/now-ms)})
@@ -364,8 +364,7 @@
   [{::pcp/keys [graph] :as env}]
   (reduce-async
     (fn [_ ast]
-      (p.plugin/run-with-plugins env ::pcr/wrap-mutate
-        invoke-mutation! env ast))
+      (invoke-mutation! env ast))
     nil
     (::pcp/mutations graph)))
 
