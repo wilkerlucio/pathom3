@@ -584,7 +584,9 @@
       (process-attr-subquery env {} key result))
 
     (merge-mutation-stats! env {::pco/op-name key}
-                           {::node-run-finish-ms (time/now-ms)})))
+                           {::node-run-finish-ms (time/now-ms)})
+
+    result))
 
 (defn process-mutations!
   "Runs the mutations gathered by the planner."

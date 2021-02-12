@@ -355,7 +355,9 @@
     (p.ent/swap-entity! env assoc key result')
 
     (pcr/merge-mutation-stats! env {::pco/op-name key}
-                               {::pcr/node-run-finish-ms (time/now-ms)})))
+                               {::pcr/node-run-finish-ms (time/now-ms)})
+
+    result))
 
 (defn process-mutations!
   "Runs the mutations gathered by the planner."
