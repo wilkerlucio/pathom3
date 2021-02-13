@@ -565,7 +565,7 @@
 
 (defn invoke-mutation!
   "Run mutation from AST."
-  [env {:keys [key params]}]
+  [env {:keys [key] :as ast}]
   (let [mutation (pci/mutation env key)
         start    (time/now-ms)
         _        (merge-mutation-stats! env {::pco/op-name key}
@@ -574,7 +574,7 @@
         result   (try
                    (if mutation
                      (p.plugin/run-with-plugins env ::wrap-mutate
-                       (partial pco.prot/-mutate mutation) env params)
+                       #(pco.prot/-mutate mutation %1 (:params %2)) env ast)
                      (throw (ex-info "Mutation not found" {::pco/op-name key})))
                    (catch #?(:clj Throwable :cljs :default) e
                      {::mutation-error e}))]

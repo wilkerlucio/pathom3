@@ -1531,4 +1531,19 @@
             {}
             ['(foo)]
             (fn [_]
-              (= @err* err)))))))
+              (= @err* err)))))
+
+    (testing "wrapper gets ast"
+      (is (graph-response? (-> (pci/register
+                                 (pco/mutation 'foo {} (fn [_ _] {})))
+                               (p.plugin/register
+                                 {::p.plugin/id
+                                  'log
+
+                                  ::pcr/wrap-mutate
+                                  (fn [mutation]
+                                    (fn [env ast]
+                                      (assoc (mutation env ast) :k (:key ast))))}))
+            {}
+            ['(foo)]
+            '{foo {:k foo}})))))
