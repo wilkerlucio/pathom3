@@ -179,6 +179,10 @@
   "Atom containing the cache atom to support cached planning."
   refs/atom?)
 
+(>def ::snapshots*
+  "Atom to store each step of the planning process"
+  refs/atom?)
+
 (def pc-sym ::pco/op-name)
 (def pc-dyn-sym ::pco/dynamic-name)
 (def pc-output ::pco/output)
