@@ -870,8 +870,8 @@
             (add-snapshot! env {::snapshot-message (str "Root node is branch, adding a branch there")}))
 
         ; node run next is the root
-        (= (::run-next next-node)
-           root)
+        (let [ancestors (into #{} (node-ancestors graph root))]
+          (contains? ancestors node-id))
         (-> (add-snapshot! graph env {::snapshot-message (str "Nodes to join are linked via run-next, moving root to " node-id)
                                       ::highlight-nodes  (into #{} [node-id root])})
             (set-root-node node-id))
@@ -1216,21 +1216,6 @@
             (pop node-queue)
             (conj paths current-path))))
       paths)))
-
-(>defn node-ancestors-avoid-or
-  "Return all node ancestors. The order of the output will go from closest to farthest
-  nodes, like breathing out of the current node."
-  [graph node-id]
-  [::graph ::node-id
-   => (s/coll-of ::node-id :kind vector?)]
-  (loop [node-queue (coll/queue [node-id])
-         ancestors  []]
-    (if-let [node-id' (peek node-queue)]
-      (let [{::keys [node-parents]} (get-node graph node-id')]
-        (recur
-          (into (pop node-queue) node-parents)
-          (conj ancestors node-id')))
-      ancestors)))
 
 (>defn node-successors
   "Find successor nodes of node-id, node-id is included in the list. This will add
