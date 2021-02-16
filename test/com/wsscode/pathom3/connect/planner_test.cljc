@@ -3783,6 +3783,108 @@
                                                              :dispatch-key :e,
                                                              :key          :e}]}}}))))
 
+(deftest compute-run-regressions-test
+  (testing "keep graph when node and next node are already linked via run-next"
+    (is (= (compute-run-graph
+             {::pci/index-oir
+              '{:foo.bank-account/routing-number   {#:foo.routing-number{:routing-number {}} #{foo.routing_number_SLASH_routing_number->foo.bank_account_SLASH_routing_number-alias}},
+                :foo.contact/id                    {#:foo.employer{:id {}}          #{com.wsscode.pathom3.demos.debug/employer-by-id-resolver},
+                                                    #:foo.employer{:external-id {}} #{com.wsscode.pathom3.demos.debug/employer-by-external-id-resolver}},
+                :foo.bank-account/bank-account-id  {#:foo.employer{:id {}}          #{com.wsscode.pathom3.demos.debug/employer-by-id-resolver},
+                                                    #:foo.employer{:external-id {}} #{com.wsscode.pathom3.demos.debug/employer-by-external-id-resolver}},
+                :foo.employer/id                   {#:foo.employer{:external-id {}} #{com.wsscode.pathom3.demos.debug/employer-by-external-id-resolver}},
+                :foo.bank-account/id               {#:foo.bank-account{:bank-account-id {}} #{com.wsscode.pathom3.demos.debug/bank-account-resolver}},
+                :foo.routing-number/routing-number {#:foo.bank-account{:bank-account-id {}} #{com.wsscode.pathom3.demos.debug/bank-account-resolver}},
+                :foo.contact/email                 {#:foo.contact{:id {}} #{com.wsscode.pathom3.demos.debug/contact-resolver}},
+                :foo.routing-number/bank-name      {#:foo.routing-number{:routing-number {}} #{com.wsscode.pathom3.demos.debug/routing-number-resolver}}}
+
+              ::pcp/available-data
+              {:foo.employer/external-id {}}
+
+              ::eql/query
+              [:foo.routing-number/bank-name
+               :foo.bank-account/routing-number
+               :foo.contact/email]})
+           '#:com.wsscode.pathom3.connect.planner{:nodes {7 {:com.wsscode.pathom3.connect.operation/op-name foo.routing_number_SLASH_routing_number->foo.bank_account_SLASH_routing_number-alias,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 7,
+                                                             :com.wsscode.pathom3.connect.planner/expects #:foo.bank-account{:routing-number {}},
+                                                             :com.wsscode.pathom3.connect.planner/input #:foo.routing-number{:routing-number {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{8},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo.bank-account/routing-number}},
+                                                          1 {:com.wsscode.pathom3.connect.operation/op-name com.wsscode.pathom3.demos.debug/routing-number-resolver,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/expects #:foo.routing-number{:bank-name {}},
+                                                             :com.wsscode.pathom3.connect.planner/input #:foo.routing-number{:routing-number {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{8},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo.routing-number/bank-name}},
+                                                          4 {:com.wsscode.pathom3.connect.operation/op-name com.wsscode.pathom3.demos.debug/employer-by-external-id-resolver,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 4,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:foo.employer/id {},
+                                                                                                           :foo.bank-account/bank-account-id {},
+                                                                                                           :foo.contact/id {}},
+                                                             :com.wsscode.pathom3.connect.planner/input #:foo.employer{:external-id {}},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo.employer/id
+                                                                                                                     :foo.bank-account/bank-account-id
+                                                                                                                     :foo.contact/id},
+                                                             :com.wsscode.pathom3.connect.planner/run-next 6},
+                                                          6 #:com.wsscode.pathom3.connect.planner{:node-id 6,
+                                                                                                  :expects {:foo.bank-account/bank-account-id {},
+                                                                                                            :foo.routing-number/routing-number {},
+                                                                                                            :foo.contact/id {},
+                                                                                                            :foo.contact/email {}},
+                                                                                                  :run-and #{3
+                                                                                                             2
+                                                                                                             9},
+                                                                                                  :node-parents #{4}},
+                                                          3 {:com.wsscode.pathom3.connect.operation/op-name com.wsscode.pathom3.demos.debug/employer-by-id-resolver,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:foo.bank-account/bank-account-id {},
+                                                                                                           :foo.contact/id {}},
+                                                             :com.wsscode.pathom3.connect.planner/input #:foo.employer{:id {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{6}},
+                                                          2 {:com.wsscode.pathom3.connect.operation/op-name com.wsscode.pathom3.demos.debug/bank-account-resolver,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                             :com.wsscode.pathom3.connect.planner/expects #:foo.routing-number{:routing-number {}},
+                                                             :com.wsscode.pathom3.connect.planner/input #:foo.bank-account{:bank-account-id {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{6},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo.routing-number/routing-number},
+                                                             :com.wsscode.pathom3.connect.planner/run-next 8},
+                                                          9 {:com.wsscode.pathom3.connect.operation/op-name com.wsscode.pathom3.demos.debug/contact-resolver,
+                                                             :com.wsscode.pathom3.connect.planner/node-id 9,
+                                                             :com.wsscode.pathom3.connect.planner/expects #:foo.contact{:email {}},
+                                                             :com.wsscode.pathom3.connect.planner/input #:foo.contact{:id {}},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{6},
+                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo.contact/email}},
+                                                          8 #:com.wsscode.pathom3.connect.planner{:node-id 8,
+                                                                                                  :expects {:foo.routing-number/bank-name {},
+                                                                                                            :foo.bank-account/routing-number {}},
+                                                                                                  :run-and #{7
+                                                                                                             1},
+                                                                                                  :node-parents #{2}}},
+                                                  :index-ast {:foo.routing-number/bank-name {:type :prop,
+                                                                                             :dispatch-key :foo.routing-number/bank-name,
+                                                                                             :key :foo.routing-number/bank-name},
+                                                              :foo.bank-account/routing-number {:type :prop,
+                                                                                                :dispatch-key :foo.bank-account/routing-number,
+                                                                                                :key :foo.bank-account/routing-number},
+                                                              :foo.contact/email {:type :prop,
+                                                                                  :dispatch-key :foo.contact/email,
+                                                                                  :key :foo.contact/email}},
+                                                  :index-resolver->nodes {com.wsscode.pathom3.demos.debug/routing-number-resolver #{1},
+                                                                          com.wsscode.pathom3.demos.debug/bank-account-resolver #{2},
+                                                                          com.wsscode.pathom3.demos.debug/employer-by-id-resolver #{3},
+                                                                          com.wsscode.pathom3.demos.debug/employer-by-external-id-resolver #{4},
+                                                                          foo.routing_number_SLASH_routing_number->foo.bank_account_SLASH_routing_number-alias #{7},
+                                                                          com.wsscode.pathom3.demos.debug/contact-resolver #{9}},
+                                                  :index-attrs {:foo.employer/id 4,
+                                                                :foo.bank-account/bank-account-id 4,
+                                                                :foo.routing-number/routing-number 2,
+                                                                :foo.routing-number/bank-name 1,
+                                                                :foo.bank-account/routing-number 7,
+                                                                :foo.contact/id 4,
+                                                                :foo.contact/email 9},
+                                                  :root 4}))))
+
 (deftest root-execution-node?-test
   (is (= (pcp/root-execution-node?
            {::pcp/nodes {}}

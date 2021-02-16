@@ -575,9 +575,9 @@
               (every? #(not= node-id (-> (get-node graph %) ::run-next))
                 node-parents)
               true)
-      "Tried to remove node that still contains references pointing to it. Move
+      (str "Tried to remove node " node-id " that still contains references pointing to it. Move
       the run-next references from the pointer nodes before removing it. Also check if
-      parent is branch and trying to ")
+      parent is branch and trying to merge."))
     (-> graph
         (cond->
           (pc-sym node)
@@ -869,8 +869,21 @@
         (-> (add-branch-node graph env next-node)
             (add-snapshot! env {::snapshot-message (str "Root node is branch, adding a branch there")}))
 
+        ; node run next is the root
+        (= (::run-next next-node)
+           root)
+        (-> (add-snapshot! graph env {::snapshot-message (str "Nodes to join are linked via run-next, moving root to " node-id)
+                                      ::highlight-nodes  (into #{} [node-id root])})
+            (set-root-node node-id))
+
+        ; root run next is the node
+        (= (::run-next root-node)
+           node-id)
+        (add-snapshot! graph env {::snapshot-message (str "Nodes to join are linked via run-next, keep running")
+                                  ::highlight-nodes  (into #{} [node-id root])})
+
         :else
-        (-> (add-snapshot! graph env {::snapshot-message (str "Star branch node" node-id " and " root)
+        (-> (add-snapshot! graph env {::snapshot-message (str "Start branch node " node-id " and " root " using " (name branch-type))
                                       ::branch-type      branch-type
                                       ::highlight-nodes  (into #{} [node-id root])})
             (create-branch-node env next-node (branch-node-factory))
