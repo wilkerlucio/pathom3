@@ -223,7 +223,7 @@
    [map? ::shape-descriptor => map?]
    (select-shape-filtering data shape shape))
   ([data shape required-shape]
-   [map? ::shape-descriptor ::shape-descriptor => map?]
+   [map? ::shape-descriptor (? ::shape-descriptor) => map?]
    (reduce-kv
      (fn [out k sub]
        (if-let [x (find data k)]
