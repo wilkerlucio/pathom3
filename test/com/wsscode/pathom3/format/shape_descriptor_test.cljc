@@ -238,6 +238,10 @@
                                             {:b 4}]} {:foo {:a {}}})
          {:foo [{:a 1}]}))
 
+  (is (= (psd/select-shape-filtering {:foo [{:a 1 :b 2}
+                                            {:b 4}]} {:foo {:a {}}} {:foo {}})
+         {:foo [{:a 1} {}]}))
+
   (is (= (psd/select-shape-filtering {:foo #{{:a 1 :b 2}
                                              {:a 3 :b 4}}} {:foo {:a {}}})
          {:foo #{{:a 1}

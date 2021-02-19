@@ -189,7 +189,7 @@
          :or        {cache? true}} (pco/operation-config resolver)
         env             (assoc env ::pcp/node node)
         entity          (p.ent/entity env)
-        input-data      (pfsd/select-shape-filtering entity (pfsd/merge-shapes input optionals))
+        input-data      (pfsd/select-shape-filtering entity (pfsd/merge-shapes input optionals) input)
         input-shape     (pfsd/data->shape-descriptor input-data)
         params          (pco/params env)
         cache-store     (pcr/choose-cache-store env cache-store)

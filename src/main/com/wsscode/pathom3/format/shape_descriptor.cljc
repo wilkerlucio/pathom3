@@ -206,29 +206,40 @@
     (empty data)
     shape))
 
+(declare select-shape-filtering)
+
+(defn- select-shape-filter-coll [out k v sub sub-req]
+  (let [sub-keys (keys sub-req)]
+    (assoc out k
+      (into (empty v)
+            (keep #(let [s' (select-shape-filtering % sub sub-req)]
+                     (if (every? (fn [x] (contains? s' x)) sub-keys)
+                       s'))) v))))
+
 (>defn select-shape-filtering
   "Like select-shape, but in case of collections, if some item doesn't have all the
   required keys, its removed from the collection."
-  [data shape]
-  [map? ::shape-descriptor => map?]
-  (reduce-kv
-    (fn [out k sub]
-      (if-let [x (find data k)]
-        (let [v (val x)]
-          (if (seq sub)
-            (cond
-              (map? v)
-              (assoc out k (select-shape v sub))
+  ([data shape]
+   [map? ::shape-descriptor => map?]
+   (select-shape-filtering data shape shape))
+  ([data shape required-shape]
+   [map? ::shape-descriptor ::shape-descriptor => map?]
+   (reduce-kv
+     (fn [out k sub]
+       (if-let [x (find data k)]
+         (let [v (val x)]
+           (if (seq sub)
+             (let [sub-req (get required-shape k)]
+               (cond
+                 (map? v)
+                 (assoc out k (select-shape-filtering v sub sub-req))
 
-              (coll/collection? v)
-              (assoc out k (into (empty v)
-                                 (keep #(let [s' (select-shape % sub)]
-                                          (if (= (count s') (count sub))
-                                            s'))) v))
+                 (coll/collection? v)
+                 (select-shape-filter-coll out k v sub sub-req)
 
-              :else
-              (assoc out k v))
-            (assoc out k v)))
-        out))
-    (empty data)
-    shape))
+                 :else
+                 (assoc out k v)))
+             (assoc out k v)))
+         out))
+     (empty data)
+     shape)))
