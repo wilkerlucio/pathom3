@@ -527,6 +527,27 @@
           {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
            :total-score 30})))
 
+  (testing "optional nested input"
+    (is (graph-response?
+          (pci/register
+            [(pco/resolver 'users
+               {::pco/output [{:users [:user/id]}]}
+               (fn [_ _]
+                 {:users [{:user/id 1}
+                          {:user/id 2}]}))
+             (pbir/static-attribute-map-resolver :user/id :user/score
+               {1 10
+                2 20})
+             (pco/resolver 'total-score
+               {::pco/input  [{:users [(pco/? :user/score)]}]
+                ::pco/output [:total-score]}
+               (fn [_ {:keys [users]}]
+                 {:total-score (reduce + 0 (map :user/score users))}))])
+          {}
+          [:total-score]
+          {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
+           :total-score 30})))
+
   (testing "empty collection is a valid input"
     (is (graph-response?
           (pci/register

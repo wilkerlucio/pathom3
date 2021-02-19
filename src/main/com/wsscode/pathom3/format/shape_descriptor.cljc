@@ -162,8 +162,7 @@
      (if (seq res) res)))
   ([available required data]
    [::shape-descriptor ::shape-descriptor map? => (? ::shape-descriptor)]
-   (missing available
-            (relax-empty-collections required data))))
+   (missing available (relax-empty-collections required data))))
 
 (>defn difference
   "Like set/difference, for shapes."

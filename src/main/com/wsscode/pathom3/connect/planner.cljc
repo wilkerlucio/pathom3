@@ -1395,9 +1395,9 @@
       (->> missing
            (into {} (filter (fn [[k v]] (or (contains? recursive-joins k) (seq v)))))))))
 
-(defn merge-missing-chain [graph graph' env missing missing-flat]
+(defn merge-missing-chain [graph graph' {::keys [available-data] :as env} missing missing-flat optionals]
   (let [missing-with-nodes (attributes-with-nodes graph' missing-flat)
-        graph'             (merge-nested-missing-ast graph' env missing)]
+        graph'             (merge-nested-missing-ast graph' env (pfsd/missing available-data (pfsd/merge-shapes missing optionals)))]
     (if (seq missing-with-nodes)
       (let [ancestor (find-missing-ancestor graph' missing-with-nodes)]
         (add-snapshot! graph' env {::snapshot-message (str "Missing ancestor lookup for attributes " missing-with-nodes ", pick " ancestor)
@@ -1427,11 +1427,12 @@
   sets the ::run-next data at the env, it will be used to link the nodes after they
   are created in the process."
   [graph {::keys [graph-before-missing-chain available-data] :as env} missing resolvers]
-  (let [missing-flat (into []
+  (let [optionals    (resolvers-optionals env resolvers)
+        missing-flat (into []
                            (remove available-data)
                            (concat
                              (keys missing)
-                             (keys (resolvers-optionals env resolvers))))]
+                             (keys optionals)))]
     (if (or (seq missing-flat) (seq missing))
       (let [_             (add-snapshot! graph env {::snapshot-message (str "Computing " (pc-attr env) " dependencies: " (pr-str missing))})
             graph'        (compute-run-graph*
@@ -1444,7 +1445,7 @@
             still-missing (into {} (remove #(required-input-reachable? graph' env %)) missing)
             all-provided? (empty? still-missing)]
         (if all-provided?
-          (merge-missing-chain graph graph' (assoc env ::resolvers resolvers) missing missing-flat)
+          (merge-missing-chain graph graph' (assoc env ::resolvers resolvers) missing missing-flat optionals)
           (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
                 unreachable-attrs (unreachable-attrs-after-missing-check env unreachable-resolvers still-missing)]
             (update out' ::unreachable-paths pfsd/merge-shapes unreachable-attrs))))
