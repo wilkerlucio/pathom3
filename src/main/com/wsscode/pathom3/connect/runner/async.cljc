@@ -196,7 +196,7 @@
         resolver-cache* (get env cache-store)
         _               (pcr/merge-node-stats! env node
                           {::pcr/resolver-run-start-ms (time/now-ms)})
-        result          (-> (if (pfsd/missing input-shape input)
+        result          (-> (if (pfsd/missing input-shape input input-data)
                               (if (pcr/missing-maybe-in-pending-batch? env input)
                                 (pcr/wait-batch-response env node)
                                 (p/rejected (ex-info "Insufficient data" {:required  input
