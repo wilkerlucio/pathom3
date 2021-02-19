@@ -23,10 +23,15 @@
     ::error-mode-loud})
 
 (>def ::keys-mode
+  "How "
   #{::keys-mode-cached
     ::keys-mode-reachable})
 
-(>def ::wrap-nested? boolean?)
+(>def ::wrap-nested?
+  "Flag to decide if values read from a Smart Map should also be wrapped on a Smart Map.
+  True by default."
+  boolean?)
+
 (>def ::smart-map? boolean?)
 
 (>defn with-error-mode
