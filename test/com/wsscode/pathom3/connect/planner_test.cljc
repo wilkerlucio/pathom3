@@ -5,6 +5,7 @@
     [clojure.walk :as walk]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.attribute :as p.attr]
+    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
@@ -2530,30 +2531,75 @@
                                  ::pco/input   [:name]
                                  ::pco/output  [{:children [:name]}]}]
                   ::pcp/available-data {:name {}}}))
-           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name nested-input-recursive,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:names {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {:name {},
-                                                                                                         :children {}},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{2},
-                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:names}},
-                                                          2 {:com.wsscode.pathom3.connect.operation/op-name from-name,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 2,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:children {}},
-                                                             :com.wsscode.pathom3.connect.planner/input {:name {}},
-                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:children},
-                                                             :com.wsscode.pathom3.connect.planner/run-next 1}},
-                                                  :index-ast             {:names {:type :prop,
-                                                                      :dispatch-key :names,
-                                                                      :key :names},
-                                                              :children {:type :join,
-                                                                         :key :children,
-                                                                         :dispatch-key :children,
-                                                                         :query ...}},
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name        nested-input-recursive,
+                                                             :com.wsscode.pathom3.connect.planner/node-id                          1,
+                                                             :com.wsscode.pathom3.connect.planner/expects                          {:names {}},
+                                                                             :com.wsscode.pathom3.connect.planner/input            {:name     {},
+                                                                                                                                    :children {}},
+                                                                             :com.wsscode.pathom3.connect.planner/node-parents     #{2},
+                                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:names}},
+                                                                          2 {:com.wsscode.pathom3.connect.operation/op-name        from-name,
+                                                                             :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                             :com.wsscode.pathom3.connect.planner/expects          {:children {}},
+                                                                             :com.wsscode.pathom3.connect.planner/input            {:name {}},
+                                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:children},
+                                                                             :com.wsscode.pathom3.connect.planner/run-next         1}},
+                                                  :index-ast             {:names    {:type         :prop,
+                                                                                     :dispatch-key :names,
+                                                                                     :key          :names},
+                                                                          :children {:type         :join,
+                                                                                     :key          :children,
+                                                                                     :dispatch-key :children,
+                                                                                     :query        ...}},
                                                   :index-resolver->nodes {nested-input-recursive #{1},
-                                                                          from-name #{2}},
+                                                                          from-name              #{2}},
                                                   :index-attrs           {:children 2, :names 1},
                                                   :nested-process        #{:children},
+                                                  :root                  2})))
+
+  (testing "optional nested input"
+    (is (= (compute-run-graph
+             (assoc
+               (pci/register
+                 [(pco/resolver 'users
+                    {::pco/output [{:users [:user/id]}]}
+                    (fn [_ _]
+                      {:users [{:user/id 1}
+                               {:user/id 2}]}))
+                  (pbir/static-attribute-map-resolver :user/id :user/score
+                    {1 10
+                     2 20})
+                  (pco/resolver 'total-score
+                    {::pco/input  [{:users [(pco/? :user/score)]}]
+                     ::pco/output [:total-score]}
+                    (fn [_ {:keys [users]}]
+                      {:total-score (reduce + 0 (map :user/score users))}))])
+
+               ::eql/query [:total-score]))
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name        total-score,
+                                                                             :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                             :com.wsscode.pathom3.connect.planner/expects          {:total-score {}},
+                                                                             :com.wsscode.pathom3.connect.planner/input            {:users {}},
+                                                                             :com.wsscode.pathom3.connect.planner/node-parents     #{2},
+                                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:total-score}},
+                                                                          2 {:com.wsscode.pathom3.connect.operation/op-name        users,
+                                                                             :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                             :com.wsscode.pathom3.connect.planner/expects          {:users {}},
+                                                                             :com.wsscode.pathom3.connect.planner/input            {},
+                                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:users},
+                                                                             :com.wsscode.pathom3.connect.planner/run-next         1}},
+                                                  :index-ast             {:total-score {:type         :prop,
+                                                                                        :dispatch-key :total-score,
+                                                                                        :key          :total-score},
+                                                                          :users       {:type         :join,
+                                                                                        :children     [{:type         :prop,
+                                                                                                        :key          :user/score,
+                                                                                                        :dispatch-key :user/score}],
+                                                                                        :key          :users,
+                                                                                        :dispatch-key :users}},
+                                                  :index-resolver->nodes {total-score #{1},
+                                                                          users       #{2}},
+                                                  :index-attrs           {:users 2, :total-score 1},
                                                   :root                  2}))))
 
 (deftest compute-run-graph-optional-inputs-test
