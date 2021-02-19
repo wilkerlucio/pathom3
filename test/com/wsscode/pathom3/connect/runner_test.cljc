@@ -568,6 +568,26 @@
           {:users       []
            :total-score 0})))
 
+  (testing "remove collection elements that don't fulfill required input"
+    (is (graph-response?
+          (pci/register
+            [(pco/resolver 'users
+               {::pco/output [{:users [:user/id]}]}
+               (fn [_ _]
+                 {:users [{:user/id 1}
+                          {:user/id 2}]}))
+             (pbir/static-attribute-map-resolver :user/id :user/score
+               {1 10})
+             (pco/resolver 'total-score
+               {::pco/input  [{:users [:user/score]}]
+                ::pco/output [:total-score]}
+               (fn [_ {:keys [users]}]
+                 {:total-score (reduce + 0 (map :user/score users))}))])
+          {}
+          [:total-score]
+          {:users       [#:user{:id 1, :score 10} {:user/id 2}]
+           :total-score 10})))
+
   (testing "resolver gets only the exact shape it asked for"
     (is (graph-response?
           (pci/register

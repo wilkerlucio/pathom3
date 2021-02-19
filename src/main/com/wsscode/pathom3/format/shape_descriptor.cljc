@@ -205,3 +205,30 @@
         out))
     (empty data)
     shape))
+
+(>defn select-shape-filtering
+  "Like select-shape, but in case of collections, if some item doesn't have all the
+  required keys, its removed from the collection."
+  [data shape]
+  [map? ::shape-descriptor => map?]
+  (reduce-kv
+    (fn [out k sub]
+      (if-let [x (find data k)]
+        (let [v (val x)]
+          (if (seq sub)
+            (cond
+              (map? v)
+              (assoc out k (select-shape v sub))
+
+              (coll/collection? v)
+              (assoc out k (into (empty v)
+                                 (keep #(let [s' (select-shape % sub)]
+                                          (if (= (count s') (count sub))
+                                            s'))) v))
+
+              :else
+              (assoc out k v))
+            (assoc out k v)))
+        out))
+    (empty data)
+    shape))

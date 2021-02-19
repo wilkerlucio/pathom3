@@ -384,7 +384,7 @@
          :or        {cache? true}} (pco/operation-config resolver)
         env             (assoc env ::pcp/node node)
         entity          (p.ent/entity env)
-        input-data      (pfsd/select-shape entity (pfsd/merge-shapes input optionals))
+        input-data      (pfsd/select-shape-filtering entity (pfsd/merge-shapes input optionals))
         input-shape     (pfsd/data->shape-descriptor input-data)
         params          (pco/params env)
         cache-store     (choose-cache-store env cache-store)
@@ -392,7 +392,7 @@
         _               (merge-node-stats! env node
                           {::resolver-run-start-ms (time/now-ms)})
         result          (try
-                          (if (pfsd/missing input-shape input input-data)
+                          (if (pfsd/missing input-shape input entity)
                             (if (missing-maybe-in-pending-batch? env input)
                               (wait-batch-response env node)
                               (throw (ex-info "Insufficient data" {:required  input

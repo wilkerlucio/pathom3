@@ -187,13 +187,68 @@
          {:foo [{:a 1}
                 {:a 3}]}))
 
+  (is (= (psd/select-shape {:foo [{:a 1 :b 2}
+                                  {:b 4}]} {:foo {:a {}}})
+         {:foo [{:a 1}
+                {}]}))
+
   (is (= (psd/select-shape {:foo #{{:a 1 :b 2}
                                    {:a 3 :b 4}}} {:foo {:a {}}})
          {:foo #{{:a 1}
                  {:a 3}}}))
 
+  (is (= (psd/select-shape {:foo #{{:a 1 :b 2}
+                                   {:b 4}}} {:foo {:a {}}})
+         {:foo #{{:a 1} {}}}))
+
   (testing "keep meta"
     (is (= (-> (psd/select-shape ^:yes? {:foo [{:a 1 :b 2}
                                                {:a 3 :b 4}]} {:foo {:a {}}})
+               (meta))
+           {:yes? true}))))
+
+(deftest select-shape-filtering-test
+  (is (= (psd/select-shape-filtering {} {})
+         {}))
+
+  (is (= (psd/select-shape-filtering {:foo "bar"} {})
+         {}))
+
+  (is (= (psd/select-shape-filtering {:foo "bar"} {:foo {}})
+         {:foo "bar"}))
+
+  (is (= (psd/select-shape-filtering {:foo "bar"} {:foo {} :baz {}})
+         {:foo "bar"}))
+
+  (is (= (psd/select-shape-filtering {:foo "bar" :baz "baz"} {:foo {}})
+         {:foo "bar"}))
+
+  (is (= (psd/select-shape-filtering {:foo {:a 1 :b 2}} {:foo {}})
+         {:foo {:a 1 :b 2}}))
+
+  (is (= (psd/select-shape-filtering {:foo {:a 1 :b 2}} {:foo {:a {}}})
+         {:foo {:a 1}}))
+
+  (is (= (psd/select-shape-filtering {:foo [{:a 1 :b 2}
+                                            {:a 3 :b 4}]} {:foo {:a {}}})
+         {:foo [{:a 1}
+                {:a 3}]}))
+
+  (is (= (psd/select-shape-filtering {:foo [{:a 1 :b 2}
+                                            {:b 4}]} {:foo {:a {}}})
+         {:foo [{:a 1}]}))
+
+  (is (= (psd/select-shape-filtering {:foo #{{:a 1 :b 2}
+                                             {:a 3 :b 4}}} {:foo {:a {}}})
+         {:foo #{{:a 1}
+                 {:a 3}}}))
+
+  (is (= (psd/select-shape-filtering {:foo #{{:a 1 :b 2}
+                                             {:b 4}}} {:foo {:a {}}})
+         {:foo #{{:a 1}}}))
+
+  (testing "keep meta"
+    (is (= (-> (psd/select-shape-filtering ^:yes? {:foo [{:a 1 :b 2}
+                                                         {:a 3 :b 4}]} {:foo {:a {}}})
                (meta))
            {:yes? true}))))
