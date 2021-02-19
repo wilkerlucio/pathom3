@@ -80,6 +80,21 @@
          {:foo {:bar {}
                 :baz {}}})))
 
+(deftest relax-empty-collections-test
+  (is (= (psd/relax-empty-collections
+           {:foo {:bar {}}} {:foo []})
+         {:foo {}}))
+
+  (is (= (psd/relax-empty-collections
+           {:foo {:bar {:baz {}}}}
+           {:foo {:bar []}})
+         {:foo {:bar {}}}))
+
+  (is (= (psd/relax-empty-collections
+           {:foo {:bar {:baz {}}}}
+           {:foo [{:bar []}]})
+         {:foo {:bar {}}})))
+
 (deftest missing-test
   (is (= (psd/missing {} {})
          nil))
@@ -106,7 +121,15 @@
          {:foo {:bar {}}}))
 
   (is (= (psd/missing {:foo {:bar {}}} {:foo {:bar {} :baz {}}})
-         {:foo {:baz {}}})))
+         {:foo {:baz {}}}))
+
+  (testing "with data"
+    (is (= (psd/missing {:foo {}} {:foo {:bar {}}} {:foo []})
+           nil))
+
+    (is (= (psd/missing {:foo {:bar {}}} {:foo {:bar {:baz {}}}}
+                        {:foo {:bar []}})
+           nil))))
 
 (deftest difference-test
   (is (= (psd/difference {} {})

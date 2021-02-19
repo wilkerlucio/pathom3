@@ -113,24 +113,57 @@
                  k)))
         shape))
 
+(defn relax-empty-collections
+  "This helper will remove nested requirements when data is an empty collection. This
+  allows for nested inputs with empty collections to still be valid in shape."
+  [required data]
+  (reduce
+    (fn [r [k v]]
+      (cond
+        (and (contains? r k)
+             (coll/collection? v)
+             (empty? v))
+        (assoc r k {})
+
+        (and (contains? r k)
+             (not= (get r k) {}))
+        (update r k relax-empty-collections v)
+
+        :else
+        r))
+    required
+    (cond
+      (map? data)
+      data
+
+      (coll/collection? data)
+      (first data)
+
+      :else
+      nil)))
+
 (>defn missing
   "Given some available and required shapes, returns which items are missing from available
   in the required. Returns nil when nothing is missing."
-  [available required]
-  [::shape-descriptor ::shape-descriptor
-   => (? ::shape-descriptor)]
-  (let [res (into
-              {}
-              (keep (fn [el]
-                      (let [attr      (key el)
-                            sub-query (val el)]
-                        (if (contains? available attr)
-                          (if-let [sub-req (and (seq sub-query)
-                                                (missing (get available attr) sub-query))]
-                            (coll/make-map-entry attr sub-req))
-                          el))))
-              required)]
-    (if (seq res) res)))
+  ([available required]
+   [::shape-descriptor ::shape-descriptor
+    => (? ::shape-descriptor)]
+   (let [res (into
+               {}
+               (keep (fn [el]
+                       (let [attr      (key el)
+                             sub-query (val el)]
+                         (if (contains? available attr)
+                           (if-let [sub-req (and (seq sub-query)
+                                                 (missing (get available attr) sub-query))]
+                             (coll/make-map-entry attr sub-req))
+                           el))))
+               required)]
+     (if (seq res) res)))
+  ([available required data]
+   [::shape-descriptor ::shape-descriptor map? => (? ::shape-descriptor)]
+   (missing available
+            (relax-empty-collections required data))))
 
 (>defn difference
   "Like set/difference, for shapes."
