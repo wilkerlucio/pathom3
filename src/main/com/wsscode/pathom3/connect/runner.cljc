@@ -206,8 +206,7 @@
           (process-map-container-subquery env ast v)
           (process-map-subquery env ast v))
 
-        (or (sequential? v)
-            (set? v))
+        (coll/collection? v)
         (process-sequence-subquery
           (cond-> env
             ; no batch in sequences that are not vectors because we can't reach those

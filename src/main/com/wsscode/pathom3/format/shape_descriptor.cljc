@@ -164,7 +164,7 @@
               (map? v)
               (assoc out k (select-shape v sub))
 
-              (or (sequential? v) (set? v))
+              (coll/collection? v)
               (assoc out k (into (empty v) (map #(select-shape % sub)) v))
 
               :else

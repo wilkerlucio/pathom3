@@ -100,8 +100,7 @@
           (map? val)
           (map-select-ast env val ast)
 
-          (or (sequential? val)
-              (set? val))
+          (coll/collection? val)
           (into (empty val) (map #(map-select-ast env % ast))
                 (cond-> val
                   (coll/coll-append-at-head? val)
