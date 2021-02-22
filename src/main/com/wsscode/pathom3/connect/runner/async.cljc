@@ -349,11 +349,11 @@
                        (p/catch (fn [e] {::pcr/mutation-error e})))
           _        (pcr/merge-mutation-stats! env {::pco/op-name key}
                      {::pcr/mutation-run-finish-ms (time/now-ms)})
-          result'  (if-not (::pcr/mutation-error result)
+          result'  (if (::pcr/mutation-error result)
+                     result
                      (process-attr-subquery env {} key result))]
 
-    (if result'
-      (p.ent/swap-entity! env assoc key result'))
+    (p.ent/swap-entity! env assoc key result')
 
     (pcr/merge-mutation-stats! env {::pco/op-name key}
       {::pcr/node-run-finish-ms (time/now-ms)})

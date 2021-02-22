@@ -580,7 +580,8 @@
     (merge-mutation-stats! env {::pco/op-name key}
                            {::mutation-run-finish-ms (time/now-ms)})
 
-    (if-not (::mutation-error result)
+    (if (::mutation-error result)
+      (p.ent/swap-entity! env assoc key result)
       (p.ent/swap-entity! env assoc key
         (process-attr-subquery env {} key result)))
 
