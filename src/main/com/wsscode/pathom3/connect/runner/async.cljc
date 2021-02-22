@@ -339,8 +339,8 @@
   (p/let [mutation (pci/mutation env key)
           start    (time/now-ms)
           _        (pcr/merge-mutation-stats! env {::pco/op-name key}
-                                              {::pcr/node-run-start-ms     start
-                                               ::pcr/mutation-run-start-ms start})
+                     {::pcr/node-run-start-ms     start
+                      ::pcr/mutation-run-start-ms start})
           result   (-> (p/do!
                          (if mutation
                            (p.plugin/run-with-plugins env ::pcr/wrap-mutate
@@ -348,13 +348,15 @@
                            (throw (ex-info "Mutation not found" {::pco/op-name key}))))
                        (p/catch (fn [e] {::pcr/mutation-error e})))
           _        (pcr/merge-mutation-stats! env {::pco/op-name key}
-                                              {::pcr/mutation-run-finish-ms (time/now-ms)})
-          result'  (process-attr-subquery env {} key result)]
+                     {::pcr/mutation-run-finish-ms (time/now-ms)})
+          result'  (if-not (::pcr/mutation-error result)
+                     (process-attr-subquery env {} key result))]
 
-    (p.ent/swap-entity! env assoc key result')
+    (if result'
+      (p.ent/swap-entity! env assoc key result'))
 
     (pcr/merge-mutation-stats! env {::pco/op-name key}
-                               {::pcr/node-run-finish-ms (time/now-ms)})
+      {::pcr/node-run-finish-ms (time/now-ms)})
 
     result))
 

@@ -88,7 +88,7 @@
   (or (= '... query) (int? query)))
 
 (defn map-select-entry
-  [env source {:keys [key query] :as ast}]
+  [env source {:keys [key query type] :as ast}]
   (if-let [x (find source key)]
     (let [val (val x)
           ast (if (recursive-query? query) (:parent-ast ast) ast)
@@ -97,6 +97,10 @@
       (coll/make-map-entry
         key
         (cond
+          (and (refs/kw-identical? type :call)
+               (:com.wsscode.pathom3.connect.runner/mutation-error val))
+          val
+
           (map? val)
           (map-select-ast env val ast)
 

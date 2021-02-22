@@ -128,7 +128,13 @@
   (testing "custom records"
     (let [record (->RecordSample "bar")]
       (is (= (pf.eql/map-select {} {:foo record} [:foo])
-             {:foo record})))))
+             {:foo record}))))
+
+  (testing "special case: mutations with error"
+    (is (= (pf.eql/map-select {}
+                              {'foo {:com.wsscode.pathom3.connect.runner/mutation-error "x"}}
+                              '[{(foo) [:bar]}])
+           {'foo {:com.wsscode.pathom3.connect.runner/mutation-error "x"}}))))
 
 (deftest data->query-test
   (is (= (pf.eql/data->query {}) []))
