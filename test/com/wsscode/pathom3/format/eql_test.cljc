@@ -39,11 +39,15 @@
 (deftest index-ast-test
   (is (= (pf.eql/index-ast (eql/query->ast [:foo {:bar [:baz]}]))
          {:foo {:type :prop, :dispatch-key :foo, :key :foo},
-          :bar {:type :join,
+          :bar {:type         :join,
                 :dispatch-key :bar,
-                :key :bar,
-                :query [:baz],
-                :children [{:type :prop, :dispatch-key :baz, :key :baz}]}})))
+                :key          :bar,
+                :query        [:baz],
+                :children     [{:type :prop, :dispatch-key :baz, :key :baz}]}}))
+
+  (testing "remove *"
+    (is (= (pf.eql/index-ast (eql/query->ast [:foo '*]))
+           {:foo {:type :prop, :dispatch-key :foo, :key :foo},}))))
 
 (def protected-list #{:foo})
 

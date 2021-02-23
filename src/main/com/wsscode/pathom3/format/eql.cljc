@@ -82,7 +82,8 @@
 (>defn index-ast [{:keys [children]}]
   [:edn-query-language.ast/node => ::prop->ast]
   ; TODO consider merging issues when key is repeated
-  (coll/index-by :key children))
+  (-> (coll/index-by :key children)
+      (dissoc '*)))
 
 (defn recursive-query? [query]
   (or (= '... query) (int? query)))
