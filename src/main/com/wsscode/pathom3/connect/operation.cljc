@@ -58,15 +58,20 @@
   pop/IResolver
   (-resolve [_ env input] (resolve env input))
 
-  #?(:clj clojure.lang.IFn)
-  #?(:clj (invoke [_this] (resolve {} {})))
-  #?(:clj (invoke [_this input] (resolve {} input)))
-  #?(:clj (invoke [_this env input] (resolve env input)))
+  #?@(:bb
+      []
 
-  #?(:cljs IFn)
-  #?(:cljs (-invoke [_this] (resolve {} {})))
-  #?(:cljs (-invoke [_this input] (resolve {} input)))
-  #?(:cljs (-invoke [_this env input] (resolve env input))))
+      :clj
+      [clojure.lang.IFn
+       (invoke [_this] (resolve {} {}))
+       (invoke [_this input] (resolve {} input))
+       (invoke [_this env input] (resolve env input))]
+
+      :cljs
+      [IFn
+       (-invoke [_this] (resolve {} {}))
+       (-invoke [_this input] (resolve {} input))
+       (-invoke [_this env input] (resolve env input))]))
 
 (defrecord Mutation [config mutate]
   pop/IOperation
@@ -76,15 +81,20 @@
   pop/IMutation
   (-mutate [_ env input] (mutate env input))
 
-  #?(:clj clojure.lang.IFn)
-  #?(:clj (invoke [_this] (mutate {} {})))
-  #?(:clj (invoke [_this input] (mutate {} input)))
-  #?(:clj (invoke [_this env input] (mutate env input)))
+  #?@(:bb
+      []
 
-  #?(:cljs IFn)
-  #?(:cljs (-invoke [_this] (mutate {} {})))
-  #?(:cljs (-invoke [_this input] (mutate {} input)))
-  #?(:cljs (-invoke [_this env input] (mutate env input))))
+      :clj
+      [clojure.lang.IFn
+       (invoke [_this] (mutate {} {}))
+       (invoke [_this input] (mutate {} input))
+       (invoke [_this env input] (mutate env input))]
+
+      :cljs
+      [IFn
+       (-invoke [_this] (mutate {} {}))
+       (-invoke [_this input] (mutate {} input))
+       (-invoke [_this env input] (mutate env input))]))
 
 ; endregion
 
