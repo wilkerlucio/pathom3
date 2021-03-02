@@ -28,6 +28,7 @@
 (>def ::input vector?)
 (>def ::output vector?)
 (>def ::params vector?)
+(>def ::docstring string?)
 (>def ::cache? boolean?)
 (>def ::cache-store keyword?)
 (>def ::batch? boolean?)
@@ -305,7 +306,7 @@
                 [val]))))
         m))
 
-(defn params->resolver-options [{:keys [arglist options body]}]
+(defn params->resolver-options [{:keys [arglist options body docstring]}]
   (let [[input-type input-arg] (last arglist)
         last-expr (last body)]
     (cond-> options
@@ -314,9 +315,12 @@
 
       (and (refs/kw-identical? :map input-type)
            (not (::input options)))
-      (assoc ::input (extract-destructure-map-keys-as-keywords input-arg)))))
+      (assoc ::input (extract-destructure-map-keys-as-keywords input-arg))
 
-(defn params->mutation-options [{:keys [arglist options body]}]
+      docstring
+      (assoc ::docstring docstring))))
+
+(defn params->mutation-options [{:keys [arglist options body docstring]}]
   (let [[input-type params-arg] (last arglist)
         last-expr (last body)]
     (cond-> options
@@ -325,7 +329,10 @@
 
       (and (refs/kw-identical? :map input-type)
            (not (::params options)))
-      (assoc ::params (extract-destructure-map-keys-as-keywords params-arg)))))
+      (assoc ::params (extract-destructure-map-keys-as-keywords params-arg))
+
+      docstring
+      (assoc ::docstring docstring))))
 
 (defn normalize-arglist
   "Ensures arglist contains two elements."

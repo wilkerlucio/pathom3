@@ -201,6 +201,16 @@
                 :options {::pco/output [:foo]}
                 :body    [{:foo "bar"}]})))
 
+     (testing "docstring"
+       (is (= (s/conform ::pco/defresolver-args '[foo "doc here" [env input]
+                                                  {::pco/output [:foo]}
+                                                  {:foo "bar"}])
+              '{:name      foo
+                :docstring "doc here"
+                :arglist   [[:sym env] [:sym input]]
+                :options   {::pco/output [:foo]}
+                :body      [{:foo "bar"}]})))
+
      (testing "visible output shape"
        (is (= (s/conform ::pco/defresolver-args '[foo [env input] {:foo "bar"}])
               '{:name    foo
@@ -400,7 +410,8 @@
                  "documentation"
                  (com.wsscode.pathom3.connect.operation/resolver
                    'user/foo
-                   #:com.wsscode.pathom3.connect.operation{:output [:sample]}
+                   #:com.wsscode.pathom3.connect.operation{:docstring "documentation"
+                                                           :output    [:sample]}
                    (clojure.core/fn foo [_ _] {:sample "bar"}))))))
 
      (testing "validates configuration map"
@@ -497,7 +508,8 @@
                  "documentation"
                  (com.wsscode.pathom3.connect.operation/mutation
                    'user/foo
-                   #:com.wsscode.pathom3.connect.operation{:output [:sample]}
+                   #:com.wsscode.pathom3.connect.operation{:docstring "documentation"
+                                                           :output    [:sample]}
                    (clojure.core/fn foo [_ _] {:sample "bar"}))))))
 
      (testing "implicit output resolver, no args capture"
