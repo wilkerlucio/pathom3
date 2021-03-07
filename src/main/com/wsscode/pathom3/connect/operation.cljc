@@ -306,12 +306,19 @@
                 [val]))))
         m))
 
+(defn body->result [body]
+  (loop [elem (last body)]
+    (when elem
+      (cond
+        (list? elem) (recur (last elem))
+        (map? elem)  elem))))
+
 (defn params->resolver-options [{:keys [arglist options body docstring]}]
   (let [[input-type input-arg] (last arglist)
-        last-expr (last body)]
+        result-expr (body->result body)]
     (cond-> options
-      (and (map? last-expr) (not (::output options)))
-      (assoc ::output (pf.eql/data->query last-expr))
+      (and (map? result-expr) (not (::output options)))
+      (assoc ::output (pf.eql/data->query result-expr))
 
       (and (refs/kw-identical? :map input-type)
            (not (::input options)))
