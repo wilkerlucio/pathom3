@@ -241,7 +241,7 @@
      (-pop [_node] [key])
 
      ICollection
-     (-conj [_node o] [key val o])
+     (-conj [node o] [key (-val node) o])
 
      IEmptyableCollection
      (-empty [_node] nil)
