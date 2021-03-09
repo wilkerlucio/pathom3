@@ -1311,9 +1311,11 @@
           converge-node-id       (or (first (first-common-ancestors* without-or-paths))
                                      (first (first-common-ancestors* ancestors-path-groups')))
 
-          converge-node          (get-node graph converge-node-id)
-          next-chain             (find-run-next-descendants graph converge-node)]
-      (or (some (into #{} node-ids) (mapv ::node-id (rseq next-chain)))
+          converge-node          (get-node graph converge-node-id)]
+      (or (and (branch-node? converge-node)
+               (some (into #{} node-ids)
+                 (mapv ::node-id
+                   (rseq (find-run-next-descendants graph converge-node)))))
           converge-node-id))))
 
 (>defn find-missing-ancestor
