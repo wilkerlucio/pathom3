@@ -1834,3 +1834,15 @@
 (>defn with-plan-cache
   ([env] [map? => map?] (with-plan-cache env (atom {})))
   ([env cache*] [map? p.cache/cache-store? => map?] (assoc env ::plan-cache* cache*)))
+
+(defn compute-plan-snapshots
+  "Run compute graph capturing snapshots, return the snapshots vector in the end."
+  [env]
+  (let [snapshots* (atom [])
+        graph      (try
+                     (compute-run-graph
+                       (assoc env ::snapshots* snapshots*))
+                     (catch #?(:clj Throwable :cljs :default) e
+                       {::snapshot-message (str "Planning stopped due to an error: " (ex-message e))
+                        :error             e}))]
+    (conj @snapshots* (assoc graph ::snapshot-message "Completed graph."))))
