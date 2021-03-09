@@ -193,7 +193,7 @@
 (declare
   compute-run-graph compute-run-graph* compute-root-and compute-root-or collapse-nodes-chain node-ancestors
   compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes mark-attribute-process-sub-query
-  required-input-reachable? find-node-direct-ancestor-chain)
+  required-input-reachable? find-node-direct-ancestor-chain find-run-next-descendants)
 
 (defn add-snapshot!
   ([graph {::keys [snapshots*]} event-details]
@@ -869,6 +869,20 @@
         (-> (add-branch-node graph env next-node)
             (add-snapshot! env {::snapshot-message (str "Root node is branch, adding a branch there")}))
 
+        ;; already branch connect
+        ; node is already branch connected with root
+        (and (branch-type next-node)
+             (contains? (branch-type next-node) root))
+        (-> (add-snapshot! graph env {::snapshot-message (str "Nodes to join are linked via branch type, keep running")
+                                      ::highlight-nodes  (into #{} [node-id root])})
+            (set-root-node node-id))
+
+        ; root is already a branch with correct type with the node
+        (and (branch-type root-node)
+             (contains? (branch-type root-node) node-id))
+        (add-snapshot! graph env {::snapshot-message (str "Nodes to join are linked via branch type, keep running")
+                                  ::highlight-nodes  (into #{} [node-id root])})
+
         ; node run next is the root
         (let [ancestors (into #{} (node-ancestors graph root))]
           (contains? ancestors node-id))
@@ -1292,9 +1306,15 @@
           without-or-paths       (mapv #(let [new-seq (into [] (remove (fn [x] (path-contains-or? graph (rest x)))) %)]
                                           (if (seq new-seq)
                                             new-seq
-                                            %)) ancestors-path-groups')]
-      (or (first (first-common-ancestors* without-or-paths))
-          (first (first-common-ancestors* ancestors-path-groups'))))))
+                                            %)) ancestors-path-groups')
+
+          converge-node-id       (or (first (first-common-ancestors* without-or-paths))
+                                     (first (first-common-ancestors* ancestors-path-groups')))
+
+          converge-node          (get-node graph converge-node-id)
+          next-chain             (find-run-next-descendants graph converge-node)]
+      (or (some (into #{} node-ids) (mapv ::node-id (rseq next-chain)))
+          converge-node-id))))
 
 (>defn find-missing-ancestor
   "Find the first common AND node ancestors from missing list, missing is a list
@@ -1617,7 +1637,7 @@
       node-id)))
 
 (>defn find-run-next-descendants
-  "Return descendants by waling the run-next"
+  "Return descendants by walking the run-next"
   [graph {::keys [node-id]}]
   [::graph ::node => (s/coll-of ::node)]
   (let [node (get-node graph node-id)]
@@ -1834,3 +1854,15 @@
 (>defn with-plan-cache
   ([env] [map? => map?] (with-plan-cache env (atom {})))
   ([env cache*] [map? p.cache/cache-store? => map?] (assoc env ::plan-cache* cache*)))
+
+(defn compute-plan-snapshots
+  "Run compute graph capturing snapshots, return the snapshots vector in the end."
+  [env]
+  (let [snapshots* (atom [])
+        graph      (try
+                     (compute-run-graph
+                       (assoc env ::snapshots* snapshots*))
+                     (catch #?(:clj Throwable :cljs :default) e
+                       {::snapshot-message (str "Planning stopped due to an error: " (ex-message e))
+                        :error             e}))]
+    (conj @snapshots* (assoc graph ::snapshot-message "Completed graph."))))

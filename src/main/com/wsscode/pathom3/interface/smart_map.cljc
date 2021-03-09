@@ -14,7 +14,8 @@
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [edn-query-language.core :as eql]
-    #?(:clj [potemkin.collections :refer [def-map-type]])))
+    #?@(:bb  []
+        :clj [[potemkin.collections :refer [def-map-type]]])))
 
 (declare smart-map smart-map? sm-env)
 
@@ -192,6 +193,19 @@
   [env]
   (smart-map env (with-meta {} (sm-env-meta env))))
 
+(defn associative-conj [m entry]
+  (if (vector? entry)
+    (assoc m (nth entry 0) (nth entry 1))
+    (loop [ret m
+           es  (seq entry)]
+      (if (nil? es)
+        ret
+        (let [e (first es)]
+          (if (vector? e)
+            (recur (assoc ret (nth e 0) (nth e 1))
+              (next es))
+            (throw (ex-info "conj on a map takes map entries or seqables of map entries" {}))))))))
+
 ; region type definition
 
 #?(:cljs
@@ -227,7 +241,7 @@
      (-pop [_node] [key])
 
      ICollection
-     (-conj [_node o] [key val o])
+     (-conj [node o] [key (-val node) o])
 
      IEmptyableCollection
      (-empty [_node] nil)
@@ -266,8 +280,8 @@
      IFind
      (-find [node k]
             (case k
-              0 (MapEntry. 0 key nil)
-              1 (MapEntry. 1 (-val node) nil)
+              0 (coll/make-map-entry 0 key)
+              1 (coll/make-map-entry 1 (-val node))
               nil))
 
      IVector
@@ -288,16 +302,68 @@
      (-invoke [node k not-found]
               (-nth node k not-found))))
 
-#?(:clj
-   (def-map-type SmartMap [env]
-     (get [_ k default-value] (sm-env-get env k default-value))
-     (assoc [_ k v] (sm-env-assoc env k v))
-     (dissoc [_ k] (sm-env-dissoc env k))
-     (keys [_] (sm-env-keys env))
-     (meta [_] (sm-env-meta env))
-     (empty [_] (sm-env-empty env))
-     (with-meta [_ new-meta] (sm-env-with-meta env new-meta))
-     (entryAt [_ k] (sm-env-find env k)))
+#?(:bb (defprotocol ISmartMap (-smart-map-env [this])))
+
+#?(:bb
+   (defn ->SmartMap [env]
+     (reify
+       clojure.lang.ILookup
+       (valAt [this k] (sm-env-get env k))
+       (valAt [this k default-value] (sm-env-get env k default-value))
+
+       clojure.lang.Associative
+       (containsKey [this k] (sm-env-contains? env k))
+       (entryAt [this k] (sm-env-find env k))
+       (assoc [this k v] (sm-env-assoc env k v))
+
+       clojure.lang.IPersistentCollection
+       (equiv [this other]
+         (= (p.ent/entity env)
+            (cond-> other
+              (smart-map? other)
+              (-> sm-env p.ent/entity))))
+       (cons [this entry] (associative-conj this entry))
+       (empty [this] (sm-env-empty env))
+
+       clojure.lang.Counted
+       (count [this] (count (p.ent/entity env)))
+
+       clojure.lang.Seqable
+       (seq [this]
+         ;(println "SEQ" (sm-env-keys env))
+         (some->> (sm-env-keys env)
+                  (map #(coll/make-map-entry % (sm-env-get env %)))))
+
+       clojure.lang.IFn
+       (invoke [this k] (sm-env-get env k))
+
+       clojure.lang.IPersistentMap
+       (without [this k] (sm-env-dissoc env k))
+
+       clojure.lang.IReduce
+       (reduce [coll f]
+         ;(println "REDUCE")
+         (clojure.core/reduce f (p.ent/entity env)))
+
+       clojure.lang.IReduceInit
+       (reduce [coll f val]
+         ;(println "REDUCE INIT")
+         (clojure.core/reduce f val (p.ent/entity env)))
+
+       clojure.lang.IKVReduce
+       (kvreduce [_ f init]
+         ;(println "KV REDUCE")
+         (reduce-kv (fn [cur k v] (f cur k (wrap-smart-map env v))) init (p.ent/entity env)))
+
+       java.lang.Iterable
+       (iterator [this]
+         (coll/iterator
+           (eduction
+             (map #(coll/make-map-entry % (sm-env-get env %)))
+             (sm-env-keys env))))
+
+       ISmartMap
+       (-smart-map-env [_] env)))
 
    :cljs
    #_{:clj-kondo/ignore [:private-call]}
@@ -328,7 +394,7 @@
             (if (vector? entry)
               (-assoc coll (-nth entry 0) (-nth entry 1))
               (loop [ret coll
-                     es  (seq entry)]
+                     es (seq entry)]
                 (if (nil? es)
                   ret
                   (let [e (first es)]
@@ -349,7 +415,7 @@
      ISeqable
      (-seq [_]
            (some->> (seq (sm-env-keys env))
-                    (map #(SmartMapEntry. env %))))
+                    (map #(->SmartMapEntry env %))))
 
      ICounted
      (-count [_] (count (p.ent/entity env)))
@@ -374,7 +440,7 @@
 
      IIterable
      (-iterator [_this]
-                (transformer-iterator (map #(SmartMapEntry. env %))
+                (transformer-iterator (map #(->SmartMapEntry env %))
                                       (-iterator (vec (sm-env-keys env))) false))
 
      IReduce
@@ -387,9 +453,24 @@
 
      IPrintWithWriter
      (-pr-writer [_ writer opts]
-                 (-pr-writer (p.ent/entity env) writer opts))))
+                 (-pr-writer (p.ent/entity env) writer opts)))
 
-(defn smart-map? [x] (instance? SmartMap x))
+   :clj
+   (def-map-type SmartMap [env]
+     (get [_ k default-value] (sm-env-get env k default-value))
+     (assoc [_ k v] (sm-env-assoc env k v))
+     (dissoc [_ k] (sm-env-dissoc env k))
+     (keys [_] (sm-env-keys env))
+     (meta [_] (sm-env-meta env))
+     (empty [_] (sm-env-empty env))
+     (with-meta [_ new-meta] (sm-env-with-meta env new-meta))
+     (entryAt [_ k] (sm-env-find env k))))
+
+(defn smart-map? [x]
+  #?(:bb
+     (satisfies? ISmartMap x)
+     :default
+     (instance? SmartMap x)))
 
 (>def ::smart-map smart-map?)
 
@@ -415,21 +496,31 @@
                        (get sm k)
                        v))))))
 
-(extend-type SmartMap
-  d/Datafiable
-  (datafy [sm] (datafy-smart-map sm)))
+#?(:bb
+   nil
+
+   :default
+   (extend-type SmartMap
+     d/Datafiable
+     (datafy [sm] (datafy-smart-map sm))))
 
 ; endregion
 
 (>defn sm-env
   "Extract the env map from the smart map."
-  [^SmartMap smart-map]
+  [;^SmartMap
+   smart-map]
   [::smart-map => map?]
-  (.-env smart-map))
+  #?(:bb
+     (-smart-map-env smart-map)
+
+     :default
+     (.-env smart-map)))
 
 (>defn sm-update-env
   "Update smart map environment"
-  [^SmartMap sm f & args]
+  [;^SmartMap
+   sm f & args]
   [::smart-map fn? (s/* any?) => ::smart-map]
   (let [env (apply f (sm-env sm) args)]
     (smart-map env (::source-context env))))
@@ -439,7 +530,8 @@
   in the ::psm/value key.
 
   Note that if the value is cached, there will be a blank stats."
-  ([^SmartMap sm k]
+  ([;^SmartMap
+    sm k]
    [::smart-map any? => any?]
    (let [{::p.ent/keys [entity-tree*] :as env} (sm-env sm)
          ast       {:type     :root
@@ -451,7 +543,8 @@
 (>defn sm-replace-context
   "Replace the context data for the smart map with new-context, keeping the
   same environment. This returns a new smart map."
-  [^SmartMap sm new-context]
+  [;^SmartMap
+   sm new-context]
   [::smart-map map? => ::smart-map]
   (smart-map (sm-env sm) new-context))
 
@@ -466,7 +559,8 @@
 
   You should use this only in cases where the optimization is required, try starting
   with the immutable versions first, given this has side effects and so more error phone."
-  [^SmartMap smart-map k v]
+  [;^SmartMap
+   smart-map k v]
   [::smart-map any? any? => ::smart-map]
   (p.ent/swap-entity! (sm-env smart-map) assoc k v)
   smart-map)
@@ -477,13 +571,15 @@
 
   You should use this only in cases where the optimization is required, try starting
   with the immutable versions first, given this has side effects and so more error phone."
-  [^SmartMap smart-map k]
+  [;^SmartMap
+   smart-map k]
   [::smart-map any? => ::smart-map]
   (p.ent/swap-entity! (sm-env smart-map) dissoc k)
   smart-map)
 
 (>defn sm-touch-ast!
-  [^SmartMap smart-map ast]
+  [;^SmartMap
+   smart-map ast]
   [::smart-map :edn-query-language.ast/node
    => ::smart-map]
   (let [env (sm-env smart-map)]
@@ -493,12 +589,14 @@
 (>defn sm-touch!
   "Will pre-fetch data in a smart map, given the EQL request. Use this to optimize the
   load of data ahead of time, instead of pulling one by one lazily."
-  [^SmartMap smart-map eql]
+  [;^SmartMap
+   smart-map eql]
   [::smart-map ::eql/query
    => ::smart-map]
   (sm-touch-ast! smart-map (eql/query->ast eql)))
 
-(>defn ^SmartMap smart-map
+(>defn ;^SmartMap
+  smart-map
   "Create a new smart map.
 
   Smart maps are a special data structure that realizes properties using Pathom resolvers.

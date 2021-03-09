@@ -3981,6 +3981,31 @@
                             ::pco/op-name 'a
                             ::pcp/expects {:a {}}}}})))
 
+  (testing "do nothing when nodes are branches already connected"
+    (is (= (pcp/compute-root-and
+             {::pcp/nodes {1 {::pcp/node-id  1
+                              ::pcp/run-and  #{2}
+                              ::pcp/run-next 3}
+                           2 {::pcp/node-id 2
+                              ::pco/op-name 'a
+                              ::pcp/expects {:a {}}}
+                           3 {::pcp/node-id 3
+                              ::pco/op-name 'b
+                              ::pcp/expects {:b {}}}}
+              ::pcp/root  1}
+             (assoc (base-graph-env) ::pcp/id-counter (atom 3))
+             {::pcp/node-id 2})
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 #:com.wsscode.pathom3.connect.planner{:node-id  1,
+                                                                                                  :run-and  #{2},
+                                                                                                  :run-next 3},
+                                                          2 {:com.wsscode.pathom3.connect.planner/node-id   2,
+                                                             :com.wsscode.pathom3.connect.operation/op-name a,
+                                                             :com.wsscode.pathom3.connect.planner/expects   {:a {}}},
+                                                          3 {:com.wsscode.pathom3.connect.planner/node-id   3,
+                                                             :com.wsscode.pathom3.connect.operation/op-name b,
+                                                             :com.wsscode.pathom3.connect.planner/expects   {:b {}}}},
+                                                  :root  1})))
+
   (testing "merge nodes with same sym"
     (is (= (pcp/compute-root-or
              {::pcp/nodes                 {1 {::pcp/node-id 1
@@ -4618,39 +4643,39 @@
              #{1 2})
            2)))
 
+  (testing "nodes are part of both branch and next of a branch parent, pick next"
+    ;    2
+    ;  /
+    ; 1 - 3
+    ;  \ NEXT
+    ;   4
+    (is (= (pcp/first-common-ancestor
+             '{::pcp/nodes {1 {::pcp/node-id 1
+                               ::pcp/run-and  #{2 3}
+                               ::pcp/run-next 4}
+                            2 {::pcp/node-id 2
+                               ::pcp/node-parents #{1}}
+                            3 {::pcp/node-id 3
+                               ::pcp/node-parents #{1}}
+                            4 {::pcp/node-id 4 ::pcp/node-parents #{1}}}}
+             #{3 4})
+           4)))
+
   (testing "goes back when OR is at parent"
     (is (= (pcp/first-common-ancestor
-             '{::pcp/nodes {5  {::pcp/node-id 5
+             '{::pcp/nodes {5  {::pcp/node-id      5
                                 ::pcp/node-parents #{12 19}}
-                            9  {::pcp/node-id 9
+                            9  {::pcp/node-id      9
                                 ::pcp/node-parents #{5}}
-                            12 {::pcp/node-id 12
+                            12 {::pcp/node-id      12
                                 ::pcp/node-parents #{19}
                                 ::pcp/run-or       #{5 18}}
-                            18 {::pcp/node-id 18
+                            18 {::pcp/node-id      18
                                 ::pcp/node-parents #{12}}
                             19 {::pcp/node-id 19
                                 ::pcp/run-and #{12 5}}}}
              #{9 18})
-           19)))
-
-  #_(testing "or with internal dependency"
-      (is (= (pcp/first-common-ancestor
-               '{::pcp/nodes {1 {::pcp/node-parents #{4}}
-                              2 {::pcp/node-parents #{3}}
-                              3 {::pcp/node-parents #{4}}
-                              4 {::pcp/run-or #{1 3}}}}
-               #{3 4})
-             2))
-
-      (is (= (pcp/first-common-ancestor
-               '{::pcp/nodes {1 {::pcp/node-parents #{5}}
-                              2 {::pcp/node-parents #{3}}
-                              3 {::pcp/node-parents #{4}}
-                              4 {::pcp/node-parents #{5}}
-                              5 {::pcp/run-or #{1 4}}}}
-               #{3 5})
-             2))))
+           19))))
 
 (deftest remove-node-test
   (testing "remove node and references"
