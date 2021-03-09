@@ -869,6 +869,20 @@
         (-> (add-branch-node graph env next-node)
             (add-snapshot! env {::snapshot-message (str "Root node is branch, adding a branch there")}))
 
+        ;; already branch connect
+        ; node is already branch connected with root
+        (and (branch-type next-node)
+             (contains? (branch-type next-node) root))
+        (-> (add-snapshot! graph env {::snapshot-message (str "Nodes to join are linked via branch type, keep running")
+                                      ::highlight-nodes  (into #{} [node-id root])})
+            (set-root-node node-id))
+
+        ; root is already a branch with correct type with the node
+        (and (branch-type root-node)
+             (contains? (branch-type root-node) node-id))
+        (add-snapshot! graph env {::snapshot-message (str "Nodes to join are linked via branch type, keep running")
+                                  ::highlight-nodes  (into #{} [node-id root])})
+
         ; node run next is the root
         (let [ancestors (into #{} (node-ancestors graph root))]
           (contains? ancestors node-id))

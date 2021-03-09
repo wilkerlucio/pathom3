@@ -3981,6 +3981,31 @@
                             ::pco/op-name 'a
                             ::pcp/expects {:a {}}}}})))
 
+  (testing "do nothing when nodes are branches already connected"
+    (is (= (pcp/compute-root-and
+             {::pcp/nodes {1 {::pcp/node-id  1
+                              ::pcp/run-and  #{2}
+                              ::pcp/run-next 3}
+                           2 {::pcp/node-id 2
+                              ::pco/op-name 'a
+                              ::pcp/expects {:a {}}}
+                           3 {::pcp/node-id 3
+                              ::pco/op-name 'b
+                              ::pcp/expects {:b {}}}}
+              ::pcp/root  1}
+             (assoc (base-graph-env) ::pcp/id-counter (atom 3))
+             {::pcp/node-id 2})
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 #:com.wsscode.pathom3.connect.planner{:node-id  1,
+                                                                                                  :run-and  #{2},
+                                                                                                  :run-next 3},
+                                                          2 {:com.wsscode.pathom3.connect.planner/node-id   2,
+                                                             :com.wsscode.pathom3.connect.operation/op-name a,
+                                                             :com.wsscode.pathom3.connect.planner/expects   {:a {}}},
+                                                          3 {:com.wsscode.pathom3.connect.planner/node-id   3,
+                                                             :com.wsscode.pathom3.connect.operation/op-name b,
+                                                             :com.wsscode.pathom3.connect.planner/expects   {:b {}}}},
+                                                  :root  1})))
+
   (testing "merge nodes with same sym"
     (is (= (pcp/compute-root-or
              {::pcp/nodes                 {1 {::pcp/node-id 1
