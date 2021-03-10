@@ -248,12 +248,6 @@
        (invoke [this k]
          (.valAt this k))
 
-       clojure.lang.IHashEq
-       (hasheq [this]
-         (.hasheq
-           ^clojure.lang.IHashEq
-           (vector key_ (force val_))))
-
        clojure.lang.ILookup
        (valAt [this k]
          (cond
