@@ -328,3 +328,7 @@
                (psm/sm-replace-context {:x 10}))]
     (is (= sm {:x 10}))
     (is (= (::geo/left sm) 10))))
+
+(comment
+  (psm/smart-map (pci/register registry)
+    {:x 3}))

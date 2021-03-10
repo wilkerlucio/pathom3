@@ -225,7 +225,113 @@
 
 ; region type definition
 
-#?(:cljs
+#?(:bb
+   (defn ->LazyMapEntry
+     [key_ val_]
+     (reify
+       clojure.lang.Associative
+       (containsKey [this k]
+         (boolean (#{0 1} k)))
+       (entryAt [this k]
+         (cond
+           (= k 0) (clojure.lang.MapEntry. 0 key_)
+           (= k 1) (->LazyMapEntry 1 val_)
+           :else nil))
+       (assoc [this k v]
+         (cond
+           (= k 0) (->LazyMapEntry v val_)
+           (= k 1) (->LazyMapEntry key_ v)
+           (= k 2) (vector k (force val_) v)
+           :else (throw (IndexOutOfBoundsException.))))
+
+       clojure.lang.IFn
+       (invoke [this k]
+         (.valAt this k))
+
+       clojure.lang.IHashEq
+       (hasheq [this]
+         (.hasheq
+           ^clojure.lang.IHashEq
+           (vector key_ (force val_))))
+
+       clojure.lang.ILookup
+       (valAt [this k]
+         (cond
+           (= k 0) key_
+           (= k 1) (force val_)
+           :else nil))
+       (valAt [this k not-found]
+         (cond
+           (= k 0) key_
+           (= k 1) (force val_)
+           :else not-found))
+
+       clojure.lang.IMapEntry
+       (key [this] key_)
+       (val [this] (force val_))
+
+       clojure.lang.Indexed
+       (nth [this i]
+         (cond
+           (= i 0) key_
+           (= i 1) (force val_)
+           (integer? i) (throw (IndexOutOfBoundsException.))
+           :else (throw (IllegalArgumentException. "Key must be integer")))
+         (.valAt this i))
+       (nth [this i not-found]
+         (try
+           (.nth this i)
+           (catch Exception _ not-found)))
+
+       clojure.lang.IPersistentCollection
+       (count [this] 2)
+       (empty [this] false)
+       (equiv [this o]
+         (.equiv
+           [key_ (force val_)]
+           o))
+
+       clojure.lang.IPersistentStack
+       (peek [this] (force val_))
+       (pop [this] [key_])
+
+       clojure.lang.IPersistentVector
+       (assocN [this i v]
+         (.assocN [key_ (force val_)] i v))
+       (cons [this o]
+         (.cons [key_ (force val_)] o))
+
+       clojure.lang.Reversible
+       (rseq [this] (lazy-seq (list (force val_) key_)))
+
+       clojure.lang.ISeq
+       (seq [this]
+         (seq [key_ (force val_)]))
+
+       clojure.lang.Sequential
+
+       java.lang.Comparable
+       (compareTo [this o]
+         (.compareTo
+           ^java.lang.Comparable
+           (vector key_ (force val_))
+           o))
+
+       java.lang.Iterable
+       (iterator [this]
+         (.iterator
+           ^java.lang.Iterable
+           (.seq this)))
+
+       java.lang.Object
+       (toString [this]
+         (str [key_ val_]))
+
+       java.util.Map$Entry
+       (getKey [this] key_)
+       (getValue [this] (force val_))))
+
+   :cljs
    #_{:clj-kondo/ignore [:private-call]}
    (deftype SmartMapEntry [env key]
      Object
@@ -321,6 +427,9 @@
 
 #?(:bb (defprotocol ISmartMap (-smart-map-env [this])))
 
+#?(:bb (defn sm-env-lazy-map-entry [env k]
+         (->LazyMapEntry k (delay (sm-env-get env k)))))
+
 #?(:bb
    (defn ->SmartMap [env]
      (reify
@@ -349,7 +458,7 @@
        (seq [this]
          ;(println "SEQ" (sm-env-keys env))
          (some->> (sm-env-keys env)
-                  (map #(coll/make-map-entry % (sm-env-get env %)))))
+                  (map #(sm-env-lazy-map-entry env %))))
 
        clojure.lang.IFn
        (invoke [this k] (sm-env-get env k))
@@ -359,24 +468,32 @@
 
        clojure.lang.IReduce
        (reduce [coll f]
-         ;(println "REDUCE")
-         (clojure.core/reduce f (p.ent/entity env)))
+         (clojure.core/reduce
+           (fn [acc k]
+             (f acc (sm-env-lazy-map-entry env k)))
+           (sm-env-keys env)))
 
        clojure.lang.IReduceInit
        (reduce [coll f val]
-         ;(println "REDUCE INIT")
-         (clojure.core/reduce f val (p.ent/entity env)))
+         (clojure.core/reduce
+           (fn [acc k]
+             (f acc (sm-env-lazy-map-entry env k)))
+           val
+           (sm-env-keys env)))
 
        clojure.lang.IKVReduce
        (kvreduce [_ f init]
-         ;(println "KV REDUCE")
-         (reduce-kv (fn [cur k v] (f cur k (wrap-smart-map env v))) init (p.ent/entity env)))
+         (clojure.core/reduce
+           (fn [acc k]
+             (f acc k (sm-env-get env k)))
+           init
+           (sm-env-keys env)))
 
        java.lang.Iterable
        (iterator [this]
          (coll/iterator
            (eduction
-             (map #(coll/make-map-entry % (sm-env-get env %)))
+             (map #(sm-env-lazy-map-entry env %))
              (sm-env-keys env))))
 
        java.lang.Object
