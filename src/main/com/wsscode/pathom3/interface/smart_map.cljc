@@ -193,18 +193,35 @@
   [env]
   (smart-map env (with-meta {} (sm-env-meta env))))
 
+(defn sm-env-to-string [env]
+  (str "#SmartMap " (p.ent/entity env)))
+
 (defn associative-conj [m entry]
-  (if (vector? entry)
-    (assoc m (nth entry 0) (nth entry 1))
-    (loop [ret m
-           es  (seq entry)]
-      (if (nil? es)
-        ret
-        (let [e (first es)]
-          (if (vector? e)
-            (recur (assoc ret (nth e 0) (nth e 1))
-              (next es))
-            (throw (ex-info "conj on a map takes map entries or seqables of map entries" {}))))))))
+  #?(:cljs
+     (if (vector? entry)
+       (-assoc m (-nth entry 0) (-nth entry 1))
+       (loop [ret m
+              es  (seq entry)]
+         (if (nil? es)
+           ret
+           (let [e (first es)]
+             (if (vector? e)
+               (recur (-assoc ret (-nth e 0) (-nth e 1))
+                 (next es))
+               (throw (js/Error. "conj on a map takes map entries or seqables of map entries")))))))
+
+     :default
+     (if (vector? entry)
+       (assoc m (nth entry 0) (nth entry 1))
+       (loop [ret m
+              es  (seq entry)]
+         (if (nil? es)
+           ret
+           (let [e (first es)]
+             (if (vector? e)
+               (recur (assoc ret (nth e 0) (nth e 1))
+                 (next es))
+               (throw (ex-info "conj on a map takes map entries or seqables of map entries" {})))))))))
 
 ; region type definition
 
@@ -362,6 +379,9 @@
              (map #(coll/make-map-entry % (sm-env-get env %)))
              (sm-env-keys env))))
 
+       java.lang.Object
+       (toString [this] (sm-env-to-string env))
+
        ISmartMap
        (-smart-map-env [_] env)))
 
@@ -369,7 +389,7 @@
    #_{:clj-kondo/ignore [:private-call]}
    (deftype SmartMap [env]
      Object
-     (toString [_] (pr-str* (p.ent/entity env)))
+     (toString [_] (sm-env-to-string env))
      (equiv [_ other] (-equiv (p.ent/entity env) other))
 
      ;; ES6
@@ -391,17 +411,7 @@
 
      ICollection
      (-conj [coll entry]
-            (if (vector? entry)
-              (-assoc coll (-nth entry 0) (-nth entry 1))
-              (loop [ret coll
-                     es (seq entry)]
-                (if (nil? es)
-                  ret
-                  (let [e (first es)]
-                    (if (vector? e)
-                      (recur (-assoc ret (-nth e 0) (-nth e 1))
-                        (next es))
-                      (throw (js/Error. "conj on a map takes map entries or seqables of map entries"))))))))
+            (associative-conj coll entry))
 
      IEmptyableCollection
      (-empty [_] (sm-env-empty env))
@@ -464,7 +474,8 @@
      (meta [_] (sm-env-meta env))
      (empty [_] (sm-env-empty env))
      (with-meta [_ new-meta] (sm-env-with-meta env new-meta))
-     (entryAt [_ k] (sm-env-find env k))))
+     (entryAt [_ k] (sm-env-find env k))
+     (toString [_] (sm-env-to-string env))))
 
 (defn smart-map? [x]
   #?(:bb
