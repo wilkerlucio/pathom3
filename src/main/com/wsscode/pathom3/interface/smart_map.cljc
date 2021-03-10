@@ -17,7 +17,7 @@
     #?@(:bb  []
         :clj [[potemkin.collections :refer [def-map-type]]])))
 
-(declare smart-map smart-map? sm-env)
+(declare smart-map smart-map? sm-env datafy-smart-map)
 
 (>def ::error-mode
   #{::error-mode-silent
@@ -498,6 +498,9 @@
 
        java.lang.Object
        (toString [this] (sm-env-to-string env))
+
+       d/Datafiable
+       (datafy [sm] (datafy-smart-map sm))
 
        ISmartMap
        (-smart-map-env [_] env)))
