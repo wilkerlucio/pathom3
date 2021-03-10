@@ -450,7 +450,6 @@
 
        clojure.lang.Seqable
        (seq [this]
-         ;(println "SEQ" (sm-env-keys env))
          (some->> (sm-env-keys env)
                   (map #(sm-env-lazy-map-entry env %))))
 
