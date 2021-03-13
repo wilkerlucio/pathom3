@@ -228,102 +228,11 @@
 #?(:bb
    (defn ->LazyMapEntry
      [key_ val_]
-     (reify
-       clojure.lang.Associative
-       (containsKey [this k]
-         (boolean (#{0 1} k)))
-       (entryAt [this k]
-         (cond
-           (= k 0) (clojure.lang.MapEntry. 0 key_)
-           (= k 1) (->LazyMapEntry 1 val_)
-           :else nil))
-       (assoc [this k v]
-         (cond
-           (= k 0) (->LazyMapEntry v val_)
-           (= k 1) (->LazyMapEntry key_ v)
-           (= k 2) (vector k (force val_) v)
-           :else (throw (IndexOutOfBoundsException.))))
-
-       clojure.lang.IFn
-       (invoke [this k]
-         (.valAt this k))
-
-       clojure.lang.ILookup
-       (valAt [this k]
-         (cond
-           (= k 0) key_
-           (= k 1) (force val_)
-           :else nil))
-       (valAt [this k not-found]
-         (cond
-           (= k 0) key_
-           (= k 1) (force val_)
-           :else not-found))
-
-       clojure.lang.IMapEntry
-       (key [this] key_)
-       (val [this] (force val_))
-
-       clojure.lang.Indexed
-       (nth [this i]
-         (cond
-           (= i 0) key_
-           (= i 1) (force val_)
-           (integer? i) (throw (IndexOutOfBoundsException.))
-           :else (throw (IllegalArgumentException. "Key must be integer")))
-         (.valAt this i))
-       (nth [this i not-found]
-         (try
-           (.nth this i)
-           (catch Exception _ not-found)))
-
-       clojure.lang.IPersistentCollection
-       (count [this] 2)
-       (empty [this] false)
-       (equiv [this o]
-         (.equiv
-           [key_ (force val_)]
-           o))
-
-       clojure.lang.IPersistentStack
-       (peek [this] (force val_))
-       (pop [this] [key_])
-
-       clojure.lang.IPersistentVector
-       (assocN [this i v]
-         (.assocN [key_ (force val_)] i v))
-       (cons [this o]
-         (.cons [key_ (force val_)] o))
-
-       clojure.lang.Reversible
-       (rseq [this] (lazy-seq (list (force val_) key_)))
-
-       clojure.lang.ISeq
-       (seq [this]
-         (seq [key_ (force val_)]))
-
-       clojure.lang.Sequential
-
-       java.lang.Comparable
-       (compareTo [this o]
-         (.compareTo
-           ^java.lang.Comparable
-           (vector key_ (force val_))
-           o))
-
-       java.lang.Iterable
-       (iterator [this]
-         (.iterator
-           ^java.lang.Iterable
-           (.seq this)))
-
-       java.lang.Object
-       (toString [this]
-         (str [key_ val_]))
-
-       java.util.Map$Entry
-       (getKey [this] key_)
-       (getValue [this] (force val_))))
+     (proxy [clojure.lang.AMapEntry] []
+       (key [] key_)
+       (val [] (force val_))
+       (getKey [] key_)
+       (getValue [] (force val_))))
 
    :cljs
    #_{:clj-kondo/ignore [:private-call]}
@@ -426,77 +335,45 @@
 
 #?(:bb
    (defn ->SmartMap [env]
-     (reify
-       clojure.lang.ILookup
-       (valAt [this k] (sm-env-get env k))
-       (valAt [this k default-value] (sm-env-get env k default-value))
+     (proxy [clojure.lang.APersistentMap]
+            []
+       (valAt
+         ([k]
+          (case k
+            ::env
+            env
 
-       clojure.lang.Associative
-       (containsKey [this k] (sm-env-contains? env k))
-       (entryAt [this k] (sm-env-find env k))
-       (assoc [this k v] (sm-env-assoc env k v))
+            (sm-env-get env k)))
+         ([k default-value]
+          (case k
+            ::env
+            env
 
-       clojure.lang.IPersistentCollection
-       (equiv [this other]
-         (= (p.ent/entity env)
-            (cond-> other
-              (smart-map? other)
-              (-> sm-env p.ent/entity))))
-       (cons [this entry] (associative-conj this entry))
-       (empty [this] (sm-env-empty env))
-
-       clojure.lang.Counted
-       (count [this] (count (p.ent/entity env)))
-
-       clojure.lang.Seqable
-       (seq [this]
-         (some->> (sm-env-keys env)
-                  (map #(sm-env-lazy-map-entry env %))))
-
-       clojure.lang.IFn
-       (invoke [this k] (sm-env-get env k))
-
-       clojure.lang.IPersistentMap
-       (without [this k] (sm-env-dissoc env k))
-
-       clojure.lang.IReduce
-       (reduce [coll f]
-         (clojure.core/reduce
-           (fn [acc k]
-             (f acc (sm-env-lazy-map-entry env k)))
-           (sm-env-keys env)))
-
-       clojure.lang.IReduceInit
-       (reduce [coll f val]
-         (clojure.core/reduce
-           (fn [acc k]
-             (f acc (sm-env-lazy-map-entry env k)))
-           val
-           (sm-env-keys env)))
-
-       clojure.lang.IKVReduce
-       (kvreduce [_ f init]
-         (clojure.core/reduce
-           (fn [acc k]
-             (f acc k (sm-env-get env k)))
-           init
-           (sm-env-keys env)))
-
-       java.lang.Iterable
-       (iterator [this]
+            (sm-env-get env k default-value))))
+       (iterator []
          (coll/iterator
            (eduction
              (map #(sm-env-lazy-map-entry env %))
              (sm-env-keys env))))
 
-       java.lang.Object
-       (toString [this] (sm-env-to-string env))
+       (containsKey [k] (sm-env-contains? env k))
+       (entryAt [k] (sm-env-find env k))
+       (equiv [other]
+         (= (p.ent/entity env)
+            (cond-> other
+              (smart-map? other)
+              (-> sm-env p.ent/entity))))
+       (empty [] (sm-env-empty env))
+       (count [] (count (p.ent/entity env)))
+       (assoc [k v] (sm-env-assoc env k v))
+       (without [k] (sm-env-dissoc env k))
+       (seq [] (some->> (sm-env-keys env)
+                        (map #(sm-env-lazy-map-entry env %))))
 
-       d/Datafiable
-       (datafy [sm] (datafy-smart-map sm))
+       (meta [] (sm-env-meta env))
+       (withMeta [meta] (sm-env-with-meta env meta))
 
-       ISmartMap
-       (-smart-map-env [_] env)))
+       (toString [] (sm-env-to-string env))))
 
    :cljs
    #_{:clj-kondo/ignore [:private-call]}
@@ -592,7 +469,7 @@
 
 (defn smart-map? [x]
   #?(:bb
-     (satisfies? ISmartMap x)
+     (boolean (get smart-map ::env))
      :default
      (instance? SmartMap x)))
 
@@ -636,7 +513,7 @@
    smart-map]
   [::smart-map => map?]
   #?(:bb
-     (-smart-map-env smart-map)
+     (get smart-map ::env)
 
      :default
      (.-env smart-map)))
