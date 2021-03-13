@@ -90,6 +90,7 @@
     (set? x)
     (into #{} (map #(wrap-smart-map env %)) x)
 
+    ; else case covers already smart map, and other special records
     :else
     x))
 
@@ -335,7 +336,7 @@
 
 #?(:bb
    (defn ->SmartMap [env]
-     (proxy [clojure.lang.APersistentMap]
+     (proxy [clojure.lang.APersistentMap clojure.lang.IMeta clojure.lang.IObj]
             []
        (valAt
          ([k]
