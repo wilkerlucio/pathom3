@@ -54,7 +54,7 @@
                     (p.ent/with-entity entity))
                 (eql/query->ast tx))))
 
-(>defn with
+(>defn satisfy
   "Works like process, but none of the original entity data is filtered out."
   [env entity tx]
   [(s/keys) map? ::eql/query => map?]
