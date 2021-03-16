@@ -53,3 +53,11 @@
                     (assoc ::pcr/root-query tx)
                     (p.ent/with-entity entity))
                 (eql/query->ast tx))))
+
+(>defn fulfill
+  "Works like process, but none of the original entity data is filtered out."
+  [env entity tx]
+  [(s/keys) map? ::eql/query => map?]
+  (merge
+    entity
+    (process env entity tx)))

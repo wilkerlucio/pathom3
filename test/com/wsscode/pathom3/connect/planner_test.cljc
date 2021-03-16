@@ -5035,7 +5035,7 @@
 
   (is (= (pcp/node-parent-run-next {::pcp/nodes {1 {::pcp/node-id      1
                                                     ::pcp/node-parents #{2}}
-                                                 2 {::pcp/node-id  2}}}
+                                                 2 {::pcp/node-id 2}}}
            {::pcp/node-id      1
             ::pcp/node-parents #{2}})
          nil)))
