@@ -487,4 +487,7 @@
   ([operation f a1 a2 a3 a4 a5 a6 a7 a8 a9 & args]
    (apply update operation :config f a1 a2 a3 a4 a5 a6 a7 a8 a9 args)))
 
+(defn final-value? [x]
+  (some-> x meta ::final true?))
+
 ; endregion

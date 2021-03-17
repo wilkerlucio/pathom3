@@ -39,7 +39,8 @@
 
 (defn process-map-subquery
   [env ast m]
-  (if (map? m)
+  (if (and (map? m)
+           (not (pco/final-value? m)))
     (let [cache-tree* (p.ent/create-entity m)
           ast         (pcr/pick-union-entry ast m)]
       (run-graph! env ast cache-tree*))
@@ -47,24 +48,28 @@
 
 (defn process-sequence-subquery
   [env ast s]
-  (-> (reduce-async
-        (fn [[seq idx] entry]
-          (p/let [sub-res (process-map-subquery (p.path/append-path env idx) ast entry)]
-            [(conj seq sub-res)
-             (inc idx)]))
-        [(empty s) 0]
-        s)
-      (p/then first)))
+  (if (pco/final-value? s)
+    s
+    (-> (reduce-async
+          (fn [[seq idx] entry]
+            (p/let [sub-res (process-map-subquery (p.path/append-path env idx) ast entry)]
+              [(conj seq sub-res)
+               (inc idx)]))
+          [(empty s) 0]
+          s)
+        (p/then first))))
 
 (defn process-map-container-subquery
   "Build a new map where the values are replaced with the map process of the subquery."
   [env ast m]
-  (reduce-kv-async
-    (fn [m k v]
-      (p/let [res (process-map-subquery (p.path/append-path env k) ast v)]
-        (assoc m k res)))
-    (empty m)
-    m))
+  (if (pco/final-value? m)
+    m
+    (reduce-kv-async
+      (fn [m k v]
+        (p/let [res (process-map-subquery (p.path/append-path env k) ast v)]
+          (assoc m k res)))
+      (empty m)
+      m)))
 
 (>defn process-attr-subquery
   [{::pcp/keys [graph]

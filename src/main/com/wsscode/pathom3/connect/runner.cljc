@@ -137,7 +137,8 @@
 
 (defn process-map-subquery
   [env ast m]
-  (if (map? m)
+  (if (and (map? m)
+           (not (pco/final-value? m)))
     (let [cache-tree* (p.ent/create-entity m)
           ast         (pick-union-entry ast m)]
       (run-graph! env ast cache-tree*))
@@ -145,22 +146,26 @@
 
 (defn process-sequence-subquery
   [env ast s]
-  (into
-    (empty s)
-    (map-indexed #(process-map-subquery (p.path/append-path env %) ast %2))
-    (cond-> s
-      (coll/coll-append-at-head? s)
-      reverse)))
+  (if (pco/final-value? s)
+    s
+    (into
+      (empty s)
+      (map-indexed #(process-map-subquery (p.path/append-path env %) ast %2))
+      (cond-> s
+        (coll/coll-append-at-head? s)
+        reverse))))
 
 (defn process-map-container-subquery
   "Build a new map where the values are replaced with the map process of the subquery."
   [env ast m]
-  (into {}
-        (map (fn [x]
-               (coll/make-map-entry
-                 (key x)
-                 (process-map-subquery (p.path/append-path env (key x)) ast (val x)))))
-        m))
+  (if (pco/final-value? m)
+    m
+    (into {}
+          (map (fn [x]
+                 (coll/make-map-entry
+                   (key x)
+                   (process-map-subquery (p.path/append-path env (key x)) ast (val x)))))
+          m)))
 
 (defn process-map-container?
   "Check if the map should be processed as a map-container, this means the sub-query

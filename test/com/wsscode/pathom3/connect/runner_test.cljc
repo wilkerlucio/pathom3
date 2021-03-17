@@ -295,6 +295,35 @@
                                      :left      7}
                                     20]}))))
 
+(deftest run-graph!-final-test
+  (testing "map value"
+    (is (graph-response? (pci/register geo/registry)
+                         {:item ^::pco/final {::geo/left 10 ::geo/width 30}}
+                         [{:item [::geo/left ::geo/right]}]
+
+                         {:item
+                          #::geo{:left  10
+                                 :width 30}})))
+
+  (testing "sequence"
+    (is (graph-response? (pci/register geo/registry)
+                         {:item ^::pco/final [{::geo/left 10 ::geo/width 30}]}
+                         [{:item [::geo/left ::geo/right]}]
+
+                         {:item
+                          [#::geo{:left  10
+                                  :width 30}]})))
+
+  (testing "sequence"
+    (is (graph-response? (pci/register geo/registry)
+                         {:item ^{::pco/final          true
+                                  ::pcr/map-container? true} {:a {::geo/left 10 ::geo/width 30}}}
+                         [{:item [::geo/left ::geo/right]}]
+
+                         {:item
+                          {:a #::geo{:left  10
+                                     :width 30}}}))))
+
 (deftest run-graph!-or-test
   (testing "processing OR nodes"
     (testing "return the first option that works, don't call the others"
