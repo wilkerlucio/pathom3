@@ -314,7 +314,7 @@
                           [#::geo{:left  10
                                   :width 30}]})))
 
-  (testing "sequence"
+  (testing "map container"
     (is (graph-response? (pci/register geo/registry)
                          {:item ^{::pco/final          true
                                   ::pcr/map-container? true} {:a {::geo/left 10 ::geo/width 30}}}
