@@ -144,7 +144,8 @@
         (compute-run-graph* options))
 
       true
-      (vary-meta assoc ::env env)
+      (-> (vary-meta assoc ::env env)
+          (dissoc ::pcp/source-ast ::pcp/available-data))
 
       render-graphviz?
       (render-graph env))))

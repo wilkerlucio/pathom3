@@ -1835,7 +1835,9 @@
      #(compute-run-graph*
         (merge (base-graph)
                graph
-               {::index-ast (pf.eql/index-ast (:edn-query-language.ast/node env))})
+               {::index-ast      (pf.eql/index-ast (:edn-query-language.ast/node env))
+                ::source-ast     (:edn-query-language.ast/node env)
+                ::available-data (::available-data env)})
         (-> (merge (base-env) env)
             (vary-meta assoc ::original-env env))))))
 
