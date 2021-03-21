@@ -198,7 +198,8 @@
 (defn add-snapshot!
   ([graph {::keys [snapshots*]} event-details]
    (if snapshots*
-     (swap! snapshots* conj (merge graph event-details)))
+     (swap! snapshots* conj (-> graph (dissoc ::source-ast ::available-data)
+                                (merge event-details))))
    graph))
 
 (defn base-graph []
@@ -1865,7 +1866,7 @@
   (let [snapshots* (atom [])
         graph      (try
                      (compute-run-graph
-                       (assoc env ::snapshots* snapshots*))
+                       (assoc (dissoc env ::plan-cache*) ::snapshots* snapshots*))
                      (catch #?(:clj Throwable :cljs :default) e
                        {::snapshot-message (str "Planning stopped due to an error: " (ex-message e))
                         :error             e}))]
