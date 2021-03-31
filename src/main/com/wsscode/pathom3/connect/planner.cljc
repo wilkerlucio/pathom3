@@ -399,7 +399,7 @@
     (if (and (branch-node? previous-node)
              (= current-node-id (::run-next previous-node)))
       (+ (get-node graph previous-node-id ::node-depth)
-        (get-node graph previous-node-id ::node-branch-depth))
+         (get-node graph previous-node-id ::node-branch-depth))
       (get-node graph previous-node-id ::node-depth))))
 
 (defn compute-node-depth
@@ -1183,8 +1183,8 @@
                   (into (::unreachable-resolvers previous-graph #{})))]
     (add-snapshot! graph env {::snapshot-message (str "Mark node unreachable, resolvers " (pr-str syms) ", attrs" unreachable-paths)})
     (cond-> (coll/assoc-if previous-graph
-              ::unreachable-resolvers syms
-              ::unreachable-paths unreachable-paths)
+                           ::unreachable-resolvers syms
+                           ::unreachable-paths unreachable-paths)
       (set/subset? (all-attribute-resolvers env (pc-attr env)) syms)
       (add-unreachable-attr (pc-attr env)))))
 
@@ -1328,7 +1328,7 @@
   (if (= 1 (count missing))
     (get-attribute-node graph (first missing))
     (first-common-ancestor graph
-      (into #{} (map (partial get-attribute-node graph)) missing))))
+                           (into #{} (map (partial get-attribute-node graph)) missing))))
 
 (defn sub-required-input-reachable?*
   [env sub available]
@@ -1353,8 +1353,8 @@
             reachable? (sub-required-input-reachable?* env sub available)]
         (if-not reachable?
           (l/warn ::nested-input-not-reachable-from-resolver
-            {::l/message   "A nested input wasn't fulfilled. A common issue is that a resolver output is missing the nested description."
-             ::pco/op-name (::pco/op-name resolver)}))
+                  {::l/message   "A nested input wasn't fulfilled. A common issue is that a resolver output is missing the nested description."
+                   ::pco/op-name (::pco/op-name resolver)}))
         reachable?)
 
       ; there is no node from the graph, but still gonna look in current data
@@ -1590,8 +1590,8 @@
     (if (contains? visited node-id')
       (do
         (l/warn ::event-ancestor-cycle-detected
-          {:visited  visited
-           ::node-id node-id})
+                {:visited  visited
+                 ::node-id node-id})
         chain)
       (let [{::keys [node-parents]} (get-node graph node-id')
             next-id (first node-parents)]
