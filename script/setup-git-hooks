@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cp script/validate-and-format.bb .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
