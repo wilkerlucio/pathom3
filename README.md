@@ -26,10 +26,12 @@ https://pathom3.wsscode.com/
 
 ## Run Tests
 
+Pathom 3 uses [Babashka](https://github.com/babashka/babashka) for task scripts, please install it before proceed.
+
 ### Clojure
 
 ```shell script
-./script/test
+bb run test
 ```
 
 ### ClojureScript

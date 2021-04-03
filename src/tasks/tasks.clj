@@ -6,21 +6,29 @@
 
 ; region helpers
 
+(defn check [p]
+  (try
+    (p/check p)
+    (catch Throwable _
+      (System/exit 1))))
+
 (defn- sh-dispatch [args opts]
   (let [ps (if (= (first args) :clojure)
              (deps/clojure (map name (rest args)) opts)
-             @(p/process (map name args) opts))]
+             (p/process (map name args) opts))]
     ps))
 
 (defn- sh [& args]
   (println "=>" (str/join " " (map name args)))
-  (sh-dispatch args {:inherit true}))
+  (check (sh-dispatch args {:inherit true}))
+  nil)
 
 (defn- sh-silent [& args]
   (sh-dispatch args {}))
 
 (defn- sh-out [& args]
   (-> (sh-dispatch args {:out :string})
+      check
       :out))
 
 (def clojure (partial sh :clojure))
@@ -30,15 +38,14 @@
 ; region cljstyle
 
 (defn native-cljstyle? []
-  (-> (sh-silent :which "cljstyle") :exit zero?))
+  (-> (sh-silent :which "cljstyle") deref :exit zero?))
 
 (def cljstyle-native (partial sh :cljstyle))
 
 (defn cljstyle [& args]
   (if (native-cljstyle?)
     (apply cljstyle-native args)
-    (apply clojure "-Sdeps '{:deps {mvxcvi/cljstyle {:mvn/version \"0.15.0\"}}}'" args))
-  nil)
+    (apply clojure "-Sdeps '{:deps {mvxcvi/cljstyle {:mvn/version \"0.15.0\"}}}'" args)))
 
 ; endregion
 
@@ -92,9 +99,6 @@
       (doseq [path paths]
         (update-file-index path))
 
-      (let [{:keys [exit]} (clj-kondo-lint paths)]
-        (when-not (= 0 exit)
-          (println "Lint failed.")
-          (System/exit 1))))))
+      (clj-kondo-lint paths))))
 
 ; endregion

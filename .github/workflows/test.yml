@@ -31,8 +31,9 @@ jobs:
 
       - uses: actions/checkout@v1
 
-      - name: Run format checker
-        run: ./script/format-check
+      - run: curl -s https://raw.githubusercontent.com/babashka/babashka/master/install | sudo bash
+
+      - run: bb run format-check
 
   test-clj:
     runs-on: ubuntu-latest
@@ -52,8 +53,9 @@ jobs:
           restore-keys: |
             m2-
 
-      - name: Test
-        run: ./script/test
+      - run: curl -s https://raw.githubusercontent.com/babashka/babashka/master/install | sudo bash
+
+      - run: bb run test
 
   test-cljs:
     runs-on: ubuntu-latest
