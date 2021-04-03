@@ -20,4 +20,4 @@
   tasks/setup-git-hooks
 
   test
-  (shell "PATHOM_TEST=true clojure -A:test:test-deps")}}
+  (shell "bash -c PATHOM_TEST=true clojure -A:test:test-deps")}}
