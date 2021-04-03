@@ -1,0 +1,18 @@
+{:paths
+ ["src/tasks"]
+
+ :tasks
+ {tasks/init
+  (require 'tasks)
+
+  format-check
+  (tasks/cljstyle "check" "src" "test")
+
+  format-fix
+  (tasks/cljstyle "fix" "src" "test")
+
+  setup-hooks
+  tasks/setup-git-hooks
+
+  test
+  (shell "PATHOM_TEST=true clojure -A:test:test-deps")}}
