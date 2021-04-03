@@ -23,6 +23,10 @@
             [(name attribute) 0])]
     (keyword (str base (inc current-index)))))
 
+(comment
+  (next-attr :a4214)
+  (take 10 (iterate next-attr :a)))
+
 (def gen-env
   {::p.attr/attribute
    :a
@@ -43,15 +47,15 @@
         ::query     [attribute]
         ::expected  {attribute (name attribute)}}))
 
-   ::gen-root-blank-resolver
-   (fn [{::p.attr/keys [attribute]}]
-     (gen/return
-       {::resolvers [{::pco/op-name (symbol attribute)
-                      ::pco/output  [attribute]
-                      ::pco/resolve (fn [_ _]
-                                      {})}]
-        ::query     [attribute]
-        ::expected  {}}))
+   #_#_::gen-root-blank-resolver
+       (fn [{::p.attr/keys [attribute]}]
+         (gen/return
+           {::resolvers [{::pco/op-name (symbol attribute)
+                          ::pco/output  [attribute]
+                          ::pco/resolve (fn [_ _]
+                                          {})}]
+            ::query     [attribute]
+            ::expected  {}}))
 
    ::gen-single-dep-resolver
    (fn [{::p.attr/keys [attribute]
@@ -72,17 +76,46 @@
             ::query     [attribute]
             ::expected  {attribute (name attribute)}}))))
 
+   ::gen-multi-dep-resolver
+   (fn [{::p.attr/keys [attribute]
+         ::keys        [gen-resolver]
+         :as           env}]
+     (let [next-attrs (->> (iterate next-attr attribute)
+                           (drop 1)
+                           (map #(keyword (str (name %) "-a"))))]
+       (gen/let [deps-count
+                 (gen/choose 2 4)
+
+                 next-groups
+                 (apply gen/tuple
+                   (mapv
+                     #(gen-resolver
+                        (assoc env
+                          ::p.attr/attribute %))
+                     (take deps-count next-attrs)))]
+         (gen/return
+           {::resolvers (into
+                          [{::pco/op-name (symbol attribute)
+                            ::pco/input   (vec (take deps-count next-attrs))
+                            ::pco/output  [attribute]
+                            ::pco/resolve (fn [_ _]
+                                            {attribute (name attribute)})}]
+                          (mapcat ::resolvers)
+                          next-groups)
+            ::query     [attribute]
+            ::expected  {attribute (name attribute)}}))))
+
    ::gen-resolver
    (fn [{::keys [max-resolver-depth
                  gen-root-resolver
-                 gen-root-blank-resolver
-                 gen-single-dep-resolver] :as env}]
+                 gen-single-dep-resolver
+                 gen-multi-dep-resolver] :as env}]
      (let [env (update env ::max-resolver-depth dec)]
        (if (pos? max-resolver-depth)
-         (gen/one-of
-           [(gen-root-resolver env)
-            ; (gen-root-blank-resolver env)
-            (gen-single-dep-resolver env)])
+         (gen/frequency
+           [[3 (gen-root-resolver env)]
+            [2 (gen-single-dep-resolver env)]
+            [1 (gen-multi-dep-resolver env)]])
          (gen-root-resolver env))))})
 
 (defn run-generated-test
@@ -90,8 +123,15 @@
   (let [env (pci/register (mapv pco/resolver resolvers))]
     (= (p.eql/process env query) expected)))
 
+(def generate-prop
+  (props/for-all [case ((::gen-resolver gen-env)
+                        gen-env)]
+                 (run-generated-test case)))
+
 (comment
-  (gen/generate
+  generate-prop
+  (tc/quick-check 100 generate-prop)
+  (gen/sample
     ((::gen-resolver gen-env)
      gen-env))
 
