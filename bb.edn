@@ -14,7 +14,7 @@
   (apply tasks/cljstyle "fix" source-paths)
 
   lint
-  (do (tasks/clj-kondo-lint source-paths) nil)
+  (tasks/clj-kondo-lint source-paths)
 
   setup-hooks
   tasks/setup-git-hooks
