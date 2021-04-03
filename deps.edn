@@ -23,7 +23,8 @@
   {:extra-deps {macroz/tangle {:mvn/version "0.2.1"}}}
 
   :test-deps
-  {:extra-deps {nubank/matcher-combinators {:mvn/version "3.1.4"}}}
+  {:extra-deps {nubank/matcher-combinators {:mvn/version "3.1.4"}
+                org.clojure/test.check     {:mvn/version "1.1.0"}}}
 
   :test
   {:extra-paths ["test"]
