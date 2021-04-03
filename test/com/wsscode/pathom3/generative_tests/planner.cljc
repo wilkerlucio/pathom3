@@ -11,6 +11,7 @@
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.interface.eql :as p.eql]
+    [com.wsscode.pathom.viz.ws-connector.pathom3 :as p.connector]
     [edn-query-language.gen :as eql-gen]))
 
 (defn next-attr [attribute]
@@ -115,30 +116,39 @@
          (gen/frequency
            [[3 (gen-root-resolver env)]
             [2 (gen-single-dep-resolver env)]
-            [1 (gen-multi-dep-resolver env)]])
+            [2 (gen-multi-dep-resolver env)]])
          (gen-root-resolver env))))})
 
 (defn run-generated-test
   [{::keys [resolvers query expected]}]
-  (let [env (pci/register (mapv pco/resolver resolvers))]
-    (= (p.eql/process env query) expected)))
+  (let [env (pci/register (mapv pco/resolver resolvers))
+        res (p.eql/process env query)]
+    (if (= res expected)
+      true
+      (do
+        (p.connector/log-entry
+          #_ {:pathom.viz.log/type  :pathom.viz.log.type/plan-and-stats
+              :pathom.viz.log/value (:com.wsscode.pathom3.connect.runner/run-stats (meta res))}
+          (assoc (:com.wsscode.pathom3.connect.runner/run-stats (meta res))
+            :pathom.viz.log/type :pathom.viz.log.type/plan-and-stats))
+        false))))
 
 (def generate-prop
   (props/for-all [case ((::gen-resolver gen-env)
                         gen-env)]
-                 (run-generated-test case)))
+    (run-generated-test case)))
 
 (comment
-  generate-prop
-  (tc/quick-check 100 generate-prop)
+  (tc/quick-check 1000 generate-prop)
   (gen/sample
     ((::gen-resolver gen-env)
      gen-env))
 
-  (run-generated-test
-    (gen/generate
-      ((::gen-resolver gen-env)
-       gen-env)))
+  (dotimes [_ 20]
+    (run-generated-test
+      (gen/generate
+        ((::gen-resolver gen-env)
+         gen-env))))
 
   (run-generated-test
     {::resolvers
