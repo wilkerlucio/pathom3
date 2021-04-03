@@ -3,13 +3,18 @@
 
  :tasks
  {tasks/init
-  (require 'tasks)
+  (do
+    (require 'tasks)
+    (def source-paths ["src" "test"]))
 
   format-check
-  (tasks/cljstyle "check" "src" "test")
+  (apply tasks/cljstyle "check" source-paths)
 
   format-fix
-  (tasks/cljstyle "fix" "src" "test")
+  (apply tasks/cljstyle "fix" source-paths)
+
+  lint
+  (do (tasks/clj-kondo-lint source-paths) nil)
 
   setup-hooks
   tasks/setup-git-hooks
