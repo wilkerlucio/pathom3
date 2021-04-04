@@ -816,10 +816,17 @@
    {::keys [node-id]}
    branch-node-factory]
   (if node-id
-    (let [root-node (get-root-node graph)
-          next-node (get-node graph node-id)
-          root-sym  (pc-sym root-node)
-          next-sym  (pc-sym next-node)]
+    (let [root-node       (get-root-node graph)
+          next-node       (get-node graph node-id)
+          root-sym        (pc-sym root-node)
+          next-sym        (pc-sym next-node)
+          existent-parent (and root-node next-node
+                               (->> (set/intersection
+                                      (::node-parents root-node)
+                                      (::node-parents next-node))
+                                    (filter #(-> (get-node graph %)
+                                                 (branch-type %)))
+                                    first))]
       (add-snapshot! graph env {::snapshot-message "Start root branch"
                                 ::branch-type      branch-type
                                 ::highlight-nodes  (into #{} [root node-id])
@@ -896,6 +903,12 @@
            node-id)
         (add-snapshot! graph env {::snapshot-message (str "Nodes to join are linked via run-next, keep running")
                                   ::highlight-nodes  (into #{} [node-id root])})
+
+        ; root and run next are already branches on the same node
+        existent-parent
+        (-> (add-snapshot! graph env {::snapshot-message (str "Root and node already share parent of correct type, moving root to the parent" existent-parent)
+                                      ::highlight-nodes  (into #{} [node-id root existent-parent])})
+            (set-root-node existent-parent))
 
         :else
         (-> (add-snapshot! graph env {::snapshot-message (str "Start branch node " node-id " and " root " using " (name branch-type))
