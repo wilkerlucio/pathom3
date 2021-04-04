@@ -238,8 +238,8 @@
       (p.eql/process (::query req))))
 
 (comment
-  (run-thing
-    fail)
+  (run-thing fail)
+  (run-generated-test fail)
 
   (log-request-snapshots fail)
   (log-request-snapshots fail2)
@@ -247,7 +247,9 @@
   (run-query-on-pathom-viz fail)
   (run-query-on-pathom-viz fail2)
 
-  (let [res (tc/quick-check 1000
+  (pci/register (mapv pco/resolver (::resolvers fail)))
+
+  (let [res (tc/quick-check 10000
               (generate-prop
                 {::max-resolver-depth
                  2
