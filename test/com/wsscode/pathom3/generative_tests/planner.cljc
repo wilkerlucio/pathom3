@@ -118,9 +118,28 @@
         ::expected   {attribute (name attribute)}
         ::attributes #{attribute}}))
 
+   ::gen-dep-resolver-dependency
+   (fn [{::p.attr/keys [attribute]
+         ::keys        [gen-resolver attributes]
+         :as           env}]
+     (if (seq attributes)
+       (gen/one-of
+         [(gen-resolver
+            (assoc env
+              ::p.attr/attribute attribute))
+          (gen/let [attr (gen/elements attributes)]
+            (gen/return
+              {::resolvers  []
+               ::query      [attr]
+               ::expected   {attr (name attr)}
+               ::attributes #{attr}}))])
+       (gen-resolver
+         (assoc env
+           ::p.attr/attribute attribute))))
+
    ::gen-dep-resolver
    (fn [{::p.attr/keys [attribute]
-         ::keys        [gen-resolver attributes max-deps]
+         ::keys        [max-deps gen-dep-resolver-dependency]
          :as           env}]
      (let [next-attrs (->> (iterate next-attr attribute)
                            (drop 1)
@@ -131,20 +150,9 @@
            (gen/let [next-groups
                      (apply gen/tuple
                        (mapv
-                         #(if (seq attributes)
-                            (gen/one-of
-                              [(gen-resolver
-                                 (assoc env
-                                   ::p.attr/attribute %))
-                               (gen/let [attr (gen/elements attributes)]
-                                 (gen/return
-                                   {::resolvers  []
-                                    ::query      [attr]
-                                    ::expected   {attr (name attr)}
-                                    ::attributes #{attr}}))])
-                            (gen-resolver
-                              (assoc env
-                                ::p.attr/attribute %)))
+                         #(gen-dep-resolver-dependency
+                            (assoc env
+                              ::p.attr/attribute %))
                          inputs))]
              (gen/return
                {::resolvers  (into
@@ -201,7 +209,7 @@
              ::chain-result blank-result)))))})
 
 (defn run-thing
-  [{::keys [resolvers query expected]}]
+  [{::keys [resolvers query]}]
   (let [env (pci/register (mapv pco/resolver resolvers))]
     (p.eql/process env query)))
 
