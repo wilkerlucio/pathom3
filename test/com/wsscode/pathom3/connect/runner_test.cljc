@@ -143,61 +143,61 @@
 
 (deftest run-graph!-test
   (is (graph-response? (pci/register geo/registry)
-                       {::geo/left 10 ::geo/width 30}
-                       [::geo/right ::geo/center-x]
+        {::geo/left 10 ::geo/width 30}
+        [::geo/right ::geo/center-x]
 
-                       {::geo/left       10
-                        ::geo/width      30
-                        ::geo/right      40
-                        ::geo/half-width 15
-                        ::geo/center-x   25}))
+        {::geo/left       10
+         ::geo/width      30
+         ::geo/right      40
+         ::geo/half-width 15
+         ::geo/center-x   25}))
 
   (is (graph-response? full-env
-                       {:data {::geo/x 10}}
-                       [{:data [:left]}]
-                       {:data {::geo/x    10
-                               ::geo/left 10
-                               :left      10}}))
+        {:data {::geo/x 10}}
+        [{:data [:left]}]
+        {:data {::geo/x    10
+                ::geo/left 10
+                :left      10}}))
 
   (testing "ident"
     (is (graph-response? full-env
-                         {}
-                         [[::geo/x 10]]
-                         {[::geo/x 10] {::geo/x 10}}))
+          {}
+          [[::geo/x 10]]
+          {[::geo/x 10] {::geo/x 10}}))
 
     (is (graph-response? full-env
-                         {}
-                         [{[::geo/x 10] [::geo/left]}]
-                         {[::geo/x 10] {::geo/x    10
-                                        ::geo/left 10}}))
+          {}
+          [{[::geo/x 10] [::geo/left]}]
+          {[::geo/x 10] {::geo/x    10
+                         ::geo/left 10}}))
 
     (is (graph-response? full-env
-                         {[::geo/x 10] {:random "data"}}
-                         [{[::geo/x 10] [::geo/left]}]
-                         {[::geo/x 10] {:random    "data"
-                                        ::geo/x    10
-                                        ::geo/left 10}})))
+          {[::geo/x 10] {:random "data"}}
+          [{[::geo/x 10] [::geo/left]}]
+          {[::geo/x 10] {:random    "data"
+                         ::geo/x    10
+                         ::geo/left 10}})))
 
   (testing "path"
     (is (graph-response? (pci/register [(pbir/constantly-resolver ::hold {})
                                         (pbir/constantly-resolver ::sequence [{} {}])
                                         (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
-                         {}
-                         [::p.path/path
-                          {::hold [::p.path/path]}
-                          {::sequence [::p.path/path]}]
-                         {::p.path/path [],
-                          ::sequence    [{::p.path/path [::sequence 0]}
-                                         {::p.path/path [::sequence 1]}],
-                          ::hold        {::p.path/path [::hold]}}))
+          {}
+          [::p.path/path
+           {::hold [::p.path/path]}
+           {::sequence [::p.path/path]}]
+          {::p.path/path [],
+           ::sequence    [{::p.path/path [::sequence 0]}
+                          {::p.path/path [::sequence 1]}],
+           ::hold        {::p.path/path [::hold]}}))
 
     (testing "map container path"
       (is (graph-response? (pci/register [(pbir/constantly-resolver ::map-container
                                                                     ^::pcr/map-container? {:foo {}})
                                           (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
-                           {}
-                           [{::map-container [::p.path/path]}]
-                           {::map-container {:foo {::p.path/path [::map-container :foo]}}}))))
+            {}
+            [{::map-container [::p.path/path]}]
+            {::map-container {:foo {::p.path/path [::map-container :foo]}}}))))
 
   (testing "insufficient data"
     (let [res (run-graph (pci/register [(pco/resolver 'a {::pco/output [:a]
@@ -234,95 +234,95 @@
                                         (coords-resolver
                                           [{::geo/x 7 ::geo/y 9}
                                            {::geo/x 3 ::geo/y 4}])])
-                         {}
-                         [{::coords [:left]}]
-                         {::coords [{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
-                                    {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}]}))
+          {}
+          [{::coords [:left]}]
+          {::coords [{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
+                     {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}]}))
 
     (testing "data from join"
       (is (graph-response? (pci/register geo/full-registry)
-                           {::coords [{::geo/x 7 ::geo/y 9}
-                                      {::geo/x 3 ::geo/y 4}]}
-                           [{::coords [:left]}]
-                           {::coords [{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
-                                      {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}]})))
+            {::coords [{::geo/x 7 ::geo/y 9}
+                       {::geo/x 3 ::geo/y 4}]}
+            [{::coords [:left]}]
+            {::coords [{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
+                       {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}]})))
 
     (testing "set data from join"
       (is (graph-response? (pci/register geo/full-registry)
-                           {::coords #{{::geo/x 7 ::geo/y 9}
-                                       {::geo/x 3 ::geo/y 4}}}
-                           [{::coords [:left]}]
-                           {::coords #{{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
-                                       {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}})))
+            {::coords #{{::geo/x 7 ::geo/y 9}
+                        {::geo/x 3 ::geo/y 4}}}
+            [{::coords [:left]}]
+            {::coords #{{::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
+                        {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}})))
 
     (testing "map values"
       (is (graph-response? (pci/register geo/full-registry)
-                           {::coords ^::pcr/map-container? {:a {::geo/x 7 ::geo/y 9}
-                                                            :b {::geo/x 3 ::geo/y 4}}}
-                           [{::coords [:left]}]
-                           {::coords {:a {::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
-                                      :b {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))
+            {::coords ^::pcr/map-container? {:a {::geo/x 7 ::geo/y 9}
+                                             :b {::geo/x 3 ::geo/y 4}}}
+            [{::coords [:left]}]
+            {::coords {:a {::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
+                       :b {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))
 
       (is (graph-response? (pci/register geo/full-registry)
-                           {::coords {:a {::geo/x 7 ::geo/y 9}
-                                      :b {::geo/x 3 ::geo/y 4}}}
-                           '[{(::coords {::pcr/map-container? true}) [:left]}]
-                           {::coords {:a {::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
-                                      :b {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))))
+            {::coords {:a {::geo/x 7 ::geo/y 9}
+                       :b {::geo/x 3 ::geo/y 4}}}
+            '[{(::coords {::pcr/map-container? true}) [:left]}]
+            {::coords {:a {::geo/x 7 ::geo/y 9 ::geo/left 7 :left 7}
+                       :b {::geo/x 3 ::geo/y 4 ::geo/left 3 :left 3}}}))))
 
   (testing "processing sequence of inconsistent maps"
     (is (graph-response? (pci/register geo/full-registry)
-                         {::coords [{::geo/x 7 ::geo/y 9}
-                                    {::geo/left 7 ::geo/y 9}]}
-                         [{::coords [:left]}]
-                         {::coords
-                          [{::geo/x    7
-                            ::geo/y    9
-                            ::geo/left 7
-                            :left      7}
-                           {::geo/left 7
-                            ::geo/y    9
-                            :left      7}]})))
+          {::coords [{::geo/x 7 ::geo/y 9}
+                     {::geo/left 7 ::geo/y 9}]}
+          [{::coords [:left]}]
+          {::coords
+           [{::geo/x    7
+             ::geo/y    9
+             ::geo/left 7
+             :left      7}
+            {::geo/left 7
+             ::geo/y    9
+             :left      7}]})))
 
   (testing "processing sequence partial items being maps"
     (is (graph-response? (pci/register geo/full-registry)
-                         {::coords [{::geo/x 7 ::geo/y 9}
-                                    20]}
-                         [{::coords [:left]}]
-                         {::coords [{::geo/x    7
-                                     ::geo/y    9
-                                     ::geo/left 7
-                                     :left      7}
-                                    20]}))))
+          {::coords [{::geo/x 7 ::geo/y 9}
+                     20]}
+          [{::coords [:left]}]
+          {::coords [{::geo/x    7
+                      ::geo/y    9
+                      ::geo/left 7
+                      :left      7}
+                     20]}))))
 
 (deftest run-graph!-final-test
   (testing "map value"
     (is (graph-response? (pci/register geo/registry)
-                         {:item ^::pco/final {::geo/left 10 ::geo/width 30}}
-                         [{:item [::geo/left ::geo/right]}]
+          {:item ^::pco/final {::geo/left 10 ::geo/width 30}}
+          [{:item [::geo/left ::geo/right]}]
 
-                         {:item
-                          #::geo{:left  10
-                                 :width 30}})))
+          {:item
+           #::geo{:left  10
+                  :width 30}})))
 
   (testing "sequence"
     (is (graph-response? (pci/register geo/registry)
-                         {:item ^::pco/final [{::geo/left 10 ::geo/width 30}]}
-                         [{:item [::geo/left ::geo/right]}]
+          {:item ^::pco/final [{::geo/left 10 ::geo/width 30}]}
+          [{:item [::geo/left ::geo/right]}]
 
-                         {:item
-                          [#::geo{:left  10
-                                  :width 30}]})))
+          {:item
+           [#::geo{:left  10
+                   :width 30}]})))
 
   (testing "map container"
     (is (graph-response? (pci/register geo/registry)
-                         {:item ^{::pco/final          true
-                                  ::pcr/map-container? true} {:a {::geo/left 10 ::geo/width 30}}}
-                         [{:item [::geo/left ::geo/right]}]
+          {:item ^{::pco/final          true
+                   ::pcr/map-container? true} {:a {::geo/left 10 ::geo/width 30}}}
+          [{:item [::geo/left ::geo/right]}]
 
-                         {:item
-                          {:a #::geo{:left  10
-                                     :width 30}}}))))
+          {:item
+           {:a #::geo{:left  10
+                      :width 30}}}))))
 
 (deftest run-graph!-or-test
   (testing "processing OR nodes"
@@ -1385,12 +1385,12 @@
     (is (graph-response?
           (pci/register
             [(pbir/static-table-resolver :name
-               {"a" {:children [{:name "b"}
-                                {:name "c"}]}
-                "b" {:children [{:name "e"}]}
-                "e" {:children [{:name "f"}]}
-                "f" {:children [{:name "g"}]}
-                "c" {:children [{:name "d"}]}})])
+                                         {"a" {:children [{:name "b"}
+                                                          {:name "c"}]}
+                                          "b" {:children [{:name "e"}]}
+                                          "e" {:children [{:name "f"}]}
+                                          "f" {:children [{:name "g"}]}
+                                          "c" {:children [{:name "d"}]}})])
           {:name "a"}
           [:name
            {:children '...}]
@@ -1403,12 +1403,12 @@
     (is (graph-response?
           (pci/register
             [(pbir/static-table-resolver :name
-               {"a" {:children [{:name "b"}
-                                {:name "c"}]}
-                "b" {:children [{:name "e"}]}
-                "e" {:children [{:name "f"}]}
-                "f" {:children [{:name "g"}]}
-                "c" {:children [{:name "d"}]}})])
+                                         {"a" {:children [{:name "b"}
+                                                          {:name "c"}]}
+                                          "b" {:children [{:name "e"}]}
+                                          "e" {:children [{:name "f"}]}
+                                          "f" {:children [{:name "g"}]}
+                                          "c" {:children [{:name "d"}]}})])
           {:name "a"}
           [:name
            {:children 2}]
@@ -1419,12 +1419,12 @@
     (is (graph-response?
           (pci/register
             [(pbir/static-table-resolver :name
-               {"a" {:children [{:name "b"}
-                                {:name "c"}]}
-                "b" {:children [{:name "e"}]}
-                "e" {:children [{:name "f"}]}
-                "f" {:children [{:name "g"}]}
-                "c" {:children [{:name "d"}]}})
+                                         {"a" {:children [{:name "b"}
+                                                          {:name "c"}]}
+                                          "b" {:children [{:name "e"}]}
+                                          "e" {:children [{:name "f"}]}
+                                          "f" {:children [{:name "g"}]}
+                                          "c" {:children [{:name "d"}]}})
              (pbir/single-attr-resolver :name :name+ #(str % "+"))])
           {:name "a"}
           [:name+
@@ -1463,12 +1463,12 @@
                  {:names
                   (mapv :name (tree-seq :children :children input))}))
              (pbir/static-table-resolver :name
-               {"a" {:children [{:name "b"}
-                                {:name "c"}]}
-                "b" {:children [{:name "e"}]}
-                "e" {:children [{:name "f"}]}
-                "f" {:children [{:name "g"}]}
-                "c" {:children [{:name "d"}]}})])
+                                         {"a" {:children [{:name "b"}
+                                                          {:name "c"}]}
+                                          "b" {:children [{:name "e"}]}
+                                          "e" {:children [{:name "f"}]}
+                                          "f" {:children [{:name "g"}]}
+                                          "c" {:children [{:name "d"}]}})])
           {:name "a"}
           [:names]
           {:name     "a",
@@ -1543,8 +1543,8 @@
         stats (-> (run-graph (pci/register
                                (pco/resolver 'error {::pco/output [:error]}
                                  (fn [_ _] (throw error))))
-                    {}
-                    [:error])
+                             {}
+                             [:error])
                   meta ::pcr/run-stats)
         env   (pcrs/run-stats-env stats)]
     (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
@@ -1580,8 +1580,8 @@
      (is (= @(run-graph-async (pci/register
                                 (pco/resolver 'async {::pco/output [:foo]}
                                   (fn [_ _] (p/resolved {:foo "foo"}))))
-               {}
-               [:foo])
+                              {}
+                              [:foo])
             {:foo "foo"}))
 
      (testing "error"
@@ -1589,8 +1589,8 @@
              stats @(run-graph-async (pci/register
                                        (pco/resolver 'error {::pco/output [:error]}
                                          (fn [_ _] (p/resolved (throw error)))))
-                      {}
-                      [:error])
+                                     {}
+                                     [:error])
              env   (pcrs/run-stats-env (-> stats meta ::pcr/run-stats))]
          (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
                     ::pcrs/attribute-error)

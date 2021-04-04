@@ -29,10 +29,15 @@ jobs:
         with:
           tools-deps: '1.10.1.469'
 
+      - name: Setup Babashka
+        uses: turtlequeue/setup-babashka@v1.2.1
+        with:
+          babashka-version: 0.3.1
+
       - uses: actions/checkout@v1
 
-      - name: Run format checker
-        run: ./script/format-check
+#      - run: bb run format-check
+      - run: bb -m tasks/cljstyle "check" "src" "test"
 
   test-clj:
     runs-on: ubuntu-latest
@@ -44,6 +49,11 @@ jobs:
         with:
           tools-deps: '1.10.1.469'
 
+#      - name: Setup Babashka
+#        uses: turtlequeue/setup-babashka@v1.2.1
+#        with:
+#          babashka-version: 0.3.1
+
       - name: Cache maven
         uses: actions/cache@v1
         with:
@@ -52,8 +62,8 @@ jobs:
           restore-keys: |
             m2-
 
-      - name: Test
-        run: ./script/test
+#      - run: bb run test
+      - run: PATHOM_TEST=true clojure -A:test:test-deps
 
   test-cljs:
     runs-on: ubuntu-latest

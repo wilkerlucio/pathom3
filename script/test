@@ -1,3 +1,0 @@
-#!/bin/bash
-
-PATHOM_TEST=true clojure -A:test:test-deps

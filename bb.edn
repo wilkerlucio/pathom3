@@ -1,0 +1,23 @@
+{:paths
+ ["src/tasks"]
+
+ :tasks
+ {tasks/init
+  (do
+    (require 'tasks)
+    (def source-paths ["src" "test"]))
+
+  format-check
+  (apply tasks/cljstyle "check" source-paths)
+
+  format-fix
+  (apply tasks/cljstyle "fix" source-paths)
+
+  lint
+  (tasks/clj-kondo-lint source-paths)
+
+  setup-hooks
+  tasks/setup-git-hooks
+
+  test
+  (shell "bash -c PATHOM_TEST=true clojure -A:test:test-deps")}}

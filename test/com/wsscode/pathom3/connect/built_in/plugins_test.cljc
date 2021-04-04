@@ -69,8 +69,8 @@
            (-> (pci/register
                  [(pbir/single-attr-resolver :a :b inc)
                   (pco/mutation 'foo
-                                {::pco/params [:b]}
-                                (fn [_ {:keys [b]}] {:res b}))])
+                    {::pco/params [:b]}
+                    (fn [_ {:keys [b]}] {:res b}))])
                (p.plugin/register pbip/mutation-resolve-params))
            ['(foo {:a 1})])
          {'foo {:res 2}})))
