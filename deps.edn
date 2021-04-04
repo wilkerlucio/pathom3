@@ -24,13 +24,13 @@
 
   :test-deps
   {:extra-deps {nubank/matcher-combinators {:mvn/version "3.1.4"}
+                macroz/tangle              {:mvn/version "0.2.1"}
                 org.clojure/test.check     {:mvn/version "1.1.0"}}}
 
   :test
   {:extra-paths ["test"]
    :extra-deps  {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
-                                            :sha     "209b64504cb3bd3b99ecfec7937b358a879f55c1"}
-                 macroz/tangle             {:mvn/version "0.2.1"}}
+                                            :sha     "209b64504cb3bd3b99ecfec7937b358a879f55c1"}}
    :main-opts   ["-m" "cognitect.test-runner"]}
 
   :test-cljs
