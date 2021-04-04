@@ -12,7 +12,8 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom.viz.ws-connector.pathom3 :as p.connector]
-    [edn-query-language.gen :as eql-gen]))
+    [edn-query-language.gen :as eql-gen]
+    [com.wsscode.misc.coll :as coll]))
 
 (defn next-attr [attribute]
   (let [[base current-index]
@@ -24,9 +25,23 @@
             [(name attribute) 0])]
     (keyword (str base (inc current-index)))))
 
+(def base-chars
+  [:a :b :c :d :e :f :g :h :i :j :k :l :m
+   :n :o :p :q :r :s :t :u :v :x :y :w :z])
+
 (comment
   (next-attr :a4214)
   (take 10 (iterate next-attr :a)))
+
+(defn merge-result [r1 r2]
+  {::resolvers (into (::resolvers r1) (::resolvers r2))
+   ::query     (into (::query r1) (::query r2))
+   ::expected  (merge (::expected r1) (::expected r2))})
+
+(def blank-result
+  {::resolvers []
+   ::query     []
+   ::expected  {}})
 
 (def gen-env
   {::p.attr/attribute
@@ -58,26 +73,7 @@
             ::query     [attribute]
             ::expected  {}}))
 
-   ::gen-single-dep-resolver
-   (fn [{::p.attr/keys [attribute]
-         ::keys        [gen-resolver]
-         :as           env}]
-     (let [next-attr (next-attr attribute)]
-       (gen/let [next-group (gen-resolver
-                              (assoc env
-                                ::p.attr/attribute next-attr))]
-         (gen/return
-           {::resolvers (into
-                          [{::pco/op-name (symbol attribute)
-                            ::pco/input   [next-attr]
-                            ::pco/output  [attribute]
-                            ::pco/resolve (fn [_ _]
-                                            {attribute (name attribute)})}]
-                          (::resolvers next-group))
-            ::query     [attribute]
-            ::expected  {attribute (name attribute)}}))))
-
-   ::gen-multi-dep-resolver
+   ::gen-dep-resolver
    (fn [{::p.attr/keys [attribute]
          ::keys        [gen-resolver]
          :as           env}]
@@ -85,7 +81,7 @@
                            (drop 1)
                            (map #(keyword (str (name %) "-a"))))]
        (gen/let [deps-count
-                 (gen/choose 2 4)
+                 (gen/choose 1 4)
 
                  next-groups
                  (apply gen/tuple
@@ -109,28 +105,53 @@
    ::gen-resolver
    (fn [{::keys [max-resolver-depth
                  gen-root-resolver
-                 gen-single-dep-resolver
-                 gen-multi-dep-resolver] :as env}]
+                 gen-dep-resolver] :as env}]
      (let [env (update env ::max-resolver-depth dec)]
        (if (pos? max-resolver-depth)
          (gen/frequency
            [[3 (gen-root-resolver env)]
-            [2 (gen-single-dep-resolver env)]
-            [2 (gen-multi-dep-resolver env)]])
-         (gen-root-resolver env))))})
+            [2 (gen-dep-resolver env)]])
+         (gen-root-resolver env))))
+
+   ::gen-resolver-chain
+   (fn [{::keys [gen-resolver
+                 gen-resolver-chain
+                 query-queue
+                 chain-result]
+         :as    env}]
+     (let [[attr & rest] query-queue]
+       (if attr
+         (let [env (assoc env ::p.attr/attribute attr)]
+           (gen/let [result (gen-resolver env)]
+             (gen-resolver-chain
+               (-> env
+                   (assoc ::query-queue rest)
+                   (update ::chain-result merge-result result)))))
+         (gen/return
+           chain-result))))
+
+   ::gen-request
+   (fn [{::keys [gen-resolver-chain] :as env}]
+     (gen/let [items-count (gen/choose 1 3)]
+       (let [query (vec (take items-count base-chars))]
+         (gen-resolver-chain
+           (assoc env
+             ::query-queue query
+             ::chain-result blank-result)))))})
 
 (defn run-generated-test
   [{::keys [resolvers query expected]}]
   (let [env (pci/register (mapv pco/resolver resolvers))
         res (p.eql/process env query)]
+    (p.connector/log-entry
+      #_{:pathom.viz.log/type  :pathom.viz.log.type/plan-and-stats
+         :pathom.viz.log/value (:com.wsscode.pathom3.connect.runner/run-stats (meta res))}
+      (assoc (:com.wsscode.pathom3.connect.runner/run-stats (meta res))
+        :pathom.viz.log/type :pathom.viz.log.type/plan-and-stats))
     (if (= res expected)
       true
       (do
-        (p.connector/log-entry
-          #_ {:pathom.viz.log/type  :pathom.viz.log.type/plan-and-stats
-              :pathom.viz.log/value (:com.wsscode.pathom3.connect.runner/run-stats (meta res))}
-          (assoc (:com.wsscode.pathom3.connect.runner/run-stats (meta res))
-            :pathom.viz.log/type :pathom.viz.log.type/plan-and-stats))
+
         false))))
 
 (def generate-prop
@@ -144,11 +165,16 @@
     ((::gen-resolver gen-env)
      gen-env))
 
+  (gen/generate
+    ((::gen-request gen-env)
+     gen-env))
+
   (dotimes [_ 20]
     (run-generated-test
       (gen/generate
-        ((::gen-resolver gen-env)
-         gen-env))))
+        ((::gen-request gen-env)
+         gen-env)))
+    (Thread/sleep 100))
 
   (run-generated-test
     {::resolvers
