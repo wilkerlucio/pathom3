@@ -14,7 +14,7 @@
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [edn-query-language.core :as eql]))
 
-#_ :clj-kondo/ignore
+#_:clj-kondo/ignore
 
 (defn next-attr [attribute]
   (let [[base current-index]
@@ -33,6 +33,9 @@
 (comment
   (next-attr :a4214)
   (take 10 (iterate next-attr :a)))
+
+(defn attrs->expected [attrs]
+  (zipmap attrs (map name attrs)))
 
 (defn merge-result [r1 r2]
   {::resolvers  (into (::resolvers r1) (::resolvers r2))
@@ -109,18 +112,21 @@
                             (assoc env
                               ::p.attr/attribute %))
                          inputs))]
-             (gen/return
-               {::resolvers  (into
-                               [{::pco/op-name (symbol attribute)
-                                 ::pco/input   (into [] (mapcat ::query) next-groups)
-                                 ::pco/output  [attribute]
-                                 ::pco/resolve (fn [_ _]
-                                                 {attribute (name attribute)})}]
-                               (mapcat ::resolvers)
-                               next-groups)
-                ::query      [attribute]
-                ::expected   {attribute (name attribute)}
-                ::attributes (reduce into #{attribute} (map ::attributes next-groups))}))))))
+             (let [actual-input (into [] (mapcat ::query) next-groups)]
+               (gen/return
+                 {::resolvers  (into
+                                 [{::pco/op-name (symbol attribute)
+                                   ::pco/input   actual-input
+                                   ::pco/output  [attribute]
+                                   ::pco/resolve (fn [_ input]
+                                                   (assert (= input
+                                                              (attrs->expected actual-input)))
+                                                   {attribute (name attribute)})}]
+                                 (mapcat ::resolvers)
+                                 next-groups)
+                  ::query      [attribute]
+                  ::expected   {attribute (name attribute)}
+                  ::attributes (reduce into #{attribute} (map ::attributes next-groups))})))))))
 
    ::gen-resolver
    (fn [{::keys [max-resolver-depth
@@ -243,7 +249,7 @@
   (-> (tc/quick-check n prop)
       result-smallest))
 
-#_ :clj-kondo/ignore
+#_:clj-kondo/ignore
 
 (comment
   (runner-p3 fail)
@@ -280,14 +286,14 @@
         :smallest
         first))
 
-  (let [res (tc/quick-check 10000
+  (let [res (tc/quick-check 3000
               (generate-prop
                 runner-p2
                 {::max-resolver-depth
-                 4
+                 5
 
                  ::max-deps
-                 2
+                 8
 
                  ::max-request-attributes
                  10}))]
