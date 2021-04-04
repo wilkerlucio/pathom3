@@ -90,7 +90,7 @@
   (testing "mutation"
     (let [mutation (pco/mutation 'm {::pco/output [:foo]
                                      ::pco/params [:bla]}
-                                 (fn [_ _] {:foo 42}))]
+                     (fn [_ _] {:foo 42}))]
       (is (= (pci/register mutation)
              {::pci/index-mutations  {'m mutation}
               ::pci/index-attributes {:bla {::pci/attr-id                :bla
@@ -135,7 +135,7 @@
                (fn [_ _] {:foo2 "val"}))
           mutation (pco/mutation 'm {::pco/output [:foo]
                                      ::pco/params [:bla]}
-                                 (fn [_ _] {:foo 42}))]
+                     (fn [_ _] {:foo 42}))]
       (let [idx (pci/register r1)]
         (is (= (-> idx ::pci/index-resolvers meta)
                {:com.wsscode.pathom3.connect.runner/map-container?
@@ -165,7 +165,7 @@
                      (fn [_ _] {:foo2 "val"}))
           mutation (pco/mutation 'm {::pco/output [:foo]
                                      ::pco/params [:bla]}
-                                 (fn [_ _] {:foo 42}))]
+                     (fn [_ _] {:foo 42}))]
       (is (= (pci/register [(pci/register r1) r2])
              {::pci/index-resolvers  {'r  r1
                                       'r2 r2}

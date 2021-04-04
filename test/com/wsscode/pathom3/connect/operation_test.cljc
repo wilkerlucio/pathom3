@@ -160,7 +160,7 @@
   (testing "name config overrides syntax name"
     (let [mutation (pco/mutation 'foo {::pco/op-name 'bar
                                        ::pco/mutate  (fn [_ _] {})}
-                                 (fn [_ _] {:foo "bar"}))]
+                     (fn [_ _] {:foo "bar"}))]
       (is (= (pco/operation-config mutation)
              {::pco/op-name 'bar}))))
 
@@ -168,7 +168,7 @@
     (let [mutation (pco/mutation 'foo {::pco/output    [:foo]
                                        ::pco/transform (fn [config]
                                                          (assoc config ::other "bar"))}
-                                 (fn [_ _] {:foo "bar"}))]
+                     (fn [_ _] {:foo "bar"}))]
       (is (= (pco/operation-config mutation)
              {::pco/op-name  'foo
               ::other        "bar"
