@@ -907,7 +907,8 @@
         ; root and run next are already branches on the same node
         existent-parent
         (-> (add-snapshot! graph env {::snapshot-message (str "Root and node already share parent of correct type, moving root to the parent" existent-parent)
-                                      ::highlight-nodes  (into #{} [node-id root existent-parent])})
+                                      ::highlight-nodes  (into #{} [node-id root existent-parent])
+                                      ::highlight-styles {existent-parent 1}})
             (set-root-node existent-parent))
 
         :else
