@@ -79,7 +79,7 @@
    ::max-resolver-outputs
    10
 
-   ::gen-resolver-no-deps
+   ::gen-output-for-resolver
    (fn [{::p.attr/keys [attribute]
          ::keys        [max-resolver-outputs]}]
      (gen/let [extra-outputs
@@ -89,15 +89,21 @@
                        (gen/choose 0 max-resolver-outputs))]])]
        (let [next-attrs (->> (iterate next-attr :ex1)
                              (map #(keyword (str (name attribute) "--" (name %))))
-                             (take extra-outputs))
-             output     (into [attribute] next-attrs)]
-         {::resolvers  [{::pco/op-name (symbol attribute)
-                         ::pco/output  output
-                         ::pco/resolve (fn [_ _]
-                                         (attrs->expected output))}]
-          ::query      [attribute]
-          ::expected   {attribute (name attribute)}
-          ::attributes (set output)})))
+                             (take extra-outputs))]
+         (into [attribute] next-attrs))))
+
+   ::gen-resolver-no-deps
+   (fn [{::p.attr/keys [attribute]
+         ::keys        [gen-output-for-resolver]
+         :as           env}]
+     (gen/let [output (gen-output-for-resolver env)]
+       {::resolvers  [{::pco/op-name (symbol attribute)
+                       ::pco/output  output
+                       ::pco/resolve (fn [_ _]
+                                       (attrs->expected output))}]
+        ::query      [attribute]
+        ::expected   {attribute (name attribute)}
+        ::attributes (set output)}))
 
    ; use some attribute generated before
    ::gen-resolver-reuse
