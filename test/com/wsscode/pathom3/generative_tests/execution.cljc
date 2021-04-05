@@ -71,10 +71,10 @@
    5
 
    ::max-deps
-   4
+   5
 
    ::max-request-attributes
-   3
+   8
 
    ::max-resolver-outputs
    10
@@ -85,7 +85,7 @@
      (gen/let [extra-outputs
                (gen-frequency
                  [[3 (gen/return 0)]
-                  [1 (if (pos? max-resolver-outputs)
+                  [2 (if (pos? max-resolver-outputs)
                        (gen/choose 0 max-resolver-outputs))]])]
        (let [next-attrs (->> (iterate next-attr :ex1)
                              (map #(keyword (str (name attribute) "--" (name %))))
@@ -117,38 +117,38 @@
 
    ::gen-resolver-with-deps
    (fn [{::p.attr/keys [attribute]
-         ::keys        [max-deps gen-resolver]
+         ::keys        [max-deps gen-resolver gen-output-for-resolver]
          :as           env}]
-     (let [next-attrs (->> (iterate next-attr attribute)
-                           (drop 1)
-                           (map #(keyword (str (name %) "-a"))))]
-       (gen/let [deps-count
-                 (gen/choose 1 max-deps)]
-         (let [inputs (take deps-count next-attrs)]
-           (gen/let [next-groups
-                     (apply gen/tuple
-                       (mapv
-                         #(gen-resolver
-                            (assoc env
-                              ::p.attr/attribute %))
-                         inputs))]
-             (let [actual-input (into []
-                                      (comp (mapcat ::query)
-                                            (distinct))
-                                      next-groups)]
-               {::resolvers  (into
-                               [{::pco/op-name (symbol attribute)
-                                 ::pco/input   actual-input
-                                 ::pco/output  [attribute]
-                                 ::pco/resolve (fn [_ input]
-                                                 (assert (= input
-                                                            (attrs->expected actual-input)))
-                                                 {attribute (name attribute)})}]
-                               (mapcat ::resolvers)
-                               next-groups)
-                ::query      [attribute]
-                ::expected   {attribute (name attribute)}
-                ::attributes (reduce into #{attribute} (map ::attributes next-groups))}))))))
+     (gen/let [deps-count (gen/choose 1 max-deps)
+               output     (gen-output-for-resolver env)]
+       (let [next-attrs (->> (iterate next-attr attribute)
+                             (drop 1)
+                             (map #(keyword (str (name %) "-a")))
+                             (take deps-count))]
+         (gen/let [next-groups
+                   (apply gen/tuple
+                     (mapv
+                       #(gen-resolver
+                          (assoc env
+                            ::p.attr/attribute %))
+                       next-attrs))]
+           (let [actual-input (into []
+                                    (comp (mapcat ::query)
+                                          (distinct))
+                                    next-groups)]
+             {::resolvers  (into
+                             [{::pco/op-name (symbol attribute)
+                               ::pco/input   actual-input
+                               ::pco/output  output
+                               ::pco/resolve (fn [_ input]
+                                               (assert (= input
+                                                          (attrs->expected actual-input)))
+                                               (attrs->expected output))}]
+                             (mapcat ::resolvers)
+                             next-groups)
+              ::query      [attribute]
+              ::expected   {attribute (name attribute)}
+              ::attributes (reduce into (set output) (map ::attributes next-groups))})))))
 
    ::gen-resolver-leaf
    (fn [{::keys [gen-resolver-no-deps
@@ -295,7 +295,8 @@
          5
 
          ::max-resolver-outputs
-         3))))
+         3))
+      100))
 
   (runner-p3 fail)
 
@@ -358,6 +359,14 @@
 
                  ::max-request-attributes
                  10}))]
+    (-> res
+        :shrunk
+        :smallest
+        first))
+
+  (let [res (tc/quick-check 5000
+              (generate-prop
+                runner-p2 {}))]
     (-> res
         :shrunk
         :smallest
