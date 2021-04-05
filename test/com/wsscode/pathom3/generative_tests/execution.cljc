@@ -186,8 +186,9 @@
                      (assoc <>
                        ::attributes
                        (-> <> ::chain-result ::attributes)))))))
-         (gen/return
-           (update chain-result ::query #(vec (distinct %)))))))
+         (gen/let [query (->> chain-result ::query distinct
+                              gen/shuffle)]
+           (assoc chain-result ::query (vec query))))))
 
    ::gen-request
    (fn [{::keys [gen-request-resolver-item max-request-attributes] :as env}]
