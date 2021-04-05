@@ -68,7 +68,7 @@
    #{}
 
    ::max-resolver-depth
-   5
+   10
 
    ::max-deps
    5
@@ -78,6 +78,9 @@
 
    ::max-resolver-outputs
    10
+
+   ::knob-reuse-attributes?
+   true
 
    ::gen-output-for-resolver
    (fn [{::p.attr/keys [attribute]
@@ -152,10 +155,12 @@
 
    ::gen-resolver-leaf
    (fn [{::keys [gen-resolver-no-deps
-                 gen-resolver-reuse] :as env}]
+                 gen-resolver-reuse
+                 knob-reuse-attributes?] :as env}]
      (gen-one-of
        [(gen-resolver-no-deps env)
-        (gen-resolver-reuse env)]))
+        (if knob-reuse-attributes?
+          (gen-resolver-reuse env))]))
 
    ::gen-resolver
    (fn [{::keys [max-resolver-depth
@@ -239,6 +244,13 @@
                                 (assoc :edn-query-language.ast/node
                                   (eql/query->ast (::query req)))))}))
 
+(defn log-request-graph [req]
+  (p.connector/log-entry
+    (-> (runner-p3 req)
+        (meta)
+        :com.wsscode.pathom3.connect.runner/run-stats
+        (assoc :pathom.viz.log/type :pathom.viz.log.type/plan-and-stats))))
+
 (defn run-query-on-pathom-viz [req]
   (-> (pci/register (mapv pco/resolver (::resolvers req)))
       (p.connector/connect-env
@@ -285,19 +297,23 @@
   (tap>
     (gen/sample
       ((::gen-request gen-env)
-       (assoc gen-env
-         ::max-resolver-depth
-         3
-
-         ::max-deps
-         3
-
-         ::max-request-attributes
-         5
-
-         ::max-resolver-outputs
-         3))
+       gen-env)
       100))
+
+  (log-request-graph (gen/generate
+                       ((::gen-request gen-env)
+                        (assoc gen-env
+                          ::knob-reuse-attributes?
+                          false))))
+
+  (doseq [req (gen/sample
+                ((::gen-request gen-env)
+                 (assoc gen-env
+                   ::knob-reuse-attributes?
+                   false))
+                30)]
+    (log-request-graph req)
+    (Thread/sleep 1000))
 
   (runner-p3 fail)
 
@@ -316,6 +332,10 @@
 
   (check-smallest 10000 (complex-deps-prop runner-p2))
   (check-smallest 10000 (complex-deps-prop runner-p3))
+
+  (check-smallest 1000
+    (generate-prop runner-p3
+      gen-env))
 
   (let [res (tc/quick-check 30000
               (generate-prop
