@@ -257,7 +257,8 @@
         {:com.wsscode.pathom.viz.ws-connector.core/parser-id "debug"})
       (p.eql/process (::query req))))
 
-(defn single-dep-prop [runner]
+(defn single-dep-prop
+  [runner]
   (generate-prop
     runner
     {::max-resolver-depth
@@ -300,6 +301,56 @@
        gen-env)
       100))
 
+  (gen/sample
+    ((::gen-request gen-env)
+     gen-env)
+    100)
+
+  (p.connector/log-entry
+    (-> (pci/register
+          [(pco/resolver 'a
+             {::pco/output [:a]}
+             (fn [_ _]))
+           (pco/resolver 'b
+             {::pco/input  [:a]
+              ::pco/output [:b]}
+             (fn [_ _]))
+
+           (pco/resolver 'd
+             {::pco/output [:d]}
+             (fn [_ _]))
+
+           (pco/resolver 'b2
+             {::pco/input  [:d]
+              ::pco/output [:b]}
+             (fn [_ _]))
+
+           (pco/resolver 'x
+             {::pco/input  [:a]
+              ::pco/output [:x]}
+             (fn [_ _]))])
+        (p.eql/process [:x :b])
+        (meta)
+        :com.wsscode.pathom3.connect.runner/run-stats
+        (assoc :pathom.viz.log/type :pathom.viz.log.type/plan-and-stats)))
+  (log-request-graph
+    [])
+
+  (doseq [req (gen/sample
+                ((::gen-request gen-env)
+                 (assoc gen-env
+                   ::max-resolver-depth
+                   10
+
+                   ::max-deps
+                   5
+
+                   ::max-request-attributes
+                   1))
+                50)]
+    (log-request-graph req)
+    (Thread/sleep 300))
+
   (log-request-graph (gen/generate
                        ((::gen-request gen-env)
                         (assoc gen-env
@@ -309,26 +360,67 @@
   (doseq [req (gen/sample
                 ((::gen-request gen-env)
                  (assoc gen-env
-                   ::knob-reuse-attributes?
-                   false))
+                   ::max-resolver-depth
+                   2
+
+                   ::max-deps
+                   2
+
+                   ::max-request-attributes
+                   2))
                 30)]
     (log-request-graph req)
-    (Thread/sleep 1000))
+    (Thread/sleep 300))
 
   (runner-p3 fail)
+  (runner-p3 fail2)
+  (runner-p3 fail3)
+
+  (def fail *1)
+  (def fail2 *1)
+  (def fail3 *1)
 
   (log-request-snapshots fail)
   (log-request-snapshots fail2)
+  (log-request-snapshots fail3)
 
   (run-query-on-pathom-viz fail)
   (run-query-on-pathom-viz fail2)
 
   (runner-p2 fail)
 
-  (pci/register (mapv pco/resolver (::resolvers fail)))
+  (let [f fail2]
+    {:index-oir (::pci/index-oir (pci/register (mapv pco/resolver (::resolvers f))))
+     :query     (::query f)
+     :expected  (::expected f)
+     ;:actual    (runner-p3 f)
+     })
 
   (check-smallest 10000 (single-dep-prop runner-p2))
   (check-smallest 10000 (single-dep-prop runner-p3))
+  (check-smallest 30000
+    (generate-prop
+      runner-p3
+      {::max-resolver-depth
+       2
+
+       ::max-deps
+       1
+
+       ::max-request-attributes
+       4}))
+
+  (check-smallest 30000
+    (generate-prop
+      runner-p3
+      {::max-resolver-depth
+       5
+
+       ::max-deps
+       3
+
+       ::max-request-attributes
+       10}))
 
   (check-smallest 10000 (complex-deps-prop runner-p2))
   (check-smallest 10000 (complex-deps-prop runner-p3))
@@ -401,5 +493,20 @@
 
   (gen/generate
     ((::gen-request gen-env)
-     gen-env))
-  )
+     gen-env)))
+
+(comment
+  (runner-p3
+    {::resolvers [{::pco/op-name 'a
+                   ::pco/output  [:a]
+                   ::pco/resolve (fn [_ _] {:a "a"})}]
+     ::query     [:a]})
+
+  (log-request-snapshots
+    {::resolvers [{::pco/op-name 'a
+                   ::pco/output  [:a]
+                   ::pco/resolve (fn [_ _] {:a "a"})}
+                  {::pco/op-name 'a1
+                   ::pco/output  [:a]
+                   ::pco/resolve (fn [_ _] {:a "a"})}]
+     ::query     [:a]}))

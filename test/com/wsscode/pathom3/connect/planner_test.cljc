@@ -696,6 +696,17 @@
                                                 :key          :b}}
                ::pcp/root                  1}))))
 
+  (comment
+    (compute-run-graph
+      {::pci/index-oir '{:a {{} #{a}}
+                        :b {{:g {}} #{b}}
+                        :c {{} #{c}}
+                        :e {{} #{e e1}}
+                        :f {{:e {}} #{f}}
+                        :g {{:c {} :f {}} #{g}}
+                        :h {{:a {} :b {}} #{h}}}
+       ::eql/query     [:h]}))
+
   (testing "add expects to appropriated node"
     (is (= (compute-run-graph
              {::resolvers [{::pco/op-name 'z
