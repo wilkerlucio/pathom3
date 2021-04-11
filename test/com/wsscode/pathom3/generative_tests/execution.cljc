@@ -129,19 +129,20 @@
 
    ::gen-resolver-multi-options
    (fn [{::p.attr/keys [attribute]
-         ::keys        [knob-max-edge-options]}]
-     (let [output [attribute]]
-       (gen/let [option-count (gen-num 2 knob-max-edge-options)]
-         {::resolvers  (mapv
-                         (fn [i]
-                           {::pco/op-name (symbol (str (name attribute) "-o" i))
-                            ::pco/output  output
-                            ::pco/resolve (fn [_ _]
-                                            (attrs->expected output))})
-                         (drop 1 (range option-count)))
-          ::query      [attribute]
-          ::expected   {attribute (name attribute)}
-          ::attributes (set output)})))
+         ::keys        [knob-max-edge-options gen-output-for-resolver]
+         :as           env}]
+     (gen/let [output       (gen-output-for-resolver env)
+               option-count (gen-num 2 knob-max-edge-options)]
+       {::resolvers  (mapv
+                       (fn [i]
+                         {::pco/op-name (symbol (str (name attribute) "-o" i))
+                          ::pco/output  output
+                          ::pco/resolve (fn [_ _]
+                                          (attrs->expected output))})
+                       (drop 1 (range option-count)))
+        ::query      [attribute]
+        ::expected   {attribute (name attribute)}
+        ::attributes (set output)}))
 
    ::gen-resolver-with-deps
    (fn [{::p.attr/keys [attribute]
@@ -169,8 +170,9 @@
                                ::pco/input   actual-input
                                ::pco/output  output
                                ::pco/resolve (fn [_ input]
-                                               (assert (= input
-                                                          (attrs->expected actual-input)))
+                                               (if-not (= input
+                                                          (attrs->expected actual-input))
+                                                 (throw (ex-info "bad" {})))
                                                (attrs->expected output))}]
                              (mapcat ::resolvers)
                              next-groups)
@@ -388,44 +390,20 @@
                           ::knob-reuse-attributes?
                           false))))
 
-  (log-samples 10 {})
+  (log-samples 20 {})
 
-  (do
-    (def sample (gen/sample
-                  ((::gen-request gen-env)
-                   (assoc gen-env
-                     ::knob-max-resolver-depth
-                     2
+  (log-samples 20
+    {::knob-max-resolver-depth
+     6
 
-                     ::knob-max-deps
-                     2
+     ::knob-max-deps
+     3
 
-                     ::knob-max-request-attributes
-                     2))
-                  30))
-    (doseq [req sample]
-      (log-request-graph req)
-      (Thread/sleep 300)))
+     ::knob-max-request-attributes
+     2
 
-  (do
-    (def sample (gen/sample
-                  ((::gen-request gen-env)
-                   (assoc gen-env
-                     ::knob-max-resolver-depth
-                     6
-
-                     ::knob-max-deps
-                     3
-
-                     ::knob-max-request-attributes
-                     2
-
-                     ::knob-max-resolver-outputs
-                     10))
-                  20))
-    (doseq [req sample]
-      (log-request-graph req)
-      (Thread/sleep 300)))
+     ::knob-max-resolver-outputs
+     10})
 
   (log-request-snapshots (last sample))
   (log-request-snapshots (second (reverse sample)))
@@ -449,7 +427,7 @@
 
   (runner-p2 fail)
 
-  (let [f fail2]
+  (let [f (second (reverse *2))]
     {:index-oir (::pci/index-oir (pci/register (mapv pco/resolver (::resolvers f))))
      :query     (::query f)
      :expected  (::expected f)
@@ -485,8 +463,8 @@
   (check-smallest 10000 (complex-deps-prop runner-p2))
   (check-smallest 10000 (complex-deps-prop runner-p3))
 
-  (check-smallest 10
-    (generate-prop runner-p2
+  (check-smallest 100
+    (generate-prop runner-p3
       gen-env))
 
   (let [res (tc/quick-check 30000
