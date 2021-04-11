@@ -191,7 +191,7 @@
 (declare
   compute-run-graph compute-run-graph* compute-attribute-graph compute-root-and compute-root-or collapse-nodes-chain node-ancestors
   compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes mark-attribute-process-sub-query
-  required-input-reachable? find-node-direct-ancestor-chain find-run-next-descendants)
+  required-input-reachable? find-node-direct-ancestor-chain find-run-next-descendants find-leaf-node)
 
 (defn add-snapshot!
   ([graph {::keys [snapshots*]} event-details]
@@ -517,22 +517,23 @@
 (defn set-node-run-next
   "Set the node run next value and add the node-parent counter part. Noop if target
   and run next are the same node."
-  [graph target-node-id run-next]
-  (let [{target-run-next ::run-next} (get-node graph target-node-id)
-        graph (if target-run-next
-                (remove-node-parent graph target-run-next target-node-id)
-                graph)]
-    (cond
-      (not run-next)
-      (set-node-run-next* graph target-node-id run-next)
+  ([graph run-next] (set-node-run-next graph (::root graph) run-next))
+  ([graph target-node-id run-next]
+   (let [{target-run-next ::run-next} (get-node graph target-node-id)
+         graph (if target-run-next
+                 (remove-node-parent graph target-run-next target-node-id)
+                 graph)]
+     (cond
+       (not run-next)
+       (set-node-run-next* graph target-node-id run-next)
 
-      (and run-next (not= target-node-id run-next))
-      (-> graph
-          (set-node-run-next* target-node-id run-next)
-          (add-node-parent run-next target-node-id))
+       (and run-next (not= target-node-id run-next))
+       (-> graph
+           (set-node-run-next* target-node-id run-next)
+           (add-node-parent run-next target-node-id))
 
-      :else
-      graph)))
+       :else
+       graph))))
 
 (defn add-branch-to-node
   [graph target-node-id branch-type new-branch-node-id]
@@ -1168,23 +1169,27 @@
         (update-in [::index-resolver->nodes op-name] coll/sconj node-id))))
 
 (defn create-root-and [graph env node-ids]
-  (let [expects (reduce
-                  pfsd/merge-shapes
-                  (mapv #(get-node graph % ::expects) node-ids))
-        {and-node-id ::node-id
-         :as         and-node} (new-node env {::expects expects})]
-    (-> graph
-        (include-node and-node)
-        (add-node-branches and-node-id ::run-and node-ids)
-        (set-root-node and-node-id))))
+  (if (= 1 (count node-ids))
+    (set-root-node graph (first node-ids))
+    (let [expects (reduce
+                    pfsd/merge-shapes
+                    (mapv #(get-node graph % ::expects) node-ids))
+          {and-node-id ::node-id
+           :as         and-node} (new-node env {::expects expects})]
+      (-> graph
+          (include-node and-node)
+          (add-node-branches and-node-id ::run-and node-ids)
+          (set-root-node and-node-id)))))
 
 (defn create-root-or [graph env node-ids]
-  (let [{or-node-id ::node-id
-         :as        or-node} (create-or-node env)]
-    (-> graph
-        (include-node or-node)
-        (add-node-branches or-node-id ::run-or node-ids)
-        (set-root-node or-node-id))))
+  (if (= 1 (count node-ids))
+    (set-root-node graph (first node-ids))
+    (let [{or-node-id ::node-id
+           :as        or-node} (create-or-node env)]
+      (-> graph
+          (include-node or-node)
+          (add-node-branches or-node-id ::run-or node-ids)
+          (set-root-node or-node-id)))))
 
 (>defn find-direct-node-successors
   "Direct successors of node, branch nodes and run-next, in case of branch nodes the
@@ -1530,7 +1535,11 @@
                                                  (-> env
                                                      (dissoc ::p.attr/attribute)
                                                      (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
-                                                     (assoc :edn-query-language.ast/node
+                                                     (assoc
+                                                       ::run-next
+                                                       (::root graph)
+
+                                                       :edn-query-language.ast/node
                                                        {:type         :prop
                                                         :key          attr
                                                         :dispatch-key attr})))]
@@ -1548,6 +1557,7 @@
                                        ::highlight-nodes  (into #{(::root <>)} (vals node-map))
                                        ::highlight-styles {(::root <>) 1}})))
           (-> graph
+              (dissoc ::root)
               (merge-unreachable graph')
               (add-snapshot! env {::snapshot-event   ::compute-missing-failed
                                   ::snapshot-message (str "Failed to compute dependencies " (pr-str missing))}))))
@@ -1644,26 +1654,17 @@
           {leaf-root ::root :as graph'} (compute-resolver-leaf graph env resolvers)]
       (if leaf-root
         (if (seq missing)
-          (let [graph-with-deps (compute-missing-chain (dissoc graph' ::root) env missing)]
+          (let [graph-with-deps (compute-missing-chain graph' env missing)]
             (if (::root graph-with-deps)
-              (set-node-run-next graph-with-deps (::root graph-with-deps) leaf-root)
+              (let [tail-node-id (::node-id (find-leaf-node graph-with-deps (get-root-node graph-with-deps)))]
+                (-> (set-node-run-next graph-with-deps tail-node-id leaf-root)
+                    (add-snapshot! env {::snapshot-event   ::snapshot-chained-missing
+                                        ::snapshot-message "Chained deps"
+                                        ::highlight-nodes  (into #{} [tail-node-id leaf-root])})))
               (-> graph
                   (merge-unreachable graph-with-deps))))
           graph')
-        graph))
-    #_(as-> graph <>
-        (dissoc <> ::root)
-        ; resolvers loop
-        (compute-resolver-leaf <> env resolvers)
-
-        (if (::root <>)
-          (let [graph-with-deps (compute-missing-chain (dissoc <> ::root) env missing)]
-            (if (::root graph-with-deps)
-              (set-node-run-next graph-with-deps (::root graph-with-deps) (::root <>))
-              ))
-          (-> (compute-missing-chain (dissoc <> ::root) env missing)
-              (compute-root-or env {::node-id (::root graph)} (::root <>)))
-          (set-root-node <> (::root graph))))))
+        graph))))
 
 (defn find-node-for-attribute-in-chain
   "Walks the graph run next chain until it finds the node that's providing the
