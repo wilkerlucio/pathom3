@@ -347,7 +347,7 @@
 
                    ::max-request-attributes
                    1))
-                50)]
+                10)]
     (log-request-graph req)
     (Thread/sleep 300))
 
@@ -505,8 +505,25 @@
   (log-request-snapshots
     {::resolvers [{::pco/op-name 'a
                    ::pco/output  [:a]
-                   ::pco/resolve (fn [_ _] {:a "a"})}
-                  {::pco/op-name 'a1
-                   ::pco/output  [:a]
                    ::pco/resolve (fn [_ _] {:a "a"})}]
-     ::query     [:a]}))
+     ::query     [:a]})
+
+  (runner-p3
+    {::resolvers [{::pco/op-name 'a
+                   ::pco/input   [:b]
+                   ::pco/output  [:a]
+                   ::pco/resolve (fn [_ _] {:a "a"})}
+                  {::pco/op-name 'b
+                   ::pco/output  [:b]
+                   ::pco/resolve (fn [_ _] {:b "a"})}]
+     ::query     [:a :b]})
+
+  (log-request-snapshots
+    {::resolvers [{::pco/op-name 'a
+                   ::pco/input   [:b]
+                   ::pco/output  [:a]
+                   ::pco/resolve (fn [_ _] {:a "a"})}
+                  {::pco/op-name 'b
+                   ::pco/output  [:b]
+                   ::pco/resolve (fn [_ _] {:b "a"})}]
+     ::query     [:a :b]}))
