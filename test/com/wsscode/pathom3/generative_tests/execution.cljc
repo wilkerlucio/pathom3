@@ -117,6 +117,16 @@
         ::expected   {attribute (name attribute)}
         ::attributes (set output)}))
 
+   ; use some attribute generated before
+   ::gen-resolver-reuse
+   (fn [{::keys [attributes]}]
+     (if (seq attributes)
+       (gen/let [attr (gen/elements attributes)]
+         {::resolvers  []
+          ::query      [attr]
+          ::expected   {attr (name attr)}
+          ::attributes #{attr}})))
+
    ::gen-resolver-multi-options
    (fn [{::p.attr/keys [attribute]
          ::keys        [knob-max-edge-options]}]
@@ -132,16 +142,6 @@
           ::query      [attribute]
           ::expected   {attribute (name attribute)}
           ::attributes (set output)})))
-
-   ; use some attribute generated before
-   ::gen-resolver-reuse
-   (fn [{::keys [attributes]}]
-     (if (seq attributes)
-       (gen/let [attr (gen/elements attributes)]
-         {::resolvers  []
-          ::query      [attr]
-          ::expected   {attr (name attr)}
-          ::attributes #{attr}})))
 
    ::gen-resolver-with-deps
    (fn [{::p.attr/keys [attribute]
