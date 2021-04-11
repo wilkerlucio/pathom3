@@ -713,9 +713,7 @@
            (into {} (filter (fn [[k v]] (or (contains? recursive-joins k) (seq v)))))))))
 
 (defn compute-missing-chain
-  "Start a recursive call to process the dependencies required by the resolver. It
-  sets the ::run-next data at the env, it will be used to link the nodes after they
-  are created in the process."
+  "Start a recursive call to process the dependencies required by the resolver."
   [graph env missing missing-optionals resolvers]
   (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (::p.attr/attribute env) " dependencies: " (pr-str missing))})
         [graph' node-map] (compute-missing-chain-deps graph env missing)]
@@ -745,6 +743,13 @@
                               ::snapshot-message (str "Failed to compute dependencies " (pr-str missing))})))))
 
 (defn compute-input-resolvers-graph
+  "This function computes the graph for a given `process path`. It creates the resolver
+  nodes to execute the resolvers, in case of many resolvers it uses a OR node to combine
+  them.
+
+  Them it fetches the dependencies, declared in the process path. If the dependencies
+  are successfully computed, it returns the graph with the root on the node that
+  fulfills the request."
   [graph
    {::keys        [available-data]
     ::p.attr/keys [attribute]
@@ -782,6 +787,29 @@
         graph))))
 
 (defn compute-attribute-graph*
+  "Traverse the attribute options, for example, considering we are processing the
+  attribute `:a`. And we have this index:
+
+      {::pci/index-oir {:a {{} #{a}}}}
+
+  This means we are now at the `{{} #{a}}` part, lets call each entry of this map a
+  `process path`.
+
+  To break it down, in this case we have one `process path` to get `:a`. Each process
+  pair contains an input shape and a set of resolvers.
+
+  You can read it as: I can fetch `:a` providing the data `{}` to the resolver `a`.
+
+  A bigger example:
+
+      {::pci/index-oir {:a {{:b {}} #{a-from-b}
+                            {:c {}} #{a-from-c a-f-c}}}}
+
+  In this case we have two process paths.
+
+  This function iterates over each process path, if at least one can complete the path,
+  it returns a graph with a root o the node. In case of many options, an OR node will
+  be the root, providing each path."
   [graph
    {::pci/keys    [index-oir]
     ::p.attr/keys [attribute]
@@ -822,13 +850,21 @@
       (add-snapshot! graph env {::snapshot-event   ::snapshot-attribute-cycle-dependency
                                 ::snapshot-message (str "Attribute cycle detected for " attr)})
 
+      ; its part of the index, traverse the options. this process also compute the
+      ; dependencies for this attribute
       (contains? index-oir attr)
       (compute-attribute-graph* graph env)
 
       :else
       (add-unreachable-attr graph env attr))))
 
-(defn compute-attribute-detail
+(defn compute-non-index-attribute
+  "This function deals with attributes that are not part of the index execution. The
+  cases here are:
+
+  - EQL idents
+  - Previously available data
+  - Placeholders"
   [graph
    {::keys     [available-data]
     {attr :key
@@ -849,6 +885,7 @@
     (compute-run-graph* (add-placeholder-entry graph attr) env)))
 
 (defn compute-run-graph*
+  "Starts scanning the AST to plan for each attribute."
   [graph env]
   (let [[graph' node-ids]
         (reduce
@@ -857,15 +894,21 @@
               (contains? #{:prop :join} (:type ast))
               (let [env (assoc env :edn-query-language.ast/node ast)]
                 (or
-                  (if-let [{::keys [root] :as graph'} (compute-attribute-detail graph env)]
+                  ; try to compute a non-index attribute
+                  (if-let [{::keys [root] :as graph'} (compute-non-index-attribute graph env)]
                     [graph' (cond-> node-ids root (conj root))])
+
+                  ; try to figure the attribute from the indexes
                   (let [{::keys [root] :as graph'}
                         (compute-attribute-graph graph
                           (assoc env :edn-query-language.ast/node ast))]
                     (if root
+                      ; success
                       [graph' (conj node-ids root)]
+                      ; failed, collect unreachables
                       [(merge-unreachable graph graph') node-ids]))))
 
+              ; process mutation
               (refs/kw-identical? (:type ast) :call)
               [(update graph ::mutations coll/vconj ast) node-ids]
 
@@ -886,13 +929,13 @@
 
   The resulting graph will look like this:
 
-      {::nodes                 {1 {::pco/op-name         a
+      {::nodes                 {1 {::pco/op-name      a
                                    ::node-id          1
                                    ::requires         {:a {}}
                                    ::input            {}
                                    ::source-for-attrs #{:a}
                                    ::node-parents      #{3}}
-                                2 {::pco/op-name          b
+                                2 {::pco/op-name      b
                                    ::node-id          2
                                    ::requires         {:b {}}
                                    ::input            {}
@@ -901,16 +944,15 @@
                                 3 {::node-id  3
                                    ::requires {:b {} :a {} :c {}}
                                    ::run-and  #{2 1 4}}
-                                4 {::pco/op-name          c
+                                4 {::pco/op-name      c
                                    ::node-id          4
                                    ::requires         {:c {}}
                                    ::input            {}
                                    ::source-for-attrs #{:c}
                                    ::node-parents      #{3}}}
        ::index-resolver->nodes {a #{1} b #{2} c #{4}}
-       ::unreachable-resolvers #{}
        ::unreachable-attrs     #{}
-       ::index-attrs           {:a 1 :b 2 :c 4}
+       ::index-attrs           {:a #{1} :b #{2} :c #{4}}
        ::root                  3}
   "
   ([env]
