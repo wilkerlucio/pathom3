@@ -473,9 +473,6 @@
   (check-smallest 10000 (complex-deps-prop runner-p2))
   (check-smallest 10000 (complex-deps-prop runner-p3))
 
-  (check-smallest 100
-    (generate-prop runner-p3
-      gen-env))
 
   (let [res (tc/quick-check 30000
               (generate-prop
@@ -525,23 +522,10 @@
         :smallest
         first))
 
-  (let [res (tc/quick-check 5000
-              (generate-prop
-                runner-p2 {}))]
-    (-> res
-        :shrunk
-        :smallest
-        first))
 
-  (def fail *1)
-  (def fail2 *1)
-  (gen/sample
-    ((::gen-resolver gen-env)
-     gen-env))
-
-  (gen/generate
-    ((::gen-request gen-env)
-     gen-env)))
+  (check-smallest 100
+    (generate-prop runner-p3
+      gen-env)))
 
 (comment
   (runner-p3
@@ -588,9 +572,7 @@
                    ::pco/input   [(pco/? :b)]
                    ::pco/output  [:a]
                    ::pco/resolve (fn [_ {:keys [b]}] {:a (str "a" b)})}
-                  {::pco/op-name 'b
-                   ::pco/output  [:b]
-                   ::pco/resolve (fn [_ _] {:b "b"})}]
+                  ]
      ::query     [:a]})
 
   (log-request-snapshots

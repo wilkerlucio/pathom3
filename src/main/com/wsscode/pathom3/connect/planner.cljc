@@ -676,14 +676,20 @@
   (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (::p.attr/attribute env) " dependencies: " (pr-str missing))})
         [graph' node-map] (compute-missing-chain-deps graph env missing)]
     (if node-map
-      (let [[graph' node-map-opts] (compute-missing-chain-optional-deps graph' env missing-optionals)]
-        (-> graph'
-            (create-root-and env (vals (merge node-map node-map-opts)))
-            (as-> <>
-              (add-snapshot! <> env {::snapshot-event   ::compute-missing-success
-                                     ::snapshot-message (str "Complete computing deps " (pr-str missing))
-                                     ::highlight-nodes  (into #{(::root <>)} (vals node-map))
-                                     ::highlight-styles {(::root <>) 1}}))))
+      (let [[graph' node-map-opts] (compute-missing-chain-optional-deps graph' env missing-optionals)
+            all-nodes (vals (merge node-map node-map-opts))]
+        (if (seq all-nodes)
+          (-> graph'
+              (create-root-and env (vals (merge node-map node-map-opts)))
+              (as-> <>
+                (add-snapshot! <> env {::snapshot-event   ::compute-missing-success
+                                       ::snapshot-message (str "Complete computing deps " (pr-str missing))
+                                       ::highlight-nodes  (into #{(::root <>)} (vals node-map))
+                                       ::highlight-styles {(::root <>) 1}})))
+          (-> graph
+              (merge-unreachable graph')
+              (add-snapshot! env {::snapshot-event   ::compute-no-opt-deps
+                                  ::snapshot-message (str "No optional dependency reachable" (pr-str missing))}))))
       (-> graph
           (dissoc ::root)
           (merge-unreachable graph')
