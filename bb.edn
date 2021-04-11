@@ -2,7 +2,7 @@
  ["src/tasks"]
 
  :tasks
- {tasks/init
+ {:init
   (do
     (require 'tasks)
     (def source-paths ["src" "test"]))
