@@ -1844,8 +1844,9 @@
                               ::snapshot-message (str "Add ident process for " (pr-str attr))}))
 
       (contains? available-data attr)
-      (add-snapshot! graph env {::snapshot-event   ::snapshot-attribute-already-available
-                                ::snapshot-message (str "Attribute already available " attr)})
+      (-> (mark-attribute-process-sub-query graph ast)
+          (add-snapshot! env {::snapshot-event   ::snapshot-attribute-already-available
+                              ::snapshot-message (str "Attribute already available " attr)}))
 
       (contains? unreachable-paths attr)
       (add-snapshot! graph env {::snapshot-event   ::snapshot-attribute-unreachable
