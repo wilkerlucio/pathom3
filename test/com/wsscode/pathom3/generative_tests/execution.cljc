@@ -165,20 +165,30 @@
                                     (comp (mapcat ::query)
                                           (distinct))
                                     next-groups)]
-             {::resolvers  (into
-                             [{::pco/op-name (symbol attribute)
-                               ::pco/input   actual-input
-                               ::pco/output  output
-                               ::pco/resolve (fn [_ input]
-                                               (if-not (= input
-                                                          (attrs->expected actual-input))
-                                                 (throw (ex-info "bad" {})))
-                                               (attrs->expected output))}]
-                             (mapcat ::resolvers)
-                             next-groups)
-              ::query      [attribute]
-              ::expected   {attribute (name attribute)}
-              ::attributes (reduce into (set output) (map ::attributes next-groups))})))))
+             (gen/let [optionals (gen-num 0 (count actual-input))]
+               (let [required-count (- (count actual-input) optionals)
+                     actual-input'  (if (pos? optionals)
+                                      (into []
+                                            (concat
+                                              (take required-count actual-input)
+                                              (->> (drop required-count actual-input)
+                                                   (mapv pco/?))))
+                                      actual-input)]
+                 {::resolvers  (into
+                                 [{::pco/op-name (symbol attribute)
+                                   ::pco/input   actual-input'
+                                   ::pco/output  output
+                                   ::pco/resolve (fn [_ input]
+                                                   (if-not (= input (attrs->expected actual-input))
+                                                     (throw (ex-info "Bad Input"
+                                                                     {:expected (attrs->expected actual-input)
+                                                                      :input    input})))
+                                                   (attrs->expected output))}]
+                                 (mapcat ::resolvers)
+                                 next-groups)
+                  ::query      [attribute]
+                  ::expected   {attribute (name attribute)}
+                  ::attributes (reduce into (set output) (map ::attributes next-groups))})))))))
 
    ::gen-resolver-leaf
    (fn [{::keys [gen-resolver-no-deps
@@ -568,6 +578,19 @@
                   {::pco/op-name 'c
                    ::pco/output  [:c]
                    ::pco/resolve (fn [_ _] {:c "c"})}]
+     ::query     [:a]})
+
+  (meta (runner-p3 fail))
+  (log-request-graph fail)
+
+  (runner-p3
+    {::resolvers [{::pco/op-name 'a
+                   ::pco/input   [(pco/? :b)]
+                   ::pco/output  [:a]
+                   ::pco/resolve (fn [_ {:keys [b]}] {:a (str "a" b)})}
+                  {::pco/op-name 'b
+                   ::pco/output  [:b]
+                   ::pco/resolve (fn [_ _] {:b "b"})}]
      ::query     [:a]})
 
   (log-request-snapshots

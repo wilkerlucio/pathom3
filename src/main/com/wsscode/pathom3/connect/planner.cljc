@@ -330,6 +330,14 @@
        :else
        graph))))
 
+(defn set-node-source-for-attrs
+  [graph {::p.attr/keys [attribute]}]
+  (if-let [node-id (::root graph)]
+    (-> graph
+        (update-in [::nodes node-id ::source-for-attrs] coll/sconj attribute)
+        (update-in [::index-attrs attribute] coll/sconj node-id))
+    graph))
+
 (defn add-branch-to-node
   [graph target-node-id branch-type new-branch-node-id]
   (-> graph
@@ -493,6 +501,21 @@
    => (? :edn-query-language.ast/node)]
   (get-in graph [::index-ast k]))
 
+(defn mark-attribute-process-sub-query
+  "Add information about attribute that is present but requires further processing
+  due to subquery, this is created so the runner can quickly know which attributes
+  need to have the subquery processing done."
+  [graph {:keys [key children query]}]
+  (if (or children query)
+    (update graph ::nested-process coll/sconj key)
+    graph))
+
+(defn add-ident-process [graph {:keys [key]}]
+  (update graph ::idents coll/sconj key))
+
+(defn add-placeholder-entry [graph attr]
+  (update graph ::placeholders coll/sconj attr))
+
 ; endregion
 
 ; region node traversal
@@ -595,49 +618,77 @@
                                    ::highlight-styles {(::root <>) 1}})))
       (add-snapshot! graph env {::snapshot-message "No reachable resolver found."}))))
 
+(defn resolvers-missing-optionals
+  "Merge the optionals from a collection of resolver symbols."
+  [{::keys [available-data] :as env} resolvers]
+  (->> (transduce
+         (map #(pci/resolver-optionals env %))
+         pfsd/merge-shapes
+         {}
+         resolvers)
+       (pfsd/missing available-data)))
+
+(defn compute-missing-chain-optional-deps
+  [graph env opt-missing]
+  (reduce
+    (fn [[graph node-map] attr]
+      (let [graph' (compute-attribute-graph
+                     (dissoc graph ::root)
+                     (-> env
+                         (dissoc ::p.attr/attribute)
+                         (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
+                         (assoc
+                           :edn-query-language.ast/node
+                           {:type         :prop
+                            :key          attr
+                            :dispatch-key attr})))]
+        (if-let [root (::root graph')]
+          [graph' (assoc node-map attr root)]
+          [(merge-unreachable graph graph') node-map])))
+    [graph {}]
+    (keys opt-missing)))
+
+(defn compute-missing-chain-deps
+  [graph env missing]
+  (reduce
+    (fn [[graph node-map] attr]
+      (let [graph' (compute-attribute-graph
+                     (dissoc graph ::root)
+                     (-> env
+                         (dissoc ::p.attr/attribute)
+                         (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
+                         (assoc
+                           :edn-query-language.ast/node
+                           {:type         :prop
+                            :key          attr
+                            :dispatch-key attr})))]
+        (if-let [root (::root graph')]
+          [graph' (assoc node-map attr root)]
+          (reduced [graph' nil]))))
+    [graph {}]
+    (keys missing)))
+
 (defn compute-missing-chain
   "Start a recursive call to process the dependencies required by the resolver. It
   sets the ::run-next data at the env, it will be used to link the nodes after they
   are created in the process."
-  [graph env missing]
-  (let [missing-flat (keys missing)]
-    (if (seq missing-flat)
-      (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (::p.attr/attribute env) " dependencies: " (pr-str missing))})
-
-            [graph' node-map] (reduce
-                                (fn [[graph node-map] attr]
-                                  (let [graph' (compute-attribute-graph
-                                                 (dissoc graph ::root)
-                                                 (-> env
-                                                     (dissoc ::p.attr/attribute)
-                                                     (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
-                                                     (assoc
-                                                       ::run-next
-                                                       (::root graph)
-
-                                                       :edn-query-language.ast/node
-                                                       {:type         :prop
-                                                        :key          attr
-                                                        :dispatch-key attr})))]
-                                    (if-let [root (::root graph')]
-                                      [graph' (assoc node-map attr root)]
-                                      (reduced [graph' nil]))))
-                                [graph {}]
-                                missing-flat)]
-        (if node-map
-          (-> graph'
-              (create-root-and env (vals node-map))
-              (as-> <>
-                (add-snapshot! <> env {::snapshot-event   ::compute-missing-success
-                                       ::snapshot-message (str "Complete computing deps " (pr-str missing))
-                                       ::highlight-nodes  (into #{(::root <>)} (vals node-map))
-                                       ::highlight-styles {(::root <>) 1}})))
-          (-> graph
-              (dissoc ::root)
-              (merge-unreachable graph')
-              (add-snapshot! env {::snapshot-event   ::compute-missing-failed
-                                  ::snapshot-message (str "Failed to compute dependencies " (pr-str missing))}))))
-      graph)))
+  [graph env missing missing-optionals]
+  (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (::p.attr/attribute env) " dependencies: " (pr-str missing))})
+        [graph' node-map] (compute-missing-chain-deps graph env missing)]
+    (if node-map
+      (let [[graph' node-map-opts] (compute-missing-chain-optional-deps graph' env missing-optionals)]
+        (-> graph'
+            (create-root-and env (vals (merge node-map node-map-opts)))
+            (as-> <>
+              (add-snapshot! <> env {::snapshot-event   ::compute-missing-success
+                                     ::snapshot-message (str "Complete computing deps " (pr-str missing))
+                                     ::highlight-nodes  (into #{(::root <>)} (vals node-map))
+                                     ::highlight-styles {(::root <>) 1}}))))
+      (-> graph
+          (dissoc ::root)
+          (merge-unreachable graph')
+          (add-snapshot! env {::snapshot-event   ::compute-missing-failed
+                              ::snapshot-message (str "Failed to compute dependencies " (pr-str missing))})))))
 
 (defn compute-input-resolvers-graph
   [graph
@@ -649,12 +700,13 @@
     ; attribute requires itself, just stop
     graph
 
-    (let [missing (pfsd/missing available-data input)
-          env     (assoc env ::input input)
+    (let [missing      (pfsd/missing available-data input)
+          missing-opts (resolvers-missing-optionals env resolvers)
+          env          (assoc env ::input input)
           {leaf-root ::root :as graph'} (compute-resolver-leaf graph env resolvers)]
       (if leaf-root
-        (if (seq missing)
-          (let [graph-with-deps (compute-missing-chain graph' env missing)]
+        (if (seq (merge missing missing-opts))
+          (let [graph-with-deps (compute-missing-chain graph' env missing missing-opts)]
             (if (::root graph-with-deps)
               (let [tail-node-id (::node-id (find-leaf-node graph-with-deps (get-root-node graph-with-deps)))]
                 (-> (set-node-run-next graph-with-deps tail-node-id leaf-root)
@@ -665,14 +717,6 @@
                   (merge-unreachable graph-with-deps))))
           graph')
         graph))))
-
-(defn set-node-source-for-attrs
-  [graph {::p.attr/keys [attribute]}]
-  (if-let [node-id (::root graph)]
-    (-> graph
-        (update-in [::nodes node-id ::source-for-attrs] coll/sconj attribute)
-        (update-in [::index-attrs attribute] coll/sconj node-id))
-    graph))
 
 (defn compute-attribute-graph*
   [graph
@@ -697,21 +741,6 @@
       (-> graph
           (add-unreachable-attr env attribute)
           (merge-unreachable graph')))))
-
-(defn mark-attribute-process-sub-query
-  "Add information about attribute that is present but requires further processing
-  due to subquery, this is created so the runner can quickly know which attributes
-  need to have the subquery processing done."
-  [graph {:keys [key children query]}]
-  (if (or children query)
-    (update graph ::nested-process coll/sconj key)
-    graph))
-
-(defn add-ident-process [graph {:keys [key]}]
-  (update graph ::idents coll/sconj key))
-
-(defn add-placeholder-entry [graph attr]
-  (update graph ::placeholders coll/sconj attr))
 
 (defn compute-attribute-graph
   "Compute the run graph for a given attribute."
