@@ -731,23 +731,12 @@
 (defn compute-attribute-graph
   "Compute the run graph for a given attribute."
   [{::keys [unreachable-paths] :as graph}
-   {::keys     [available-data attr-deps-trail]
-    ::pci/keys [index-oir]
-    {attr :key
-     :as  ast} :edn-query-language.ast/node
-    :as        env}]
+   {::keys      [attr-deps-trail]
+    ::pci/keys  [index-oir]
+    {attr :key} :edn-query-language.ast/node
+    :as         env}]
   (let [env (assoc env ::p.attr/attribute attr)]
     (cond
-      (eql/ident? attr)
-      (-> (add-ident-process graph ast)
-          (add-snapshot! env {::snapshot-event   ::snapshot-add-ident-process
-                              ::snapshot-message (str "Add ident process for " (pr-str attr))}))
-
-      (contains? available-data attr)
-      (-> (mark-attribute-process-sub-query graph ast)
-          (add-snapshot! env {::snapshot-event   ::snapshot-attribute-already-available
-                              ::snapshot-message (str "Attribute already available " attr)}))
-
       (contains? unreachable-paths attr)
       (add-snapshot! graph env {::snapshot-event   ::snapshot-attribute-unreachable
                                 ::snapshot-message (str "Attribute unreachable " attr)})
@@ -759,11 +748,28 @@
       (contains? index-oir attr)
       (compute-attribute-graph* graph env)
 
-      (pph/placeholder-key? env attr)
-      (compute-run-graph* (add-placeholder-entry graph attr) env)
-
       :else
       (add-unreachable-attr graph env attr))))
+
+(defn compute-attribute-detail
+  [graph
+   {::keys     [available-data]
+    {attr :key
+     :as  ast} :edn-query-language.ast/node
+    :as        env}]
+  (cond
+    (eql/ident? attr)
+    (-> (add-ident-process graph ast)
+        (add-snapshot! env {::snapshot-event   ::snapshot-add-ident-process
+                            ::snapshot-message (str "Add ident process for " (pr-str attr))}))
+
+    (contains? available-data attr)
+    (-> (mark-attribute-process-sub-query graph ast)
+        (add-snapshot! env {::snapshot-event   ::snapshot-attribute-already-available
+                            ::snapshot-message (str "Attribute already available " attr)}))
+
+    (pph/placeholder-key? env attr)
+    (compute-run-graph* (add-placeholder-entry graph attr) env)))
 
 (defn compute-run-graph*
   [graph env]
@@ -772,12 +778,16 @@
           (fn [[graph node-ids] ast]
             (cond
               (contains? #{:prop :join} (:type ast))
-              (let [{::keys [root] :as graph'}
-                    (compute-attribute-graph graph
-                      (assoc env :edn-query-language.ast/node ast))]
-                (if root
-                  [graph' (conj node-ids root)]
-                  [(merge-unreachable graph graph') node-ids]))
+              (let [env (assoc env :edn-query-language.ast/node ast)]
+                (or
+                  (if-let [graph' (compute-attribute-detail graph env)]
+                    [graph' node-ids])
+                  (let [{::keys [root] :as graph'}
+                        (compute-attribute-graph graph
+                          (assoc env :edn-query-language.ast/node ast))]
+                    (if root
+                      [graph' (conj node-ids root)]
+                      [(merge-unreachable graph graph') node-ids]))))
 
               (refs/kw-identical? (:type ast) :call)
               [(update graph ::mutations coll/vconj ast) node-ids]
@@ -788,7 +798,7 @@
           (:children (:edn-query-language.ast/node env)))]
     (if (seq node-ids)
       (create-root-and graph' env node-ids)
-      (merge-unreachable graph graph'))))
+      graph')))
 
 (>defn compute-run-graph
   "Generates a run plan for a given environment, the environment should contain the
