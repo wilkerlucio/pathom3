@@ -338,15 +338,7 @@
 
   (doseq [req (gen/sample
                 ((::gen-request gen-env)
-                 (assoc gen-env
-                   ::max-resolver-depth
-                   10
-
-                   ::max-deps
-                   5
-
-                   ::max-request-attributes
-                   1))
+                 gen-env)
                 10)]
     (log-request-graph req)
     (Thread/sleep 300))
@@ -357,20 +349,36 @@
                           ::knob-reuse-attributes?
                           false))))
 
-  (doseq [req (gen/sample
-                ((::gen-request gen-env)
-                 (assoc gen-env
-                   ::max-resolver-depth
-                   2
+  (do
+    (def sample (gen/sample
+                  ((::gen-request gen-env)
+                   (assoc gen-env
+                     ::max-resolver-depth
+                     2
 
-                   ::max-deps
-                   2
+                     ::max-deps
+                     2
 
-                   ::max-request-attributes
-                   2))
-                30)]
-    (log-request-graph req)
-    (Thread/sleep 300))
+                     ::max-request-attributes
+                     2))
+                  30))
+    (doseq [req sample]
+      (log-request-graph req)
+      (Thread/sleep 300)))
+
+  (do
+    (def sample (gen/sample
+                  ((::gen-request gen-env)
+                   gen-env)
+                  20))
+    (doseq [req sample]
+      (log-request-graph req)
+      (Thread/sleep 300)))
+
+  (log-request-snapshots (last sample))
+  (log-request-snapshots (second (reverse sample)))
+
+  (meta (runner-p3 (second (reverse sample))))
 
   (runner-p3 fail)
   (runner-p3 fail2)
@@ -518,12 +526,30 @@
                    ::pco/resolve (fn [_ _] {:b "a"})}]
      ::query     [:a :b]})
 
+  (runner-p3
+    {::resolvers [{::pco/op-name 'a
+                   ::pco/input   [:b]
+                   ::pco/output  [:a]
+                   ::pco/resolve (fn [_ _] {:a "a"})}
+                  {::pco/op-name 'b
+                   ::pco/input   [:c]
+                   ::pco/output  [:b]
+                   ::pco/resolve (fn [_ _] {:b "b"})}
+                  {::pco/op-name 'c
+                   ::pco/output  [:c]
+                   ::pco/resolve (fn [_ _] {:c "c"})}]
+     ::query     [:a]})
+
   (log-request-snapshots
     {::resolvers [{::pco/op-name 'a
                    ::pco/input   [:b]
                    ::pco/output  [:a]
                    ::pco/resolve (fn [_ _] {:a "a"})}
                   {::pco/op-name 'b
+                   ::pco/input   [:c]
                    ::pco/output  [:b]
-                   ::pco/resolve (fn [_ _] {:b "a"})}]
-     ::query     [:a :b]}))
+                   ::pco/resolve (fn [_ _] {:b "b"})}
+                  {::pco/op-name 'c
+                   ::pco/output  [:c]
+                   ::pco/resolve (fn [_ _] {:c "c"})}]
+     ::query     [:a]}))
