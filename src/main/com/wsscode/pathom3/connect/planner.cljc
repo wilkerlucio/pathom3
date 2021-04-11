@@ -449,7 +449,13 @@
       (-> graph
           (include-node and-node)
           (add-node-branches and-node-id ::run-and node-ids)
-          (set-root-node and-node-id)))))
+          (set-root-node and-node-id)
+          (as-> <>
+            (add-snapshot! <> env
+                           {::snapshot-event   ::snapshot-create-and
+                            ::snapshot-message "Create root AND"
+                            ::highlight-nodes  (into #{(::root <>)} node-ids)
+                            ::highlight-styles {(::root <>) 1}}))))))
 
 (defn create-root-or
   [graph {::p.attr/keys [attribute] :as env} node-ids]
@@ -460,7 +466,13 @@
       (-> graph
           (include-node or-node)
           (add-node-branches or-node-id ::run-or node-ids)
-          (set-root-node or-node-id)))))
+          (set-root-node or-node-id)
+          (as-> <>
+            (add-snapshot! <> env
+                           {::snapshot-event   ::snapshot-create-or
+                            ::snapshot-message "Create root OR"
+                            ::highlight-nodes  (into #{(::root <>)} node-ids)
+                            ::highlight-styles {(::root <>) 1}}))))))
 
 (>defn find-direct-node-successors
   "Direct successors of node, branch nodes and run-next, in case of branch nodes the
@@ -780,8 +792,8 @@
               (contains? #{:prop :join} (:type ast))
               (let [env (assoc env :edn-query-language.ast/node ast)]
                 (or
-                  (if-let [graph' (compute-attribute-detail graph env)]
-                    [graph' node-ids])
+                  (if-let [{::keys [root] :as graph'} (compute-attribute-detail graph env)]
+                    [graph' (cond-> node-ids root (conj root))])
                   (let [{::keys [root] :as graph'}
                         (compute-attribute-graph graph
                           (assoc env :edn-query-language.ast/node ast))]
