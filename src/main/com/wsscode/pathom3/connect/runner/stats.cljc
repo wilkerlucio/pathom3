@@ -54,7 +54,10 @@
   [{::pcr/keys [node-run-stats] ::pcp/keys [index-attrs] :as env}
    {::p.attr/keys [attribute]}]
   {::pco/output [::attribute-error]}
-  (if-let [node-id (get index-attrs attribute)]
+  ; TODO: due to planner changes now an attribute may be present in many places
+  ; of the graph, due to that this algorithm needs to be adapted to handle this
+  ; situation. the current change is a lazy one just to try the first
+  (if-let [node-id (first (get index-attrs attribute))]
     (let [error (get-in node-run-stats [node-id ::pcr/node-error])]
       (if error
         {::attribute-error
