@@ -628,68 +628,116 @@
          resolvers)
        (pfsd/missing available-data)))
 
-(defn compute-missing-chain-optional-deps
-  [graph env opt-missing]
-  (reduce
-    (fn [[graph node-map] attr]
-      (let [graph' (compute-attribute-graph
-                     (dissoc graph ::root)
-                     (-> env
-                         (dissoc ::p.attr/attribute)
-                         (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
-                         (assoc
-                           :edn-query-language.ast/node
-                           {:type         :prop
-                            :key          attr
-                            :dispatch-key attr})))]
-        (if-let [root (::root graph')]
-          [graph' (assoc node-map attr root)]
-          [(merge-unreachable graph graph') node-map])))
-    [graph {}]
-    (keys opt-missing)))
-
 (defn compute-missing-chain-deps
-  [graph env missing]
-  (reduce
-    (fn [[graph node-map] attr]
-      (let [graph' (compute-attribute-graph
-                     (dissoc graph ::root)
-                     (-> env
-                         (dissoc ::p.attr/attribute)
-                         (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
-                         (assoc
-                           :edn-query-language.ast/node
-                           {:type         :prop
-                            :key          attr
-                            :dispatch-key attr})))]
-        (if-let [root (::root graph')]
-          [graph' (assoc node-map attr root)]
-          (reduced [graph' nil]))))
+  [graph {::keys [available-data] :as env} missing]
+  (reduce-kv
+    (fn [[graph node-map] attr shape]
+      (if (contains? available-data attr)
+        [(-> graph
+             (update-in [::index-ast attr] pf.eql/merge-ast-children
+               (-> (pfsd/shape-descriptor->ast shape)
+                   (assoc :type :prop :key attr :dispatch-key attr)))
+             (mark-attribute-process-sub-query {:key attr :children []}))
+         node-map]
+
+        (let [graph' (compute-attribute-graph
+                       (dissoc graph ::root)
+                       (-> env
+                           (dissoc ::p.attr/attribute)
+                           (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
+                           (assoc
+                             :edn-query-language.ast/node
+                             {:type         :prop
+                              :key          attr
+                              :dispatch-key attr})))]
+          (if-let [root (::root graph')]
+            [graph' (assoc node-map attr root)]
+            (reduced [graph' nil])))))
     [graph {}]
-    (keys missing)))
+    missing))
+
+(defn compute-missing-chain-optional-deps
+  [graph {::keys [available-data] :as env} opt-missing]
+  (reduce-kv
+    (fn [[graph node-map] attr shape]
+      (if (contains? available-data attr)
+        [(-> graph
+             (update-in [::index-ast attr] pf.eql/merge-ast-children
+               (-> (pfsd/shape-descriptor->ast shape)
+                   (assoc :type :prop :key attr :dispatch-key attr)))
+             (mark-attribute-process-sub-query {:key attr :children []}))
+         node-map]
+
+        (let [graph' (compute-attribute-graph
+                       (dissoc graph ::root)
+                       (-> env
+                           (dissoc ::p.attr/attribute)
+                           (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
+                           (assoc
+                             :edn-query-language.ast/node
+                             {:type         :prop
+                              :key          attr
+                              :dispatch-key attr})))]
+          (if-let [root (::root graph')]
+            [graph' (assoc node-map attr root)]
+            [(merge-unreachable graph graph') node-map]))))
+    [graph {}]
+    opt-missing))
+
+(defn merge-nested-missing-ast [graph {::keys [resolvers] :as env} missing]
+  ; TODO: maybe optimize this in the future with indexes to avoid this scan
+  (let [recursive-joins
+        (into {}
+              (comp (map #(pci/resolver-config env %))
+                    (mapcat ::pco/input)
+                    (keep (fn [x] (if (and (map? x) (pf.eql/recursive-query? (first (vals x))))
+                                    (first x)))))
+              resolvers)]
+    (reduce-kv
+      (fn [g attr shape]
+        (if-let [recur (get recursive-joins attr)]
+          ;; recursive
+          (-> (update-in g [::index-ast attr] assoc
+                :type :join
+                :key attr
+                :dispatch-key attr
+                :query recur)
+              (mark-attribute-process-sub-query {:key attr :children []}))
+
+          ;; standard
+          (update-in g [::index-ast attr] pf.eql/merge-ast-children
+            (-> (pfsd/shape-descriptor->ast shape)
+                (assoc :type :prop :key attr :dispatch-key attr)))))
+      graph
+      (->> missing
+           (into {} (filter (fn [[k v]] (or (contains? recursive-joins k) (seq v)))))))))
 
 (defn compute-missing-chain
   "Start a recursive call to process the dependencies required by the resolver. It
   sets the ::run-next data at the env, it will be used to link the nodes after they
   are created in the process."
-  [graph env missing missing-optionals]
+  [graph env missing missing-optionals resolvers]
   (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (::p.attr/attribute env) " dependencies: " (pr-str missing))})
         [graph' node-map] (compute-missing-chain-deps graph env missing)]
-    (if node-map
-      (let [[graph' node-map-opts] (compute-missing-chain-optional-deps graph' env missing-optionals)
+    (if (some? node-map)
+      ;; add new nodes (and maybe nested processes)
+      (let [[graph'' node-map-opts] (compute-missing-chain-optional-deps graph' env missing-optionals)
             all-nodes (vals (merge node-map node-map-opts))]
-        (if (seq all-nodes)
-          (-> graph'
+        (-> graph''
+            (cond->
+              (seq all-nodes)
               (create-root-and env (vals (merge node-map node-map-opts)))
-              (as-> <>
-                (add-snapshot! <> env {::snapshot-event   ::compute-missing-success
-                                       ::snapshot-message (str "Complete computing deps " (pr-str missing))
-                                       ::highlight-nodes  (into #{(::root <>)} (vals node-map))
-                                       ::highlight-styles {(::root <>) 1}})))
-          (-> graph
-              (merge-unreachable graph')
-              (add-snapshot! env {::snapshot-event   ::compute-no-opt-deps
-                                  ::snapshot-message (str "No optional dependency reachable" (pr-str missing))}))))
+
+              (empty? all-nodes)
+              (set-root-node (::root graph)))
+            (merge-nested-missing-ast (assoc env ::resolvers resolvers) (pfsd/merge-shapes missing missing-optionals))
+            (as-> <>
+              (add-snapshot! <> env {::snapshot-event   ::compute-missing-success
+                                     ::snapshot-message (str "Complete computing deps " (pr-str missing))
+                                     ::highlight-nodes  (into #{(::root <>)} (vals node-map))
+                                     ::highlight-styles {(::root <>) 1}}))))
+
+      ;; failed
       (-> graph
           (dissoc ::root)
           (merge-unreachable graph')
@@ -712,13 +760,22 @@
           {leaf-root ::root :as graph'} (compute-resolver-leaf graph env resolvers)]
       (if leaf-root
         (if (seq (merge missing missing-opts))
-          (let [graph-with-deps (compute-missing-chain graph' env missing missing-opts)]
-            (if (::root graph-with-deps)
+          (let [graph-with-deps (compute-missing-chain graph' env missing missing-opts resolvers)]
+            (cond
+              (= (::root graph-with-deps) leaf-root)
+              (-> graph-with-deps
+                  (add-snapshot! env {::snapshot-event   ::snapshot-chained-no-nodes
+                                      ::snapshot-message "Chained deps without adding nodes"
+                                      ::highlight-nodes  #{leaf-root}}))
+
+              (::root graph-with-deps)
               (let [tail-node-id (::node-id (find-leaf-node graph-with-deps (get-root-node graph-with-deps)))]
                 (-> (set-node-run-next graph-with-deps tail-node-id leaf-root)
-                    (add-snapshot! env {::snapshot-event   ::snapshot-chained-missing
+                    (add-snapshot! env {::snapshot-event   ::snapshot-chained-dependencies
                                         ::snapshot-message "Chained deps"
                                         ::highlight-nodes  (into #{} [tail-node-id leaf-root])})))
+
+              :else
               (-> graph
                   (merge-unreachable graph-with-deps))))
           graph')
