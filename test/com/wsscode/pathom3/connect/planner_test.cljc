@@ -3982,6 +3982,7 @@
            1)
          false)))
 
+#_
 (deftest find-node-direct-ancestor-chain-test
   (testing "return self on edge"
     (is (= (pcp/find-node-direct-ancestor-chain
