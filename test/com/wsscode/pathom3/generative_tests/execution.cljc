@@ -73,19 +73,19 @@
    ::used-attributes
    #{}
 
-   ::max-resolver-depth
+   ::knob-max-resolver-depth
    10
 
-   ::max-deps
+   ::knob-max-deps
    5
 
-   ::max-request-attributes
+   ::knob-max-request-attributes
    8
 
-   ::max-resolver-outputs
+   ::knob-max-resolver-outputs
    10
 
-   ::max-edge-options
+   ::knob-max-edge-options
    5
 
    ::knob-reuse-attributes?
@@ -93,12 +93,12 @@
 
    ::gen-output-for-resolver
    (fn [{::p.attr/keys [attribute]
-         ::keys        [max-resolver-outputs]}]
+         ::keys        [knob-max-resolver-outputs]}]
      (gen/let [extra-outputs
                (gen-frequency
                  [[3 (gen/return 0)]
-                  [2 (if (pos? max-resolver-outputs)
-                       (gen-num 0 max-resolver-outputs))]])]
+                  [2 (if (pos? knob-max-resolver-outputs)
+                       (gen-num 0 knob-max-resolver-outputs))]])]
        (let [next-attrs (->> (iterate next-attr :ex1)
                              (map #(keyword (str (name attribute) "--" (name %))))
                              (take extra-outputs))]
@@ -119,9 +119,9 @@
 
    ::gen-resolver-multi-options
    (fn [{::p.attr/keys [attribute]
-         ::keys        [max-edge-options]}]
+         ::keys        [knob-max-edge-options]}]
      (let [output [attribute]]
-       (gen/let [option-count (gen-num 2 max-edge-options)]
+       (gen/let [option-count (gen-num 2 knob-max-edge-options)]
          {::resolvers  (mapv
                          (fn [i]
                            {::pco/op-name (symbol (str (name attribute) "-o" i))
@@ -145,9 +145,9 @@
 
    ::gen-resolver-with-deps
    (fn [{::p.attr/keys [attribute]
-         ::keys        [max-deps gen-resolver gen-output-for-resolver]
+         ::keys        [knob-max-deps gen-resolver gen-output-for-resolver]
          :as           env}]
-     (gen/let [deps-count (gen-num 1 max-deps)
+     (gen/let [deps-count (gen-num 1 knob-max-deps)
                output     (gen-output-for-resolver env)]
        (let [next-attrs (->> (iterate next-attr attribute)
                              (drop 1)
@@ -188,12 +188,12 @@
           (gen-resolver-reuse env))]))
 
    ::gen-resolver
-   (fn [{::keys [max-resolver-depth
+   (fn [{::keys [knob-max-resolver-depth
                  gen-resolver-leaf
                  gen-resolver-with-deps
                  gen-resolver-multi-options] :as env}]
-     (let [env (update env ::max-resolver-depth dec)]
-       (if (pos? max-resolver-depth)
+     (let [env (update env ::knob-max-resolver-depth dec)]
+       (if (pos? knob-max-resolver-depth)
          (gen-frequency
            [[3 (gen-resolver-leaf env)]
             [2 (gen-resolver-with-deps env)]
@@ -223,8 +223,8 @@
            (assoc chain-result ::query (vec query))))))
 
    ::gen-request
-   (fn [{::keys [gen-request-resolver-item max-request-attributes] :as env}]
-     (gen/let [items-count (gen-num 1 max-request-attributes)]
+   (fn [{::keys [gen-request-resolver-item knob-max-request-attributes] :as env}]
+     (gen/let [items-count (gen-num 1 knob-max-request-attributes)]
        (let [query (vec (take items-count base-chars))]
          (gen-request-resolver-item
            (assoc env
@@ -288,25 +288,25 @@
   [runner]
   (generate-prop
     runner
-    {::max-resolver-depth
+    {::knob-max-resolver-depth
      5
 
-     ::max-deps
+     ::knob-max-deps
      1
 
-     ::max-request-attributes
+     ::knob-max-request-attributes
      10}))
 
 (defn complex-deps-prop [runner]
   (generate-prop
     runner
-    {::max-resolver-depth
+    {::knob-max-resolver-depth
      2
 
-     ::max-deps
+     ::knob-max-deps
      2
 
-     ::max-request-attributes
+     ::knob-max-request-attributes
      2}))
 
 (defn result-smallest [result]
@@ -394,13 +394,13 @@
     (def sample (gen/sample
                   ((::gen-request gen-env)
                    (assoc gen-env
-                     ::max-resolver-depth
+                     ::knob-max-resolver-depth
                      2
 
-                     ::max-deps
+                     ::knob-max-deps
                      2
 
-                     ::max-request-attributes
+                     ::knob-max-request-attributes
                      2))
                   30))
     (doseq [req sample]
@@ -411,16 +411,16 @@
     (def sample (gen/sample
                   ((::gen-request gen-env)
                    (assoc gen-env
-                     ::max-resolver-depth
+                     ::knob-max-resolver-depth
                      6
 
-                     ::max-deps
+                     ::knob-max-deps
                      3
 
-                     ::max-request-attributes
+                     ::knob-max-request-attributes
                      2
 
-                     ::max-resolver-outputs
+                     ::knob-max-resolver-outputs
                      10))
                   20))
     (doseq [req sample]
@@ -461,25 +461,25 @@
   (check-smallest 30000
     (generate-prop
       runner-p3
-      {::max-resolver-depth
+      {::knob-max-resolver-depth
        2
 
-       ::max-deps
+       ::knob-max-deps
        1
 
-       ::max-request-attributes
+       ::knob-max-request-attributes
        4}))
 
   (check-smallest 30000
     (generate-prop
       runner-p3
-      {::max-resolver-depth
+      {::knob-max-resolver-depth
        5
 
-       ::max-deps
+       ::knob-max-deps
        3
 
-       ::max-request-attributes
+       ::knob-max-request-attributes
        10}))
 
   (check-smallest 10000 (complex-deps-prop runner-p2))
@@ -492,13 +492,13 @@
   (let [res (tc/quick-check 30000
               (generate-prop
                 runner-p3
-                {::max-resolver-depth
+                {::knob-max-resolver-depth
                  3
 
-                 ::max-deps
+                 ::knob-max-deps
                  5
 
-                 ::max-request-attributes
+                 ::knob-max-request-attributes
                  10}))]
     (-> res
         :shrunk
@@ -508,13 +508,13 @@
   (let [res (tc/quick-check 30000
               (generate-prop
                 runner-p3
-                {::max-resolver-depth
+                {::knob-max-resolver-depth
                  2
 
-                 ::max-deps
+                 ::knob-max-deps
                  2
 
-                 ::max-request-attributes
+                 ::knob-max-request-attributes
                  2}))]
     (-> res
         :shrunk
@@ -524,13 +524,13 @@
   (let [res (tc/quick-check 3000
               (generate-prop
                 runner-p2
-                {::max-resolver-depth
+                {::knob-max-resolver-depth
                  5
 
-                 ::max-deps
+                 ::knob-max-deps
                  8
 
-                 ::max-request-attributes
+                 ::knob-max-request-attributes
                  10}))]
     (-> res
         :shrunk
