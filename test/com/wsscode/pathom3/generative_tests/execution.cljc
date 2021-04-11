@@ -37,6 +37,12 @@
   (gen/frequency
     (filterv (comp some? second) generators)))
 
+(defn gen-num
+  ([max]
+   (gen/large-integer* {:min 0 :max max}))
+  ([min max]
+   (gen/large-integer* {:min min :max max})))
+
 (def base-chars
   [:a :b :c :d :e :f :g :h :i :j :k :l :m
    :n :o :p :q :r :s :t :u :v :x :y :w :z])
@@ -79,6 +85,9 @@
    ::max-resolver-outputs
    10
 
+   ::max-edge-options
+   5
+
    ::knob-reuse-attributes?
    true
 
@@ -89,7 +98,7 @@
                (gen-frequency
                  [[3 (gen/return 0)]
                   [2 (if (pos? max-resolver-outputs)
-                       (gen/choose 0 max-resolver-outputs))]])]
+                       (gen-num 0 max-resolver-outputs))]])]
        (let [next-attrs (->> (iterate next-attr :ex1)
                              (map #(keyword (str (name attribute) "--" (name %))))
                              (take extra-outputs))]
@@ -109,17 +118,17 @@
         ::attributes (set output)}))
 
    ::gen-resolver-multi-options
-   (fn [{::p.attr/keys [attribute]}]
+   (fn [{::p.attr/keys [attribute]
+         ::keys        [max-edge-options]}]
      (let [output [attribute]]
-       (gen/return
-         {::resolvers  [{::pco/op-name (symbol (str (name attribute) "-o1"))
-                         ::pco/output  output
-                         ::pco/resolve (fn [_ _]
-                                         (attrs->expected output))}
-                        {::pco/op-name (symbol (str (name attribute) "-o2"))
-                         ::pco/output  output
-                         ::pco/resolve (fn [_ _]
-                                         (attrs->expected output))}]
+       (gen/let [option-count (gen-num 2 max-edge-options)]
+         {::resolvers  (mapv
+                         (fn [i]
+                           {::pco/op-name (symbol (str (name attribute) "-o" i))
+                            ::pco/output  output
+                            ::pco/resolve (fn [_ _]
+                                            (attrs->expected output))})
+                         (drop 1 (range option-count)))
           ::query      [attribute]
           ::expected   {attribute (name attribute)}
           ::attributes (set output)})))
@@ -138,7 +147,7 @@
    (fn [{::p.attr/keys [attribute]
          ::keys        [max-deps gen-resolver gen-output-for-resolver]
          :as           env}]
-     (gen/let [deps-count (gen/choose 1 max-deps)
+     (gen/let [deps-count (gen-num 1 max-deps)
                output     (gen-output-for-resolver env)]
        (let [next-attrs (->> (iterate next-attr attribute)
                              (drop 1)
@@ -215,7 +224,7 @@
 
    ::gen-request
    (fn [{::keys [gen-request-resolver-item max-request-attributes] :as env}]
-     (gen/let [items-count (gen/choose 1 max-request-attributes)]
+     (gen/let [items-count (gen-num 1 max-request-attributes)]
        (let [query (vec (take items-count base-chars))]
          (gen-request-resolver-item
            (assoc env
@@ -476,8 +485,8 @@
   (check-smallest 10000 (complex-deps-prop runner-p2))
   (check-smallest 10000 (complex-deps-prop runner-p3))
 
-  (check-smallest 1000
-    (generate-prop runner-p3
+  (check-smallest 10
+    (generate-prop runner-p2
       gen-env))
 
   (let [res (tc/quick-check 30000
