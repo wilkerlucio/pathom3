@@ -108,6 +108,22 @@
         ::expected   {attribute (name attribute)}
         ::attributes (set output)}))
 
+   ::gen-resolver-multi-options
+   (fn [{::p.attr/keys [attribute]}]
+     (let [output [attribute]]
+       (gen/return
+         {::resolvers  [{::pco/op-name (symbol (str (name attribute) "-o1"))
+                         ::pco/output  output
+                         ::pco/resolve (fn [_ _]
+                                         (attrs->expected output))}
+                        {::pco/op-name (symbol (str (name attribute) "-o2"))
+                         ::pco/output  output
+                         ::pco/resolve (fn [_ _]
+                                         (attrs->expected output))}]
+          ::query      [attribute]
+          ::expected   {attribute (name attribute)}
+          ::attributes (set output)})))
+
    ; use some attribute generated before
    ::gen-resolver-reuse
    (fn [{::keys [attributes]}]
@@ -165,12 +181,14 @@
    ::gen-resolver
    (fn [{::keys [max-resolver-depth
                  gen-resolver-leaf
-                 gen-resolver-with-deps] :as env}]
+                 gen-resolver-with-deps
+                 gen-resolver-multi-options] :as env}]
      (let [env (update env ::max-resolver-depth dec)]
        (if (pos? max-resolver-depth)
          (gen-frequency
            [[3 (gen-resolver-leaf env)]
-            [2 (gen-resolver-with-deps env)]])
+            [2 (gen-resolver-with-deps env)]
+            [1 (gen-resolver-multi-options env)]])
          (gen-resolver-leaf env))))
 
    ::gen-request-resolver-item
@@ -292,6 +310,18 @@
   (-> (tc/quick-check n prop)
       result-smallest))
 
+#?(:clj
+   (defn log-samples [n config]
+     (let [sample (gen/sample
+                    ((::gen-request gen-env)
+                     (merge gen-env config))
+                    n)]
+       (doseq [req sample]
+         (log-request-graph req)
+         (Thread/sleep 300))
+
+       sample)))
+
 #_:clj-kondo/ignore
 
 (comment
@@ -349,6 +379,8 @@
                           ::knob-reuse-attributes?
                           false))))
 
+  (log-samples 10 {})
+
   (do
     (def sample (gen/sample
                   ((::gen-request gen-env)
@@ -369,7 +401,18 @@
   (do
     (def sample (gen/sample
                   ((::gen-request gen-env)
-                   gen-env)
+                   (assoc gen-env
+                     ::max-resolver-depth
+                     6
+
+                     ::max-deps
+                     3
+
+                     ::max-request-attributes
+                     2
+
+                     ::max-resolver-outputs
+                     10))
                   20))
     (doseq [req sample]
       (log-request-graph req)
@@ -386,7 +429,7 @@
 
   (def fail *1)
   (def fail2 *1)
-  (def fail3 *1)
+  (def fail3 (second (reverse sample)))
 
   (log-request-snapshots fail)
   (log-request-snapshots fail2)
@@ -552,4 +595,25 @@
                   {::pco/op-name 'c
                    ::pco/output  [:c]
                    ::pco/resolve (fn [_ _] {:c "c"})}]
+     ::query     [:a]})
+
+  (log-request-snapshots
+    {::resolvers [{::pco/op-name 'a
+                   ::pco/input   [:b]
+                   ::pco/output  [:a]
+                   ::pco/resolve (fn [_ _] {:a "a"})}
+                  {::pco/op-name 'cb
+                   ::pco/input   [:c]
+                   ::pco/output  [:b]
+                   ::pco/resolve (fn [_ _] {:b "b"})}
+                  {::pco/op-name 'db
+                   ::pco/input   [:d]
+                   ::pco/output  [:b]
+                   ::pco/resolve (fn [_ _] {:b "b"})}
+                  {::pco/op-name 'c
+                   ::pco/output  [:c]
+                   ::pco/resolve (fn [_ _] {:c "c"})}
+                  {::pco/op-name 'd
+                   ::pco/output  [:d]
+                   ::pco/resolve (fn [_ _] {:d "d"})}]
      ::query     [:a]}))
