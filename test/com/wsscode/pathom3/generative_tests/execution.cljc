@@ -132,14 +132,21 @@
          ::keys        [knob-max-edge-options gen-output-for-resolver]
          :as           env}]
      (gen/let [output       (gen-output-for-resolver env)
-               option-count (gen-num 2 knob-max-edge-options)]
-       {::resolvers  (mapv
-                       (fn [i]
-                         {::pco/op-name (symbol (str (name attribute) "-o" i))
-                          ::pco/output  output
-                          ::pco/resolve (fn [_ _]
-                                          (attrs->expected output))})
-                       (drop 1 (range option-count)))
+               option-count (gen-num 2 knob-max-edge-options)
+               resolvers    (apply gen/tuple
+                              (mapv
+                                (fn [i]
+                                  (gen/let [fail? (if (= 1 i)
+                                                    (gen/return false)
+                                                    gen/boolean)]
+                                    {::pco/op-name (symbol (str (name attribute) "-o" i))
+                                     ::pco/output  output
+                                     ::pco/resolve (fn [_ _]
+                                                     (if fail?
+                                                       (throw (ex-info "Failed Option" {})))
+                                                     (attrs->expected output))}))
+                                (drop 1 (range option-count))))]
+       {::resolvers  resolvers
         ::query      [attribute]
         ::expected   {attribute (name attribute)}
         ::attributes (set output)}))
@@ -523,7 +530,7 @@
         first))
 
 
-  (check-smallest 100
+  (check-smallest 500
     (generate-prop runner-p3
       gen-env)))
 
