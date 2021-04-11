@@ -189,7 +189,7 @@
 (def pc-attr ::p.attr/attribute)
 
 (declare
-  compute-run-graph compute-run-graph* compute-root-and compute-root-or collapse-nodes-chain node-ancestors
+  compute-run-graph compute-run-graph* compute-attribute-graph compute-root-and compute-root-or collapse-nodes-chain node-ancestors
   compute-node-chain-depth collapse-nodes-branch collapse-dynamic-nodes mark-attribute-process-sub-query
   required-input-reachable? find-node-direct-ancestor-chain find-run-next-descendants)
 
@@ -218,6 +218,13 @@
   "Return the next node ID in the system, its an incremental number"
   [{::keys [id-counter]}]
   (swap! id-counter inc))
+
+(defn new-node [env node-data]
+  (assoc node-data ::node-id (next-node-id env)))
+
+(defn create-or-node
+  [{::p.attr/keys [attribute] :as env}]
+  (new-node env {::expects {attribute {}}}))
 
 (defn all-node-ids
   "Return all node-ids from the graph."
@@ -397,7 +404,7 @@
     (if (and (branch-node? previous-node)
              (= current-node-id (::run-next previous-node)))
       (+ (get-node graph previous-node-id ::node-depth)
-        (get-node graph previous-node-id ::node-branch-depth))
+         (get-node graph previous-node-id ::node-branch-depth))
       (get-node graph previous-node-id ::node-depth))))
 
 (defn compute-node-depth
@@ -444,8 +451,10 @@
 
 (defn add-unreachable-attr
   "Add attribute to unreachable list"
-  [graph attr]
-  (update graph ::unreachable-paths assoc attr {}))
+  [graph env attr]
+  (-> (update graph ::unreachable-paths pfsd/merge-shapes {attr {}})
+      (add-snapshot! env {::snapshot-event   ::snapshot-mark-attr-unreachable
+                          ::snapshot-message (str "Mark attribute " attr " as unreachable.")})))
 
 (defn optimize-merge?
   "Check if node and graph point to same run-next."
@@ -524,6 +533,19 @@
 
       :else
       graph)))
+
+(defn add-branch-to-node
+  [graph target-node-id branch-type new-branch-node-id]
+  (-> graph
+      (add-node-parent new-branch-node-id target-node-id)
+      (update-node target-node-id branch-type coll/sconj new-branch-node-id)))
+
+(defn add-node-branches [graph target-node-id branch-type node-ids]
+  (reduce
+    (fn [g node-id]
+      (add-branch-to-node g target-node-id branch-type node-id))
+    graph
+    node-ids))
 
 (defn collapse-set-node-run-next
   "Like set-node-run-next, but also checks if the target and next node are the same
@@ -1138,12 +1160,31 @@
 
 (defn include-node
   "Add new node to the graph, this add the node and the index of in ::index-syms."
-  [graph env {::keys [node-id] ::pco/keys [op-name] :as node}]
+  [graph {::keys [node-id] ::pco/keys [op-name] :as node}]
   (-> graph
       (assoc-in [::nodes node-id] node)
       (cond->
         op-name
         (update-in [::index-resolver->nodes op-name] coll/sconj node-id))))
+
+(defn create-root-and [graph env node-ids]
+  (let [expects (reduce
+                  pfsd/merge-shapes
+                  (mapv #(get-node graph % ::expects) node-ids))
+        {and-node-id ::node-id
+         :as         and-node} (new-node env {::expects expects})]
+    (-> graph
+        (include-node and-node)
+        (add-node-branches and-node-id ::run-and node-ids)
+        (set-root-node and-node-id))))
+
+(defn create-root-or [graph env node-ids]
+  (let [{or-node-id ::node-id
+         :as        or-node} (create-or-node env)]
+    (-> graph
+        (include-node or-node)
+        (add-node-branches or-node-id ::run-or node-ids)
+        (set-root-node or-node-id))))
 
 (>defn find-direct-node-successors
   "Direct successors of node, branch nodes and run-next, in case of branch nodes the
@@ -1191,10 +1232,10 @@
                   (into (::unreachable-resolvers previous-graph #{})))]
     (add-snapshot! graph env {::snapshot-message (str "Mark node unreachable, resolvers " (pr-str syms) ", attrs" unreachable-paths)})
     (cond-> (coll/assoc-if previous-graph
-              ::unreachable-resolvers syms
-              ::unreachable-paths unreachable-paths)
+                           ::unreachable-resolvers syms
+                           ::unreachable-paths unreachable-paths)
       (set/subset? (all-attribute-resolvers env (pc-attr env)) syms)
-      (add-unreachable-attr (pc-attr env)))))
+      (add-unreachable-attr env (pc-attr env)))))
 
 (>defn node-ancestors
   "Return all node ancestors. The order of the output will go from closest to farthest
@@ -1336,7 +1377,7 @@
   (if (= 1 (count missing))
     (get-attribute-node graph (first missing))
     (first-common-ancestor graph
-      (into #{} (map (partial get-attribute-node graph)) missing))))
+                           (into #{} (map (partial get-attribute-node graph)) missing))))
 
 (defn sub-required-input-reachable?*
   [env sub available]
@@ -1361,8 +1402,8 @@
             reachable? (sub-required-input-reachable?* env sub available)]
         (if-not reachable?
           (l/warn ::nested-input-not-reachable-from-resolver
-            {::l/message   "A nested input wasn't fulfilled. A common issue is that a resolver output is missing the nested description."
-             ::pco/op-name (::pco/op-name resolver)}))
+                  {::l/message   "A nested input wasn't fulfilled. A common issue is that a resolver output is missing the nested description."
+                   ::pco/op-name (::pco/op-name resolver)}))
         reachable?)
 
       ; there is no node from the graph, but still gonna look in current data
@@ -1463,33 +1504,53 @@
     {}
     resolvers))
 
+(defn merge-unreachable
+  "Copy unreachable attributes and resolvers from discard-graph to target-graph"
+  [target-graph {::keys [unreachable-resolvers unreachable-paths]}]
+  (cond-> target-graph
+    unreachable-resolvers
+    (update ::unreachable-resolvers #(into unreachable-resolvers %))
+
+    unreachable-paths
+    (update ::unreachable-paths pfsd/merge-shapes (or unreachable-paths {}))))
+
 (defn compute-missing-chain
   "Start a recursive call to process the dependencies required by the resolver. It
   sets the ::run-next data at the env, it will be used to link the nodes after they
   are created in the process."
-  [graph {::keys [graph-before-missing-chain available-data] :as env} missing resolvers]
-  (let [optionals    (resolvers-optionals env resolvers)
-        missing-flat (into []
-                           (remove available-data)
-                           (concat
-                             (keys missing)
-                             (keys optionals)))]
-    (if (or (seq missing-flat) (seq missing))
-      (let [_             (add-snapshot! graph env {::snapshot-message (str "Computing " (pc-attr env) " dependencies: " (pr-str missing))})
-            graph'        (compute-run-graph*
-                            (dissoc graph ::root)
-                            (-> env
-                                (dissoc pc-attr)
-                                (update ::run-next-trail coll/sconj (::root graph))
-                                (update ::attr-deps-trail coll/sconj (pc-attr env))
-                                (assoc :edn-query-language.ast/node (eql/query->ast missing-flat))))
-            still-missing (into {} (remove #(required-input-reachable? graph' env %)) missing)
-            all-provided? (empty? still-missing)]
-        (if all-provided?
-          (merge-missing-chain graph graph' (assoc env ::resolvers resolvers) missing missing-flat optionals)
-          (let [{::keys [unreachable-resolvers] :as out'} (mark-node-unreachable graph-before-missing-chain graph graph' env)
-                unreachable-attrs (unreachable-attrs-after-missing-check env unreachable-resolvers still-missing)]
-            (update out' ::unreachable-paths pfsd/merge-shapes unreachable-attrs))))
+  [graph env missing]
+  (let [missing-flat (keys missing)]
+    (if (seq missing-flat)
+      (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (pc-attr env) " dependencies: " (pr-str missing))})
+
+            [graph' node-map] (reduce
+                                (fn [[graph node-map] attr]
+                                  (let [graph' (compute-attribute-graph
+                                                 (dissoc graph ::root)
+                                                 (-> env
+                                                     (dissoc ::p.attr/attribute)
+                                                     (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
+                                                     (assoc :edn-query-language.ast/node
+                                                       {:type         :prop
+                                                        :key          attr
+                                                        :dispatch-key attr})))]
+                                    (if-let [root (::root graph')]
+                                      [graph' (assoc node-map attr root)]
+                                      (reduced [graph' nil]))))
+                                [graph {}]
+                                missing-flat)]
+        (if node-map
+          (-> graph'
+              (create-root-and env (vals node-map))
+              (as-> <>
+                (add-snapshot! <> env {::snapshot-event   ::compute-missing-success
+                                       ::snapshot-message (str "Complete computing deps " (pr-str missing))
+                                       ::highlight-nodes  (into #{(::root <>)} (vals node-map))
+                                       ::highlight-styles {(::root <>) 1}})))
+          (-> graph
+              (merge-unreachable graph')
+              (add-snapshot! env {::snapshot-event   ::compute-missing-failed
+                                  ::snapshot-message (str "Failed to compute dependencies " (pr-str missing))}))))
       graph)))
 
 (defn runner-node-sym
@@ -1527,11 +1588,8 @@
       (let [env  (assoc env pc-sym resolver' ::source-sym resolver)
             node (create-resolver-node graph env)]
         (-> graph
-            (include-node env node)
+            (include-node node)
             (compute-root-or env node))))))
-
-(defn new-node [env node-data]
-  (assoc node-data ::node-id (next-node-id env)))
 
 (defn create-node-for-resolver-call
   "Create a new node representative to run a given resolver."
@@ -1544,75 +1602,68 @@
         ast-params (:params ast)]
     (cond->
       (new-node env
-        {::pco/op-name op-name
-         ::expects     requires
-         ::input       input})
+                {::pco/op-name op-name
+                 ::expects     requires
+                 ::input       input})
 
       (seq ast-params)
       (assoc ::params ast-params))))
 
-(defn create-or-node
-  [{::p.attr/keys [attribute] :as env}]
-  (new-node env {::expects {attribute {}}}))
-
-(defn add-branch-to-or-node
-  [graph or-node-id branch-node-id]
-  (-> graph
-      (add-node-parent branch-node-id or-node-id)
-      (update-node or-node-id ::run-or coll/sconj branch-node-id)))
-
 (defn compute-resolver-leaf
   "For a set of resolvers (the R part of OIR index), create one OR node that branches
   to each option in the set. It checks for unreachable resolvers, those are ignored."
-  [{::keys [unreachable-resolvers] :as graph} env resolvers]
+  [{::keys [unreachable-resolvers] :as graph} {::keys [input] :as env} resolvers]
   (let [resolver-nodes (into
                          (list)
                          (comp (remove #(contains? unreachable-resolvers %))
                                (map #(create-node-for-resolver-call (assoc env ::pco/op-name %))))
                          resolvers)]
     (if (seq resolver-nodes)
-      (let [{or-node-id ::node-id
-             :as        or-node} (create-or-node env)]
-        (-> graph
-            ; include OR node
-            (include-node env or-node)
-            (as-> <>
-              ; include resolver nodes
-              (reduce #(include-node % env %2) <> resolver-nodes)
-              ; link resolver nodes back to
-              (reduce #(add-branch-to-or-node % or-node-id (::node-id %2)) <> resolver-nodes))
-            (set-root-node or-node-id)
-            (add-snapshot! env {::snapshot-message "Add nodes for input path "
-                                ::highlight-nodes  (into #{or-node-id} (map ::node-id) resolver-nodes)
-                                ::highlight-styles {or-node-id 1}})))
+      (-> graph
+          (as-> <>
+            ; include resolver nodes
+            (reduce #(include-node % %2) <> resolver-nodes))
+          (create-root-or env (mapv ::node-id resolver-nodes))
+          (as-> <>
+            (add-snapshot! <> env {::snapshot-message (str "Add nodes for input path " (pr-str input))
+                                   ::highlight-nodes  (into #{(::root <>)} (map ::node-id) resolver-nodes)
+                                   ::highlight-styles {(::root <>) 1}})))
       (add-snapshot! graph env {::snapshot-message "No reachable resolver found."}))))
 
 (defn compute-input-resolvers-graph
   [graph
-   {::keys [available-data]
-    :as    env}
+   {::keys        [available-data]
+    ::p.attr/keys [attribute]
+    :as           env}
    input resolvers]
-  (let [missing (pfsd/missing available-data input)
-        env     (assoc env ::input input)]
-    (if (contains? input (pc-attr env))
-      ; attribute requires itself, just stop
-      graph
-      (as-> graph <>
+  (if (contains? input attribute)
+    ; attribute requires itself, just stop
+    graph
+    (let [missing (pfsd/missing available-data input)
+          env     (assoc env ::input input)
+          {leaf-root ::root :as graph'} (compute-resolver-leaf graph env resolvers)]
+      (if leaf-root
+        (if (seq missing)
+          (let [graph-with-deps (compute-missing-chain (dissoc graph' ::root) env missing)]
+            (if (::root graph-with-deps)
+              (set-node-run-next graph-with-deps (::root graph-with-deps) leaf-root)
+              (-> graph
+                  (merge-unreachable graph-with-deps))))
+          graph')
+        graph))
+    #_(as-> graph <>
         (dissoc <> ::root)
         ; resolvers loop
         (compute-resolver-leaf <> env resolvers)
 
         (if (::root <>)
-          (-> <>
-              (compute-missing-chain (assoc env ::graph-before-missing-chain graph) missing resolvers)
-              (as-> <i>
-                (add-snapshot! <i> env {::snapshot-message (str "Compute OR")
-                                        ::highlight-nodes  (into #{} [(::root graph)
-                                                                      (::root <>)
-                                                                      (::root <i>)])
-                                        ::highlight-styles {(::root <>) 1}}))
+          (let [graph-with-deps (compute-missing-chain (dissoc <> ::root) env missing)]
+            (if (::root graph-with-deps)
+              (set-node-run-next graph-with-deps (::root graph-with-deps) (::root <>))
+              ))
+          (-> (compute-missing-chain (dissoc <> ::root) env missing)
               (compute-root-or env {::node-id (::root graph)} (::root <>)))
-          (set-root-node <> (::root graph)))))))
+          (set-root-node <> (::root graph))))))
 
 (defn find-node-for-attribute-in-chain
   "Walks the graph run next chain until it finds the node that's providing the
@@ -1653,8 +1704,8 @@
     (if (contains? visited node-id')
       (do
         (l/warn ::event-ancestor-cycle-detected
-          {:visited  visited
-           ::node-id node-id})
+                {:visited  visited
+                 ::node-id node-id})
         chain)
       (let [{::keys [node-parents]} (get-node graph node-id')
             next-id (first node-parents)]
@@ -1743,39 +1794,24 @@
     (compute-root-and graph env {::node-id node-id})))
 
 (defn compute-attribute-graph*
-  [{::keys [root] :as graph}
+  [graph
    {::pci/keys    [index-oir]
     ::p.attr/keys [attribute]
     :as           env}]
-  (cond
-    #_#_(get-attribute-node graph attribute)
-        (let [node-id (get-attribute-node graph attribute)]
-          (-> graph
-              (add-snapshot! env {::snapshot-event   ::snapshot-reuse-attribute
-                                  ::snapshot-message (str "Associating previous root to attribute " attribute " on node " node-id)
-                                  ::highlight-nodes  #{node-id}})
-              (merge-node-expects node-id {attribute {}})
-              (push-root-to-ancestor env node-id)
-              (compute-and-unless-root-is-ancestor env {::node-id root})
-              (add-snapshot! env {::snapshot-event   ::snapshot-reuse-attribute-merged
-                                  ::snapshot-message (str "Merged attribute " attribute " on node " node-id " with root " root)
-                                  ::highlight-nodes  (into #{} [node-id root])})))
-
-    :else
-    (let [graph'
-          (as-> graph <>
-            (add-snapshot! <> env {::snapshot-event   ::snapshot-process-attribute
-                                   ::snapshot-message (str "Process attribute " attribute)})
-            (dissoc <> ::root)
-            (reduce-kv
-              (fn [graph input resolvers]
-                (compute-input-resolvers-graph graph env input resolvers))
-              <>
-              (get index-oir attribute))
-            (set-node-source-for-attrs <> env))]
-      (if (::root graph')
-        (compute-root-and graph' env {::node-id root})
-        (set-root-node graph' root)))))
+  (let [[graph' node-ids]
+        (reduce-kv
+          (fn [[graph nodes] input resolvers]
+            (let [graph' (compute-input-resolvers-graph (dissoc graph ::root) env input resolvers)]
+              (if (::root graph')
+                [graph' (conj nodes (::root graph'))]
+                [(merge-unreachable graph graph') nodes])))
+          [graph #{}]
+          (get index-oir attribute))]
+    (if (seq node-ids)
+      (compute-root-or graph' env node-ids)
+      (-> graph
+          (add-unreachable-attr env attribute)
+          (merge-unreachable graph')))))
 
 (defn mark-attribute-process-sub-query
   "Add information about attribute that is present but requires further processing
@@ -1808,13 +1844,16 @@
                               ::snapshot-message (str "Add ident process for " (pr-str attr))}))
 
       (contains? available-data attr)
-      (-> (mark-attribute-process-sub-query graph ast)
-          (add-snapshot! env {::snapshot-event   ::snapshot-mark-process-sub-query
-                              ::snapshot-message (str "Mark attribute " attr " to sub-process.")}))
+      (add-snapshot! graph env {::snapshot-event   ::snapshot-attribute-already-available
+                                ::snapshot-message (str "Attribute already available " attr)})
 
-      (or (contains? unreachable-paths attr)
-          (contains? attr-deps-trail attr))
-      graph
+      (contains? unreachable-paths attr)
+      (add-snapshot! graph env {::snapshot-event   ::snapshot-attribute-unreachable
+                                ::snapshot-message (str "Attribute unreachable " attr)})
+
+      (contains? attr-deps-trail attr)
+      (add-snapshot! graph env {::snapshot-event   ::snapshot-attribute-cycle-dependency
+                                ::snapshot-message (str "Attribute cycle detected for " attr)})
 
       (contains? index-oir attr)
       (compute-attribute-graph* graph env)
@@ -1823,26 +1862,32 @@
       (compute-run-graph* (add-placeholder-entry graph attr) env)
 
       :else
-      (-> (add-unreachable-attr graph attr)
-          (add-snapshot! env {::snapshot-event   ::snapshot-mark-attr-unreachable
-                              ::snapshot-message (str "Mark attribute " attr " as unreachable.")})))))
+      (add-unreachable-attr graph env attr))))
 
 (defn compute-run-graph*
   [graph env]
-  (reduce
-    (fn [graph ast]
-      (cond
-        (contains? #{:prop :join} (:type ast))
-        (compute-attribute-graph graph
-          (assoc env :edn-query-language.ast/node ast))
+  (let [[graph' node-ids]
+        (reduce
+          (fn [[graph node-ids] ast]
+            (cond
+              (contains? #{:prop :join} (:type ast))
+              (let [{::keys [root] :as graph'}
+                    (compute-attribute-graph graph
+                      (assoc env :edn-query-language.ast/node ast))]
+                (if root
+                  [graph' (conj node-ids root)]
+                  [(merge-unreachable graph graph') node-ids]))
 
-        (refs/kw-identical? (:type ast) :call)
-        (update graph ::mutations coll/vconj ast)
+              (refs/kw-identical? (:type ast) :call)
+              [(update graph ::mutations coll/vconj ast) node-ids]
 
-        :else
-        graph))
-    graph
-    (:children (:edn-query-language.ast/node env))))
+              :else
+              [graph node-ids]))
+          [graph #{}]
+          (:children (:edn-query-language.ast/node env)))]
+    (if (seq node-ids)
+      (create-root-and graph' env node-ids)
+      (merge-unreachable graph graph'))))
 
 (>defn compute-run-graph
   "Generates a run plan for a given environment, the environment should contain the

@@ -5152,3 +5152,34 @@
                                    {::pcp/node-id      1
                                     ::pcp/node-parents #{2}})
          nil)))
+
+(deftest merge-unreachable-test
+  (is (= (pcp/merge-unreachable
+           {}
+           {})
+         {}))
+
+  (is (= (pcp/merge-unreachable
+           {}
+           {::pcp/unreachable-resolvers #{'foo}})
+         {::pcp/unreachable-resolvers #{'foo}}))
+
+  (is (= (pcp/merge-unreachable
+           {}
+           {::pcp/unreachable-paths {:a {}}})
+         {::pcp/unreachable-paths {:a {}}}))
+
+  (is (= (pcp/merge-unreachable
+           {}
+           {::pcp/unreachable-paths     {:a {}}
+            ::pcp/unreachable-resolvers #{'foo}})
+         {::pcp/unreachable-paths     {:a {}}
+          ::pcp/unreachable-resolvers #{'foo}}))
+
+  (is (= (pcp/merge-unreachable
+           {::pcp/unreachable-paths     {:b {}}
+            ::pcp/unreachable-resolvers #{'bar}}
+           {::pcp/unreachable-paths     {:a {}}
+            ::pcp/unreachable-resolvers #{'foo}})
+         {::pcp/unreachable-paths     {:a {} :b {}}
+          ::pcp/unreachable-resolvers #{'foo 'bar}})))
