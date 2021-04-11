@@ -1,17 +1,15 @@
 (ns com.wsscode.pathom3.connect.planner-test
   (:require
-    #?(:clj [clojure.java.io :as io])
     [clojure.test :refer [deftest is are run-tests testing]]
     [clojure.walk :as walk]
     [com.wsscode.misc.coll :as coll]
-    [com.wsscode.pathom3.attribute :as p.attr]
+    ;[com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
-    [edn-query-language.core :as eql]
-    #?(:clj [tangle.core :as tangle])))
+    [edn-query-language.core :as eql]))
 
 (defn register-index [resolvers]
   (let [resolvers (walk/postwalk
@@ -22,84 +20,11 @@
                     resolvers)]
     (pci/register {} resolvers)))
 
-(comment
-  (register-index
-    [{::pco/op-name 'a
-      ::pco/output  [:a]}
-     {::pco/op-name 'b
-      ::pco/input   [:a]
-      ::pco/output  [:b]}]))
-
 (defn oir-index [resolvers]
   (::pci/index-oir (register-index resolvers)))
 
 (defn base-graph-env []
   (pcp/base-env))
-
-#?(:clj
-   (defn find-next-file-name [prefix]
-     (loop [n         1
-            file-name (str prefix ".png")]
-       (let [file (io/file file-name)]
-         (if (.exists file)
-           (recur
-             (inc n)
-             (str prefix "-" n ".png"))
-           file-name)))))
-
-#?(:clj
-   (defn plan->dot [env {::pcp/keys [nodes root]}]
-     (let [edges (into []
-                       (mapcat
-                         (fn [{::pcp/keys [run-next node-id] :as node}]
-                           (let [branches (pcp/node-branches node)]
-                             (cond-> (into []
-                                           (map #(vector node-id % {:color "orange"}))
-                                           branches)
-                               run-next
-                               (conj [node-id run-next])))))
-                       (vals nodes))]
-       (tangle/graph->dot (mapv ::pcp/node-id (vals nodes)) edges
-                          {:graph            {:rankdir :LR}
-                           :node             {:shape :circle}
-                           :directed?        true
-                           :node->id         identity
-                           :node->descriptor (fn [node-id]
-                                               (let [node (get nodes node-id)]
-                                                 (cond-> {:id    (str node-id)
-                                                          :style "filled"
-                                                          :color (if (= node-id root) "blue" "#F3F3F3")
-                                                          :label (str
-                                                                   (str node-id " | ")
-                                                                   #_(if attrs
-                                                      (str (str/join "" attrs) " | "))
-                                                                   (pcp/node->label node))}
-                                                   (and (::pco/op-name node) (pcp/dynamic-resolver? env (::pco/op-name node)))
-                                                   (assoc
-                                                     :fontcolor "white"
-                                                     :fillcolor "black")
-
-                                                   (::pcp/run-and node)
-                                                   (assoc
-                                                     :fillcolor "yellow")
-
-                                                   (::pcp/run-or node)
-                                                   (assoc
-                                                     :fillcolor "cyan"))))}))))
-
-(defn render-graph [_graph _env]
-  #?(:clj
-     (let [graph _graph
-           {::keys [file-name] :as env} _env]
-       (if (not (System/getenv "PATHOM_TEST"))
-         (let [dot (plan->dot env graph)]
-           (io/copy (tangle/dot->svg dot) (io/file (or file-name "out.svg")))
-           #_(io/copy (tangle/dot->image dot "png") (io/file (or file-name "out.png")))))))
-  _graph)
-
-#?(:clj
-   (defn render-graph-next [graph env]
-     (render-graph graph (assoc env ::file-name (find-next-file-name "out")))))
 
 (defn compute-run-graph* [{::keys [out env]}]
   (pcp/compute-run-graph
@@ -107,11 +32,10 @@
     env))
 
 (defn compute-run-graph
-  [{::keys     [resolvers render-graphviz? time? dynamics]
+  [{::keys     [resolvers time? dynamics]
     ::pcp/keys [snapshots*]
     ::eql/keys [query]
-    :or        {render-graphviz? false
-                time?            false}
+    :or        {time? false}
     :as        options}]
   (let [env     (cond-> (merge (base-graph-env)
                                (-> options
@@ -145,10 +69,7 @@
 
       true
       (-> (vary-meta assoc ::env env)
-          (dissoc ::pcp/source-ast ::pcp/available-data))
-
-      render-graphviz?
-      (render-graph env))))
+          (dissoc ::pcp/source-ast ::pcp/available-data)))))
 
 (deftest compute-run-graph-test
   (testing "simplest path"
@@ -4045,6 +3966,7 @@
                                                                 :foo.contact/email 9},
                                                   :root 4}))))
 
+#_
 (deftest root-execution-node?-test
   (is (= (pcp/root-execution-node?
            {::pcp/nodes {}}
@@ -4060,384 +3982,6 @@
            1)
          false)))
 
-(deftest compute-root-branch-test
-  (testing "set root when no root is the current"
-    (is (= (pcp/compute-root-or
-             {::pcp/nodes {1 {::pcp/node-id 1
-                              ::pco/op-name 'a
-                              ::pcp/expects {:a {}}}}}
-             (base-graph-env)
-             {::pcp/node-id 1})
-           {::pcp/root  1
-            ::pcp/nodes {1 {::pcp/node-id 1
-                            ::pco/op-name 'a
-                            ::pcp/expects {:a {}}}}})))
-
-  (testing "do nothing if there is no next node"
-    (is (= (pcp/compute-root-or
-             {::pcp/nodes {1 {::pcp/node-id 1
-                              ::pco/op-name 'a
-                              ::pcp/expects {:a {}}}}
-              ::pcp/root  1}
-             (base-graph-env)
-             nil) ; nil node
-
-           (pcp/compute-root-or
-             {::pcp/nodes {1 {::pcp/node-id 1
-                              ::pco/op-name 'a
-                              ::pcp/expects {:a {}}}}
-              ::pcp/root  1}
-             (base-graph-env)
-             {::pcp/node-id 2}) ; id not present
-
-           {::pcp/root  1
-            ::pcp/nodes {1 {::pcp/node-id 1
-                            ::pco/op-name 'a
-                            ::pcp/expects {:a {}}}}})))
-
-  (testing "do nothing when nodes are branches already connected"
-    (is (= (pcp/compute-root-and
-             {::pcp/nodes {1 {::pcp/node-id  1
-                              ::pcp/run-and  #{2}
-                              ::pcp/run-next 3}
-                           2 {::pcp/node-id 2
-                              ::pco/op-name 'a
-                              ::pcp/expects {:a {}}}
-                           3 {::pcp/node-id 3
-                              ::pco/op-name 'b
-                              ::pcp/expects {:b {}}}}
-              ::pcp/root  1}
-             (assoc (base-graph-env) ::pcp/id-counter (atom 3))
-             {::pcp/node-id 2})
-           '#:com.wsscode.pathom3.connect.planner{:nodes {1 #:com.wsscode.pathom3.connect.planner{:node-id  1,
-                                                                                                  :run-and  #{2},
-                                                                                                  :run-next 3},
-                                                          2 {:com.wsscode.pathom3.connect.planner/node-id   2,
-                                                             :com.wsscode.pathom3.connect.operation/op-name a,
-                                                             :com.wsscode.pathom3.connect.planner/expects   {:a {}}},
-                                                          3 {:com.wsscode.pathom3.connect.planner/node-id   3,
-                                                             :com.wsscode.pathom3.connect.operation/op-name b,
-                                                             :com.wsscode.pathom3.connect.planner/expects   {:b {}}}},
-                                                  :root  1})))
-
-  (testing "merge nodes with same sym"
-    (is (= (pcp/compute-root-or
-             {::pcp/nodes                 {1 {::pcp/node-id 1
-                                              ::pco/op-name 'a
-                                              ::pcp/expects {:a {}}}
-                                           2 {::pcp/node-id 2
-                                              ::pco/op-name 'a
-                                              ::pcp/expects {:b {}}}}
-              ::pcp/index-resolver->nodes '{a #{1 2}}
-              ::pcp/root                  2}
-             (assoc (base-graph-env) ::pcp/id-counter (atom 2))
-             {::pcp/node-id 1})
-
-           '{::pcp/root                  1
-             ::pcp/index-resolver->nodes {a #{1}}
-             ::pcp/nodes                 {1 {::pcp/node-id 1
-                                             ::pco/op-name a
-                                             ::pcp/expects {:a {}
-                                                            :b {}}}}})))
-
-  (testing "create new or runner"
-    (is (= (pcp/compute-root-or
-             {::pcp/root  1
-              ::pcp/nodes {1 {::pcp/node-id 1
-                              ::pco/op-name 'a
-                              ::pcp/expects {:a {}}}
-                           2 {::pcp/node-id 2
-                              ::pco/op-name 'a2
-                              ::pcp/expects {:a {}}}}}
-             (assoc (base-graph-env) ::pcp/id-counter (atom 2)
-               ::p.attr/attribute :a)
-             {::pcp/node-id 2})
-           {::pcp/root  3
-            ::pcp/nodes {1 {::pcp/node-id      1
-                            ::pcp/node-parents #{3}
-                            ::pco/op-name      'a
-                            ::pcp/expects      {:a {}}}
-                         2 {::pcp/node-id      2
-                            ::pcp/node-parents #{3}
-                            ::pco/op-name      'a2
-                            ::pcp/expects      {:a {}}}
-                         3 {::pcp/node-id 3
-                            ::pcp/run-or  #{1 2}
-                            ::pcp/expects {:a {}}}}}))
-
-    (testing "with run-next"
-      (is (= (pcp/compute-root-or
-               {::pcp/root  2
-                ::pcp/nodes {2 {::pcp/node-id  2
-                                ::pco/op-name  'a
-                                ::pcp/expects  {:a {}}
-                                ::pcp/run-next 1}
-                             3 {::pcp/node-id  3
-                                ::pco/op-name  'a2
-                                ::pcp/expects  {:a {}}
-                                ::pcp/run-next 1}}}
-               (assoc (base-graph-env) ::pcp/id-counter (atom 3)
-                 ::p.attr/attribute :a
-                 ::pci/index-resolvers {'a  {::pco/provides {:a {}}}
-                                        'a2 {::pco/provides {:a {}}}})
-               {::pcp/node-id 3})
-             '#:com.wsscode.pathom3.connect.planner{:root 4,
-                                                    :nodes {2 {:com.wsscode.pathom3.connect.planner/node-id 2,
-                                                               :com.wsscode.pathom3.connect.operation/op-name a,
-                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
-                                                               :com.wsscode.pathom3.connect.planner/run-next 1,
-                                                               :com.wsscode.pathom3.connect.planner/node-parents #{4}},
-                                                            3 {:com.wsscode.pathom3.connect.planner/node-id 3,
-                                                               :com.wsscode.pathom3.connect.operation/op-name a2,
-                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
-                                                               :com.wsscode.pathom3.connect.planner/run-next 1,
-                                                               :com.wsscode.pathom3.connect.planner/node-parents #{4}},
-                                                            4 #:com.wsscode.pathom3.connect.planner{:node-id 4,
-                                                                                                    :expects {:a {}},
-                                                                                                    :run-or #{3
-                                                                                                              2}}}}))
-
-      (testing "don't optimize when run next is different"
-        (is (= (pcp/compute-root-or
-                 {::pcp/root  2
-                  ::pcp/nodes {2 {::pcp/node-id  2
-                                  ::pco/op-name  'a
-                                  ::pcp/expects  {:a {}}
-                                  ::pcp/run-next 1}
-                               3 {::pcp/node-id  3
-                                  ::pco/op-name  'a2
-                                  ::pcp/expects  {:a {}}
-                                  ::pcp/run-next 10}}}
-                 (assoc (base-graph-env) ::pcp/id-counter (atom 3)
-                   ::p.attr/attribute :a)
-                 {::pcp/node-id 3})
-               {::pcp/root  4
-                ::pcp/nodes {2 {::pcp/node-id      2
-                                ::pcp/node-parents #{4}
-                                ::pco/op-name      'a
-                                ::pcp/expects      {:a {}}
-                                ::pcp/run-next     1}
-                             3 {::pcp/node-id      3
-                                ::pcp/node-parents #{4}
-                                ::pco/op-name      'a2
-                                ::pcp/expects      {:a {}}
-                                ::pcp/run-next     10}
-                             4 {::pcp/node-id 4
-                                ::pcp/run-or  #{2 3}
-                                ::pcp/expects {:a {}}}}})))))
-
-  (testing "add to the runner"
-    (is (= (pcp/compute-root-or
-             {::pcp/root  3
-              ::pcp/nodes {1 {::pcp/node-id 1
-                              ::pco/op-name 'a
-                              ::pcp/expects {:a {}}}
-                           2 {::pcp/node-id 2
-                              ::pco/op-name 'a2
-                              ::pcp/expects {:a {}}}
-                           3 {::pcp/node-id 3
-                              ::pcp/run-or  #{1 2}
-                              ::pcp/expects {:a {}}}
-                           4 {::pcp/node-id 4
-                              ::pco/op-name 'a3
-                              ::pcp/expects {:a {}}}}}
-             (base-graph-env)
-             {::pcp/node-id 4})
-           {::pcp/root  3
-            ::pcp/nodes {1 {::pcp/node-id 1
-                            ::pco/op-name 'a
-                            ::pcp/expects {:a {}}}
-                         2 {::pcp/node-id 2
-                            ::pco/op-name 'a2
-                            ::pcp/expects {:a {}}}
-                         3 {::pcp/node-id 3
-                            ::pcp/run-or  #{1 2 4}
-                            ::pcp/expects {:a {}}}
-                         4 {::pcp/node-id      4
-                            ::pcp/node-parents #{3}
-                            ::pco/op-name      'a3
-                            ::pcp/expects      {:a {}}}}}))
-
-    (testing "collapse when symbol is already there"
-      (is (= (pcp/compute-root-or
-               {::pcp/root                  3
-                ::pcp/index-resolver->nodes {'a #{1 2 4}}
-                ::pcp/nodes                 {1 {::pcp/node-id 1
-                                                ::pco/op-name 'a
-                                                ::pcp/expects {:a {}}}
-                                             2 {::pcp/node-id 2
-                                                ::pco/op-name 'a2
-                                                ::pcp/expects {:a {}}}
-                                             3 {::pcp/node-id 3
-                                                ::pcp/run-or  #{1 2}
-                                                ::pcp/expects {:a {}}}
-                                             4 {::pcp/node-id 4
-                                                ::pco/op-name 'a
-                                                ::pcp/expects {:b {}}}}}
-
-               (base-graph-env)
-               {::pcp/node-id 4})
-             '{::pcp/root                  3
-               ::pcp/index-resolver->nodes {a #{1 2}}
-               ::pcp/nodes                 {1
-                                            {::pcp/node-id 1
-                                             ::pco/op-name a
-                                             ::pcp/expects {:a {} :b {}}}
-                                            2
-                                            {::pcp/node-id 2
-                                             ::pco/op-name a2
-                                             ::pcp/expects {:a {}}}
-                                            3
-                                            {::pcp/node-id 3
-                                             ::pcp/run-or  #{1 2}
-                                             ::pcp/expects {:a {}}}}})))
-
-    (testing "with run context"
-      (is (= (pcp/compute-root-or
-               {::pcp/root  3
-                ::pcp/nodes {1 {::pcp/node-id 1
-                                ::pco/op-name 'a
-                                ::pcp/expects {:a {}}}
-                             2 {::pcp/node-id 2
-                                ::pco/op-name 'a2
-                                ::pcp/expects {:a {}}}
-                             3 {::pcp/node-id  3
-                                ::pcp/run-or   #{1 2}
-                                ::pcp/expects  {:a {}}
-                                ::pcp/run-next 10}
-                             4 {::pcp/node-id  4
-                                ::pco/op-name  'a3
-                                ::pcp/expects  {:a {}}
-                                ::pcp/run-next 10}}}
-               (assoc (base-graph-env)
-                 ::pci/index-resolvers {'a3 {::pco/provides {:a {}}}})
-               {::pcp/node-id 4})
-             '#:com.wsscode.pathom3.connect.planner{:root 3,
-                                                    :nodes {1 {:com.wsscode.pathom3.connect.planner/node-id 1,
-                                                               :com.wsscode.pathom3.connect.operation/op-name a,
-                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}}},
-                                                            2 {:com.wsscode.pathom3.connect.planner/node-id 2,
-                                                               :com.wsscode.pathom3.connect.operation/op-name a2,
-                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}}},
-                                                            3 #:com.wsscode.pathom3.connect.planner{:node-id 3,
-                                                                                                    :run-or #{1
-                                                                                                              4
-                                                                                                              2},
-                                                                                                    :expects {:a {}},
-                                                                                                    :run-next 10},
-                                                            4 {:com.wsscode.pathom3.connect.planner/node-id 4,
-                                                               :com.wsscode.pathom3.connect.operation/op-name a3,
-                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
-                                                               :com.wsscode.pathom3.connect.planner/run-next 10,
-                                                               :com.wsscode.pathom3.connect.planner/node-parents #{3}}}})))))
-
-(deftest collapse-and-nodes-test
-  (is (= (pcp/collapse-and-nodes
-           '{::pcp/nodes {1 {::pcp/run-and #{2 3}}
-                          2 {::pcp/node-parents #{1}}
-                          3 {::pcp/node-parents #{1}}
-                          4 {::pcp/run-and #{5 6}}
-                          5 {::pcp/node-parents #{4}}
-                          6 {::pcp/node-parents #{4}}}}
-           1
-           4)
-         {::pcp/nodes {1 {::pcp/run-and #{6 3 2 5}}
-                       2 {::pcp/node-parents #{1}}
-                       3 {::pcp/node-parents #{1}}
-                       5 {::pcp/node-parents #{1}}
-                       6 {::pcp/node-parents #{1}}}}))
-
-  (testing "can merge when target node contains run-next and branches are the same"
-    (is (= (pcp/collapse-and-nodes
-             '{::pcp/nodes {1 {::pcp/run-and  #{2 3}
-                               ::pcp/run-next 7}
-                            2 {::pcp/node-parents #{1}}
-                            3 {::pcp/node-parents #{1}}
-                            4 {::pcp/run-and #{2 3}}
-                            7 {::pcp/node-id 7}}}
-             1
-             4)
-           {::pcp/nodes {1 {::pcp/run-and #{3 2} ::pcp/run-next 7}
-                         2 {::pcp/node-parents #{1}}
-                         3 {::pcp/node-parents #{1}}
-                         7 {::pcp/node-id 7}}})))
-
-  (testing "can merge when node contains run-next and branches are the same"
-    (is (= (pcp/collapse-and-nodes
-             '{::pcp/nodes {1 {::pcp/run-and #{2 3}}
-                            2 {::pcp/node-parents #{1}}
-                            3 {::pcp/node-parents #{1}}
-                            4 {::pcp/run-and  #{2 3}
-                               ::pcp/run-next 7}
-                            7 {::pcp/node-id 7}}}
-             1
-             4)
-           {::pcp/nodes {1 {::pcp/run-and  #{2 3}
-                            ::pcp/run-next 7}
-                         2 {::pcp/node-parents #{1}}
-                         3 {::pcp/node-parents #{1}}
-                         7 {::pcp/node-id 7}}})))
-
-  (testing "can merge when both nodes run-next are the same"
-    (is (= (pcp/collapse-and-nodes
-             '{::pcp/nodes {1 {::pcp/run-and  #{2 3}
-                               ::pcp/run-next 7}
-                            2 {::pcp/node-parents #{1}}
-                            3 {::pcp/node-parents #{1}}
-                            4 {::pcp/run-and  #{5 6}
-                               ::pcp/run-next 7}
-                            5 {::pcp/node-parents #{4}}
-                            6 {::pcp/node-parents #{4}}
-                            7 {::pcp/node-id 7}}}
-             1
-             4)
-           {::pcp/nodes {1 {::pcp/run-and  #{6 3 2 5}
-                            ::pcp/run-next 7}
-                         2 {::pcp/node-parents #{1}}
-                         3 {::pcp/node-parents #{1}}
-                         5 {::pcp/node-parents #{1}}
-                         6 {::pcp/node-parents #{1}}
-                         7 {::pcp/node-id 7}}})))
-
-  (testing "transfer after nodes"
-    (is (= (pcp/collapse-and-nodes
-             '{::pcp/nodes {1 {::pcp/run-and #{2 3}}
-                            2 {::pcp/node-parents #{1}}
-                            3 {::pcp/node-parents #{1}}
-                            4 {::pcp/run-and      #{5 6}
-                               ::pcp/node-parents #{8}}
-                            5 {::pcp/node-parents #{4}}
-                            6 {::pcp/node-parents #{4}}
-                            7 {::pcp/node-id 7}
-                            8 {::pcp/run-next 4}}}
-             1
-             4)
-           {::pcp/nodes {1 {::pcp/run-and      #{6 3 2 5}
-                            ::pcp/node-parents #{8}}
-                         2 {::pcp/node-parents #{1}}
-                         3 {::pcp/node-parents #{1}}
-                         5 {::pcp/node-parents #{1}}
-                         6 {::pcp/node-parents #{1}}
-                         7 {::pcp/node-id 7}
-                         8 {::pcp/run-next 1}}})))
-
-  (testing "trigger an error if try to run with different run-next values"
-    (is (thrown?
-          #?(:clj AssertionError :cljs js/Error)
-          (pcp/collapse-and-nodes
-            '{::pcp/nodes {1 {::pcp/run-and  #{2 3}
-                              ::pcp/run-next 7}
-                           2 {::pcp/node-parents #{1}}
-                           3 {::pcp/node-parents #{1}}
-                           4 {::pcp/run-and  #{5 6}
-                              ::pcp/run-next 8}
-                           5 {::pcp/node-parents #{4}}
-                           6 {::pcp/node-parents #{4}}
-                           7 {::pcp/node-id 7}
-                           8 {::pcp/node-id 8}}}
-            1
-            4)))))
-
 (deftest find-node-direct-ancestor-chain-test
   (testing "return self on edge"
     (is (= (pcp/find-node-direct-ancestor-chain
@@ -4451,6 +3995,7 @@
              1)
            [2 1]))))
 
+#_
 (deftest find-furthest-ancestor-test
   (testing "return self on edge"
     (is (= (pcp/find-furthest-ancestor
@@ -4488,6 +4033,7 @@
              1)
            3))))
 
+#_
 (deftest find-dependent-ancestor-test
   (testing "no parents, return self"
     (is (= (pcp/find-dependent-ancestor
@@ -4598,6 +4144,7 @@
               ::pcp/run-next 2})
            {::pcp/node-id 2}))))
 
+#_
 (deftest same-resolver-test
   (is (= (pcp/same-resolver?
            {::pco/op-name 'a}
@@ -4638,6 +4185,7 @@
            6)
          [6 4 5 1 2 3])))
 
+#_
 (deftest node-ancestors-paths-test
   (is (= (pcp/node-ancestors-paths
            '{::pcp/nodes {1 {::pcp/node-id 1}
@@ -4719,11 +4267,13 @@
              1)
            [1 3 2 4]))))
 
+#_
 (deftest first-common-ancestors*-test
   (is (= (pcp/first-common-ancestors*
            [[[1 2]]])
          #{2})))
 
+#_
 (deftest first-common-ancestor-test
   (is (= (pcp/first-common-ancestor
            '{::pcp/nodes {1 {::pcp/run-and #{2 3}}
@@ -4848,6 +4398,7 @@
                                            b #{2}}}
             1)))))
 
+#_
 (deftest collapse-nodes-chain-test
   (testing "merge requires and attr sources"
     (is (= (pcp/collapse-nodes-chain
@@ -4946,6 +4497,7 @@
                                           b #{3}
                                           c #{4}}}))))
 
+#_
 (deftest compute-node-chain-depth-test
   (testing "simple chain"
     (is (= (pcp/compute-node-chain-depth
@@ -5004,6 +4556,7 @@
                          3 {::pcp/node-chain-depth 0}
                          4 {::pcp/node-chain-depth 0}}}))))
 
+#_
 (deftest compute-node-depth-test
   (is (= (pcp/compute-node-depth
            {::pcp/nodes {1 {}}}
@@ -5067,6 +4620,7 @@
                          4 {::pcp/node-parents     #{2}
                             ::pcp/node-chain-depth 0}}}))))
 
+#_
 (deftest node-depth-test
   (is (= (pcp/node-depth
            {::pcp/nodes {1 {::pcp/node-parents #{2}}
@@ -5074,6 +4628,7 @@
            1)
          1)))
 
+#_
 (deftest compute-all-node-depths-test
   (is (= (pcp/compute-all-node-depths
            {::pcp/nodes {1 {::pcp/node-parents #{2}}
@@ -5110,6 +4665,7 @@
          {::pcp/nodes {1 {}
                        2 {}}})))
 
+#_
 (deftest params-conflicting-keys-test
   (is (= (pcp/params-conflicting-keys {} {})
          #{}))
@@ -5128,6 +4684,7 @@
            {::pcp/index-attrs {:a 1 :b 2}})
          #{:b :a})))
 
+#_
 (deftest node-parent-run-next-test
   (is (= (pcp/node-parent-run-next {::pcp/nodes {1 {::pcp/node-id      1
                                                     ::pcp/node-parents #{2}}
