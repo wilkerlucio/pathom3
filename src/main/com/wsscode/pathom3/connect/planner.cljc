@@ -762,7 +762,8 @@
     (let [missing      (pfsd/missing available-data input)
           missing-opts (resolvers-missing-optionals env resolvers)
           env          (assoc env ::input input)
-          {leaf-root ::root :as graph'} (compute-resolver-leaf graph env resolvers)]
+          {leaf-root ::root :as graph'} (-> (compute-resolver-leaf graph env resolvers)
+                                            (set-node-source-for-attrs env))]
       (if leaf-root
         (if (seq (merge missing missing-opts))
           (let [graph-with-deps (compute-missing-chain graph' env missing missing-opts resolvers)]
@@ -827,8 +828,7 @@
           [graph #{}]
           (get index-oir attribute))]
     (if (seq node-ids)
-      (-> (create-root-or graph' env node-ids)
-          (set-node-source-for-attrs env))
+      (create-root-or graph' env node-ids)
       (-> graph
           (add-unreachable-attr env attribute)
           (merge-unreachable graph')))))
