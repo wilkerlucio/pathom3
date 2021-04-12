@@ -364,7 +364,8 @@
                (fn [{::pcp/keys [graph]} _or-node options]
                  (first (into []
                               (comp (map #(pcp/get-node graph %))
-                                    (filter #(= (::pco/op-name %) `value2)))
+                                    (filter #(= (::pco/op-name %) `value2))
+                                    (map ::pcp/node-id))
                               options)))}
               [(pco/resolver `value
                  {::pco/output [:value]}
