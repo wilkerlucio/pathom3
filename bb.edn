@@ -4,8 +4,8 @@
  :tasks
  {init
   (do
-    (require 'tasks)
-    (def source-paths ["src" "test"]))
+      (require 'tasks)
+      (def source-paths ["src" "test"]))
 
   format-check
   {:depends [init]
@@ -26,4 +26,9 @@
   (shell "clojure" "-A:test:test-deps")
 
   test-cljs
-  (shell "shadow-cljs" "watch" "test" "-A:test-deps:test-cljs")}}
+  (shell "shadow-cljs" "watch" "test" "-A:test-deps:test-cljs")
+
+  test-cljs-once
+  (do
+      (shell "shadow-cljs" "compile" "ci")
+      (shell "karma" "start" "--single-run"))}}
