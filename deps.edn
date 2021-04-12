@@ -21,8 +21,12 @@
 
   :test-deps
   {:extra-deps {nubank/matcher-combinators {:mvn/version "3.1.4"}
-                macroz/tangle              {:mvn/version "0.2.1"}
+                meander/epsilon            {:mvn/version "0.0.602"}
                 org.clojure/test.check     {:mvn/version "1.1.0"}}}
+
+  :tasks
+  {:extra-paths ["src/tasks"]
+   :extra-deps  {babashka/babashka {:mvn/version "0.3.3"}}}
 
   :test
   {:extra-paths ["test"]
