@@ -379,6 +379,16 @@
     graph
     node-parents))
 
+(defn remove-node*
+  "Remove a node from the graph. Doesn't remove any references, caution!"
+  [graph node-id]
+  (let [node (get-node graph node-id)]
+    (-> graph
+        (cond->
+          (::pco/op-name node)
+          (update-in [::index-resolver->nodes (::pco/op-name node)] disj node-id))
+        (update ::nodes dissoc node-id))))
+
 (defn remove-node
   "Remove a node from the graph. In case of resolver nodes it also removes them
   from the ::index-syms and after node references."
@@ -392,13 +402,22 @@
       the run-next references from the pointer nodes before removing it. Also check if
       parent is branch and trying to merge."))
     (-> graph
-        (cond->
-          (::pco/op-name node)
-          (update-in [::index-resolver->nodes (::pco/op-name node)] disj node-id))
         (remove-branch-node-parents node-id)
         (remove-node-parent run-next node-id)
         (remove-from-parent-branches node)
-        (update ::nodes dissoc node-id))))
+        (remove-node* node-id))))
+
+(defn remove-root-node-cluster
+  "Remove a complete node cluster, starting from some node root."
+  [graph node-ids]
+  (if (seq node-ids)
+    (let [[node-id & rest] node-ids
+          {::keys [run-next] :as node} (get-node graph node-id)
+          branches   (or (node-branches node) #{})
+          next-nodes (cond-> branches run-next (conj run-next))]
+      (recur (remove-node* graph node-id)
+        (into rest next-nodes)))
+    graph))
 
 (defn include-node
   "Add new node to the graph, this add the node and the index of in ::index-syms."
@@ -446,7 +465,8 @@
                             ::highlight-styles {(::root <>) 1}}))))))
 
 (defn node-attribute-provides
-  "For a specific attribute, return a vector "
+  "For a specific attribute, return a vector containing the provides of each node of
+  that resolver."
   [graph env attr]
   (some->>
     (get-in graph [::index-attrs attr])
@@ -626,18 +646,21 @@
 
 (defn compute-attribute-dependency-graph
   [graph env attr shape]
-  (let [graph' (compute-attribute-graph
-                 (dissoc graph ::root)
-                 (-> env
-                     (dissoc ::p.attr/attribute)
-                     (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
-                     (assoc
-                       :edn-query-language.ast/node
-                       {:type         :prop
-                        :key          attr
-                        :dispatch-key attr})))]
+  (add-snapshot! graph env {::snapshot-message (str "Processing dependency " {attr shape})})
+  (let [graph' (-> graph
+                   (dissoc ::root)
+                   (compute-attribute-graph
+                     (-> env
+                         (dissoc ::p.attr/attribute)
+                         (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
+                         (assoc
+                           :edn-query-language.ast/node
+                           {:type         :prop
+                            :key          attr
+                            :dispatch-key attr}))))]
     (if (and (::root graph') (seq shape))
       (let [available-provides (node-attribute-provides graph' env attr)]
+        (add-snapshot! graph' env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))})
         ; TODO this should consider the case that a few of the nodes can provide the
         ; sub-query, in this case only they should be kept in the graph, and the other
         ; options must be removed
@@ -727,7 +750,7 @@
     missing))
 
 (defn compute-missing-chain-optional-deps
-  [graph {::keys [available-data] :as env} opt-missing]
+  [graph {::keys [available-data] :as env} opt-missing node-map]
   (reduce-kv
     (fn [[graph node-map] attr shape]
       (if (contains? available-data attr)
@@ -736,10 +759,13 @@
 
         (let [graph' (compute-attribute-dependency-graph graph env attr shape)]
           (if-let [root (::root graph')]
-            [graph'
+            [(cond-> graph'
+               (contains? node-map attr)
+               (-> (remove-root-node-cluster [(get node-map attr)])
+                   (add-snapshot! env {::snapshot-message "Optional computation overrode the required."})))
              (assoc node-map attr root)]
             [(merge-unreachable graph graph' env {attr shape}) node-map]))))
-    [graph {}]
+    [graph node-map]
     opt-missing))
 
 #_
@@ -778,7 +804,7 @@
         [graph' node-map] (compute-missing-chain-deps graph env missing)]
     (if (some? node-map)
       ;; add new nodes (and maybe nested processes)
-      (let [[graph'' node-map-opts] (compute-missing-chain-optional-deps graph' env missing-optionals)
+      (let [[graph'' node-map-opts] (compute-missing-chain-optional-deps graph' env missing-optionals node-map)
             all-nodes (vals (merge node-map node-map-opts))]
         (-> graph''
             (cond->

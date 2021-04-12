@@ -765,15 +765,15 @@
 
                ::eql/query [:total-score]))
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name        total-score,
-                                                                             :com.wsscode.pathom3.connect.planner/node-id          1,
                                                                              :com.wsscode.pathom3.connect.planner/expects          {:total-score {}},
                                                                              :com.wsscode.pathom3.connect.planner/input            {:users {}},
-                                                                             :com.wsscode.pathom3.connect.planner/node-parents     #{2},
-                                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:total-score}},
-                                                                          2 {:com.wsscode.pathom3.connect.operation/op-name        users,
-                                                                             :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                             :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:total-score},
+                                                                             :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                          3 {:com.wsscode.pathom3.connect.operation/op-name        users,
                                                                              :com.wsscode.pathom3.connect.planner/expects          {:users {}},
                                                                              :com.wsscode.pathom3.connect.planner/input            {},
+                                                                             :com.wsscode.pathom3.connect.planner/node-id          3,
                                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:users},
                                                                              :com.wsscode.pathom3.connect.planner/run-next         1}},
                                                   :index-ast             {:total-score {:type         :prop,
@@ -786,9 +786,9 @@
                                                                                         :key          :users,
                                                                                         :dispatch-key :users}},
                                                   :index-resolver->nodes {total-score #{1},
-                                                                          users       #{2}},
-                                                  :index-attrs           {:total-score #{1}, :users #{2}},
-                                                  :root                  2}))))
+                                                                          users       #{3}},
+                                                  :index-attrs           {:total-score #{1}, :users #{3 2}},
+                                                  :root                  3}))))
 
 (deftest compute-run-graph-optional-inputs-test
   (testing "plan continues when optional thing is missing"
@@ -2916,3 +2916,14 @@
                       ::pco/output  [{:users [:user/id]}]}]})
     {}
     {:scores-sum {}}))
+
+(deftest remove-root-node-cluster-test
+  (is (= (pcp/remove-root-node-cluster
+           {::pcp/nodes {1 {::pcp/node-id  1
+                            ::pcp/run-next 2}
+                         2 {::pcp/run-and #{3 4}}
+                         3 {::pcp/node-id 3}
+                         4 {::pcp/node-id 4}
+                         5 {::pcp/node-id 5}}}
+           [1])
+         {::pcp/nodes {5 {::pcp/node-id 5}}})))
