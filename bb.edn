@@ -23,4 +23,7 @@
   tasks/setup-git-hooks
 
   test
-  (shell "clojure -A:test:test-deps")}}
+  (shell "clojure" "-A:test:test-deps")
+
+  test-cljs
+  (shell "shadow-cljs" "watch" "test" "-A:test-deps:test-cljs")}}
