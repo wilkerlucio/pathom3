@@ -31,13 +31,19 @@ Pathom 3 uses [Babashka](https://github.com/babashka/babashka) for task scripts,
 ### Clojure
 
 ```shell script
-bb run test
+bb test
 ```
 
 ### ClojureScript
 
+To run once
+
 ```shell script
-npm install
-npx shadow-cljs compile ci
-npx karma start --single-run
+bb test-cljs-once
+```
+
+Or to start shadow watch and test in the browser:
+
+```shell script
+bb test-cljs
 ```
