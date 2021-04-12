@@ -493,10 +493,13 @@
 
 (defn merge-unreachable
   "Copy unreachable attributes and resolvers from discard-graph to target-graph"
-  [target-graph {::keys [unreachable-paths]}]
-  (cond-> target-graph
-    unreachable-paths
-    (update ::unreachable-paths pfsd/merge-shapes (or unreachable-paths {}))))
+  ([target-graph {::keys [unreachable-paths]}]
+   (cond-> target-graph
+     unreachable-paths
+     (update ::unreachable-paths pfsd/merge-shapes (or unreachable-paths {}))))
+  ([target-graph graph env path]
+   (-> (merge-unreachable target-graph graph)
+       (add-unreachable-path env path))))
 
 (>defn graph-provides
   "Get a set with all provided attributes from the graph."
@@ -592,52 +595,7 @@
 
 ; endregion
 
-; region path expansion
-
-(defn create-node-for-resolver-call
-  "Create a new node representative to run a given resolver."
-  [{::keys        [input]
-    ::p.attr/keys [attribute]
-    ::pco/keys    [op-name]
-    ast           :edn-query-language.ast/node
-    :as           env}]
-  (let [requires   {attribute {}}
-        ast-params (:params ast)]
-    (cond->
-      (new-node env
-                {::pco/op-name op-name
-                 ::expects     requires
-                 ::input       input})
-
-      (seq ast-params)
-      (assoc ::params ast-params))))
-
-(defn compute-resolver-leaf
-  "For a set of resolvers (the R part of OIR index), create one OR node that branches
-  to each option in the set."
-  [graph {::keys [input] :as env} resolvers]
-  (let [resolver-nodes (into
-                         (list)
-                         (map #(create-node-for-resolver-call (assoc env ::pco/op-name %)))
-                         resolvers)]
-    (if (seq resolver-nodes)
-      (-> (reduce #(include-node % %2) graph resolver-nodes)
-          (create-root-or env (mapv ::node-id resolver-nodes))
-          (as-> <>
-            (add-snapshot! <> env {::snapshot-message (str "Add nodes for input path " (pr-str input))
-                                   ::highlight-nodes  (into #{(::root <>)} (map ::node-id) resolver-nodes)
-                                   ::highlight-styles {(::root <>) 1}})))
-      (add-snapshot! graph env {::snapshot-message "No reachable resolver found."}))))
-
-(defn resolvers-missing-optionals
-  "Merge the optionals from a collection of resolver symbols."
-  [{::keys [available-data] :as env} resolvers]
-  (->> (transduce
-         (map #(pci/resolver-optionals env %))
-         pfsd/merge-shapes
-         {}
-         resolvers)
-       (pfsd/missing available-data)))
+; region sub-query process
 
 (defn extend-attribute-sub-query [graph attr shape]
   (-> graph
@@ -690,25 +648,81 @@
               (add-unreachable-path env {attr shape}))))
       graph')))
 
+(defn extend-available-attribute-nested
+  [graph {::keys [available-data] :as env} attr shape]
+  (if (shape-reachable? env (get available-data attr) shape)
+    [(-> (extend-attribute-sub-query graph attr shape)
+         (mark-attribute-process-sub-query {:key attr :children []}))
+     true]
+    ; TODO maybe the sub-query fails partially, in this case making the whole
+    ; sub-query unreachable will lead to bad results
+    [(add-unreachable-path graph env {attr shape})
+     false]))
+
+; endregion
+
+; region path expansion
+
+(defn create-node-for-resolver-call
+  "Create a new node representative to run a given resolver."
+  [{::keys        [input]
+    ::p.attr/keys [attribute]
+    ::pco/keys    [op-name]
+    ast           :edn-query-language.ast/node
+    :as           env}]
+  (let [requires   {attribute {}}
+        ast-params (:params ast)]
+    (cond->
+      (new-node env
+                {::pco/op-name op-name
+                 ::expects     requires
+                 ::input       input})
+
+      (seq ast-params)
+      (assoc ::params ast-params))))
+
+(defn compute-resolver-leaf
+  "For a set of resolvers (the R part of OIR index), create one OR node that branches
+  to each option in the set."
+  [graph {::keys [input] :as env} resolvers]
+  (let [resolver-nodes (into
+                         (list)
+                         (map #(create-node-for-resolver-call (assoc env ::pco/op-name %)))
+                         resolvers)]
+    (if (seq resolver-nodes)
+      (-> (reduce #(include-node % %2) graph resolver-nodes)
+          (create-root-or env (mapv ::node-id resolver-nodes))
+          (as-> <>
+            (add-snapshot! <> env {::snapshot-message (str "Add nodes for input path " (pr-str input))
+                                   ::highlight-nodes  (into #{(::root <>)} (map ::node-id) resolver-nodes)
+                                   ::highlight-styles {(::root <>) 1}})))
+      (add-snapshot! graph env {::snapshot-message "No reachable resolver found."}))))
+
+(defn resolvers-missing-optionals
+  "Merge the optionals from a collection of resolver symbols."
+  [{::keys [available-data] :as env} resolvers]
+  (->> (transduce
+         (map #(pci/resolver-optionals env %))
+         pfsd/merge-shapes
+         {}
+         resolvers)
+       (pfsd/missing available-data)))
+
 (defn compute-missing-chain-deps
   [graph {::keys [available-data] :as env} missing]
   (reduce-kv
     (fn [[graph node-map] attr shape]
       (if (contains? available-data attr)
-        (if (shape-reachable? env (get available-data attr) shape)
-          [(-> (extend-attribute-sub-query graph attr shape)
-               (mark-attribute-process-sub-query {:key attr :children []}))
-           node-map]
-          ; TODO maybe the sub-query fails partially, in this case making the whole
-          ; sub-query unreachable will lead to bad results
-          (reduced [(add-unreachable-path graph env {attr shape}) nil]))
+        (let [[graph' extended?] (extend-available-attribute-nested graph env attr shape)]
+          (if extended?
+            [graph' node-map]
+            (reduced [graph' nil])))
 
         (let [graph' (compute-attribute-dependency-graph graph env attr shape)]
           (if-let [root (::root graph')]
             [graph'
-
              (assoc node-map attr root)]
-            (reduced [(add-unreachable-path graph env {attr shape}) nil])))))
+            (reduced [(merge-unreachable graph graph' env {attr shape}) nil])))))
     [graph {}]
     missing))
 
@@ -717,14 +731,14 @@
   (reduce-kv
     (fn [[graph node-map] attr shape]
       (if (contains? available-data attr)
-        [(-> (extend-attribute-sub-query graph attr shape)
-             (mark-attribute-process-sub-query {:key attr :children []}))
-         node-map]
+        (let [[graph'] (extend-available-attribute-nested graph env attr shape)]
+          [graph' node-map])
 
         (let [graph' (compute-attribute-dependency-graph graph env attr shape)]
           (if-let [root (::root graph')]
-            [graph' (assoc node-map attr root)]
-            [(merge-unreachable graph graph') node-map]))))
+            [graph'
+             (assoc node-map attr root)]
+            [(merge-unreachable graph graph' env {attr shape}) node-map]))))
     [graph {}]
     opt-missing))
 

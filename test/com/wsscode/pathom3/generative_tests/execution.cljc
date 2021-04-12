@@ -8,6 +8,7 @@
     [com.wsscode.pathom.core :as p]
     [com.wsscode.pathom.viz.ws-connector.pathom3 :as p.connector]
     [com.wsscode.pathom3.attribute :as p.attr]
+    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
@@ -595,6 +596,22 @@
                    ::pco/output  [:c]
                    ::pco/resolve (fn [_ _] {:c "c"})}]
      ::query     [:a]})
+
+  (log-request-snapshots
+    {::resolvers [(pco/resolver 'users
+                    {::pco/output [{:users [:user/id]}]}
+                    (fn [_ _]
+                      {:users [{:user/id 1}
+                               {:user/id 2}]}))
+                  (pbir/static-attribute-map-resolver :user/id :user/score
+                    {1 10
+                     2 20})
+                  (pco/resolver 'total-score
+                    {::pco/input  [{:users [(pco/? :user/score)]}]
+                     ::pco/output [:total-score]}
+                    (fn [_ {:keys [users]}]
+                      {:total-score (reduce + 0 (map :user/score users))}))]
+     ::query     [:total-score]})
 
   (log-request-snapshots
     {::resolvers [{::pco/op-name 'a
