@@ -974,10 +974,21 @@
               ::eql/query     [{:>/p1 [:a]}
                                {:>/p2 [:a]}]})
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name        a,
-                                                                             :com.wsscode.pathom3.connect.planner/node-id          1,
                                                                              :com.wsscode.pathom3.connect.planner/expects          {:a {}},
                                                                              :com.wsscode.pathom3.connect.planner/input            {},
-                                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a}}},
+                                                                             :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
+                                                                             :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                          2 {:com.wsscode.pathom3.connect.operation/op-name        a,
+                                                                             :com.wsscode.pathom3.connect.planner/expects          {:a {}},
+                                                                             :com.wsscode.pathom3.connect.planner/input            {},
+                                                                             :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
+                                                                             :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                          3 #:com.wsscode.pathom3.connect.planner{:expects {:a {}},
+                                                                                                                  :node-id 3,
+                                                                                                                  :run-and #{1
+                                                                                                                             2}}},
                                                   :index-ast             #:>{:p1 {:type         :join,
                                                                                   :dispatch-key :>/p1,
                                                                                   :key          :>/p1,
@@ -993,9 +1004,9 @@
                                                                                                   :dispatch-key :a,
                                                                                                   :key          :a}]}},
                                                   :placeholders          #{:>/p1 :>/p2},
-                                                  :index-resolver->nodes {a #{1}},
-                                                  :root                  1,
-                                                  :index-attrs           {:a #{1}}})))
+                                                  :index-resolver->nodes {a #{1 2}},
+                                                  :index-attrs           {:a #{1 2}},
+                                                  :root                  3})))
 
   (testing "nested placeholders"
     (is (= (compute-run-graph
@@ -1073,118 +1084,36 @@
                {::pci/index-oir '{:a {{} #{a}}
                                   :b {{} #{a}}}
                 ::eql/query     [(list :a {:x 1}) :b]})
-             '{::pcp/nodes                 {1 {::pco/op-name          a
-                                               ::pcp/params           {:x 1}
-                                               ::pcp/node-id          1
-                                               ::pcp/expects          {:a {} :b {}}
-                                               ::pcp/input            {}
-                                               ::pcp/source-for-attrs #{:a :b}}}
-               ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/index-attrs           {:b #{1}, :a #{1}}
-               ::pcp/index-ast             {:a {:type         :prop,
-                                                :dispatch-key :a,
-                                                :key          :a,
-                                                :params       {:x 1}},
-                                            :b {:type         :prop,
-                                                :dispatch-key :b,
-                                                :key          :b}}
-               ::pcp/root                  1})))
+             '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name        a,
+                                                                               :com.wsscode.pathom3.connect.planner/expects          {:a {}},
+                                                                               :com.wsscode.pathom3.connect.planner/input            {},
+                                                                               :com.wsscode.pathom3.connect.planner/node-id          1,
+                                                                               :com.wsscode.pathom3.connect.planner/params           {:x 1},
+                                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
+                                                                               :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                            2 {:com.wsscode.pathom3.connect.operation/op-name        a,
+                                                                               :com.wsscode.pathom3.connect.planner/expects          {:b {}},
+                                                                               :com.wsscode.pathom3.connect.planner/input            {},
+                                                                               :com.wsscode.pathom3.connect.planner/node-id          2,
+                                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
+                                                                               :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
+                                                                            3 #:com.wsscode.pathom3.connect.planner{:expects {:a {},
+                                                                                                                              :b {}},
+                                                                                                                    :node-id 3,
+                                                                                                                    :run-and #{1
+                                                                                                                               2}}},
+                                                    :index-ast             {:a {:type         :prop,
+                                                                                :dispatch-key :a,
+                                                                                :key          :a,
+                                                                                :params       {:x 1}},
+                                                                            :b {:type         :prop,
+                                                                                :dispatch-key :b,
+                                                                                :key          :b}},
+                                                    :index-resolver->nodes {a #{1 2}},
+                                                    :index-attrs           {:a #{1}, :b #{2}},
+                                                    :root                  3})))))
 
-    (testing "getting params from the later node"
-      (is (= (compute-run-graph
-               {::pci/index-oir '{:a {{} #{a}}
-                                  :b {{} #{a}}}
-                ::eql/query     [:a (list :b {:x 1})]})
-             '{::pcp/nodes                 {1 {::pco/op-name          a
-                                               ::pcp/params           {:x 1}
-                                               ::pcp/node-id          1
-                                               ::pcp/expects          {:a {} :b {}}
-                                               ::pcp/input            {}
-                                               ::pcp/source-for-attrs #{:a :b}}}
-               ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/index-attrs           {:b #{1}, :a #{1}}
-               ::pcp/index-ast             {:a {:type         :prop,
-                                                :dispatch-key :a,
-                                                :key          :a},
-                                            :b {:type         :prop,
-                                                :dispatch-key :b,
-                                                :key          :b,
-                                                :params       {:x 1}}}
-               ::pcp/root                  1})))
-
-    (testing "merging params"
-      (is (= (compute-run-graph
-               {::pci/index-oir '{:a {{} #{a}}
-                                  :b {{} #{a}}}
-                ::eql/query     [(list :a {:x 1}) (list :b {:y 2})]})
-             '{::pcp/nodes                 {1 {::pco/op-name          a
-                                               ::pcp/params           {:x 1
-                                                                       :y 2}
-                                               ::pcp/node-id          1
-                                               ::pcp/expects          {:a {} :b {}}
-                                               ::pcp/input            {}
-                                               ::pcp/source-for-attrs #{:a :b}}}
-               ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/index-attrs           {:b #{1}, :a #{1}}
-               ::pcp/index-ast             {:a {:type         :prop,
-                                                :dispatch-key :a,
-                                                :key          :a,
-                                                :params       {:x 1}},
-                                            :b {:type         :prop,
-                                                :dispatch-key :b,
-                                                :key          :b,
-                                                :params       {:y 2}}}
-               ::pcp/root                  1})))
-
-    (testing "conflicting params"
-      (is (= (compute-run-graph
-               {::pci/index-oir '{:a {{} #{a}}
-                                  :b {{} #{a}}}
-                ::eql/query     [(list :a {:x 1}) (list :b {:x 2})]})
-             '{::pcp/nodes                 {1 {::pco/op-name          a
-                                               ::pcp/params           {:x 2}
-                                               ::pcp/node-id          1
-                                               ::pcp/expects          {:a {} :b {}}
-                                               ::pcp/input            {}
-                                               ::pcp/source-for-attrs #{:a :b}}}
-               ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/index-attrs           {:b #{1}, :a #{1}}
-               ::pcp/index-ast             {:a {:type         :prop,
-                                                :dispatch-key :a,
-                                                :key          :a,
-                                                :params       {:x 1}},
-                                            :b {:type         :prop,
-                                                :dispatch-key :b,
-                                                :key          :b,
-                                                :params       {:x 2}}}
-               ::pcp/root                  1
-               ::pcp/warnings              [{::pcp/node-id         1
-                                             ::pcp/warn            "Conflicting params on resolver call."
-                                             ::pcp/conflict-params #{:x}}]})))
-
-    (testing "its not a conflict when the values are the same."
-      (is (= (compute-run-graph
-               {::pci/index-oir '{:a {{} #{a}}
-                                  :b {{} #{a}}}
-                ::eql/query     [(list :a {:x 1}) (list :b {:x 1})]})
-             '{::pcp/nodes                 {1 {::pco/op-name          a
-                                               ::pcp/params           {:x 1}
-                                               ::pcp/node-id          1
-                                               ::pcp/expects          {:a {} :b {}}
-                                               ::pcp/input            {}
-                                               ::pcp/source-for-attrs #{:a :b}}}
-               ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/index-attrs           {:b #{1}, :a #{1}}
-               ::pcp/index-ast             {:a {:type         :prop,
-                                                :dispatch-key :a,
-                                                :key          :a,
-                                                :params       {:x 1}},
-                                            :b {:type         :prop,
-                                                :dispatch-key :b,
-                                                :key          :b,
-                                                :params       {:x 1}}}
-               ::pcp/root                  1})))))
-
+#_
 (deftest compute-run-graph-dynamic-resolvers-test
   (testing "unreachable"
     (is (= (compute-run-graph
@@ -1632,6 +1561,7 @@
                                               :key          :d1}}
             ::pcp/root                  4}))))
 
+#_
 (deftest compute-run-graph-dynamic-nested-queries-test
   (testing "simple nested query"
     (is (= (compute-run-graph
@@ -2009,102 +1939,6 @@
                                                             {:type         :prop,
                                                              :dispatch-key :e,
                                                              :key          :e}]}}}))))
-
-(deftest compute-run-regressions-test
-  (testing "keep graph when node and next node are already linked via run-next"
-    (is (= (compute-run-graph
-             {::pci/index-oir
-              '{:foo.bank-account/routing-number   {#:foo.routing-number{:routing-number {}} #{foo.routing_number_SLASH_routing_number->foo.bank_account_SLASH_routing_number-alias}},
-                :foo.contact/id                    {#:foo.employer{:id {}}          #{com.wsscode.pathom3.demos.debug/employer-by-id-resolver},
-                                                    #:foo.employer{:external-id {}} #{com.wsscode.pathom3.demos.debug/employer-by-external-id-resolver}},
-                :foo.bank-account/bank-account-id  {#:foo.employer{:id {}}          #{com.wsscode.pathom3.demos.debug/employer-by-id-resolver},
-                                                    #:foo.employer{:external-id {}} #{com.wsscode.pathom3.demos.debug/employer-by-external-id-resolver}},
-                :foo.employer/id                   {#:foo.employer{:external-id {}} #{com.wsscode.pathom3.demos.debug/employer-by-external-id-resolver}},
-                :foo.bank-account/id               {#:foo.bank-account{:bank-account-id {}} #{com.wsscode.pathom3.demos.debug/bank-account-resolver}},
-                :foo.routing-number/routing-number {#:foo.bank-account{:bank-account-id {}} #{com.wsscode.pathom3.demos.debug/bank-account-resolver}},
-                :foo.contact/email                 {#:foo.contact{:id {}} #{com.wsscode.pathom3.demos.debug/contact-resolver}},
-                :foo.routing-number/bank-name      {#:foo.routing-number{:routing-number {}} #{com.wsscode.pathom3.demos.debug/routing-number-resolver}}}
-
-              ::pcp/available-data
-              {:foo.employer/external-id {}}
-
-              ::eql/query
-              [:foo.routing-number/bank-name
-               :foo.bank-account/routing-number
-               :foo.contact/email]})
-           '#:com.wsscode.pathom3.connect.planner{:nodes {7 {:com.wsscode.pathom3.connect.operation/op-name foo.routing_number_SLASH_routing_number->foo.bank_account_SLASH_routing_number-alias,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 7,
-                                                             :com.wsscode.pathom3.connect.planner/expects #:foo.bank-account{:routing-number {}},
-                                                             :com.wsscode.pathom3.connect.planner/input #:foo.routing-number{:routing-number {}},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{8},
-                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo.bank-account/routing-number}},
-                                                          1 {:com.wsscode.pathom3.connect.operation/op-name com.wsscode.pathom3.demos.debug/routing-number-resolver,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
-                                                             :com.wsscode.pathom3.connect.planner/expects #:foo.routing-number{:bank-name {}},
-                                                             :com.wsscode.pathom3.connect.planner/input #:foo.routing-number{:routing-number {}},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{8},
-                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo.routing-number/bank-name}},
-                                                          4 {:com.wsscode.pathom3.connect.operation/op-name com.wsscode.pathom3.demos.debug/employer-by-external-id-resolver,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 4,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:foo.employer/id {},
-                                                                                                           :foo.bank-account/bank-account-id {},
-                                                                                                           :foo.contact/id {}},
-                                                             :com.wsscode.pathom3.connect.planner/input #:foo.employer{:external-id {}},
-                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo.employer/id
-                                                                                                                     :foo.bank-account/bank-account-id
-                                                                                                                     :foo.contact/id},
-                                                             :com.wsscode.pathom3.connect.planner/run-next 6},
-                                                          6 #:com.wsscode.pathom3.connect.planner{:node-id 6,
-                                                                                                  :expects {:foo.bank-account/bank-account-id {},
-                                                                                                            :foo.routing-number/routing-number {},
-                                                                                                            :foo.contact/id {},
-                                                                                                            :foo.contact/email {}},
-                                                                                                  :run-and #{3
-                                                                                                             2
-                                                                                                             9},
-                                                                                                  :node-parents #{4}},
-                                                          3 {:com.wsscode.pathom3.connect.operation/op-name com.wsscode.pathom3.demos.debug/employer-by-id-resolver,
-                                                             :com.wsscode.pathom3.connect.planner/node-id 3,
-                                                             :com.wsscode.pathom3.connect.planner/expects {:foo.bank-account/bank-account-id {},
-                                                                                                           :foo.contact/id                   {}},
-                                                             :com.wsscode.pathom3.connect.planner/input     #:foo.employer{:id {}},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents #{6}},
-                                                          2 {:com.wsscode.pathom3.connect.operation/op-name        com.wsscode.pathom3.demos.debug/bank-account-resolver,
-                                                             :com.wsscode.pathom3.connect.planner/node-id          2,
-                                                             :com.wsscode.pathom3.connect.planner/expects          #:foo.routing-number{:routing-number {}},
-                                                             :com.wsscode.pathom3.connect.planner/input            #:foo.bank-account{:bank-account-id {}},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents     #{6},
-                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo.routing-number/routing-number},
-                                                             :com.wsscode.pathom3.connect.planner/run-next         8},
-                                                          9 {:com.wsscode.pathom3.connect.operation/op-name        com.wsscode.pathom3.demos.debug/contact-resolver,
-                                                             :com.wsscode.pathom3.connect.planner/node-id          9,
-                                                             :com.wsscode.pathom3.connect.planner/expects          #:foo.contact{:email {}},
-                                                             :com.wsscode.pathom3.connect.planner/input            #:foo.contact{:id {}},
-                                                             :com.wsscode.pathom3.connect.planner/node-parents     #{6},
-                                                             :com.wsscode.pathom3.connect.planner/source-for-attrs #{:foo.contact/email}},
-                                                          8 #:com.wsscode.pathom3.connect.planner{:node-id      8,
-                                                                                                  :expects      {:foo.routing-number/bank-name    {},
-                                                                                                                 :foo.bank-account/routing-number {}},
-                                                                                                  :run-and      #{7
-                                                                                                                  1},
-                                                                                                  :node-parents #{2}}},
-                                                  :index-ast {:foo.routing-number/bank-name    {:type         :prop,
-                                                                                                :dispatch-key :foo.routing-number/bank-name,
-                                                                                                :key          :foo.routing-number/bank-name},
-                                                              :foo.bank-account/routing-number {:type         :prop,
-                                                                                                :dispatch-key :foo.bank-account/routing-number,
-                                                                                                :key          :foo.bank-account/routing-number},
-                                                              :foo.contact/email               {:type         :prop,
-                                                                                                :dispatch-key :foo.contact/email,
-                                                                                                :key          :foo.contact/email}},
-                                                  :index-resolver->nodes {com.wsscode.pathom3.demos.debug/routing-number-resolver                              #{1},
-                                                                          com.wsscode.pathom3.demos.debug/bank-account-resolver                                #{2},
-                                                                          com.wsscode.pathom3.demos.debug/employer-by-id-resolver                              #{3},
-                                                                          com.wsscode.pathom3.demos.debug/employer-by-external-id-resolver                     #{4},
-                                                                          foo.routing_number_SLASH_routing_number->foo.bank_account_SLASH_routing_number-alias #{7},
-                                                                          com.wsscode.pathom3.demos.debug/contact-resolver                                     #{9}},
-                                                  :index-attrs {:foo.routing-number/bank-name #{1}, :foo.bank-account/routing-number #{7}, :foo.employer/id #{4}, :foo.bank-account/bank-account-id #{4}, :foo.contact/email #{9}, :foo.routing-number/routing-number #{2}, :foo.contact/id #{4}},
-                                                  :root 4}))))
 
 #_
 (deftest root-execution-node?-test
@@ -2859,28 +2693,8 @@
 
   (is (= (pcp/merge-unreachable
            {}
-           {::pcp/unreachable-resolvers #{'foo}})
-         {::pcp/unreachable-resolvers #{'foo}}))
-
-  (is (= (pcp/merge-unreachable
-           {}
            {::pcp/unreachable-paths {:a {}}})
-         {::pcp/unreachable-paths {:a {}}}))
-
-  (is (= (pcp/merge-unreachable
-           {}
-           {::pcp/unreachable-paths     {:a {}}
-            ::pcp/unreachable-resolvers #{'foo}})
-         {::pcp/unreachable-paths     {:a {}}
-          ::pcp/unreachable-resolvers #{'foo}}))
-
-  (is (= (pcp/merge-unreachable
-           {::pcp/unreachable-paths     {:b {}}
-            ::pcp/unreachable-resolvers #{'bar}}
-           {::pcp/unreachable-paths     {:a {}}
-            ::pcp/unreachable-resolvers #{'foo}})
-         {::pcp/unreachable-paths     {:a {} :b {}}
-          ::pcp/unreachable-resolvers #{'foo 'bar}})))
+         {::pcp/unreachable-paths {:a {}}})))
 
 (deftest shape-reachable?-test
   (is (false? (pcp/shape-reachable?
