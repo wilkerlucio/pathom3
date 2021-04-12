@@ -173,7 +173,7 @@
 
 ; endregion
 
-(declare add-snapshot! compute-run-graph* compute-attribute-graph)
+(declare add-snapshot! compute-run-graph compute-run-graph* compute-attribute-graph)
 
 ; region node helpers
 
@@ -445,6 +445,16 @@
                             ::highlight-nodes  (into #{(::root <>)} node-ids)
                             ::highlight-styles {(::root <>) 1}}))))))
 
+(defn node-attribute-provides
+  "For a specific attribute, return a vector "
+  [graph env attr]
+  (some->>
+    (get-in graph [::index-attrs attr])
+    (mapv
+      #(-> (node-with-resolver-config graph env {::node-id %})
+           ::pco/provides
+           (get attr)))))
+
 ; endregion
 
 ; region graph helpers
@@ -467,15 +477,16 @@
   "Restore the original environment sent to run-graph! Use this for nested graphs
   that need a clean environment."
   [env]
-  (-> env meta ::original-env
-      (with-meta (meta env))))
+  (or (some-> env meta ::original-env
+              (with-meta (meta env)))
+      env))
 
-(defn add-unreachable-attr
+(defn add-unreachable-path
   "Add attribute to unreachable list"
-  [graph env attr]
-  (-> (update graph ::unreachable-paths pfsd/merge-shapes {attr {}})
+  [graph env path]
+  (-> (update graph ::unreachable-paths pfsd/merge-shapes path)
       (add-snapshot! env {::snapshot-event   ::snapshot-mark-attr-unreachable
-                          ::snapshot-message (str "Mark attribute " attr " as unreachable.")})))
+                          ::snapshot-message (str "Mark path " (pr-str path) " as unreachable.")})))
 
 (defn add-warning [graph warn]
   (update graph ::warnings coll/vconj warn))
@@ -628,31 +639,76 @@
          resolvers)
        (pfsd/missing available-data)))
 
+(defn extend-attribute-sub-query [graph attr shape]
+  (-> graph
+      (update-in [::index-ast attr] pf.eql/merge-ast-children
+        (-> (pfsd/shape-descriptor->ast shape)
+            (assoc :type :prop :key attr :dispatch-key attr)))))
+
+(>defn shape-reachable?
+  "Given an environment, available data and shape, determines if the whole shape
+  is reachable (including nested dependencies)."
+  [env available shape]
+  [map? ::pfsd/shape-descriptor ::pfsd/shape-descriptor => boolean?]
+  (let [missing (pfsd/missing available shape)]
+    (if (seq missing)
+      (let [graph (compute-run-graph
+                    (-> (reset-env env)
+                        (assoc
+                          ::available-data available
+                          :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing))))]
+        (every?
+          (fn [[attr sub]]
+            (if-let [nodes-subs (node-attribute-provides graph env attr)]
+              (if (seq nodes-subs)
+                (some #(shape-reachable? env % sub) nodes-subs)
+                true)))
+          shape))
+      true)))
+
+(defn compute-attribute-dependency-graph
+  [graph env attr shape]
+  (let [graph' (compute-attribute-graph
+                 (dissoc graph ::root)
+                 (-> env
+                     (dissoc ::p.attr/attribute)
+                     (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
+                     (assoc
+                       :edn-query-language.ast/node
+                       {:type         :prop
+                        :key          attr
+                        :dispatch-key attr})))]
+    (if (and (::root graph') (seq shape))
+      (let [available-provides (node-attribute-provides graph' env attr)]
+        ; TODO this should consider the case that a few of the nodes can provide the
+        ; sub-query, in this case only they should be kept in the graph, and the other
+        ; options must be removed
+        (if (some #(shape-reachable? env % shape) available-provides)
+          (extend-attribute-sub-query graph' attr shape)
+          (-> graph'
+              (dissoc ::root)
+              (add-unreachable-path env {attr shape}))))
+      graph')))
+
 (defn compute-missing-chain-deps
   [graph {::keys [available-data] :as env} missing]
   (reduce-kv
     (fn [[graph node-map] attr shape]
       (if (contains? available-data attr)
-        [(-> graph
-             (update-in [::index-ast attr] pf.eql/merge-ast-children
-               (-> (pfsd/shape-descriptor->ast shape)
-                   (assoc :type :prop :key attr :dispatch-key attr)))
-             (mark-attribute-process-sub-query {:key attr :children []}))
-         node-map]
+        (if (shape-reachable? env (get available-data attr) shape)
+          [(-> (extend-attribute-sub-query graph attr shape)
+               (mark-attribute-process-sub-query {:key attr :children []}))
+           node-map]
+          ; TODO maybe the sub-query fails partially, in this case making the whole
+          ; sub-query unreachable will lead to bad results
+          (reduced [(add-unreachable-path graph env {attr shape}) nil]))
 
-        (let [graph' (compute-attribute-graph
-                       (dissoc graph ::root)
-                       (-> env
-                           (dissoc ::p.attr/attribute)
-                           (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
-                           (assoc
-                             :edn-query-language.ast/node
-                             {:type         :prop
-                              :key          attr
-                              :dispatch-key attr})))]
+        (let [graph' (compute-attribute-dependency-graph graph env attr shape)]
           (if-let [root (::root graph')]
-            [graph' (assoc node-map attr root)]
-            (reduced [graph' nil])))))
+            [graph'
+
+             (assoc node-map attr root)]
+            (reduced [(add-unreachable-path graph env {attr shape}) nil])))))
     [graph {}]
     missing))
 
@@ -661,29 +717,18 @@
   (reduce-kv
     (fn [[graph node-map] attr shape]
       (if (contains? available-data attr)
-        [(-> graph
-             (update-in [::index-ast attr] pf.eql/merge-ast-children
-               (-> (pfsd/shape-descriptor->ast shape)
-                   (assoc :type :prop :key attr :dispatch-key attr)))
+        [(-> (extend-attribute-sub-query graph attr shape)
              (mark-attribute-process-sub-query {:key attr :children []}))
          node-map]
 
-        (let [graph' (compute-attribute-graph
-                       (dissoc graph ::root)
-                       (-> env
-                           (dissoc ::p.attr/attribute)
-                           (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
-                           (assoc
-                             :edn-query-language.ast/node
-                             {:type         :prop
-                              :key          attr
-                              :dispatch-key attr})))]
+        (let [graph' (compute-attribute-dependency-graph graph env attr shape)]
           (if-let [root (::root graph')]
             [graph' (assoc node-map attr root)]
             [(merge-unreachable graph graph') node-map]))))
     [graph {}]
     opt-missing))
 
+#_
 (defn merge-nested-missing-ast [graph {::keys [resolvers] :as env} missing]
   ; TODO: maybe optimize this in the future with indexes to avoid this scan
   (let [recursive-joins
@@ -714,7 +759,7 @@
 
 (defn compute-missing-chain
   "Start a recursive call to process the dependencies required by the resolver."
-  [graph env missing missing-optionals resolvers]
+  [graph env missing missing-optionals]
   (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (::p.attr/attribute env) " dependencies: " (pr-str missing))})
         [graph' node-map] (compute-missing-chain-deps graph env missing)]
     (if (some? node-map)
@@ -728,7 +773,7 @@
 
               (empty? all-nodes)
               (set-root-node (::root graph)))
-            (merge-nested-missing-ast (assoc env ::resolvers resolvers) (pfsd/merge-shapes missing missing-optionals))
+            #_(merge-nested-missing-ast (assoc env ::resolvers resolvers) (pfsd/merge-shapes missing missing-optionals))
             (as-> <>
               (add-snapshot! <> env {::snapshot-event   ::compute-missing-success
                                      ::snapshot-message (str "Complete computing deps " (pr-str missing))
@@ -766,7 +811,7 @@
                                             (set-node-source-for-attrs env))]
       (if leaf-root
         (if (seq (merge missing missing-opts))
-          (let [graph-with-deps (compute-missing-chain graph' env missing missing-opts resolvers)]
+          (let [graph-with-deps (compute-missing-chain graph' env missing missing-opts)]
             (cond
               (= (::root graph-with-deps) leaf-root)
               (-> graph-with-deps
@@ -830,7 +875,7 @@
     (if (seq node-ids)
       (create-root-or graph' env node-ids)
       (-> graph
-          (add-unreachable-attr env attribute)
+          (add-unreachable-path env {attribute {}})
           (merge-unreachable graph')))))
 
 (defn compute-attribute-graph
@@ -856,7 +901,7 @@
       (compute-attribute-graph* graph env)
 
       :else
-      (add-unreachable-attr graph env attr))))
+      (add-unreachable-path graph env {attr {}}))))
 
 (defn compute-non-index-attribute
   "This function deals with attributes that are not part of the index execution. The
