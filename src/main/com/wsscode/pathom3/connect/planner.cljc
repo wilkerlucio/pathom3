@@ -645,7 +645,7 @@
       true)))
 
 (defn compute-attribute-dependency-graph
-  [graph env attr shape]
+  [graph {::keys [recursive-joins] :as env} attr shape]
   (add-snapshot! graph env {::snapshot-message (str "Processing dependency " {attr shape})})
   (let [graph' (-> graph
                    (dissoc ::root)
@@ -658,17 +658,39 @@
                            {:type         :prop
                             :key          attr
                             :dispatch-key attr}))))]
-    (if (and (::root graph') (seq shape))
-      (let [available-provides (node-attribute-provides graph' env attr)]
-        (add-snapshot! graph' env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))})
-        ; TODO this should consider the case that a few of the nodes can provide the
-        ; sub-query, in this case only they should be kept in the graph, and the other
-        ; options must be removed
-        (if (some #(shape-reachable? env % shape) available-provides)
-          (extend-attribute-sub-query graph' attr shape)
+    (if (::root graph')
+      (let [nodes
+            (->> (get-in graph' [::index-attrs attr])
+                 (mapv #(node-with-resolver-config graph' env {::node-id %})))
+
+            recur
+            (get recursive-joins attr)]
+        (cond
+          ; recursive query
+          recur
           (-> graph'
-              (dissoc ::root)
-              (add-unreachable-path env {attr shape}))))
+              (add-snapshot! env {::snapshot-message (str "Detected recursive nested dependency on " attr)})
+              (update-in [::index-ast attr] assoc
+                :type :join
+                :key attr
+                :dispatch-key attr
+                :query recur))
+
+          ; nested input requirement
+          (seq shape)
+          (do
+            (add-snapshot! graph' env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))})
+            ; TODO this should consider the case that a few of the nodes can provide the
+            ; sub-query, in this case only they should be kept in the graph, and the other
+            ; options must be removed
+            (if (some #(shape-reachable? env (-> % ::pco/provides (get attr)) shape) nodes)
+              (extend-attribute-sub-query graph' attr shape)
+              (-> graph'
+                  (dissoc ::root)
+                  (add-unreachable-path env {attr shape}))))
+
+          :else
+          graph'))
       graph')))
 
 (defn extend-available-attribute-nested
@@ -768,34 +790,14 @@
     [graph node-map]
     opt-missing))
 
-#_
-(defn merge-nested-missing-ast [graph {::keys [resolvers] :as env} missing]
-  ; TODO: maybe optimize this in the future with indexes to avoid this scan
-  (let [recursive-joins
-        (into {}
-              (comp (map #(pci/resolver-config env %))
-                    (mapcat ::pco/input)
-                    (keep (fn [x] (if (and (map? x) (pf.eql/recursive-query? (first (vals x))))
-                                    (first x)))))
-              resolvers)]
-    (reduce-kv
-      (fn [g attr shape]
-        (if-let [recur (get recursive-joins attr)]
-          ;; recursive
-          (-> (update-in g [::index-ast attr] assoc
-                :type :join
-                :key attr
-                :dispatch-key attr
-                :query recur)
-              (mark-attribute-process-sub-query {:key attr :children []}))
-
-          ;; standard
-          (update-in g [::index-ast attr] pf.eql/merge-ast-children
-            (-> (pfsd/shape-descriptor->ast shape)
-                (assoc :type :prop :key attr :dispatch-key attr)))))
-      graph
-      (->> missing
-           (into {} (filter (fn [[k v]] (or (contains? recursive-joins k) (seq v)))))))))
+(defn- index-recursive-joins
+  [env resolvers]
+  (into {}
+        (comp (map #(pci/resolver-config env %))
+              (mapcat ::pco/input)
+              (keep (fn [x] (if (and (map? x) (pf.eql/recursive-query? (first (vals x))))
+                              (first x)))))
+        resolvers))
 
 (defn compute-missing-chain
   "Start a recursive call to process the dependencies required by the resolver."
@@ -813,7 +815,6 @@
 
               (empty? all-nodes)
               (set-root-node (::root graph)))
-            #_(merge-nested-missing-ast (assoc env ::resolvers resolvers) (pfsd/merge-shapes missing missing-optionals))
             (as-> <>
               (add-snapshot! <> env {::snapshot-event   ::compute-missing-success
                                      ::snapshot-message (str "Complete computing deps " (pr-str missing))
@@ -851,7 +852,11 @@
                                             (set-node-source-for-attrs env))]
       (if leaf-root
         (if (seq (merge missing missing-opts))
-          (let [graph-with-deps (compute-missing-chain graph' env missing missing-opts)]
+          (let [graph-with-deps (compute-missing-chain
+                                  graph'
+                                  (assoc env ::recursive-joins (index-recursive-joins env resolvers))
+                                  missing
+                                  missing-opts)]
             (cond
               (= (::root graph-with-deps) leaf-root)
               (-> graph-with-deps
