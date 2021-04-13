@@ -340,13 +340,14 @@
                                              {:value 2}))])
                           {}
                           [:value])
-               {:value 1}))
+               {:value #?(:clj 1 :cljs 2)}))
         (is (= @spy 1))))
 
     (testing "one option fail, one succeed"
       (let [spy (atom 0)]
         (is (= (run-graph (pci/register [(pco/resolver `error-long-touch
-                                           {::pco/output [:error]}
+                                           {::pco/output   [:error]
+                                            ::pco/priority 1}
                                            (fn [_ _]
                                              (swap! spy inc)
                                              (throw (ex-info "Error" {}))))
@@ -360,8 +361,12 @@
       (is (graph-response?
             (pci/register
               {::pcr/choose-path
-               (fn [_env _or-node options]
-                 (last options))}
+               (fn [{::pcp/keys [graph]} _or-node options]
+                 (first (into []
+                              (comp (map #(pcp/get-node graph %))
+                                    (filter #(= (::pco/op-name %) `value2))
+                                    (map ::pcp/node-id))
+                              options)))}
               [(pco/resolver `value
                  {::pco/output [:value]}
                  (fn [_ _]
@@ -377,7 +382,8 @@
     (testing "stats"
       (is (graph-response?
             (pci/register [(pco/resolver `value
-                             {::pco/output [:value]}
+                             {::pco/output   [:value]
+                              ::pco/priority 1}
                              (fn [_ _]
                                {:value 1}))
                            (pco/resolver `value2
@@ -670,6 +676,22 @@
           [:total-score]
           {:users       [#:user{:score 10} #:user{:score 20}]
            :total-score 30})))
+
+  (comment
+    @(run-graph-async
+      (pci/register
+        [(pbir/static-attribute-map-resolver :user/id :user/score
+           {1 10
+            2 20})
+         (pbir/constantly-resolver :x 10)
+         (pco/resolver 'total-score
+           {::pco/input  [{:users [:user/score]}]
+            ::pco/output [:total-score]}
+           (fn [_ {:keys [users]}]
+             {:total-score (reduce + 0 (map :user/score users))}))])
+      {:users [{:user/id 1}
+               {:user/id 2}]}
+      [:total-score]))
 
   (testing "source data partially in available data"
     (is (graph-response?
@@ -1372,7 +1394,7 @@
               {:>/m3 [(:y {:m 3})]}
               {:>/m4 [(:y {:m 4})]}]
             {:x    10
-             :y    20
+             :y    #?(:clj 40 :cljs 20)
              :>/m2 {:x 10
                     :y 20}
              :>/m3 {:x 10
