@@ -79,6 +79,7 @@
 
 #?(:clj
    (defn debug-compute-run-graph
+     "Use this to run plan graph and also log the steps to Pathom Viz"
      [options]
      (let [env   (compute-env options)
            snaps (pcp/compute-plan-snapshots env)]
