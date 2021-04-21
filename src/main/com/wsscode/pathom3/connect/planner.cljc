@@ -331,12 +331,13 @@
        graph))))
 
 (defn set-node-source-for-attrs
-  [graph {::p.attr/keys [attribute]}]
-  (if-let [node-id (::root graph)]
-    (-> graph
-        (update-in [::nodes node-id ::source-for-attrs] coll/sconj attribute)
-        (update-in [::index-attrs attribute] coll/sconj node-id))
-    graph))
+  ([graph env] (set-node-source-for-attrs graph env (::root graph)))
+  ([graph {::p.attr/keys [attribute]} node-id]
+   (if node-id
+     (-> graph
+         (update-in [::nodes node-id ::source-for-attrs] coll/sconj attribute)
+         (update-in [::index-attrs attribute] coll/sconj node-id))
+     graph)))
 
 (defn add-branch-to-node
   [graph target-node-id branch-type new-branch-node-id]
@@ -683,11 +684,24 @@
             ; TODO this should consider the case that a few of the nodes can provide the
             ; sub-query, in this case only they should be kept in the graph, and the other
             ; options must be removed
-            (if (some #(shape-reachable? env (-> % ::pco/provides (get attr)) shape) nodes)
-              (extend-attribute-sub-query graph' attr shape)
-              (-> graph'
-                  (dissoc ::root)
-                  (add-unreachable-path env {attr shape}))))
+            (let [checked-nodes (into []
+                                      (map (fn [node]
+                                             (cond-> node
+                                               (shape-reachable? env (-> node ::pco/provides (get attr)) shape)
+                                               (assoc :valid-path? true))))
+                                      nodes)]
+              (if (some :valid-path? checked-nodes)
+                (-> (reduce
+                      (fn [g {:keys [valid-path?] ::keys [node-id]}]
+                        (if-not valid-path?
+                          (assoc-node g node-id ::invalid-node? true)
+                          g))
+                      graph'
+                      checked-nodes)
+                    (extend-attribute-sub-query attr shape))
+                (-> graph'
+                    (dissoc ::root)
+                    (add-unreachable-path env {attr shape})))))
 
           :else
           graph'))
@@ -735,7 +749,9 @@
                          (map #(create-node-for-resolver-call (assoc env ::pco/op-name %)))
                          resolvers)]
     (if (seq resolver-nodes)
-      (-> (reduce #(include-node % %2) graph resolver-nodes)
+      (-> (reduce #(-> %
+                       (include-node %2)
+                       (set-node-source-for-attrs env (::node-id %2))) graph resolver-nodes)
           (create-root-or env (mapv ::node-id resolver-nodes))
           (as-> <>
             (add-snapshot! <> env {::snapshot-message (str "Add nodes for input path " (pr-str input))
@@ -848,8 +864,7 @@
     (let [missing      (pfsd/missing available-data input)
           missing-opts (resolvers-missing-optionals env resolvers)
           env          (assoc env ::input input)
-          {leaf-root ::root :as graph'} (-> (compute-resolver-leaf graph env resolvers)
-                                            (set-node-source-for-attrs env))]
+          {leaf-root ::root :as graph'} (compute-resolver-leaf graph env resolvers)]
       (if leaf-root
         (if (seq (merge missing missing-opts))
           (let [graph-with-deps (compute-missing-chain

@@ -499,22 +499,23 @@
   [(s/keys :req [::pcp/graph]) ::pcp/node => nil?]
   (merge-node-stats! env or-node {::node-run-start-ms (time/now-ms)})
 
-  (loop [nodes run-or]
-    (if (seq nodes)
-      (let [picked-node-id (choose-path env or-node nodes)
-            node-id        (if (contains? nodes picked-node-id)
-                             picked-node-id
-                             (do
-                               (l/warn ::event-invalid-chosen-path
-                                       {:expected-one-of nodes
-                                        :chosen-attempt  picked-node-id
-                                        :actual-used     (first nodes)})
-                               (first nodes)))]
-        (add-taken-path! env or-node node-id)
-        (run-node! env (pcp/get-node graph node-id))
-        (if (all-requires-ready? env or-node)
-          (merge-node-stats! env or-node {::success-path node-id})
-          (recur (disj nodes node-id))))))
+  (if-not (all-requires-ready? env or-node)
+    (loop [nodes run-or]
+      (if (seq nodes)
+        (let [picked-node-id (choose-path env or-node nodes)
+              node-id        (if (contains? nodes picked-node-id)
+                               picked-node-id
+                               (do
+                                 (l/warn ::event-invalid-chosen-path
+                                         {:expected-one-of nodes
+                                          :chosen-attempt  picked-node-id
+                                          :actual-used     (first nodes)})
+                                 (first nodes)))]
+          (add-taken-path! env or-node node-id)
+          (run-node! env (pcp/get-node graph node-id))
+          (if (all-requires-ready? env or-node)
+            (merge-node-stats! env or-node {::success-path node-id})
+            (recur (disj nodes node-id)))))))
 
   (merge-node-stats! env or-node {::node-run-finish-ms (time/now-ms)})
   (run-next-node! env or-node))

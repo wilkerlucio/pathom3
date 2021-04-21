@@ -4,6 +4,7 @@
     [clojure.test.check :as tc]
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
+    [clojure.walk :as walk]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [com.wsscode.pathom.viz.ws-connector.pathom3 :as p.connector]
@@ -408,7 +409,46 @@
                           ::knob-reuse-attributes?
                           false))))
 
-  (log-samples 20 {})
+  (log-samples 5 {})
+
+  (butlast samples)
+  (def samples2 *1)
+
+  (-> samples
+      reverse
+      second
+      (runner-p3)
+      (meta)
+      :com.wsscode.pathom3.connect.runner/run-stats
+      (pr-str))
+
+  (spit "/Users/wilkerlucio/Development/wsscode-blog/static/viz-data/pathom-updates-09/generated-large.edn"
+    (-> samples
+        reverse
+        second
+        (runner-p3)
+        (meta)
+        :com.wsscode.pathom3.connect.runner/run-stats
+        (->> (walk/postwalk
+               #(if (ex-message %)
+                  (do
+                    (println "CONV" %)
+                   {}) %)))
+        (pr-str)))
+
+  (spit "/Users/wilkerlucio/Development/wsscode-blog/static/viz-data/pathom-updates-09/generated-small.edn"
+    (-> (last samples2)
+        (runner-p3)
+        (meta)
+        :com.wsscode.pathom3.connect.runner/run-stats
+        (pr-str)))
+
+  (spit "/Users/wilkerlucio/Development/wsscode-blog/static/viz-data/pathom-updates-09/generated-medium.edn"
+    (-> (nth samples 6)
+        (runner-p3)
+        (meta)
+        :com.wsscode.pathom3.connect.runner/run-stats
+        (pr-str)))
 
   (log-samples 20
     {::knob-max-resolver-depth
