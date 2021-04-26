@@ -432,11 +432,8 @@
 (defn create-root-and [graph env node-ids]
   (if (= 1 (count node-ids))
     (set-root-node graph (first node-ids))
-    (let [expects (reduce
-                    pfsd/merge-shapes
-                    (mapv #(get-node graph % ::expects) node-ids))
-          {and-node-id ::node-id
-           :as         and-node} (new-node env {::expects expects})]
+    (let [{and-node-id ::node-id
+           :as         and-node} (new-node env {})]
       (-> graph
           (include-node and-node)
           (add-node-branches and-node-id ::run-and node-ids)
