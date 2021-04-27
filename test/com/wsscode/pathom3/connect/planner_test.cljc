@@ -160,7 +160,6 @@
                                              ::pcp/source-for-attrs #{:b}
                                              ::pcp/node-parents     #{3}}
                                           3 {::pcp/node-id 3
-                                             ::pcp/expects {:b {} :a {}}
                                              ::pcp/run-and #{2 1}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2}}
              ::pcp/index-attrs           {:b #{2}, :a #{1}}
@@ -414,8 +413,7 @@
                                                                :com.wsscode.pathom3.connect.planner/node-id 6,
                                                                :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
                                                                :com.wsscode.pathom3.connect.planner/node-parents #{7}},
-                                                            7 #:com.wsscode.pathom3.connect.planner{:expects {:a {}},
-                                                                                                    :node-id 7,
+                                                            7 #:com.wsscode.pathom3.connect.planner{:node-id 7,
                                                                                                     :run-and #{4
                                                                                                                6}}},
                                                     :index-ast {:c {:type :prop,
@@ -761,8 +759,7 @@
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:users},
                                                              :com.wsscode.pathom3.connect.planner/run-next 4,
                                                              :com.wsscode.pathom3.connect.planner/node-parents #{8}},
-                                                          8 #:com.wsscode.pathom3.connect.planner{:expects {:users {}},
-                                                                                                  :node-id 8,
+                                                          8 #:com.wsscode.pathom3.connect.planner{:node-id 8,
                                                                                                   :run-and #{2
                                                                                                              5}}},
                                                   :index-ast {:scores-sum {:type :prop,
@@ -926,8 +923,6 @@
                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:y},
                                                              :com.wsscode.pathom3.connect.planner/node-parents     #{4}},
                                                           4 #:com.wsscode.pathom3.connect.planner{:node-id  4,
-                                                                                                  :expects  {:y {},
-                                                                                                             :x {}},
                                                                                                   :run-and  #{3
                                                                                                               2},
                                                                                                   :run-next 1}},
@@ -1027,8 +1022,6 @@
                                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
                                                                              :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
                                                                           3 #:com.wsscode.pathom3.connect.planner{:node-id 3,
-                                                                                                                  :expects {:b {},
-                                                                                                                            :a {}},
                                                                                                                   :run-and #{1
                                                                                                                              2}}},
                                                   :index-ast             {:a    {:type         :prop,
@@ -1063,8 +1056,7 @@
                                                                              :com.wsscode.pathom3.connect.planner/node-id          2,
                                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a},
                                                                              :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
-                                                                          3 #:com.wsscode.pathom3.connect.planner{:expects {:a {}},
-                                                                                                                  :node-id 3,
+                                                                          3 #:com.wsscode.pathom3.connect.planner{:node-id 3,
                                                                                                                   :run-and #{1
                                                                                                                              2}}},
                                                   :index-ast             #:>{:p1 {:type         :join,
@@ -1105,9 +1097,7 @@
                                                                              :com.wsscode.pathom3.connect.planner/input            {},
                                                                              :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
                                                                              :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
-                                                                          3 #:com.wsscode.pathom3.connect.planner{:node-id 3,
-                                                                                                                  :expects {:b {},
-                                                                                                                            :a {}},
+                                                                          3 #:com.wsscode.pathom3.connect.planner{:node-id 3,,
                                                                                                                   :run-and #{1
                                                                                                                              2}}},
                                                   :index-ast             #:>{:p1 {:type         :join,
@@ -1175,9 +1165,7 @@
                                                                                :com.wsscode.pathom3.connect.planner/node-id          2,
                                                                                :com.wsscode.pathom3.connect.planner/source-for-attrs #{:b},
                                                                                :com.wsscode.pathom3.connect.planner/node-parents     #{3}},
-                                                                            3 #:com.wsscode.pathom3.connect.planner{:expects {:a {},
-                                                                                                                              :b {}},
-                                                                                                                    :node-id 3,
+                                                                            3 #:com.wsscode.pathom3.connect.planner{:node-id 3,
                                                                                                                     :run-and #{1
                                                                                                                                2}}},
                                                     :index-ast             {:a {:type         :prop,
