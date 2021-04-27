@@ -4,16 +4,15 @@
     [clojure.test.check :as tc]
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
-    [clojure.walk :as walk]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
-    [com.wsscode.pathom3.connect.planner :as pcp]
+    #?(:clj [com.wsscode.pathom3.connect.planner :as pcp])
     [com.wsscode.pathom3.interface.eql :as p.eql]
-    [edn-query-language.core :as eql]))
+    #?(:clj [edn-query-language.core :as eql])))
 
 #_:clj-kondo/ignore
 
@@ -79,6 +78,12 @@
    ::expected   {}
    ::attributes #{}})
 
+(defn prefix-attr [prefix attr]
+  (keyword (str prefix (name attr))))
+
+(defn suffix-attr [attr suffix]
+  (keyword (str (name attr) suffix)))
+
 (def gen-env
   {::p.attr/attribute
    :a
@@ -88,6 +93,9 @@
 
    ::knob-max-resolver-depth
    10
+
+   ::knob-max-nesting-depth
+   6
 
    ::knob-max-deps
    5
@@ -130,6 +138,21 @@
         ::expected   {attribute (name attribute)}
         ::attributes (set output)}))
 
+   ; nested resolver case
+   ::gen-resolver-nested
+   (fn [{::p.attr/keys [attribute]}]
+     (let [attribute (suffix-attr attribute "-nest-a")
+           expected  {attribute {:na "na"}}
+           output    [{attribute [:na]}]]
+       (gen/return
+         {::resolvers  [{::pco/op-name (symbol attribute)
+                         ::pco/output  output
+                         ::pco/resolve (fn [_ _]
+                                         {attribute {:na "na"}})}]
+          ::query      output
+          ::expected   expected
+          ::attributes #{}})))
+
    ; use some attribute generated before
    ::gen-resolver-reuse
    (fn [{::keys [attributes]}]
@@ -140,6 +163,7 @@
           ::expected   {attr (name attr)}
           ::attributes #{attr}})))
 
+   ; generate OR options
    ::gen-resolver-multi-options
    (fn [{::p.attr/keys [attribute]
          ::keys        [knob-max-edge-options gen-output-for-resolver]
@@ -166,7 +190,7 @@
 
    ::gen-resolver-with-deps
    (fn [{::p.attr/keys [attribute]
-         ::keys        [knob-max-deps gen-resolver gen-output-for-resolver]
+         ::keys        [knob-max-deps gen-dep-resolver gen-output-for-resolver]
          :as           env}]
      (gen/let [deps-count (gen-num 1 knob-max-deps)
                output     (gen-output-for-resolver env)]
@@ -177,7 +201,7 @@
          (gen/let [next-groups
                    (apply gen/tuple
                      (mapv
-                       #(gen-resolver
+                       #(gen-dep-resolver
                           (assoc env
                             ::p.attr/attribute %))
                        next-attrs))]
@@ -219,7 +243,7 @@
         (if knob-reuse-attributes?
           (gen-resolver-reuse env))]))
 
-   ::gen-resolver
+   ::gen-dep-resolver
    (fn [{::keys [knob-max-resolver-depth
                  gen-resolver-leaf
                  gen-resolver-with-deps
@@ -229,6 +253,21 @@
          (gen-frequency
            [[3 (gen-resolver-leaf env)]
             [2 (gen-resolver-with-deps env)]
+            [1 (gen-resolver-multi-options env)]])
+         (gen-resolver-leaf env))))
+
+   ::gen-resolver
+   (fn [{::keys [knob-max-resolver-depth
+                 gen-resolver-leaf
+                 gen-resolver-with-deps
+                 gen-resolver-nested
+                 gen-resolver-multi-options] :as env}]
+     (let [env (update env ::knob-max-resolver-depth dec)]
+       (if (pos? knob-max-resolver-depth)
+         (gen-frequency
+           [[3 (gen-resolver-leaf env)]
+            [2 (gen-resolver-with-deps env)]
+            [1 (gen-resolver-nested env)]
             [1 (gen-resolver-multi-options env)]])
          (gen-resolver-leaf env))))
 
@@ -295,31 +334,35 @@
                   (merge gen-env env))]
     (= expected (runner case))))
 
-(defn log-request-snapshots [req]
-  ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/log-entry)
-   {:pathom.viz.log/type :pathom.viz.log.type/plan-snapshots
-    :pathom.viz.log/data (pcp/compute-plan-snapshots
-                           (-> (pci/register (mapv pco/resolver (::resolvers req)))
-                               (assoc :edn-query-language.ast/node
-                                 (eql/query->ast (::query req)))))}))
+#?(:clj
+   (defn log-request-snapshots [req]
+     ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/log-entry)
+      {:pathom.viz.log/type :pathom.viz.log.type/plan-snapshots
+       :pathom.viz.log/data (pcp/compute-plan-snapshots
+                              (-> (pci/register (mapv pco/resolver (::resolvers req)))
+                                  (assoc :edn-query-language.ast/node
+                                    (eql/query->ast (::query req)))))})))
 
-(defn log-request-graph [req]
-  ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/log-entry)
-   {:pathom.viz.log/type :pathom.viz.log.type/plan-view
-    :pathom.viz.log/data (-> (runner-p3 req)
-                             (meta)
-                             :com.wsscode.pathom3.connect.runner/run-stats)}))
+#?(:clj
+   (defn log-request-graph [req]
+     ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/log-entry)
+      {:pathom.viz.log/type :pathom.viz.log.type/plan-view
+       :pathom.viz.log/data (-> (runner-p3 req)
+                                (meta)
+                                :com.wsscode.pathom3.connect.runner/run-stats)})))
 
-(defn log-trace [req]
-  ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/log-entry)
-   {:pathom.viz.log/type :pathom.viz.log.type/trace
-    :pathom.viz.log/data (runner-p3 req)}))
+#?(:clj
+   (defn log-trace [req]
+     ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/log-entry)
+      {:pathom.viz.log/type :pathom.viz.log.type/trace
+       :pathom.viz.log/data (runner-p3 req)})))
 
-(defn run-query-on-pathom-viz [req]
-  (-> (pci/register (mapv pco/resolver (::resolvers req)))
-      ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/connect-env)
-       "debug")
-      (p.eql/process (::query req))))
+#?(:clj
+   (defn run-query-on-pathom-viz [req]
+     (-> (pci/register (mapv pco/resolver (::resolvers req)))
+         ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/connect-env)
+          "debug")
+         (p.eql/process (::query req)))))
 
 (defn single-dep-prop
   [runner]
@@ -368,47 +411,59 @@
 
        sample)))
 
+#?(:clj
+   (defn log-trace-samples [n config]
+     (let [sample (gen/sample
+                    ((::gen-request gen-env)
+                     (merge gen-env config))
+                    n)]
+       (doseq [req sample]
+         (log-trace req)
+         (Thread/sleep 500))
+
+       sample)))
+
 #_:clj-kondo/ignore
 
+;; basic runs
+
 (comment
+  ; 10 sample
+  (gen/sample
+    ((::gen-request gen-env)
+     gen-env)
+    10)
+
+  ; log samples
+  (log-samples 10 {})
+  (log-trace-samples 10 {})
+
+  ; test all default p3
+  (check-smallest 100
+    (generate-prop runner-p3 {}))
+  )
+
+#_ :clj-kondo/ignore
+
+(comment
+
+  (def x *1)
+
+  (nth x 4)
+
+  (log-trace x)
+  (log-request-graph x)
+  (log-request-snapshots (nth x 2))
+  (run-query-on-pathom-viz (nth x 2))
+  (log-request-snapshots (nth x 4))
+  (meta (runner-p3 x))
+
   (tap>
     (gen/sample
       ((::gen-request gen-env)
        gen-env)
-      100))
+      10))
 
-  (gen/sample
-    ((::gen-request gen-env)
-     gen-env)
-    100)
-
-  (p.connector/log-entry
-    (-> (pci/register
-          [(pco/resolver 'a
-             {::pco/output [:a]}
-             (fn [_ _]))
-           (pco/resolver 'b
-             {::pco/input  [:a]
-              ::pco/output [:b]}
-             (fn [_ _]))
-
-           (pco/resolver 'd
-             {::pco/output [:d]}
-             (fn [_ _]))
-
-           (pco/resolver 'b2
-             {::pco/input  [:d]
-              ::pco/output [:b]}
-             (fn [_ _]))
-
-           (pco/resolver 'x
-             {::pco/input  [:a]
-              ::pco/output [:x]}
-             (fn [_ _]))])
-        (p.eql/process [:x :b])
-        (meta)
-        :com.wsscode.pathom3.connect.runner/run-stats
-        (assoc :pathom.viz.log/type :pathom.viz.log.type/plan-and-stats)))
   (log-request-graph
     [])
 
@@ -426,45 +481,6 @@
                           false))))
 
   (log-samples 5 {})
-
-  (butlast samples)
-  (def samples2 *1)
-
-  (-> samples
-      reverse
-      second
-      (runner-p3)
-      (meta)
-      :com.wsscode.pathom3.connect.runner/run-stats
-      (pr-str))
-
-  (spit "/Users/wilkerlucio/Development/wsscode-blog/static/viz-data/pathom-updates-09/generated-large.edn"
-    (-> samples
-        reverse
-        second
-        (runner-p3)
-        (meta)
-        :com.wsscode.pathom3.connect.runner/run-stats
-        (->> (walk/postwalk
-               #(if (ex-message %)
-                  (do
-                    (println "CONV" %)
-                   {}) %)))
-        (pr-str)))
-
-  (spit "/Users/wilkerlucio/Development/wsscode-blog/static/viz-data/pathom-updates-09/generated-small.edn"
-    (-> (last samples2)
-        (runner-p3)
-        (meta)
-        :com.wsscode.pathom3.connect.runner/run-stats
-        (pr-str)))
-
-  (spit "/Users/wilkerlucio/Development/wsscode-blog/static/viz-data/pathom-updates-09/generated-medium.edn"
-    (-> (nth samples 6)
-        (runner-p3)
-        (meta)
-        :com.wsscode.pathom3.connect.runner/run-stats
-        (pr-str)))
 
   (log-samples 20
     {::knob-max-resolver-depth
