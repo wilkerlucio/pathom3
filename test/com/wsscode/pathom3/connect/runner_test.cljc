@@ -848,12 +848,6 @@
           (fn [env inputs]
             (mapv #(resolve env %) inputs))))))
 
-(pco/defresolver batch-fetch [items]
-  {::pco/input  [:id]
-   ::pco/output [:v]
-   ::pco/batch? true}
-  (mapv #(hash-map :v (* 10 (:id %))) items))
-
 (pco/defresolver batch-param [env items]
   {::pco/input  [:id]
    ::pco/output [:v-param]
@@ -889,7 +883,7 @@
   (testing "simple batching"
     (is (graph-response?
           (pci/register
-            [batch-fetch])
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
           {:list
            [{:id 1}
             {:id 2}
@@ -903,7 +897,7 @@
   (testing "root batch"
     (is (graph-response?
           (pci/register
-            [batch-fetch])
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
           {:id 1}
           [:v]
           {:id 1 :v 10}))
@@ -911,7 +905,7 @@
     (is (some?
           (-> (run-graph
                 (pci/register
-                  [batch-fetch])
+                  [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
                 {:id 1}
                 [:v]) meta ::pcr/run-stats))))
 
@@ -943,7 +937,7 @@
   (testing "run stats"
     (is (some? (-> (run-graph
                      (pci/register
-                       [batch-fetch])
+                       [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
                      {}
                      [{'(:>/id {:id 1}) [:v]}])
                    :>/id meta ::pcr/run-stats))))
@@ -951,7 +945,7 @@
   (testing "different plan"
     (is (graph-response?
           (pci/register
-            [batch-fetch
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
              (pbir/constantly-resolver :list
                                        [{:id 1}
                                         {:id 2 :v 200}
@@ -966,7 +960,7 @@
   (testing "multiple batches"
     (is (graph-response?
           (pci/register
-            [batch-fetch
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
              batch-pre-id])
           {:list
            [{:pre-id 1}
@@ -981,7 +975,7 @@
   (testing "non batching dependency"
     (is (graph-response?
           (pci/register
-            [batch-fetch
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
              (pbir/single-attr-resolver :pre-id :id inc)])
           {:list
            [{:pre-id 1}
@@ -1023,7 +1017,7 @@
     (testing "deep process"
       (is (graph-response?
             (pci/register
-              [batch-fetch
+              [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
                batch-fetch-nested
                (pbir/single-attr-resolver :pre-id :id inc)])
             {:list
@@ -1039,7 +1033,7 @@
     (testing "node sequence"
       (is (graph-response?
             (pci/register
-              [batch-fetch
+              [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
                (pbir/single-attr-resolver :v :x #(* 100 %))])
             {:list
              [{:id 1}
@@ -1054,7 +1048,7 @@
   (testing "deep batching"
     (is (graph-response?
           (pci/register
-            [batch-fetch])
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
           {:list
            [{:items [{:id 1}
                      {:id 2}]}
@@ -1072,9 +1066,9 @@
           (pci/register
             {::pcr/resolver-cache*
              (volatile!
-               {[`batch-fetch {:id 1} {}] {:v 100}
-                [`batch-fetch {:id 3} {}] {:v 300}})}
-            [batch-fetch])
+               {['id->v-single-attr-transform {:id 1} {}] {:v 100}
+                ['id->v-single-attr-transform {:id 3} {}] {:v 300}})}
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
           {:list
            [{:id 1}
             {:id 2}
@@ -1090,10 +1084,10 @@
             (pci/register
               {::custom-cache*
                (volatile!
-                 {[`batch-fetch {:id 1} {}] {:v 100}
-                  [`batch-fetch {:id 3} {}] {:v 300}})}
-              [(pco/update-config batch-fetch
-                                  assoc ::pco/cache-store ::custom-cache*)])
+                 {['id->v-single-attr-transform {:id 1} {}] {:v 100}
+                  ['id->v-single-attr-transform {:id 3} {}] {:v 300}})}
+              [(-> (batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
+                   (pco/update-config assoc ::pco/cache-store ::custom-cache*))])
             {:list
              [{:id 1}
               {:id 2}
@@ -1125,7 +1119,7 @@
   (testing "uses batch resolver as single resolver when running under a path that batch wont work"
     (is (graph-response?
           (pci/register
-            [batch-fetch])
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
           {:list
            #{{:id 1}
              {:id 2}
