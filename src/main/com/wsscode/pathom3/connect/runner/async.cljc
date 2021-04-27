@@ -275,10 +275,12 @@
                                         :actual-used     (first nodes)})
                                (first nodes)))
             _              (pcr/add-taken-path! env or-node node-id)
-            _              (run-node! env (pcp/get-node graph node-id))]
-      (if (pcr/all-requires-ready? env or-node)
-        (pcr/merge-node-stats! env or-node {::pcr/success-path node-id})
-        (run-or-node!* env or-node (disj nodes node-id))))))
+            node-res       (run-node! env (pcp/get-node graph node-id))]
+      (if (::pcr/batch-hold node-res)
+        node-res
+        (if (pcr/all-requires-ready? env or-node)
+          (pcr/merge-node-stats! env or-node {::pcr/success-path node-id})
+          (run-or-node!* env or-node (disj nodes node-id)))))))
 
 (>defn run-or-node!
   [env {::pcp/keys [run-or] :as or-node}]
@@ -286,10 +288,12 @@
   (p/do!
     (pcr/merge-node-stats! env or-node {::pcr/node-run-start-ms (time/now-ms)})
 
-    (run-or-node!* env or-node run-or)
-
-    (pcr/merge-node-stats! env or-node {::pcr/node-run-finish-ms (time/now-ms)})
-    (run-next-node! env or-node)))
+    (p/let [res (run-or-node!* env or-node run-or)]
+      (if (::pcr/batch-hold res)
+        res
+        (do
+          (pcr/merge-node-stats! env or-node {::pcr/node-run-finish-ms (time/now-ms)})
+          (run-next-node! env or-node))))))
 
 (>defn run-and-node!
   "Given an AND node, runs every attached node, then runs the attached next."

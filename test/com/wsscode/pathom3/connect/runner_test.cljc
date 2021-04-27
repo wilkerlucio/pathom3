@@ -1007,7 +1007,18 @@
                  (pbir/constantly-resolver :x 10)])
               {:id 5}
               [:z]
-              {:id 5 :x 10 :v 50 :z 60}))))
+              {:id 5 :x 10 :v 50 :z 60})))
+
+      (testing "OR branch"
+        (is (graph-response?
+              (pci/register
+                [(pbir/single-attr-resolver :x :v #(* 10 %))
+                 (batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
+                 (pbir/single-attr-resolver :v :z #(+ 10 %))
+                 (pbir/constantly-fn-resolver :x #(throw (ex-info "Take other path" {})))])
+              {:id 5}
+              [:z]
+              {:id 5, :v 50, :z 60}))))
 
     (testing "deep process"
       (is (graph-response?
