@@ -56,11 +56,23 @@
 (defn attrs->expected [attrs]
   (zipmap attrs (map name attrs)))
 
+(defn merge-resolvers [r1 r2]
+  (into r1 r2))
+
+(defn merge-queries [q1 q2]
+  (into q1 q2))
+
+(defn merge-expected [e1 e2]
+  (merge e1 e2))
+
+(defn merge-attributes [e1 e2]
+  (into e1 e2))
+
 (defn merge-result [r1 r2]
-  {::resolvers  (into (::resolvers r1) (::resolvers r2))
-   ::query      (into (::query r1) (::query r2))
-   ::expected   (merge (::expected r1) (::expected r2))
-   ::attributes (into (::attributes r1) (::attributes r2))})
+  {::resolvers  (merge-resolvers (::resolvers r1) (::resolvers r2))
+   ::query      (merge-queries (::query r1) (::query r2))
+   ::expected   (merge-expected (::expected r1) (::expected r2))
+   ::attributes (merge-attributes (::attributes r1) (::attributes r2))})
 
 (def blank-result
   {::resolvers  []
