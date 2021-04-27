@@ -894,6 +894,28 @@
             {:id 2 :v 20}
             {:id 3 :v 30}]})))
 
+  (testing "distinct inputs"
+    (is (graph-response?
+          (pci/register
+            [(-> (pbir/single-attr-resolver :id :v #(* 10 %))
+                 (batchfy)
+                 (pco/wrap-resolve (fn [resolve]
+                                     (fn [env inputs]
+                                       (if (not=
+                                             (count inputs)
+                                             (count (distinct inputs)))
+                                         (throw (ex-info "Repeated inputs" {})))
+                                       (resolve env inputs)))))])
+          {:list
+           [{:id 1}
+            {:id 2}
+            {:id 1}]}
+          [{:list [:v]}]
+          {:list
+           [{:id 1 :v 10}
+            {:id 2 :v 20}
+            {:id 1 :v 10}]})))
+
   (testing "root batch"
     (is (graph-response?
           (pci/register
@@ -1708,3 +1730,11 @@
             {}
             ['(foo)]
             '{foo {:k foo}})))))
+
+(deftest combine-inputs-with-responses-test
+  (is (= (let [groups    {1 [:a :b]
+                          2 [:c]}
+               inputs    [1 2]
+               responses ["a" "b"]]
+           (pcr/combine-inputs-with-responses groups inputs responses))
+         [[:a "a"] [:b "a"] [:c "b"]])))

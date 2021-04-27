@@ -439,14 +439,15 @@
 
     (reduce-async
       (fn [_ [batch-op batch-items]]
-        (p/let [inputs    (mapv ::pcr/node-resolver-input batch-items)
-                resolver  (pci/resolver env batch-op)
-                batch-env (-> batch-items first ::pcr/env
-                              (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
-                start     (time/now-ms)
-                responses (-> (pco.prot/-resolve resolver batch-env inputs)
-                              (p/catch (fn [e] (pcr/mark-batch-errors e env batch-op batch-items))))
-                finish    (time/now-ms)]
+        (p/let [input-groups (group-by ::pcr/node-resolver-input batch-items)
+                inputs       (keys input-groups)
+                resolver     (pci/resolver env batch-op)
+                batch-env    (-> batch-items first ::pcr/env
+                                 (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
+                start        (time/now-ms)
+                responses    (-> (pco.prot/-resolve resolver batch-env inputs)
+                                 (p/catch (fn [e] (pcr/mark-batch-errors e env batch-op batch-items))))
+                finish       (time/now-ms)]
 
           (when-not (refs/kw-identical? ::pcr/node-error responses)
             (if (not= (count inputs) (count responses))
@@ -471,7 +472,7 @@
                       (-> (p.ent/entity env')
                           (pcr/include-meta-stats env' (::pcp/graph env')))))))
               nil
-              (map vector batch-items responses)))))
+              (pcr/combine-inputs-with-responses input-groups inputs responses)))))
       nil
       batches)))
 

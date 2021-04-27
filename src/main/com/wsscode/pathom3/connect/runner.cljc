@@ -694,21 +694,34 @@
       [batch-op node-resolver-input (pco/params batch-item)]
       (fn [] response))))
 
+(defn combine-inputs-with-responses
+  "For batch we group the items with the same inputs so the resolver only needs to have
+  each input once. This function is a helper to side the input batch items with the
+  distinct list of responses."
+  [input-groups inputs responses]
+  (->> (mapv input-groups inputs)
+       (mapv #(vector %2 %) responses)
+       (into []
+             (mapcat
+               (fn [[inputs result]]
+                 (mapv #(vector % result) inputs))))))
+
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
     (vreset! batches* {})
     (doseq [[batch-op batch-items] batches]
-      (let [inputs    (mapv ::node-resolver-input batch-items)
-            resolver  (pci/resolver env batch-op)
-            batch-env (-> batch-items first ::env
-                          (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
-            start     (time/now-ms)
-            responses (try
-                        (pco.prot/-resolve resolver batch-env inputs)
-                        (catch #?(:clj Throwable :cljs :default) e
-                          (mark-batch-errors e env batch-op batch-items)))
-            finish    (time/now-ms)]
+      (let [input-groups (group-by ::node-resolver-input batch-items)
+            inputs       (keys input-groups)
+            resolver     (pci/resolver env batch-op)
+            batch-env    (-> batch-items first ::env
+                             (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
+            start        (time/now-ms)
+            responses    (try
+                           (pco.prot/-resolve resolver batch-env inputs)
+                           (catch #?(:clj Throwable :cljs :default) e
+                             (mark-batch-errors e env batch-op batch-items)))
+            finish       (time/now-ms)]
 
         (when-not (refs/kw-identical? ::node-error responses)
           (if (not= (count inputs) (count responses))
@@ -717,7 +730,7 @@
           (doseq [[{env'       ::env
                     ::pcp/keys [node]
                     ::keys     [node-resolver-input]
-                    :as        batch-item} response] (map vector batch-items responses)]
+                    :as        batch-item} response] (combine-inputs-with-responses input-groups inputs responses)]
             (cache-batch-item batch-item batch-op response)
 
             (merge-node-stats! env' node
