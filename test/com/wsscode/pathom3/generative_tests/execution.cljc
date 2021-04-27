@@ -4,6 +4,7 @@
     [clojure.test.check :as tc]
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
+    [com.wsscode.misc.math :as math]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [com.wsscode.pathom3.attribute :as p.attr]
@@ -14,15 +15,13 @@
     [com.wsscode.pathom3.interface.eql :as p.eql]
     #?(:clj [edn-query-language.core :as eql])))
 
-#_:clj-kondo/ignore
-
 (defn next-attr [attribute]
   (let [[base current-index]
         (or (some->
               (re-find #"(.+)(\d+)$" (name attribute))
               (->> (drop 1))
               (vec)
-              (update 1 #(Long/parseLong %)))
+              (update 1 #(math/parse-long %)))
             [(name attribute) 0])]
     (keyword (str base (inc current-index)))))
 
