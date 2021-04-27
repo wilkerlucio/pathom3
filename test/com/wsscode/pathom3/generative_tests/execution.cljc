@@ -7,7 +7,6 @@
     [clojure.walk :as walk]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
-    [com.wsscode.pathom.viz.ws-connector.pathom3 :as p.connector]
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -297,24 +296,29 @@
     (= expected (runner case))))
 
 (defn log-request-snapshots [req]
-  (p.connector/log-entry
-    {:pathom.viz.log/type :pathom.viz.log.type/plan-snapshots
-     :pathom.viz.log/data (pcp/compute-plan-snapshots
-                            (-> (pci/register (mapv pco/resolver (::resolvers req)))
-                                (assoc :edn-query-language.ast/node
-                                  (eql/query->ast (::query req)))))}))
+  ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/log-entry)
+   {:pathom.viz.log/type :pathom.viz.log.type/plan-snapshots
+    :pathom.viz.log/data (pcp/compute-plan-snapshots
+                           (-> (pci/register (mapv pco/resolver (::resolvers req)))
+                               (assoc :edn-query-language.ast/node
+                                 (eql/query->ast (::query req)))))}))
 
 (defn log-request-graph [req]
-  (p.connector/log-entry
-    (-> (runner-p3 req)
-        (meta)
-        :com.wsscode.pathom3.connect.runner/run-stats
-        (assoc :pathom.viz.log/type :pathom.viz.log.type/plan-and-stats))))
+  ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/log-entry)
+   {:pathom.viz.log/type :pathom.viz.log.type/plan-view
+    :pathom.viz.log/data (-> (runner-p3 req)
+                             (meta)
+                             :com.wsscode.pathom3.connect.runner/run-stats)}))
+
+(defn log-trace [req]
+  ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/log-entry)
+   {:pathom.viz.log/type :pathom.viz.log.type/trace
+    :pathom.viz.log/data (runner-p3 req)}))
 
 (defn run-query-on-pathom-viz [req]
   (-> (pci/register (mapv pco/resolver (::resolvers req)))
-      (p.connector/connect-env
-        {:com.wsscode.pathom.viz.ws-connector.core/parser-id "debug"})
+      ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/connect-env)
+       "debug")
       (p.eql/process (::query req))))
 
 (defn single-dep-prop
