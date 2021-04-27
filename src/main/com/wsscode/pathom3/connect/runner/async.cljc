@@ -244,16 +244,7 @@
             (p.plugin/run-with-plugins env' ::pcr/wrap-resolve
               invoke-resolver-from-node env' node)]
       (cond
-        batch-hold
-        (do
-          ; TODO report problem in path navigation here
-          (if (::pcr/nested-waiting? batch-hold)
-            ; add to wait
-            (refs/gswap! (::pcr/batch-waiting* env) coll/vconj batch-hold)
-            ; add to batch pending
-            (refs/gswap! (::pcr/batch-pending* env) update (::pco/op-name batch-hold)
-                         coll/vconj batch-hold))
-          nil)
+        batch-hold response
 
         (not (refs/kw-identical? ::pcr/node-error response))
         (p/do!
@@ -278,7 +269,7 @@
             node-id        (if (contains? nodes picked-node-id)
                              picked-node-id
                              (do
-                               (l/warn ::event-invalid-chosen-path
+                               (l/warn ::pcr/event-invalid-chosen-path
                                        {:expected-one-of nodes
                                         :chosen-attempt  picked-node-id
                                         :actual-used     (first nodes)})
@@ -307,15 +298,19 @@
   (p/do!
     (pcr/merge-node-stats! env and-node {::pcr/node-run-start-ms (time/now-ms)})
 
-    (reduce-async
-      (fn [_ node-id]
-        (run-node! env (pcp/get-node graph node-id)))
-      nil
-      run-and)
-
-    (pcr/merge-node-stats! env and-node {::pcr/node-run-finish-ms (time/now-ms)})
-
-    (run-next-node! env and-node)))
+    (p/let [res
+            (p/loop [xs run-and]
+              (if xs
+                (p/let [node-id  (first xs)
+                        node-res (run-node! env (pcp/get-node graph node-id))]
+                  (if (::pcr/batch-hold node-res)
+                    node-res
+                    (p/recur (next xs))))))]
+      (if (::pcr/batch-hold res)
+        res
+        (do
+          (pcr/merge-node-stats! env and-node {::pcr/node-run-finish-ms (time/now-ms)})
+          (run-next-node! env and-node))))))
 
 (>defn run-node!
   "Run a node from the compute graph. This will start the processing on the sent node
@@ -334,9 +329,7 @@
     (run-and-node! env node)
 
     ::pcp/node-or
-    (run-or-node! env node)
-
-    nil))
+    (run-or-node! env node)))
 
 (defn invoke-mutation!
   "Run mutation from AST."
@@ -374,6 +367,18 @@
     nil
     (::pcp/mutations graph)))
 
+(defn run-root-node!
+  [{::pcp/keys [graph] :as env}]
+  (if-let [root (pcp/get-root-node graph)]
+    (p/let [{::pcr/keys [batch-hold]} (run-node! env root)]
+      (if batch-hold
+        (if (::pcr/nested-waiting? batch-hold)
+          ; add to wait
+          (refs/gswap! (::pcr/batch-waiting* env) coll/vconj batch-hold)
+          ; add to batch pending
+          (refs/gswap! (::pcr/batch-pending* env) update (::pco/op-name batch-hold)
+                       coll/vconj batch-hold))))))
+
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the
   entity cache tree."
@@ -394,8 +399,7 @@
         (process-idents! env idents))
 
       ; now run the nodes
-      (when-let [root (pcp/get-root-node graph)]
-        (run-node! env root))
+      (run-root-node! env)
 
       ; placeholders
       (merge-resolver-response! env (pcr/placeholder-merge-entity env source-ent))
@@ -457,7 +461,7 @@
                 (p/do!
                   (merge-resolver-response! env' response)
                   (pcr/merge-node-stats! env' node {::pcr/node-run-finish-ms (time/now-ms)})
-                  (run-next-node! env' node)
+                  (run-root-node! env')
                   (when-not (p.path/root? env')
                     (p.ent/swap-entity! env assoc-in (::p.path/path env')
                       (-> (p.ent/entity env')
@@ -472,11 +476,11 @@
         waits  @waits*]
     (reset! waits* {})
     (reduce-async
-      (fn [_ {env' ::pcr/env ::pcp/keys [node]}]
+      (fn [_ {env' ::pcr/env}]
         (p.ent/reset-entity! env' (get-in (p.ent/entity env) (::p.path/path env')))
 
         (p/do!
-          (run-node! env' node)
+          (run-root-node! env')
 
           (when-not (p.path/root? env')
             (p.ent/swap-entity! env assoc-in (::p.path/path env')

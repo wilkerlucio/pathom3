@@ -838,6 +838,16 @@
             {:y   42
              :foo 42})))))
 
+(defn batchfy
+  "Convert a resolver in a batch version of it."
+  [resolver]
+  (-> resolver
+      (pco/update-config #(assoc % ::pco/batch? true))
+      (update :resolve
+        (fn [resolve]
+          (fn [env inputs]
+            (mapv #(resolve env %) inputs))))))
+
 (pco/defresolver batch-fetch [items]
   {::pco/input  [:id]
    ::pco/output [:v]
@@ -984,6 +994,21 @@
             {:id 4 :v 40}]})))
 
   (testing "process after batch"
+    (testing "stop all branches"
+      (testing "AND branch"
+        (is (graph-response?
+              (pci/register
+                [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
+                 (pco/resolver 'multi-dep
+                   {::pco/input  [:v :x]
+                    ::pco/output [:z]}
+                   (fn [_ {:keys [v x]}]
+                     {:z (+ v x)}))
+                 (pbir/constantly-resolver :x 10)])
+              {:id 5}
+              [:z]
+              {:id 5 :x 10 :v 50 :z 60}))))
+
     (testing "deep process"
       (is (graph-response?
             (pci/register
