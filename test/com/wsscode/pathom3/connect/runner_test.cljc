@@ -679,19 +679,19 @@
 
   (comment
     @(run-graph-async
-      (pci/register
-        [(pbir/static-attribute-map-resolver :user/id :user/score
-           {1 10
-            2 20})
-         (pbir/constantly-resolver :x 10)
-         (pco/resolver 'total-score
-           {::pco/input  [{:users [:user/score]}]
-            ::pco/output [:total-score]}
-           (fn [_ {:keys [users]}]
-             {:total-score (reduce + 0 (map :user/score users))}))])
-      {:users [{:user/id 1}
-               {:user/id 2}]}
-      [:total-score]))
+       (pci/register
+         [(pbir/static-attribute-map-resolver :user/id :user/score
+            {1 10
+             2 20})
+          (pbir/constantly-resolver :x 10)
+          (pco/resolver 'total-score
+            {::pco/input  [{:users [:user/score]}]
+             ::pco/output [:total-score]}
+            (fn [_ {:keys [users]}]
+              {:total-score (reduce + 0 (map :user/score users))}))])
+       {:users [{:user/id 1}
+                {:user/id 2}]}
+       [:total-score]))
 
   (testing "source data partially in available data"
     (is (graph-response?
@@ -777,7 +777,7 @@
             {}
             [{:main-db [:total-score]}]
             {:main-db
-             {:users [#:user{:id 1, :score 10} #:user{:id 2, :score 20}],
+             {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}],
               :total-score 30}})))))
 
 (deftest run-graph!-optional-inputs-test
@@ -838,11 +838,15 @@
             {:y   42
              :foo 42})))))
 
-(pco/defresolver batch-fetch [items]
-  {::pco/input  [:id]
-   ::pco/output [:v]
-   ::pco/batch? true}
-  (mapv #(hash-map :v (* 10 (:id %))) items))
+(defn batchfy
+  "Convert a resolver in a batch version of it."
+  [resolver]
+  (-> resolver
+      (pco/update-config #(assoc % ::pco/batch? true))
+      (update :resolve
+        (fn [resolve]
+          (fn [env inputs]
+            (mapv #(resolve env %) inputs))))))
 
 (pco/defresolver batch-param [env items]
   {::pco/input  [:id]
@@ -879,7 +883,7 @@
   (testing "simple batching"
     (is (graph-response?
           (pci/register
-            [batch-fetch])
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
           {:list
            [{:id 1}
             {:id 2}
@@ -890,10 +894,32 @@
             {:id 2 :v 20}
             {:id 3 :v 30}]})))
 
+  (testing "distinct inputs"
+    (is (graph-response?
+          (pci/register
+            [(-> (pbir/single-attr-resolver :id :v #(* 10 %))
+                 (batchfy)
+                 (pco/wrap-resolve (fn [resolve]
+                                     (fn [env inputs]
+                                       (if (not=
+                                             (count inputs)
+                                             (count (distinct inputs)))
+                                         (throw (ex-info "Repeated inputs" {})))
+                                       (resolve env inputs)))))])
+          {:list
+           [{:id 1}
+            {:id 2}
+            {:id 1}]}
+          [{:list [:v]}]
+          {:list
+           [{:id 1 :v 10}
+            {:id 2 :v 20}
+            {:id 1 :v 10}]})))
+
   (testing "root batch"
     (is (graph-response?
           (pci/register
-            [batch-fetch])
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
           {:id 1}
           [:v]
           {:id 1 :v 10}))
@@ -901,7 +927,7 @@
     (is (some?
           (-> (run-graph
                 (pci/register
-                  [batch-fetch])
+                  [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
                 {:id 1}
                 [:v]) meta ::pcr/run-stats))))
 
@@ -933,7 +959,7 @@
   (testing "run stats"
     (is (some? (-> (run-graph
                      (pci/register
-                       [batch-fetch])
+                       [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
                      {}
                      [{'(:>/id {:id 1}) [:v]}])
                    :>/id meta ::pcr/run-stats))))
@@ -941,7 +967,7 @@
   (testing "different plan"
     (is (graph-response?
           (pci/register
-            [batch-fetch
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
              (pbir/constantly-resolver :list
                                        [{:id 1}
                                         {:id 2 :v 200}
@@ -956,7 +982,7 @@
   (testing "multiple batches"
     (is (graph-response?
           (pci/register
-            [batch-fetch
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
              batch-pre-id])
           {:list
            [{:pre-id 1}
@@ -971,7 +997,7 @@
   (testing "non batching dependency"
     (is (graph-response?
           (pci/register
-            [batch-fetch
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
              (pbir/single-attr-resolver :pre-id :id inc)])
           {:list
            [{:pre-id 1}
@@ -984,10 +1010,36 @@
             {:id 4 :v 40}]})))
 
   (testing "process after batch"
+    (testing "stop all branches"
+      (testing "AND branch"
+        (is (graph-response?
+              (pci/register
+                [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
+                 (pco/resolver 'multi-dep
+                   {::pco/input  [:v :x]
+                    ::pco/output [:z]}
+                   (fn [_ {:keys [v x]}]
+                     {:z (+ v x)}))
+                 (pbir/constantly-resolver :x 10)])
+              {:id 5}
+              [:z]
+              {:id 5 :x 10 :v 50 :z 60})))
+
+      (testing "OR branch"
+        (is (graph-response?
+              (pci/register
+                [(pbir/single-attr-resolver :x :v #(* 10 %))
+                 (batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
+                 (pbir/single-attr-resolver :v :z #(+ 10 %))
+                 (pbir/constantly-fn-resolver :x #(throw (ex-info "Take other path" {})))])
+              {:id 5}
+              [:z]
+              {:id 5, :v 50, :z 60}))))
+
     (testing "deep process"
       (is (graph-response?
             (pci/register
-              [batch-fetch
+              [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
                batch-fetch-nested
                (pbir/single-attr-resolver :pre-id :id inc)])
             {:list
@@ -1003,7 +1055,7 @@
     (testing "node sequence"
       (is (graph-response?
             (pci/register
-              [batch-fetch
+              [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
                (pbir/single-attr-resolver :v :x #(* 100 %))])
             {:list
              [{:id 1}
@@ -1018,7 +1070,7 @@
   (testing "deep batching"
     (is (graph-response?
           (pci/register
-            [batch-fetch])
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
           {:list
            [{:items [{:id 1}
                      {:id 2}]}
@@ -1036,9 +1088,9 @@
           (pci/register
             {::pcr/resolver-cache*
              (volatile!
-               {[`batch-fetch {:id 1} {}] {:v 100}
-                [`batch-fetch {:id 3} {}] {:v 300}})}
-            [batch-fetch])
+               {['id->v-single-attr-transform {:id 1} {}] {:v 100}
+                ['id->v-single-attr-transform {:id 3} {}] {:v 300}})}
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
           {:list
            [{:id 1}
             {:id 2}
@@ -1054,10 +1106,10 @@
             (pci/register
               {::custom-cache*
                (volatile!
-                 {[`batch-fetch {:id 1} {}] {:v 100}
-                  [`batch-fetch {:id 3} {}] {:v 300}})}
-              [(pco/update-config batch-fetch
-                                  assoc ::pco/cache-store ::custom-cache*)])
+                 {['id->v-single-attr-transform {:id 1} {}] {:v 100}
+                  ['id->v-single-attr-transform {:id 3} {}] {:v 300}})}
+              [(-> (batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
+                   (pco/update-config assoc ::pco/cache-store ::custom-cache*))])
             {:list
              [{:id 1}
               {:id 2}
@@ -1089,7 +1141,7 @@
   (testing "uses batch resolver as single resolver when running under a path that batch wont work"
     (is (graph-response?
           (pci/register
-            [batch-fetch])
+            [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
           {:list
            #{{:id 1}
              {:id 2}
@@ -1098,7 +1150,39 @@
           {:list
            #{{:id 1 :v 10}
              {:id 2 :v 20}
-             {:id 3 :v 30}}}))))
+             {:id 3 :v 30}}})))
+
+  (testing "bug reports"
+    (testing "issue-31 nested batching, actual problem - waiting running multiple times"
+      (let [parents  {1 {:parent/children [{:child/id 1}]}}
+            children {1 {:child/ident :child/good}}
+            good?    (fn [children] (boolean (some #{:child/good} (map :child/ident children))))
+            env      (pci/register
+                       [(pco/resolver `pc
+                          {::pco/input  [:parent/id]
+                           ::pco/output [{:parent/children [:child/id]}]
+                           ::pco/batch? true}
+                          (fn [_ items]
+                            (mapv (fn [{:parent/keys [id]}]
+                                    (select-keys (parents id) [:parent/children]))
+                              items)))
+
+                        (pco/resolver `ci
+                          {::pco/input  [:child/id]
+                           ::pco/output [:child/ident]
+                           ::pco/batch? true}
+                          (fn [_ items]
+                            (mapv (fn [{:child/keys [id]}]
+                                    (select-keys (children id) [:child/ident]))
+                              items)))
+
+                        (pco/resolver `parent-good
+                          {::pco/input  [{:parent/children [:child/ident]}]
+                           ::pco/output [:parent/good?]}
+                          (fn [_ {:parent/keys [children]}] {:parent/good? (good? children)}))])]
+        (is (graph-response? env
+              {:parent/id 1} [:parent/good?]
+              #:parent{:id 1, :children [#:child{:id 1, :ident :child/good}], :good? true}))))))
 
 (deftest run-graph!-run-stats
   (is (graph-response?
@@ -1678,3 +1762,11 @@
             {}
             ['(foo)]
             '{foo {:k foo}})))))
+
+(deftest combine-inputs-with-responses-test
+  (is (= (let [groups    {1 [:a :b]
+                          2 [:c]}
+               inputs    [1 2]
+               responses ["a" "b"]]
+           (pcr/combine-inputs-with-responses groups inputs responses))
+         [[:a "a"] [:b "a"] [:c "b"]])))

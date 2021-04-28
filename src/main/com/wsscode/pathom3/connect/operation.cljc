@@ -463,7 +463,10 @@
      :ret any?))
 
 (defn update-config
-  "Update operation config"
+  "Returns a new resolver with the modified config. You can use this to change anything
+  in the resolver configuration map. The only thing you can't change from here is the
+  resolver or mutation functions. You can use the wrap-resolve and wrap-mutation
+  helpers to do that."
   ([operation f]
    (update operation :config f))
   ([operation f a1]
@@ -486,6 +489,28 @@
    (update operation :config f a1 a2 a3 a4 a5 a6 a7 a8 a9))
   ([operation f a1 a2 a3 a4 a5 a6 a7 a8 a9 & args]
    (apply update operation :config f a1 a2 a3 a4 a5 a6 a7 a8 a9 args)))
+
+(defn wrap-resolve
+  "Return a new resolver with the resolve fn modified. You can use the previous fn or
+  just replace. Here is a noop wrapper example:
+
+  (wrap-resolve resolver
+    (fn [resolve]
+      (fn [env input]
+        (resolve env input)))"
+  [resolver f]
+  (update resolver :resolve f))
+
+(defn wrap-mutate
+  "Return a new mutation with the resolve fn modified. You can use the previous fn or
+  just replace. Here is a noop wrapper example:
+
+  (wrap-mutate mutation
+    (fn [mutate]
+      (fn [env params]
+        (mutate env params)))"
+  [mutation f]
+  (update mutation :mutate f))
 
 (defn final-value? [x]
   (some-> x meta ::final true?))

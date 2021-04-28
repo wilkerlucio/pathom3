@@ -270,14 +270,14 @@
    {::pcp/keys [node-id]}
    data]
   (if node-run-stats*
-    (refs/gswap! node-run-stats* update node-id merge data)))
+    (refs/gswap! node-run-stats* update node-id coll/merge-defaults data)))
 
 (defn merge-mutation-stats!
   [{::keys [node-run-stats*]}
    {::pco/keys [op-name]}
    data]
   (if node-run-stats*
-    (refs/gswap! node-run-stats* update op-name merge data)))
+    (refs/gswap! node-run-stats* update op-name coll/merge-defaults data)))
 
 (defn mark-resolver-error
   [{::keys [node-run-stats*]}
@@ -439,16 +439,9 @@
           (p.plugin/run-with-plugins env ::wrap-resolve
             invoke-resolver-from-node env node)]
       (cond
-        batch-hold
-        (do
-          ; TODO report problem in path navigation here
-          (if (::nested-waiting? batch-hold)
-            ; add to wait
-            (refs/gswap! (::batch-waiting* env) coll/vconj batch-hold)
-            ; add to batch pending
-            (refs/gswap! (::batch-pending* env) update (::pco/op-name batch-hold)
-                         coll/vconj batch-hold))
-          nil)
+        ; propagate batch hold up, this will make all nodes to stop running
+        ; so they can wait for the batch result
+        batch-hold response
 
         (not (refs/kw-identical? ::node-error response))
         (do
@@ -499,26 +492,30 @@
   [(s/keys :req [::pcp/graph]) ::pcp/node => nil?]
   (merge-node-stats! env or-node {::node-run-start-ms (time/now-ms)})
 
-  (if-not (all-requires-ready? env or-node)
-    (loop [nodes run-or]
-      (if (seq nodes)
-        (let [picked-node-id (choose-path env or-node nodes)
-              node-id        (if (contains? nodes picked-node-id)
-                               picked-node-id
-                               (do
-                                 (l/warn ::event-invalid-chosen-path
-                                         {:expected-one-of nodes
-                                          :chosen-attempt  picked-node-id
-                                          :actual-used     (first nodes)})
-                                 (first nodes)))]
-          (add-taken-path! env or-node node-id)
-          (run-node! env (pcp/get-node graph node-id))
-          (if (all-requires-ready? env or-node)
-            (merge-node-stats! env or-node {::success-path node-id})
-            (recur (disj nodes node-id)))))))
-
-  (merge-node-stats! env or-node {::node-run-finish-ms (time/now-ms)})
-  (run-next-node! env or-node))
+  (let [res (if-not (all-requires-ready? env or-node)
+              (loop [nodes run-or]
+                (if (seq nodes)
+                  (let [picked-node-id (choose-path env or-node nodes)
+                        node-id        (if (contains? nodes picked-node-id)
+                                         picked-node-id
+                                         (do
+                                           (l/warn ::event-invalid-chosen-path
+                                                   {:expected-one-of nodes
+                                                    :chosen-attempt  picked-node-id
+                                                    :actual-used     (first nodes)})
+                                           (first nodes)))]
+                    (add-taken-path! env or-node node-id)
+                    (let [res (run-node! env (pcp/get-node graph node-id))]
+                      (if (::batch-hold res)
+                        res
+                        (if (all-requires-ready? env or-node)
+                          (merge-node-stats! env or-node {::success-path node-id})
+                          (recur (disj nodes node-id)))))))))]
+    (if (::batch-hold res)
+      res
+      (do
+        (merge-node-stats! env or-node {::node-run-finish-ms (time/now-ms)})
+        (run-next-node! env or-node)))))
 
 (>defn run-and-node!
   "Given an AND node, runs every attached node, then runs the attached next."
@@ -526,11 +523,18 @@
   [(s/keys :req [::pcp/graph]) ::pcp/node => nil?]
   (merge-node-stats! env and-node {::node-run-start-ms (time/now-ms)})
 
-  (doseq [node-id run-and]
-    (run-node! env (pcp/get-node graph node-id)))
-
-  (merge-node-stats! env and-node {::node-run-finish-ms (time/now-ms)})
-  (run-next-node! env and-node))
+  (let [res (reduce
+              (fn [_ node-id]
+                (let [node-res (run-node! env (pcp/get-node graph node-id))]
+                  (if (::batch-hold node-res)
+                    (reduced node-res))))
+              nil
+              run-and)]
+    (if (::batch-hold res)
+      res
+      (do
+        (merge-node-stats! env and-node {::node-run-finish-ms (time/now-ms)})
+        (run-next-node! env and-node)))))
 
 (>defn run-node!
   "Run a node from the compute graph. This will start the processing on the sent node
@@ -540,7 +544,7 @@
   the output will be there."
   [env node]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*]) ::pcp/node
-   => nil?]
+   => (? (s/keys :opt [::batch-hold]))]
   (case (pcp/node-kind node)
     ::pcp/node-resolver
     (run-resolver-node! env node)
@@ -549,9 +553,7 @@
     (run-and-node! env node)
 
     ::pcp/node-or
-    (run-or-node! env node)
-
-    nil))
+    (run-or-node! env node)))
 
 (defn placeholder-merge-entity
   "Create an entity to process the placeholder demands. This consider if the placeholder
@@ -600,6 +602,18 @@
   (doseq [ast (::pcp/mutations graph)]
     (invoke-mutation! env ast)))
 
+(defn run-root-node!
+  [{::pcp/keys [graph] :as env}]
+  (if-let [root (pcp/get-root-node graph)]
+    (let [{::keys [batch-hold]} (run-node! env root)]
+      (if batch-hold
+        (if (::nested-waiting? batch-hold)
+          ; add to wait
+          (refs/gswap! (::batch-waiting* env) coll/vconj batch-hold)
+          ; add to batch pending
+          (refs/gswap! (::batch-pending* env) update (::pco/op-name batch-hold)
+                       coll/vconj batch-hold))))))
+
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the
   entity cache tree."
@@ -619,8 +633,7 @@
       (process-idents! env idents))
 
     ; now run the nodes
-    (if-let [root (pcp/get-root-node graph)]
-      (run-node! env root))
+    (run-root-node! env)
 
     ; placeholders
     (merge-resolver-response! env (placeholder-merge-entity env source-ent))
@@ -681,21 +694,34 @@
       [batch-op node-resolver-input (pco/params batch-item)]
       (fn [] response))))
 
+(defn combine-inputs-with-responses
+  "For batch we group the items with the same inputs so the resolver only needs to have
+  each input once. This function is a helper to side the input batch items with the
+  distinct list of responses."
+  [input-groups inputs responses]
+  (->> (mapv input-groups inputs)
+       (mapv #(vector %2 %) responses)
+       (into []
+             (mapcat
+               (fn [[inputs result]]
+                 (mapv #(vector % result) inputs))))))
+
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
     (vreset! batches* {})
     (doseq [[batch-op batch-items] batches]
-      (let [inputs    (mapv ::node-resolver-input batch-items)
-            resolver  (pci/resolver env batch-op)
-            batch-env (-> batch-items first ::env
-                          (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
-            start     (time/now-ms)
-            responses (try
-                        (pco.prot/-resolve resolver batch-env inputs)
-                        (catch #?(:clj Throwable :cljs :default) e
-                          (mark-batch-errors e env batch-op batch-items)))
-            finish    (time/now-ms)]
+      (let [input-groups (group-by ::node-resolver-input batch-items)
+            inputs       (keys input-groups)
+            resolver     (pci/resolver env batch-op)
+            batch-env    (-> batch-items first ::env
+                             (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
+            start        (time/now-ms)
+            responses    (try
+                           (pco.prot/-resolve resolver batch-env inputs)
+                           (catch #?(:clj Throwable :cljs :default) e
+                             (mark-batch-errors e env batch-op batch-items)))
+            finish       (time/now-ms)]
 
         (when-not (refs/kw-identical? ::node-error responses)
           (if (not= (count inputs) (count responses))
@@ -704,7 +730,7 @@
           (doseq [[{env'       ::env
                     ::pcp/keys [node]
                     ::keys     [node-resolver-input]
-                    :as        batch-item} response] (map vector batch-items responses)]
+                    :as        batch-item} response] (combine-inputs-with-responses input-groups inputs responses)]
             (cache-batch-item batch-item batch-op response)
 
             (merge-node-stats! env' node
@@ -716,7 +742,7 @@
 
             (merge-node-stats! env' node {::node-run-finish-ms (time/now-ms)})
 
-            (run-next-node! env' node)
+            (run-root-node! env')
 
             (when-not (p.path/root? env')
               (p.ent/swap-entity! env assoc-in (::p.path/path env')
@@ -726,11 +752,11 @@
 (defn run-batches-waiting! [env]
   (let [waits* (-> env ::batch-waiting*)
         waits  @waits*]
-    (vreset! waits* {})
-    (doseq [{env' ::env ::pcp/keys [node]} waits]
+    (vreset! waits* [])
+    (doseq [{env' ::env} waits]
       (p.ent/reset-entity! env' (get-in (p.ent/entity env) (::p.path/path env')))
 
-      (run-node! env' node)
+      (run-root-node! env')
 
       (when-not (p.path/root? env')
         (p.ent/swap-entity! env assoc-in (::p.path/path env')
