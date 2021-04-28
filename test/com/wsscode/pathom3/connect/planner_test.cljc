@@ -1231,6 +1231,77 @@
                                                     :index-attrs           {:a #{1}, :b #{2}},
                                                     :root                  3})))))
 
+(deftest compute-run-graph-dynamic-resolvers-test
+  (testing "unreachable"
+    (is (= (compute-run-graph
+             {::pci/index-resolvers {'dynamic-resolver {::pco/op-name           'dynamic-resolver
+                                                        ::pco/cache?            false
+                                                        ::pco/dynamic-resolver? true
+                                                        ::pco/resolve           (fn [_ _])}}
+              ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}}
+              ::eql/query           [:release/script]})
+           {::pcp/nodes                 {}
+            ::pcp/unreachable-paths     {:db/id {}
+                                         :release/script {}}
+            ::pcp/index-ast             {:release/script {:type         :prop,
+                                                          :dispatch-key :release/script,
+                                                          :key          :release/script}}})))
+
+  (testing "simple dynamic call"
+    (is (= (compute-run-graph
+             {::pci/index-resolvers {'dynamic-resolver
+                                     {::pco/op-name           'dynamic-resolver
+                                      ::pco/cache?            false
+                                      ::pco/dynamic-resolver? true
+                                      ::pco/resolve           (fn [_ _])}}
+              ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}}
+              ::pcp/available-data  {:db/id {}}
+              ::eql/query           [:release/script]})
+
+           {::pcp/nodes                 {1 {::pco/op-name          'dynamic-resolver
+                                            ::pcp/node-id          1
+                                            ::pcp/expects          {:release/script {}}
+                                            ::pcp/input            {:db/id {}}
+                                            ::pcp/source-for-attrs #{:release/script}
+                                            ::pcp/foreign-ast      (eql/query->ast [:release/script])}}
+            ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
+            ::pcp/root                  1
+            ::pcp/index-attrs           {:release/script #{1}}
+            ::pcp/index-ast             {:release/script {:type         :prop,
+                                                          :dispatch-key :release/script,
+                                                          :key          :release/script}}}))
+
+    (testing "retain params"
+      (is (= (compute-run-graph
+               {::pci/index-resolvers {'dynamic-resolver
+                                       {::pco/op-name           'dynamic-resolver
+                                        ::pco/cache?            false
+                                        ::pco/dynamic-resolver? true
+                                        ::pco/resolve           (fn [_ _])}}
+                ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}}
+                ::pcp/available-data  {:db/id {}}
+                ::eql/query           [(list :release/script {:foo "bar"})]})
+
+             {::pcp/nodes                 {1 {::pco/op-name          'dynamic-resolver
+                                              ::pcp/node-id          1
+                                              ::pcp/expects          {:release/script {}}
+                                              ::pcp/input            {:db/id {}}
+                                              ::pcp/source-for-attrs #{:release/script}
+                                              ::pcp/params           {:foo "bar"}
+                                              ::pcp/foreign-ast      {:children [{:dispatch-key :release/script
+                                                                                  :key          :release/script
+                                                                                  :params       {:foo "bar"}
+                                                                                  :type         :prop}]
+                                                                      :type     :root}}}
+              ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
+              ::pcp/root                  1
+              ::pcp/index-attrs           {:release/script #{1}}
+
+              ::pcp/index-ast             {:release/script {:type         :prop,
+                                                            :dispatch-key :release/script,
+                                                            :key          :release/script
+                                                            :params       {:foo "bar"}}}})))))
+
 #_
 (deftest compute-run-graph-dynamic-resolvers-test
   (testing "unreachable"
@@ -1242,8 +1313,8 @@
               ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}}
               ::eql/query           [:release/script]})
            {::pcp/nodes                 {}
-            ::pcp/unreachable-resolvers #{}
-            ::pcp/unreachable-paths     {:db/id {}}
+            ::pcp/unreachable-paths     {:db/id {}
+                                         :release/script {}}
             ::pcp/index-ast             {:release/script {:type         :prop,
                                                           :dispatch-key :release/script,
                                                           :key          :release/script}}})))

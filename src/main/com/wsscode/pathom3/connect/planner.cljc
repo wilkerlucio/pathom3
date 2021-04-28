@@ -735,7 +735,11 @@
                  ::input       input})
 
       (seq ast-params)
-      (assoc ::params ast-params))))
+      (assoc ::params ast-params)
+
+      ; TODO op-name may change, need to check on resolver sym
+      (pci/dynamic-resolver? env op-name)
+      (assoc ::foreign-ast {:type :root :children [ast]}))))
 
 (defn compute-resolver-leaf
   "For a set of resolvers (the R part of OIR index), create one OR node that branches

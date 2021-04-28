@@ -228,6 +228,10 @@
   (-> (resolver-config env resolver-sym)
       ::pco/optionals))
 
+(defn dynamic-resolver?
+  [env resolver-name]
+  (::pco/dynamic-resolver? (resolver-config env resolver-name)))
+
 (>defn mutation
   [{::keys [index-mutations]} mutation-name]
   [(s/keys :opt [::index-mutations]) ::pco/op-name
