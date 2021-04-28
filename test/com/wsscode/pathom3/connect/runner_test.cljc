@@ -679,19 +679,19 @@
 
   (comment
     @(run-graph-async
-      (pci/register
-        [(pbir/static-attribute-map-resolver :user/id :user/score
-           {1 10
-            2 20})
-         (pbir/constantly-resolver :x 10)
-         (pco/resolver 'total-score
-           {::pco/input  [{:users [:user/score]}]
-            ::pco/output [:total-score]}
-           (fn [_ {:keys [users]}]
-             {:total-score (reduce + 0 (map :user/score users))}))])
-      {:users [{:user/id 1}
-               {:user/id 2}]}
-      [:total-score]))
+       (pci/register
+         [(pbir/static-attribute-map-resolver :user/id :user/score
+            {1 10
+             2 20})
+          (pbir/constantly-resolver :x 10)
+          (pco/resolver 'total-score
+            {::pco/input  [{:users [:user/score]}]
+             ::pco/output [:total-score]}
+            (fn [_ {:keys [users]}]
+              {:total-score (reduce + 0 (map :user/score users))}))])
+       {:users [{:user/id 1}
+                {:user/id 2}]}
+       [:total-score]))
 
   (testing "source data partially in available data"
     (is (graph-response?
@@ -777,7 +777,7 @@
             {}
             [{:main-db [:total-score]}]
             {:main-db
-             {:users [#:user{:id 1, :score 10} #:user{:id 2, :score 20}],
+             {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}],
               :total-score 30}})))))
 
 (deftest run-graph!-optional-inputs-test
@@ -1150,7 +1150,39 @@
           {:list
            #{{:id 1 :v 10}
              {:id 2 :v 20}
-             {:id 3 :v 30}}}))))
+             {:id 3 :v 30}}})))
+
+  (testing "bug reports"
+    (testing "issue-31 nested batching, actual problem - waiting running multiple times"
+      (let [parents  {1 {:parent/children [{:child/id 1}]}}
+            children {1 {:child/ident :child/good}}
+            good?    (fn [children] (boolean (some #{:child/good} (map :child/ident children))))
+            env      (pci/register
+                       [(pco/resolver `pc
+                          {::pco/input  [:parent/id]
+                           ::pco/output [{:parent/children [:child/id]}]
+                           ::pco/batch? true}
+                          (fn [_ items]
+                            (mapv (fn [{:parent/keys [id]}]
+                                    (select-keys (parents id) [:parent/children]))
+                              items)))
+
+                        (pco/resolver `ci
+                          {::pco/input  [:child/id]
+                           ::pco/output [:child/ident]
+                           ::pco/batch? true}
+                          (fn [_ items]
+                            (mapv (fn [{:child/keys [id]}]
+                                    (select-keys (children id) [:child/ident]))
+                              items)))
+
+                        (pco/resolver `parent-good
+                          {::pco/input  [{:parent/children [:child/ident]}]
+                           ::pco/output [:parent/good?]}
+                          (fn [_ {:parent/keys [children]}] {:parent/good? (good? children)}))])]
+        (is (graph-response? env
+              {:parent/id 1} [:parent/good?]
+              #:parent{:id 1, :children [#:child{:id 1, :ident :child/good}], :good? true}))))))
 
 (deftest run-graph!-run-stats
   (is (graph-response?

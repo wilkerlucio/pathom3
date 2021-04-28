@@ -479,7 +479,7 @@
 (defn run-batches-waiting! [env]
   (let [waits* (-> env ::pcr/batch-waiting*)
         waits  @waits*]
-    (reset! waits* {})
+    (reset! waits* [])
     (reduce-async
       (fn [_ {env' ::pcr/env}]
         (p.ent/reset-entity! env' (get-in (p.ent/entity env) (::p.path/path env')))

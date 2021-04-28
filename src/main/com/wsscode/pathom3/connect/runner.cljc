@@ -752,7 +752,7 @@
 (defn run-batches-waiting! [env]
   (let [waits* (-> env ::batch-waiting*)
         waits  @waits*]
-    (vreset! waits* {})
+    (vreset! waits* [])
     (doseq [{env' ::env} waits]
       (p.ent/reset-entity! env' (get-in (p.ent/entity env) (::p.path/path env')))
 
