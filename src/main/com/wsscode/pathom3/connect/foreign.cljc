@@ -17,7 +17,6 @@
     [::pci/index-attributes
      ::pci/index-oir
      ::pci/index-io
-     ::pci/idents
      ::pci/autocomplete-ignore
      ::pci/index-resolvers
      ::pci/index-mutations]}])
