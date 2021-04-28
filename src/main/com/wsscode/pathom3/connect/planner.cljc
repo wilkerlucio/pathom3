@@ -1020,7 +1020,7 @@
 
               ; process mutation
               (refs/kw-identical? (:type ast) :call)
-              [(update graph ::mutations coll/vconj ast) node-ids]
+              [(update graph ::mutations coll/vconj (:key ast)) node-ids]
 
               :else
               [graph node-ids]))

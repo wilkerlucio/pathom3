@@ -603,8 +603,8 @@
 (defn process-mutations!
   "Runs the mutations gathered by the planner."
   [{::pcp/keys [graph] :as env}]
-  (doseq [ast (::pcp/mutations graph)]
-    (invoke-mutation! env ast)))
+  (doseq [key (::pcp/mutations graph)]
+    (invoke-mutation! env (entry-ast graph key))))
 
 (defn run-root-node!
   [{::pcp/keys [graph] :as env}]

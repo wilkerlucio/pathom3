@@ -341,15 +341,12 @@
   (is (= (compute-run-graph
            {::pci/index-oir '{}
             ::eql/query     [(list 'foo {})]})
-         '{::pcp/nodes                 {}
-           ::pcp/mutations             [{:dispatch-key foo
-                                         :key          foo
-                                         :params       {}
-                                         :type         :call}]
-           ::pcp/index-ast             {foo {:dispatch-key foo
-                                             :key          foo
-                                             :params       {}
-                                             :type         :call}}})))
+         '{::pcp/nodes     {}
+           ::pcp/mutations [foo]
+           ::pcp/index-ast {foo {:dispatch-key foo
+                                 :key          foo
+                                 :params       {}
+                                 :type         :call}}})))
 
 (deftest compute-run-graph-idents-test
   (testing "separate idents"
