@@ -510,7 +510,7 @@
   (update graph ::warnings coll/vconj warn))
 
 (defn merge-unreachable
-  "Copy unreachable attributes and resolvers from discard-graph to target-graph"
+  "Copy unreachable attributes from discard-graph to target-graph"
   ([target-graph {::keys [unreachable-paths]}]
    (cond-> target-graph
      unreachable-paths
@@ -920,20 +920,24 @@
   (let [graph (add-snapshot! graph env {::snapshot-event   ::snapshot-process-attribute
                                         ::snapshot-message (str "Process attribute " attribute)})
 
-        [graph' node-ids]
+        [graph' node-ids unreachable-graphs]
         (reduce-kv
-          (fn [[graph nodes] input resolvers]
+          (fn [[graph nodes unreachable-graphs] input resolvers]
             (let [graph' (compute-input-resolvers-graph (dissoc graph ::root) env input resolvers)]
               (if (::root graph')
-                [graph' (conj nodes (::root graph'))]
-                [(merge-unreachable graph graph') nodes])))
-          [graph #{}]
+                [graph' (conj nodes (::root graph')) unreachable-graphs]
+                [graph nodes (conj unreachable-graphs graph')])))
+          [graph #{} #{}]
           (get index-oir attribute))]
     (if (seq node-ids)
       (create-root-or graph' env node-ids)
       (-> graph
           (add-unreachable-path env {attribute {}})
-          (merge-unreachable graph')))))
+          (as-> <>
+            (reduce
+              merge-unreachable
+              <>
+              unreachable-graphs))))))
 
 (defn compute-attribute-graph
   "Compute the run graph for a given attribute."
