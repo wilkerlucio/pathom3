@@ -100,6 +100,8 @@
   for replacement."
   boolean?)
 
+(>def ::resolver-response (? (s/keys :opt [::batch-hold])))
+
 (>def ::wrap-batch-resolver-error fn?)
 (>def ::wrap-merge-attribute fn?)
 (>def ::wrap-mutate fn?)
