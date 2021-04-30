@@ -149,7 +149,7 @@
 
 (>def ::mutations
   "A vector with the AST of every mutation that appears in the query."
-  (s/coll-of :edn-query-language.ast/node :kind vector?))
+  (s/coll-of ::pco/op-name :kind vector?))
 
 (>def ::nested-process
   "Which attributes need further processing due to sub-query requirements."
