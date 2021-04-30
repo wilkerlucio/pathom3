@@ -2,6 +2,8 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.pathom3.connect.indexes :as pci]
+    [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
@@ -74,6 +76,24 @@
      :pathom/entity {}}
     input))
 
+(pco/defresolver foreign-indexes [env _]
+  {::pco/output
+   [{::pci/indexes
+     [::pci/index-attributes
+      ::pci/index-oir
+      ::pci/index-io
+      ::pci/autocomplete-ignore
+      ::pci/index-resolvers
+      ::pci/index-mutations]}]}
+  {::pci/indexes
+   (select-keys env
+                [::pci/index-attributes
+                 ::pci/index-oir
+                 ::pci/index-io
+                 ::pci/autocomplete-ignore
+                 ::pci/index-resolvers
+                 ::pci/index-mutations])})
+
 (>defn foreign-interface
   "Returns a function that wraps the environment. When exposing Pathom to some external
   system, this is the recommended way to do it. The format here makes your API compatible
@@ -83,6 +103,9 @@
   query and the initial entity data. This map is open and you can use as a way to extend
   the API."
   [env] [map? => fn?]
-  (fn foreign-interface-internal [input]
-    (let [{:pathom/keys [tx entity] :as request} (normalize-input input)]
-      (process (assoc env ::source-request request) (or entity {}) tx))))
+  (let [env' (pci/register env foreign-indexes)]
+    (fn foreign-interface-internal [input]
+      (let [{:pathom/keys [tx entity] :as request} (normalize-input input)
+            env' (assoc env' ::source-request request)]
+
+        (process env' (or entity {}) tx)))))

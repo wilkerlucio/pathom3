@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
     [com.wsscode.pathom3.entity-tree :as p.ent]
@@ -66,6 +67,9 @@
   query and the initial entity data. This map is open and you can use as a way to extend
   the API."
   [env] [map? => fn?]
-  (fn foreign-interface-internal [input]
-    (let [{:pathom/keys [tx entity] :as request} (p.eql/normalize-input input)]
-      (process (assoc env ::p.eql/source-request request) (or entity {}) tx))))
+  (let [env' (pci/register env p.eql/foreign-indexes)]
+    (fn foreign-interface-internal [input]
+      (let [{:pathom/keys [tx entity] :as request} (p.eql/normalize-input input)
+            env' (assoc env' ::source-request request)]
+
+        (process env' (or entity {}) tx)))))

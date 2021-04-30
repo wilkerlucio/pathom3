@@ -1,9 +1,12 @@
 (ns com.wsscode.pathom3.connect.foreign-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.foreign :as pcf]
+    [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.path :as p.path]
     [edn-query-language.core :as eql]))
 
@@ -78,3 +81,12 @@
                                           [[:z "foo"] :b :c] "error 2"})
          {[:x :y :a]    "error"
           [:x :y :b :c] "error 2"})))
+
+(deftest process-foreign-query
+  (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
+                    (p.eql/foreign-interface))
+        env     (-> (pci/register
+                      [(pbir/constantly-resolver :y 20)
+                       (pcf/foreign-register foreign)]))]
+    (is (= (p.eql/process env [:x :y])
+           {:x 10 :y 20}))))

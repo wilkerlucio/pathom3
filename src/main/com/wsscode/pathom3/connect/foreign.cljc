@@ -10,16 +10,11 @@
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.placeholder :as p.ph]
+    [com.wsscode.promesa.macros :refer [clet]]
     [edn-query-language.core :as eql]))
 
 (def index-query
-  [{::pci/indexes
-    [::pci/index-attributes
-     ::pci/index-oir
-     ::pci/index-io
-     ::pci/autocomplete-ignore
-     ::pci/index-resolvers
-     ::pci/index-mutations]}])
+  [::pci/indexes])
 
 (defn remove-internal-keys [m]
   (into {} (remove (fn [[k _]] (str/starts-with? (or (namespace k) "") "com.wsscode.pathom"))) m))
@@ -52,7 +47,7 @@
     ::keys        [join-node]} errors]
   (coll/map-keys #(into (pop path) (cond-> % join-node next)) errors))
 
-(defn call-foreign-parser [env parser]
+(defn call-foreign [env parser]
   (let [{::keys [query join-node] :as foreign-call} (compute-foreign-query env)
         response (parser {} query)]
     (if-let [errors (::p.err/errors response)]
@@ -60,20 +55,23 @@
            (swap! (::p.err/errors* env) merge)))
     (cond-> response join-node (get join-node))))
 
-(defn internalize-parser-index*
-  ([indexes] (internalize-parser-index* indexes nil))
-  ([{::pci/keys [index-source-id] :as indexes} parser]
+(defn internalize-foreign-indexes
+  ([{::pci/keys [index-source-id] :as indexes} foreign]
    (let [index-source-id (or index-source-id (gensym "dynamic-parser-"))]
      (-> indexes
          (update ::pci/index-resolvers
            (fn [resolvers]
-             (into {}
-                   (map (fn [[r v]] [r (assoc v ::pco/dynamic-name index-source-id)]))
-                   resolvers)))
+             (coll/map-vals
+               #(pco/update-config % assoc ::pco/dynamic-name index-source-id)
+               resolvers)))
          (assoc-in [::pci/index-resolvers index-source-id]
            (pco/resolver index-source-id
              {::pco/cache?            false
               ::pco/dynamic-resolver? true}
-             (fn [env _] (call-foreign-parser env parser))))
+             (fn [env _] (call-foreign env foreign))))
          (dissoc ::pci/index-source-id)))))
 
+(defn foreign-register
+  [foreign]
+  (clet [{::pci/keys [indexes]} (foreign index-query)]
+    (internalize-foreign-indexes indexes foreign)))
