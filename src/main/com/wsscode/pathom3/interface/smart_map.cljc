@@ -12,6 +12,7 @@
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.stats :as pcrs]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [edn-query-language.core :as eql]
     #?@(:bb  []
@@ -117,7 +118,7 @@
      (if-let [x (find ent-tree k)]
        (wrap-smart-map env (val x))
        (let [ast   {:type     :root
-                    :children [{:type :prop, :dispatch-key k, :key k}]}
+                    :children [(pf.eql/prop k)]}
              stats (-> (pcr/run-graph! env ast entity-tree*) meta ::pcr/run-stats)]
          (when-let [error (and (refs/kw-identical? (get env ::error-mode) ::error-mode-loud)
                                (-> (p.eql/process (pcrs/run-stats-env stats)
@@ -227,6 +228,7 @@
 ; region type definition
 
 #?(:bb
+   #_ :clj-kondo/ignore
    (defn ->LazyMapEntry
      [key_ val_]
      (proxy [clojure.lang.AMapEntry] []
@@ -236,7 +238,7 @@
        (getValue [] (force val_))))
 
    :cljs
-   #_{:clj-kondo/ignore [:private-call]}
+   #_ :clj-kondo/ignore
    (deftype SmartMapEntry [env key]
      Object
      (indexOf [coll x]
@@ -457,6 +459,7 @@
                  (-pr-writer (p.ent/entity env) writer opts)))
 
    :clj
+   #_ :clj-kondo/ignore
    (def-map-type SmartMap [env]
      (get [_ k default-value] (sm-env-get env k default-value))
      (assoc [_ k v] (sm-env-assoc env k v))
@@ -537,7 +540,7 @@
    [::smart-map any? => any?]
    (let [{::p.ent/keys [entity-tree*] :as env} (sm-env sm)
          ast       {:type     :root
-                    :children [{:type :prop, :dispatch-key k, :key k}]}
+                    :children [(pf.eql/prop k)]}
          run-stats (-> (pcr/run-graph! env ast entity-tree*)
                        meta ::pcr/run-stats)]
      (assoc run-stats ::value (wrap-smart-map env (get @entity-tree* k))))))
