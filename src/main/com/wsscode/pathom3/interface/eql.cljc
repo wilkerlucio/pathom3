@@ -61,3 +61,28 @@
   (merge
     entity
     (process env entity tx)))
+
+(>defn normalize-input
+  "Normalize a remote interface input. In case of vector it makes a map. Otherwise
+  returns as is."
+  [input]
+  [(s/or :query ::eql/query
+         :config (s/keys :req [:pathom/tx] :opt [:pathom/entity]))
+   => (s/keys :req [:pathom/tx] :opt [:pathom/entity])]
+  (if (vector? input)
+    {:pathom/tx     input
+     :pathom/entity {}}
+    input))
+
+(>defn foreign-interface
+  "Returns a function that wraps the environment. When exposing Pathom to some external
+  system, this is the recommended way to do it. The format here makes your API compatible
+  with Pathom Foreign process, which allows the integration of distributed parsers.
+
+  When calling the remote interface the user can send a query or a map containing the
+  query and the initial entity data. This map is open and you can use as a way to extend
+  the API."
+  [env] [map? => fn?]
+  (fn foreign-interface-internal [input]
+    (let [{:pathom/keys [tx entity] :as request} (normalize-input input)]
+      (process (assoc env ::source-request request) (or entity {}) tx))))

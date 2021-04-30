@@ -56,3 +56,16 @@
                     (assoc ::pcr/root-query tx)
                     (p.ent/with-entity entity))
                 (eql/query->ast tx))))
+
+(>defn foreign-interface
+  "Returns a function that wraps the environment. When exposing Pathom to some external
+  system, this is the recommended way to do it. The format here makes your API compatible
+  with Pathom Foreign process, which allows the integration of distributed parsers.
+
+  When calling the remote interface the user can send a query or a map containing the
+  query and the initial entity data. This map is open and you can use as a way to extend
+  the API."
+  [env] [map? => fn?]
+  (fn foreign-interface-internal [input]
+    (let [{:pathom/keys [tx entity] :as request} (p.eql/normalize-input input)]
+      (process (assoc env ::p.eql/source-request request) (or entity {}) tx))))
