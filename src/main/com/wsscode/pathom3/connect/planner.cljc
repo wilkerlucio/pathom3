@@ -719,6 +719,14 @@
 
 ; region path expansion
 
+(defn runner-node-sym
+  "Find the runner symbol for a resolver, on normal resolvers that is the resolver symbol,
+  but for foreign resolvers it uses its ::p.c.o/dynamic-name."
+  [env resolver-name]
+  (let [resolver (pci/resolver-config env resolver-name)]
+    (or (::pco/dynamic-name resolver)
+        resolver-name)))
+
 (defn create-node-for-resolver-call
   "Create a new node representative to run a given resolver."
   [{::keys        [input]
@@ -727,18 +735,21 @@
     ast           :edn-query-language.ast/node
     :as           env}]
   (let [requires   {attribute {}}
-        ast-params (:params ast)]
+        ast-params (:params ast)
+        config     (pci/resolver-config env op-name)
+        op-name'   (or (::pco/dynamic-name config) op-name)]
     (cond->
       (new-node env
-                {::pco/op-name op-name
-                 ::expects     requires
-                 ::input       input})
+                (cond-> {::pco/op-name op-name'
+                         ::expects     requires
+                         ::input       input}
+                  (not= op-name op-name')
+                  (assoc ::source-sym op-name)))
 
       (seq ast-params)
       (assoc ::params ast-params)
 
-      ; TODO op-name may change, need to check on resolver sym
-      (pci/dynamic-resolver? env op-name)
+      (pci/dynamic-resolver? env op-name')
       (assoc ::foreign-ast {:type :root :children [ast]}))))
 
 (defn compute-resolver-leaf
