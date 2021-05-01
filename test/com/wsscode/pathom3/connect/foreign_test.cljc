@@ -22,47 +22,37 @@
     (is (= (pcf/compute-foreign-query
              (-> {::pcp/node {::pcp/foreign-ast (eql/query->ast [:a])}}
                  (p.ent/with-entity {})))
-           {::pcf/base-query [:a]
-            ::pcf/query      [:a]})))
+           #:pathom{:ast    {:children [{:dispatch-key :a
+                                         :key          :a
+                                         :type         :prop}]
+                             :type     :root}
+                    :entity {}})))
 
   (testing "inputs, but no parent ident, single attribute always goes as ident"
     (is (= (pcf/compute-foreign-query
              (-> {::pcp/node {::pcp/foreign-ast (eql/query->ast [:a])
                               ::pcp/input       {:z {}}}}
                  (p.ent/with-entity {:z "bar"})))
-           {::pcf/base-query [:a]
-            ::pcf/query      '[{([:z "bar"] {:pathom/context {}}) [:a]}]
-            ::pcf/join-node  [:z "bar"]})))
+           #:pathom{:ast    {:children [{:dispatch-key :a
+                                         :key          :a
+                                         :type         :prop}]
+                             :type     :root}
+                    :entity {:z "bar"}})))
 
-  (testing "inputs, with parent ident"
+  (testing "with multiple inputs"
     (is (= (pcf/compute-foreign-query
-             (-> {::pcp/node {::pcp/foreign-ast (eql/query->ast [:a])
-                              ::pcp/input       {:z {}}}}
-                 (p.ent/with-entity {:z "bar"})))
-           {::pcf/base-query [:a]
-            ::pcf/query      '[{([:z "bar"] {:pathom/context {}}) [:a]}]
-            ::pcf/join-node  [:z "bar"]})))
-
-  (testing "inputs, with parent ident"
-    (is (= (pcf/compute-foreign-query
-             (-> {::pcp/node {::pcp/foreign-ast (eql/query->ast [:a])
-                              ::pcp/input       {:z {}}}}
-                 (p.ent/with-entity {:z "bar"})))
-           {::pcf/base-query [:a]
-            ::pcf/query      '[{([:z "bar"] {:pathom/context {}}) [:a]}]
-            ::pcf/join-node  [:z "bar"]}))
-
-    (testing "with multiple inputs"
-      (is (= (pcf/compute-foreign-query
-               (-> {::pcp/node    {::pcp/foreign-ast (eql/query->ast [:a])
-                                   ::pcp/input       {:x {}
-                                                      :z {}}}
-                    ::p.path/path [[:z "bar"] :a]}
-                   (p.ent/with-entity {:x "foo"
-                                       :z "bar"})))
-             {::pcf/base-query [:a]
-              ::pcf/query      '[{([:z "bar"] {:pathom/context {:x "foo"}}) [:a]}]
-              ::pcf/join-node  [:z "bar"]})))))
+             (-> {::pcp/node    {::pcp/foreign-ast (eql/query->ast [:a])
+                                 ::pcp/input       {:x {}
+                                                    :z {}}}
+                  ::p.path/path [[:z "bar"] :a]}
+                 (p.ent/with-entity {:x "foo"
+                                     :z "bar"})))
+           #:pathom{:ast    {:children [{:dispatch-key :a
+                                         :key          :a
+                                         :type         :prop}]
+                             :type     :root}
+                    :entity {:x "foo"
+                             :z "bar"}}))))
 
 (deftest internalize-foreign-errors-test
   (is (= (pcf/internalize-foreign-errors {::p.path/path [:a]}
@@ -90,3 +80,22 @@
                        (pcf/foreign-register foreign)]))]
     (is (= (p.eql/process env [:x :y])
            {:x 10 :y 20}))))
+
+(comment
+  (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
+                    (p.eql/foreign-interface))
+        env     (-> (pci/register
+                      [(pbir/constantly-resolver :y 20)
+                       (pcf/foreign-register foreign)]))]
+    (pcf/foreign-register foreign))
+
+  (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
+                    (p.eql/foreign-interface))
+        env     (-> (pci/register
+                      [(pbir/constantly-resolver :y 20)
+                       (pcf/foreign-register foreign)]))]
+    (p.eql/process env [:x :y]))
+
+  ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/log-entry)
+   {:pathom.viz.log/type :pathom.viz.log.type/trace
+    :pathom.viz.log/data *1}))

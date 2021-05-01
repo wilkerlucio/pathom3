@@ -105,7 +105,10 @@
   [env] [map? => fn?]
   (let [env' (pci/register env foreign-indexes)]
     (fn foreign-interface-internal [input]
-      (let [{:pathom/keys [tx entity] :as request} (normalize-input input)
-            env' (assoc env' ::source-request request)]
+      (let [{:pathom/keys [tx entity ast] :as request} (normalize-input input)
+            env'    (assoc env' ::source-request request)
+            entity' (or entity {})]
 
-        (process env' (or entity {}) tx)))))
+        (if ast
+          (process-ast (p.ent/with-entity env' entity') ast)
+          (process env' entity' tx))))))
