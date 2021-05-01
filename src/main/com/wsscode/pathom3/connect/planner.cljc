@@ -740,16 +740,15 @@
         op-name'   (or (::pco/dynamic-name config) op-name)]
     (cond->
       (new-node env
-                (cond-> {::pco/op-name op-name'
-                         ::expects     requires
-                         ::input       input}
-                  (not= op-name op-name')
-                  (assoc ::source-sym op-name)))
+        {::pco/op-name op-name'
+         ::expects     requires
+         ::input       input})
 
       (seq ast-params)
       (assoc ::params ast-params)
 
       (pci/dynamic-resolver? env op-name')
+      ;; TODO use op-name to figure nested foreign ast
       (assoc ::foreign-ast {:type :root :children [ast]}))))
 
 (defn compute-resolver-leaf
