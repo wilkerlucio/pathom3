@@ -3002,8 +3002,7 @@
                        :index-resolver->nodes {ab #{1 2}}
                        :index-attrs           {:a #{1} :b #{2}}
                        :root                  3}
-               {::pcp/id-counter (atom 5)
-                ::pcp/snapshots* @snaps*}
+               {::pcp/id-counter (atom 5)}
                3
                #{1 2})
              '#:com.wsscode.pathom3.connect.planner{:index-ast             {:a {:dispatch-key :a

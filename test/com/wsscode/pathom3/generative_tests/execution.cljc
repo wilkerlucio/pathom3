@@ -8,7 +8,7 @@
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [com.wsscode.pathom3.attribute :as p.attr]
-    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
+    ;[com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     #?(:clj [com.wsscode.pathom3.connect.planner :as pcp])

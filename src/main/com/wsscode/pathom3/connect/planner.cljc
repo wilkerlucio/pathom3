@@ -1270,18 +1270,19 @@
    (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
                                       (::available-data env)
                                       (:edn-query-language.ast/node env)]
-     #(cond->
-        (compute-run-graph*
-          (merge (base-graph)
-                 graph
-                 {::index-ast      (pf.eql/index-ast (:edn-query-language.ast/node env))
-                  ::source-ast     (:edn-query-language.ast/node env)
-                  ::available-data (::available-data env)})
-          (-> (merge (base-env) env)
-              (vary-meta assoc ::original-env env)))
+     #(let [env' (-> (merge (base-env) env)
+                     (vary-meta assoc ::original-env env))]
+        (cond->
+          (compute-run-graph*
+            (merge (base-graph)
+                   graph
+                   {::index-ast      (pf.eql/index-ast (:edn-query-language.ast/node env))
+                    ::source-ast     (:edn-query-language.ast/node env)
+                    ::available-data (::available-data env)})
+            env')
 
-        optimize-graph?
-        (optimize-graph env)))))
+          optimize-graph?
+          (optimize-graph env'))))))
 
 ; endregion
 
