@@ -406,7 +406,7 @@
   [graph node-id]
   (let [{::keys [run-next node-parents] :as node} (get-node graph node-id)]
     (assert (if node-parents
-              (every? #(not= node-id (-> (get-node graph %) ::run-next))
+              (every? #(not= node-id (get-node graph % ::run-next))
                 node-parents)
               true)
       (str "Tried to remove node " node-id " that still contains references pointing to it. Move
@@ -604,10 +604,10 @@
                              node-ids)]
     (cond
       (= 1 (count run-next-nodes))
-      (let [{::keys [node-id run-next]} run-next-nodes]
+      (let [{::keys [node-id run-next]} (first run-next-nodes)]
         (-> graph
             (remove-node-parent run-next node-id)
-            (set-node-run-next pivot node-id)))
+            (set-node-run-next pivot run-next)))
 
       (seq run-next-nodes)
       (let [and-node (new-node env {::run-and #{}})]

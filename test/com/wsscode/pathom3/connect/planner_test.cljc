@@ -170,10 +170,11 @@
                                                                              :com.wsscode.pathom3.connect.planner/input     #:foo{:id {}}
                                                                              :com.wsscode.pathom3.connect.planner/node-id   1
                                                                              :com.wsscode.pathom3.connect.planner/run-next  5}
-                                                                          5 {:com.wsscode.pathom3.connect.operation/op-name get-year
-                                                                             :com.wsscode.pathom3.connect.planner/expects   #:bar{:year {}}
-                                                                             :com.wsscode.pathom3.connect.planner/input     #:bar{:id {}}
-                                                                             :com.wsscode.pathom3.connect.planner/node-id   5}}
+                                                                          5 {:com.wsscode.pathom3.connect.operation/op-name    get-year
+                                                                             :com.wsscode.pathom3.connect.planner/expects      #:bar{:year {}}
+                                                                             :com.wsscode.pathom3.connect.planner/input        #:bar{:id {}}
+                                                                             :com.wsscode.pathom3.connect.planner/node-id      5
+                                                                             :com.wsscode.pathom3.connect.planner/node-parents #{1}}}
                                                   :root                  1})))
 
   (testing "AND on multiple attributes"
@@ -433,15 +434,17 @@
                                                                                :com.wsscode.pathom3.connect.planner/input        {:b {}}
                                                                                :com.wsscode.pathom3.connect.planner/node-id      1
                                                                                :com.wsscode.pathom3.connect.planner/node-parents #{2}}
-                                                                            2 {:com.wsscode.pathom3.connect.operation/op-name b
-                                                                               :com.wsscode.pathom3.connect.planner/expects   {:b {}}
-                                                                               :com.wsscode.pathom3.connect.planner/input     {:a {}}
-                                                                               :com.wsscode.pathom3.connect.planner/node-id   2
-                                                                               :com.wsscode.pathom3.connect.planner/run-next  1}
+                                                                            2 {:com.wsscode.pathom3.connect.operation/op-name    b
+                                                                               :com.wsscode.pathom3.connect.planner/expects      {:b {}}
+                                                                               :com.wsscode.pathom3.connect.planner/input        {:a {}}
+                                                                               :com.wsscode.pathom3.connect.planner/node-id      2
+                                                                               :com.wsscode.pathom3.connect.planner/node-parents #{4}
+                                                                               :com.wsscode.pathom3.connect.planner/run-next     1}
                                                                             4 {:com.wsscode.pathom3.connect.operation/op-name a1
                                                                                :com.wsscode.pathom3.connect.planner/expects   {:a {}}
                                                                                :com.wsscode.pathom3.connect.planner/input     {}
-                                                                               :com.wsscode.pathom3.connect.planner/node-id   4}}
+                                                                               :com.wsscode.pathom3.connect.planner/node-id   4
+                                                                               :com.wsscode.pathom3.connect.planner/run-next  2}}
                                                     :root                  4})))))
 
 (deftest compute-run-graph-nested-inputs-test
@@ -2972,7 +2975,53 @@
                                                                                :com.wsscode.pathom3.connect.planner/run-next     5}
                                                                             3 #:com.wsscode.pathom3.connect.planner{:node-id 3
                                                                                                                     :run-and #{1}}
-                                                                            5 {}}
+                                                                            5 #:com.wsscode.pathom3.connect.planner{:node-parents #{1}}}
+                                                    :root                  3})))
+
+    (testing "single next already on pivot"
+      (is (= (pcp/merge-sibling-resolver-nodes
+               '#::pcp{:nodes                 {1 {::pco/op-name      ab
+                                                  ::pcp/expects      {:a {}}
+                                                  ::pcp/node-id      1
+                                                  ::pcp/node-parents #{3}
+                                                  ::pcp/run-next     5}
+                                               2 {::pco/op-name      ab
+                                                  ::pcp/expects      {:b {}}
+                                                  ::pcp/node-id      2
+                                                  ::pcp/node-parents #{3}}
+                                               3 #::pcp{:node-id 3
+                                                        :run-and #{1 2}}
+                                               5 {::pcp/node-parents #{1}}}
+                       :index-ast             {:a {:type         :prop
+                                                   :dispatch-key :a
+                                                   :key          :a}
+                                               :b {:type         :prop
+                                                   :dispatch-key :b
+                                                   :key          :b}}
+                       :index-resolver->nodes {ab #{1 2}}
+                       :index-attrs           {:a #{1} :b #{2}}
+                       :root                  3}
+               {::pcp/id-counter (atom 5)}
+               3
+               #{1 2})
+             '#:com.wsscode.pathom3.connect.planner{:index-ast             {:a {:dispatch-key :a
+                                                                                :key          :a
+                                                                                :type         :prop}
+                                                                            :b {:dispatch-key :b
+                                                                                :key          :b
+                                                                                :type         :prop}}
+                                                    :index-attrs           {:a #{1}
+                                                                            :b #{1}}
+                                                    :index-resolver->nodes {ab #{1}}
+                                                    :nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    ab
+                                                                               :com.wsscode.pathom3.connect.planner/expects      {:a {}
+                                                                                                                                  :b {}}
+                                                                               :com.wsscode.pathom3.connect.planner/node-id      1
+                                                                               :com.wsscode.pathom3.connect.planner/node-parents #{3}
+                                                                               :com.wsscode.pathom3.connect.planner/run-next     5}
+                                                                            3 #:com.wsscode.pathom3.connect.planner{:node-id 3
+                                                                                                                    :run-and #{1}}
+                                                                            5 #:com.wsscode.pathom3.connect.planner{:node-parents #{1}}}
                                                     :root                  3}))))
 
   (testing "3 nodes"
