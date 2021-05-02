@@ -2991,7 +2991,8 @@
                                                   ::pcp/node-parents #{3}}
                                                3 #::pcp{:node-id 3
                                                         :run-and #{1 2}}
-                                               5 {::pcp/node-parents #{1}}}
+                                               5 {::pcp/node-id      5
+                                                  ::pcp/node-parents #{1}}}
                        :index-ast             {:a {:type         :prop
                                                    :dispatch-key :a
                                                    :key          :a}
@@ -3001,7 +3002,8 @@
                        :index-resolver->nodes {ab #{1 2}}
                        :index-attrs           {:a #{1} :b #{2}}
                        :root                  3}
-               {::pcp/id-counter (atom 5)}
+               {::pcp/id-counter (atom 5)
+                ::pcp/snapshots* @snaps*}
                3
                #{1 2})
              '#:com.wsscode.pathom3.connect.planner{:index-ast             {:a {:dispatch-key :a
@@ -3021,7 +3023,8 @@
                                                                                :com.wsscode.pathom3.connect.planner/run-next     5}
                                                                             3 #:com.wsscode.pathom3.connect.planner{:node-id 3
                                                                                                                     :run-and #{1}}
-                                                                            5 #:com.wsscode.pathom3.connect.planner{:node-parents #{1}}}
+                                                                            5 #:com.wsscode.pathom3.connect.planner{:node-id      5
+                                                                                                                    :node-parents #{1}}}
                                                     :root                  3}))))
 
   (testing "3 nodes"
