@@ -163,6 +163,8 @@
   "Idents collected while scanning query"
   (s/coll-of ::eql/ident :kind set?))
 
+(>def ::optimize-graph? boolean?)
+
 (>def ::plan-cache*
   "Atom containing the cache atom to support cached planning."
   refs/atom?)
@@ -173,7 +175,8 @@
 
 ; endregion
 
-(declare add-snapshot! compute-run-graph compute-run-graph* compute-attribute-graph)
+(declare add-snapshot! compute-run-graph compute-run-graph* compute-attribute-graph
+         optimize-graph)
 
 ; region node helpers
 
@@ -199,10 +202,10 @@
 (defn node-with-resolver-config
   "Get the node plus the resolver config, when the node has an op-name. If node is
   not a resolver not it returns nil."
-  [graph env {::keys [node-id] :as node'}]
+  [graph env node-id]
   (let [node (get-node graph node-id)]
     (if-let [config (some->> node ::pco/op-name (pci/resolver-config env))]
-      (merge node' node config))))
+      (merge node config))))
 
 (defn assoc-node
   "Set attribute k about node-id. Only assoc when node exists, otherwise its a noop."
@@ -215,23 +218,23 @@
   "Update a given node in a graph, like Clojure native update."
   ([graph node-id k f]
    (if (get-node graph node-id)
-     (update-in graph [::nodes node-id k] f)
+     (update-in graph (cond-> [::nodes node-id] k (conj k)) f)
      graph))
   ([graph node-id k f v]
    (if (get-node graph node-id)
-     (update-in graph [::nodes node-id k] f v)
+     (update-in graph (cond-> [::nodes node-id] k (conj k)) f v)
      graph))
   ([graph node-id k f v v2]
    (if (get-node graph node-id)
-     (update-in graph [::nodes node-id k] f v v2)
+     (update-in graph (cond-> [::nodes node-id] k (conj k)) f v v2)
      graph))
   ([graph node-id k f v v2 v3]
    (if (get-node graph node-id)
-     (update-in graph [::nodes node-id k] f v v2 v3)
+     (update-in graph (cond-> [::nodes node-id] k (conj k)) f v v2 v3)
      graph))
   ([graph node-id k f v v2 v3 & args]
    (if (get-node graph node-id)
-     (apply update-in graph [::nodes node-id k] f v v2 v3 args)
+     (apply update-in graph (cond-> [::nodes node-id] k (conj k)) f v v2 v3 args)
      graph)))
 
 (defn get-root-node
@@ -335,7 +338,6 @@
   ([graph {::p.attr/keys [attribute]} node-id]
    (if node-id
      (-> graph
-         (update-in [::nodes node-id ::source-for-attrs] coll/sconj attribute)
          (update-in [::index-attrs attribute] coll/sconj node-id))
      graph)))
 
@@ -364,7 +366,9 @@
         branches)
       graph)))
 
-(defn remove-from-parent-branches [graph {::keys [node-id node-parents]}]
+(defn remove-from-parent-branches
+  "Disconnect a branch node from its parents."
+  [graph {::keys [node-id node-parents]}]
   (reduce
     (fn [g nid]
       (let [n (get-node graph nid)]
@@ -379,6 +383,12 @@
           g)))
     graph
     node-parents))
+
+(defn remove-node-edges
+  "Remove all node connections. This disconnect the nodes from parents and run-next."
+  [graph node-id]
+  ;; TODO disconnect run-next
+  (remove-from-parent-branches graph node-id))
 
 (defn remove-node*
   "Remove a node from the graph. Doesn't remove any references, caution!"
@@ -469,7 +479,7 @@
   (some->>
     (get-in graph [::index-attrs attr])
     (mapv
-      #(-> (node-with-resolver-config graph env {::node-id %})
+      #(-> (node-with-resolver-config graph env %)
            ::pco/provides
            (get attr)))))
 
@@ -659,7 +669,7 @@
     (if (::root graph')
       (let [nodes
             (->> (get-in graph' [::index-attrs attr])
-                 (mapv #(node-with-resolver-config graph' env {::node-id %})))
+                 (mapv #(node-with-resolver-config graph' env %)))
 
             recur
             (get recursive-joins attr)]
@@ -740,9 +750,9 @@
         op-name'   (or (::pco/dynamic-name config) op-name)]
     (cond->
       (new-node env
-        {::pco/op-name op-name'
-         ::expects     requires
-         ::input       input})
+                {::pco/op-name op-name'
+                 ::expects     requires
+                 ::input       input})
 
       (seq ast-params)
       (assoc ::params ast-params)
@@ -1086,7 +1096,9 @@
     => ::graph]
    (compute-run-graph {} env))
 
-  ([graph env]
+  ([graph {::keys [optimize-graph?]
+           :or    {optimize-graph? true}
+           :as    env}]
    [(? (s/keys))
     (s/keys
       :req [:edn-query-language.ast/node]
@@ -1098,17 +1110,172 @@
     => ::graph]
    (add-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
                              ::snapshot-message "Start query plan"})
+
    (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
                                       (::available-data env)
                                       (:edn-query-language.ast/node env)]
-     #(compute-run-graph*
-        (merge (base-graph)
-               graph
-               {::index-ast      (pf.eql/index-ast (:edn-query-language.ast/node env))
-                ::source-ast     (:edn-query-language.ast/node env)
-                ::available-data (::available-data env)})
-        (-> (merge (base-env) env)
-            (vary-meta assoc ::original-env env))))))
+     #(cond->
+        (compute-run-graph*
+          (merge (base-graph)
+                 graph
+                 {::index-ast      (pf.eql/index-ast (:edn-query-language.ast/node env))
+                  ::source-ast     (:edn-query-language.ast/node env)
+                  ::available-data (::available-data env)})
+          (-> (merge (base-env) env)
+              (vary-meta assoc ::original-env env)))
+
+        optimize-graph?
+        (optimize-graph env)))))
+
+; endregion
+
+; region graph optimizations
+
+(defn combine-expects [na nb]
+  (update na ::expects pfsd/merge-shapes (::expects nb)))
+
+(defn combine-foreign-ast [na nb]
+  (if (::foreign-ast na)
+    (update na ::foreign-ast pf.eql/merge-ast-children (::foreign-ast nb))
+    na))
+
+(defn transfer-node-indexes [graph target-node-id source-node-id]
+  (let [attrs (keys (get-node graph source-node-id ::expects))]
+    (reduce
+      (fn [graph attr]
+        (-> graph
+            (update-in [::index-attrs attr] coll/sconj target-node-id)
+            (update-in [::index-attrs attr] disj source-node-id)))
+      graph
+      attrs)))
+
+(defn merge-sibling-resolver-nodes*
+  "Merges data from source-node-id into target-node-id, them removes the source node."
+  [graph target-node-id source-node-id]
+  (let [source-node (get-node graph source-node-id)]
+    (-> graph
+        ; merge any extra keys from source node, but without overriding anything
+        (update-node target-node-id nil coll/merge-defaults source-node)
+        (update-node target-node-id nil combine-expects source-node)
+        (update-node target-node-id nil combine-foreign-ast source-node)
+        (transfer-node-indexes target-node-id source-node-id)
+        (remove-node-edges source-node-id)
+        (remove-node source-node-id))))
+
+(defn merge-sibling-resolver-nodes
+  [graph env parent-node-id node-ids]
+  (let [[pivot & node-ids'] (sort node-ids)
+        resolver (::pco/op-name (get-node graph pivot))]
+    (add-snapshot! graph env {::snapshot-message (str "Merging sibling resolver calls to resolver " resolver)
+                              ::highlight-nodes  (into #{} (conj node-ids parent-node-id))
+                              ::highlight-styles {parent-node-id 1}})
+    (-> (reduce
+          (fn [g node-id]
+            (merge-sibling-resolver-nodes* g pivot node-id))
+          graph
+          node-ids')
+        (add-snapshot! env {::snapshot-message "Merge complete"
+                            ::highlight-nodes  #{parent-node-id pivot}
+                            ::highlight-styles {parent-node-id 1}}))))
+
+(defn can-merge-sibling-resolver-nodes?
+  [graph node-id1 node-id2]
+  (let [n1 (get-node graph node-id1)
+        n2 (get-node graph node-id2)]
+    (and (::pco/op-name n1) ; is a resolver
+         (= (::pco/op-name n1) (::pco/op-name n2)) ; same resolver
+         (= nil (::run-next n1) (::run-next n2)) ; no run next on any (yet)
+         )))
+
+(defn transfer-node-parent
+  "Transfer the node parents from source node to target node. This function will also
+  update the parents references to point to target node."
+  [graph target-node-id source-node-id node-id]
+  (-> graph
+      (remove-node-parent source-node-id node-id)
+      (add-node-parent target-node-id node-id)
+      (as-> <>
+        (cond
+          (= (get-node graph node-id ::run-next) source-node-id)
+          (set-node-run-next* <> node-id target-node-id)
+
+          (contains? (get-node graph node-id ::run-and) source-node-id)
+          (-> <>
+              (add-branch-to-node node-id ::run-and target-node-id)
+              (update-node node-id ::run-and disj source-node-id))
+
+          (contains? (get-node graph node-id ::run-or) source-node-id)
+          (-> <>
+              (add-branch-to-node node-id ::run-or target-node-id)
+              (update-node node-id ::run-or disj source-node-id))
+
+          :else
+          <>))))
+
+(defn transfer-node-parents
+  "Transfer node parents from source node to target node. In case source node is root,
+  the root will be transferred to target node."
+  [graph target-node-id source-node-id]
+  (let [parents (get-node graph source-node-id ::node-parents)]
+    (-> graph
+        ; transfer root
+        (cond->
+          (= (::root graph) source-node-id)
+          (set-root-node target-node-id))
+        (as-> <>
+          (reduce
+            (fn [g node-id]
+              (transfer-node-parent g target-node-id source-node-id node-id))
+            <>
+            parents)))))
+
+(>defn simplify-branch
+  "When a branch node contains a single branch out, remove the AND node and put that
+  single item in place.
+
+  Note in case the branch has a run-next, that run-next gets moved to the end of chain
+  to retain the same order as it would run with the branch."
+  [graph env node-id]
+  [::graph map? ::node-id => ::graph]
+  (let [node           (get-node graph node-id)
+        target-node-id (and (= 1 (count (::run-and node)))
+                            (first (::run-and node)))]
+    (if target-node-id
+      (-> graph
+          (add-snapshot! env {::snapshot-message "Simplifying branch with single element"
+                              ::highlight-nodes  #{node-id target-node-id}
+                              ::highlight-styles {node-id 1}})
+          (remove-node-parent target-node-id node-id)
+          (transfer-node-parents target-node-id node-id)
+          (remove-node-edges node-id)
+          (remove-node node-id)
+          (add-snapshot! env {::snapshot-message "Simplification done"
+                              ::highlight-nodes  #{target-node-id}}))
+      graph)))
+
+(defn optimize-AND-branches
+  [graph env node-id]
+  (let [{parent-id ::node-id
+         ::keys    [run-and]} (get-node graph node-id)]
+    (-> (loop [graph    graph
+               node-ids run-and]
+          (if-let [pivot (first node-ids)]
+            (let [other-nodes    (rest node-ids)
+                  matching-nodes (into #{}
+                                       (filter #(can-merge-sibling-resolver-nodes? graph pivot %))
+                                       other-nodes)
+                  graph'         (cond-> graph
+                                   (seq matching-nodes)
+                                   (merge-sibling-resolver-nodes env parent-id (conj matching-nodes pivot)))]
+              (recur graph' (into #{} (remove matching-nodes) other-nodes)))
+            graph))
+        (simplify-branch env node-id))))
+
+(defn optimize-graph
+  [graph env]
+  (if (::run-and (get-root-node graph))
+    (optimize-AND-branches graph env (::root graph))
+    graph))
 
 ; endregion
 

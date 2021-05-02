@@ -471,7 +471,7 @@
                 (fn [nid]
                   [nid
                    (->> (pcp/node-successors graph nid)
-                        (keep #(pcp/node-with-resolver-config graph env {::pcp/node-id %}))
+                        (keep #(pcp/node-with-resolver-config graph env %))
                         (map #(or (::pco/priority %) 0))
                         (apply max))])
                 node-ids)]
