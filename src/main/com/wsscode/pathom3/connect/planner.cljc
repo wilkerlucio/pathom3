@@ -124,7 +124,7 @@
   ::p.attr/attributes-set)
 
 (>def ::source-sym
-  "On dynamic resolvers, this points to the original source resolver in the foreign parser."
+  "On dynamic resolvers, this points to the original source resolver in the foreign environment."
   ::pco/op-name)
 
 (>def ::unreachable-paths

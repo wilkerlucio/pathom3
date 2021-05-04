@@ -292,7 +292,7 @@
         data))
 
 (defn global-data-resolver
-  "Expose data as a resolver, note this data will be available everywhere in the parser.
+  "Expose data as a resolver, note this data will be available everywhere in the system.
 
   Works the same as edn-file-resolver, but uses the data directly instead of reading
   from a file. This also applies for the attribute tables inside the data."
