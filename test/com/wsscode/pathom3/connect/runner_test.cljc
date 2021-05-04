@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.pathom3.cache :as p.cache]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
@@ -677,22 +678,6 @@
           {:users       [#:user{:score 10} #:user{:score 20}]
            :total-score 30})))
 
-  (comment
-    @(run-graph-async
-       (pci/register
-         [(pbir/static-attribute-map-resolver :user/id :user/score
-            {1 10
-             2 20})
-          (pbir/constantly-resolver :x 10)
-          (pco/resolver 'total-score
-            {::pco/input  [{:users [:user/score]}]
-             ::pco/output [:total-score]}
-            (fn [_ {:keys [users]}]
-              {:total-score (reduce + 0 (map :user/score users))}))])
-       {:users [{:user/id 1}
-                {:user/id 2}]}
-       [:total-score]))
-
   (testing "source data partially in available data"
     (is (graph-response?
           (pci/register
@@ -878,6 +863,22 @@
    ::pco/output [:v]
    ::pco/batch? true}
   (mapv #(hash-map :v (* 10 (:id %))) items))
+
+(defrecord CustomCacheType [atom]
+  p.cache/CacheStore
+  (-cache-lookup-or-miss [_ cache-key f]
+                         (let [cache @atom]
+                           (if-let [entry (find cache cache-key)]
+                             (val entry)
+                             (let [res (f)]
+                               (swap! atom assoc cache-key res)
+                               res))))
+
+  (-cache-find [_ cache-key]
+               (find @atom cache-key)))
+
+(defn custom-cache [data]
+  (->CustomCacheType (atom data)))
 
 (deftest run-graph!-batch-test
   (testing "simple batching"
@@ -1106,6 +1107,24 @@
             (pci/register
               {::custom-cache*
                (volatile!
+                 {['id->v-single-attr-transform {:id 1} {}] {:v 100}
+                  ['id->v-single-attr-transform {:id 3} {}] {:v 300}})}
+              [(-> (batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
+                   (pco/update-config assoc ::pco/cache-store ::custom-cache*))])
+            {:list
+             [{:id 1}
+              {:id 2}
+              {:id 3}]}
+            [{:list [:v]}]
+            {:list
+             [{:id 1 :v 100}
+              {:id 2 :v 20}
+              {:id 3 :v 300}]}))
+
+      (is (graph-response?
+            (pci/register
+              {::custom-cache*
+               (custom-cache
                  {['id->v-single-attr-transform {:id 1} {}] {:v 100}
                   ['id->v-single-attr-transform {:id 3} {}] {:v 300}})}
               [(-> (batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))

@@ -208,7 +208,7 @@
                                                                           :available input-shape})))
                               (cond
                                 batch?
-                                (if-let [x (find @resolver-cache* [op-name input-data params])]
+                                (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
                                   (val x)
                                   (if (::pcr/unsupported-batch? env)
                                     (invoke-resolver-cached-batch
