@@ -16,8 +16,7 @@ and chasing bugs and help improve the development of Pathom.
 While in alpha state, this library is only available as a git deps dependency.
 
 ```clojure
-{:deps {com.wsscode/pathom3 {:git/url "https://github.com/wilkerlucio/pathom3"
-                             :sha     "FIND_LATEST_ON_GITHUB"}}}
+com.wsscode/pathom3 {:git/url "https://github.com/wilkerlucio/pathom3" :sha "FIND_LATEST_ON_GITHUB"}
 ```
 
 ## Documentation
