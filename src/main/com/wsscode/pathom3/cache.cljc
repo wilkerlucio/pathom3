@@ -8,7 +8,12 @@
          Volatile))))
 
 (defprotocol CacheStore
-  (-cache-lookup-or-miss [this cache-key f]))
+  (-cache-lookup-or-miss [this cache-key f])
+  (-cache-find [this cache-key]
+    "Implement a way to read a cache key from the cache. If there is a hit, you must
+    return a map entry for the result, otherwise return nil. The map-entry can make
+    the distinction between a miss (nil return) vs a value with a miss (a map-entry with
+    a value of nil)"))
 
 (extend-protocol CacheStore
   Atom
@@ -20,6 +25,9 @@
           (swap! this assoc cache-key res)
           res))))
 
+  (-cache-find [this cache-key]
+    (find @this cache-key))
+
   Volatile
   (-cache-lookup-or-miss [this cache-key f]
     (let [cache @this]
@@ -27,7 +35,10 @@
         (val entry)
         (let [res (f)]
           (vswap! this assoc cache-key res)
-          res)))))
+          res))))
+
+  (-cache-find [this cache-key]
+    (find @this cache-key)))
 
 (defn cache-store? [x] (satisfies? CacheStore x))
 
@@ -52,3 +63,9 @@
   (if-let [cache* (get env cache-container)]
     (-cache-lookup-or-miss cache* cache-key f)
     (f)))
+
+(>defn cache-find
+  "Read from cache, without trying to set."
+  [cache cache-key]
+  [cache-store? any? => (? map-entry?)]
+  (-cache-find cache cache-key))
