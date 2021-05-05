@@ -111,6 +111,8 @@
 (>def ::process-run-finish-ms number?)
 (>def ::process-run-duration-ms number?)
 
+(>def ::node-run-return (? (s/keys :opt [::batch-hold])))
+
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
   [env {::pcp/keys [expects]}]
@@ -489,7 +491,8 @@
     ::keys     [choose-path]
     :or        {choose-path default-choose-path}
     :as        env} {::pcp/keys [run-or] :as or-node}]
-  [(s/keys :req [::pcp/graph]) ::pcp/node => nil?]
+  [(s/keys :req [::pcp/graph]) ::pcp/node
+   => ::node-run-return]
   (merge-node-stats! env or-node {::node-run-start-ms (time/now-ms)})
 
   (let [res (if-not (all-requires-ready? env or-node)
@@ -520,7 +523,8 @@
 (>defn run-and-node!
   "Given an AND node, runs every attached node, then runs the attached next."
   [{::pcp/keys [graph] :as env} {::pcp/keys [run-and] :as and-node}]
-  [(s/keys :req [::pcp/graph]) ::pcp/node => nil?]
+  [(s/keys :req [::pcp/graph]) ::pcp/node
+   => ::node-run-return]
   (merge-node-stats! env and-node {::node-run-start-ms (time/now-ms)})
 
   (let [res (reduce
@@ -544,7 +548,7 @@
   the output will be there."
   [env node]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*]) ::pcp/node
-   => (? (s/keys :opt [::batch-hold]))]
+   => ::node-run-return]
   (case (pcp/node-kind node)
     ::pcp/node-resolver
     (run-resolver-node! env node)
