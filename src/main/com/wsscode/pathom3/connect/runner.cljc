@@ -463,9 +463,9 @@
   Returns the paths and their highest priority, in order with the highest priority as
   first. For example:
 
-      [[6 1] [4 2]]
+      [[4 2] [6 1]]
 
-  Means the first path is choosing node-id 6, and highest priority is 1."
+  Means the first path is choosing node-id 4, and highest priority is 2."
   [{::pcp/keys [graph] :as env} node-ids]
   (let [paths (mapv
                 (fn [nid]
