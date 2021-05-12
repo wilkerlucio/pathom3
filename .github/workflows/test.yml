@@ -63,7 +63,7 @@ jobs:
             m2-
 
 #      - run: bb run test
-      - run: PATHOM_TEST=true clojure -A:test:test-deps
+      - run: PATHOM_TEST=true clojure -A:provided:test:test-deps
 
   test-cljs:
     runs-on: ubuntu-latest
