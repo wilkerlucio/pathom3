@@ -612,7 +612,7 @@
   [{::pcp/keys [graph] :as env}]
   (if-let [root (pcp/get-root-node graph)]
     (let [{::keys [batch-hold]} (run-node! env root)]
-      (if batch-hold
+      (when batch-hold
         (if (::nested-waiting? batch-hold)
           ; add to wait
           (refs/gswap! (::batch-waiting* env) coll/vconj batch-hold)
@@ -712,6 +712,16 @@
                (fn [[inputs result]]
                  (mapv #(vector % result) inputs))))))
 
+(defn merge-entity-to-root-data [env env' node]
+  (when-not (p.path/root? env')
+    (p.ent/swap-entity! env update-in (::p.path/path env')
+      (fn [ent]
+        (let [ent' (p.ent/entity env')]
+          (-> ent
+              (coll/merge-defaults ent')
+              (merge (pfsd/select-shape ent' (::pcp/expects node)))
+              (include-meta-stats env' (::pcp/graph env'))))))))
+
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
@@ -750,10 +760,7 @@
 
             (run-root-node! env')
 
-            (when-not (p.path/root? env')
-              (p.ent/swap-entity! env assoc-in (::p.path/path env')
-                (-> (p.ent/entity env')
-                    (include-meta-stats env' (::pcp/graph env')))))))))))
+            (merge-entity-to-root-data env env' node)))))))
 
 (defn run-batches-waiting! [env]
   (let [waits* (-> env ::batch-waiting*)

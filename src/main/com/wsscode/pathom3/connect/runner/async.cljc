@@ -459,18 +459,20 @@
                        ::pcr/keys [node-resolver-input]
                        :as        batch-item} response]]
                 (pcr/cache-batch-item batch-item batch-op response)
+
                 (pcr/merge-node-stats! env' node
                   (merge {::pcr/batch-run-start-ms  start
                           ::pcr/batch-run-finish-ms finish}
                          (pcr/report-resolver-io-stats env' node-resolver-input response)))
+
                 (p/do!
                   (merge-resolver-response! env' response)
+
                   (pcr/merge-node-stats! env' node {::pcr/node-run-finish-ms (time/now-ms)})
+
                   (run-root-node! env')
-                  (when-not (p.path/root? env')
-                    (p.ent/swap-entity! env assoc-in (::p.path/path env')
-                      (-> (p.ent/entity env')
-                          (pcr/include-meta-stats env' (::pcp/graph env')))))))
+
+                  (pcr/merge-entity-to-root-data env env' node)))
               nil
               (pcr/combine-inputs-with-responses input-groups inputs responses)))))
       nil
