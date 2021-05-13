@@ -859,7 +859,7 @@
 
 (pco/defresolver batch-param [env items]
   {::pco/input  [:id]
-   ::pco/output [:v-param]
+   ::pco/output [:v]
    ::pco/batch? true}
   (let [m (-> (pco/params env) :multiplier (or 10))]
     (mapv #(hash-map :v (* m (:id %))) items)))
@@ -963,7 +963,7 @@
            [{:id 1}
             {:id 2}
             {:id 3}]}
-          [{:list [:v-param]}]
+          [{:list [:v]}]
           {:list
            [{:id 1 :v 10}
             {:id 2 :v 20}
@@ -975,7 +975,7 @@
            [{:id 1}
             {:id 2}
             {:id 3}]}
-          '[{:list [(:v-param {:multiplier 100})]}]
+          '[{:list [(:v {:multiplier 100})]}]
           {:list
            [{:id 1 :v 100}
             {:id 2 :v 200}
@@ -1225,7 +1225,53 @@
                           (fn [_ {:parent/keys [children]}] {:parent/good? (good? children)}))])]
         (is (graph-response? env
               {:parent/id 1} [:parent/good?]
-              #:parent{:id 1, :children [#:child{:id 1, :ident :child/good}], :good? true}))))))
+              #:parent{:id 1, :children [#:child{:id 1, :ident :child/good}], :good? true}))))
+
+    (testing "issue-49 data merging across different batches"
+      (let [db  {:a {1 {:a/id 1 :a/code "a-1"}
+                     2 {:a/id 2 :a/code "a-2"}}
+                 :f {1 {:f/id 1 :f/code "f-1"}
+                     2 {:f/id 2 :f/code "f-2"}}
+                 :b {1 [{:f/id 1}]}
+                 :c {1 [{:f/id 2}]}}
+            env (pci/register
+                  [(pco/resolver 'a
+                     {::pco/input  [:a/id]
+                      ::pco/output [:a/id :a/code]
+                      ::pco/batch? true}
+                     (fn [_ input]
+                       (mapv #(get-in db [:a (:a/id %)]) input)))
+
+                   (pco/resolver 'f
+                     {::pco/input  [:f/id]
+                      ::pco/output [:f/id :f/code]
+                      ::pco/batch? true}
+                     (fn [_ input]
+                       (mapv #(get-in db [:f (:f/id %)]) input)))
+
+                   (pco/resolver 'b
+                     {::pco/input  [:a/id]
+                      ::pco/output [{:a/b [:f/id]}]
+                      ::pco/batch? true}
+                     (fn [_ input]
+                       (mapv (fn [{:a/keys [id]}]
+                               {:a/b (get-in db [:b id])}) input)))
+
+                   (pco/resolver 'c
+                     {::pco/input  [:a/id]
+                      ::pco/output [{:a/c [:f/id]}]}
+                     (fn [_ {:keys [a/id]}]
+                       {:a/c (get-in db [:c id])}))])]
+        (is (graph-response? env {}
+              [{[:a/id 1]
+                [:a/code
+                 {:a/b [:f/id :f/code]}
+                 {:a/c [:f/id :f/code]}]}]
+              {[:a/id 1]
+               {:a/id   1
+                :a/code "a-1"
+                :a/b    [#:f{:id 1 :code "f-1"}]
+                :a/c    [#:f{:id 2 :code "f-2"}]}}))))))
 
 (deftest run-graph!-run-stats
   (is (graph-response?
