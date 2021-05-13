@@ -473,6 +473,7 @@
                    (->> (pcp/node-successors graph nid)
                         (keep #(pcp/node-with-resolver-config graph env {::pcp/node-id %}))
                         (map #(or (::pco/priority %) 0))
+                        (distinct)
                         (sort #(compare %2 %))
                         vec)])
                 node-ids)]
