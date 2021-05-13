@@ -395,7 +395,7 @@
             [:value]
             (fn [res]
               (mcs/match?
-                {::pcr/taken-paths  #{1}
+                {::pcr/taken-paths  [1]
                  ::pcr/success-path 1}
                 (-> res meta ::pcr/run-stats ::pcr/node-run-stats (get 3)))))))
 
@@ -414,6 +414,30 @@
             {}
             [:value]
             {:value 2}))
+
+      (testing "competing priority, look at next lower."
+        (is (graph-response?
+              (pci/register
+                [(pco/resolver `x
+                   {::pco/output   [:x :y]
+                    ::pco/priority 9}
+                   (fn [_ _]
+                     {:x 1 :y 2}))
+                 (pco/resolver `value1
+                   {::pco/input    [:x]
+                    ::pco/output   [:value]
+                    ::pco/priority 1}
+                   (fn [_ _]
+                     {:value 1}))
+                 (pco/resolver `value2
+                   {::pco/input    [:y]
+                    ::pco/output   [:value]
+                    ::pco/priority 2}
+                   (fn [_ _]
+                     {:value 2}))])
+              {}
+              [:y :value]
+              {:x 1, :y 2, :value 2})))
 
       (testing "distinct inputs"
         (is (graph-response?
