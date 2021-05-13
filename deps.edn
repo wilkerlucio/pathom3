@@ -3,7 +3,7 @@
 
  :deps
  {com.fulcrologic/guardrails {:mvn/version "1.1.4"}
-  com.wsscode/cljc-misc      {:mvn/version "2021.04.26"}
+  com.wsscode/cljc-misc      {:mvn/version "2021.05.12"}
   com.wsscode/log            {:git/url "https://github.com/wilkerlucio/log"
                               :sha     "1ac61009b3a57d5d09515ca823556bbe440c292d"}
   funcool/promesa            {:mvn/version "6.0.0"}

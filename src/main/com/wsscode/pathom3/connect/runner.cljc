@@ -84,7 +84,7 @@
 
 (>def ::taken-paths
   "Set with node-ids for attempted paths in a OR node."
-  ::pcp/node-id-set)
+  (s/coll-of ::pcp/node-id :kind vector?))
 
 (>def ::success-path
   "Path that succeed in a OR node."
@@ -463,7 +463,7 @@
   Returns the paths and their highest priority, in order with the highest priority as
   first. For example:
 
-      [[4 2] [6 1]]
+      [[4 [2 1]] [6 [1]]]
 
   Means the first path is choosing node-id 4, and highest priority is 2."
   [{::pcp/keys [graph] :as env} node-ids]
@@ -473,10 +473,12 @@
                    (->> (pcp/node-successors graph nid)
                         (keep #(pcp/node-with-resolver-config graph env {::pcp/node-id %}))
                         (map #(or (::pco/priority %) 0))
-                        (apply max))])
+                        (distinct)
+                        (sort #(compare %2 %))
+                        vec)])
                 node-ids)]
     (->> paths
-         (sort-by second #(compare %2 %)))))
+         (sort-by second #(coll/vector-compare %2 %)))))
 
 (defn default-choose-path [env _or-node node-ids]
   (-> (priority-sort env node-ids)
@@ -484,7 +486,7 @@
 
 (defn add-taken-path!
   [{::keys [node-run-stats*]} {::pcp/keys [node-id]} taken-path-id]
-  (refs/gswap! node-run-stats* update-in [node-id ::taken-paths] coll/sconj taken-path-id))
+  (refs/gswap! node-run-stats* update-in [node-id ::taken-paths] coll/vconj taken-path-id))
 
 (>defn run-or-node!
   [{::pcp/keys [graph]
