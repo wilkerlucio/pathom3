@@ -8,6 +8,7 @@
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.reveal-ext]
     [edn-query-language.core :as eql]))
 
 (defn process-ast* [env ast]
