@@ -1138,6 +1138,108 @@
                                                                                :com.wsscode.pathom3.connect.planner/params    {:x 1}}}
                                                     :root                  1})))))
 
+(deftest compute-run-graph-optimize-test
+  (testing "optimize AND nodes"
+    (is (= (compute-run-graph
+             {::pci/index-oir {:a {{} #{'x}}
+                               :b {{} #{'x}}}
+              ::eql/query     [:a :b]})
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name x,
+                                                                             :com.wsscode.pathom3.connect.planner/expects   {:a {},
+                                                                                                                             :b {}},
+                                                                             :com.wsscode.pathom3.connect.planner/input     {},
+                                                                             :com.wsscode.pathom3.connect.planner/node-id   1}},
+                                                  :index-ast             {:a {:type         :prop,
+                                                                              :dispatch-key :a,
+                                                                              :key          :a},
+                                                                          :b {:type         :prop,
+                                                                              :dispatch-key :b,
+                                                                              :key          :b}},
+                                                  :index-resolver->nodes {x #{1}},
+                                                  :index-attrs           {:a #{1}, :b #{1}},
+                                                  :root                  1}))
+
+    (testing "multiple nodes"
+      (is (= (compute-run-graph
+               {::pci/index-oir {:a {{} #{'x}}
+                                 :b {{} #{'x}}
+                                 :c {{} #{'x}}}
+                ::eql/query     [:a :b :c]})
+             '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name x,
+                                                                               :com.wsscode.pathom3.connect.planner/expects   {:a {},
+                                                                                                                               :b {},
+                                                                                                                               :c {}},
+                                                                               :com.wsscode.pathom3.connect.planner/input     {},
+                                                                               :com.wsscode.pathom3.connect.planner/node-id   1}},
+                                                    :index-ast             {:a {:type         :prop,
+                                                                                :dispatch-key :a,
+                                                                                :key          :a},
+                                                                            :b {:type         :prop,
+                                                                                :dispatch-key :b,
+                                                                                :key          :b},
+                                                                            :c {:type         :prop,
+                                                                                :dispatch-key :c,
+                                                                                :key          :c}},
+                                                    :index-resolver->nodes {x #{1}},
+                                                    :index-attrs           {:a #{1}, :b #{1}, :c #{1}},
+                                                    :root                  1})))
+
+    (testing "multiple resolvers"
+      (is (= (compute-run-graph
+               {::pci/index-oir {:a {{} #{'x}}
+                                 :b {{} #{'y}}
+                                 :c {{} #{'x}}
+                                 :d {{} #{'z}}
+                                 :e {{} #{'z}}
+                                 :f {{} #{'x}}}
+                ::pcp/snapshots* (atom [])
+                ::eql/query     [:a :b :c :d :e :f]})
+             '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name x,
+                                                                               :com.wsscode.pathom3.connect.planner/expects   {:a {},
+                                                                                                                               :b {},
+                                                                                                                               :c {}},
+                                                                               :com.wsscode.pathom3.connect.planner/input     {},
+                                                                               :com.wsscode.pathom3.connect.planner/node-id   1}},
+                                                    :index-ast             {:a {:type         :prop,
+                                                                                :dispatch-key :a,
+                                                                                :key          :a},
+                                                                            :b {:type         :prop,
+                                                                                :dispatch-key :b,
+                                                                                :key          :b},
+                                                                            :c {:type         :prop,
+                                                                                :dispatch-key :c,
+                                                                                :key          :c}},
+                                                    :index-resolver->nodes {x #{1}},
+                                                    :index-attrs           {:a #{1}, :b #{1}, :c #{1}},
+                                                    :root                  1}))))
+
+  (testing "optimize AND not at root"
+    (is (= (compute-run-graph
+             {::pci/index-oir {:a {{:z {}} #{'x}}
+                               :b {{:z {}} #{'x}}
+                               :z {{} #{'z}}}
+              ::eql/query     [:a :b]})
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    x,
+                                                                             :com.wsscode.pathom3.connect.planner/expects      {:a {},
+                                                                                                                                :b {}},
+                                                                             :com.wsscode.pathom3.connect.planner/input        {:z {}},
+                                                                             :com.wsscode.pathom3.connect.planner/node-id      1,
+                                                                             :com.wsscode.pathom3.connect.planner/node-parents #{2}},
+                                                                          2 {:com.wsscode.pathom3.connect.operation/op-name z,
+                                                                             :com.wsscode.pathom3.connect.planner/expects   {:z {}},
+                                                                             :com.wsscode.pathom3.connect.planner/input     {},
+                                                                             :com.wsscode.pathom3.connect.planner/node-id   2,
+                                                                             :com.wsscode.pathom3.connect.planner/run-next  1}},
+                                                  :index-ast             {:a {:type         :prop,
+                                                                              :dispatch-key :a,
+                                                                              :key          :a},
+                                                                          :b {:type         :prop,
+                                                                              :dispatch-key :b,
+                                                                              :key          :b}},
+                                                  :index-resolver->nodes {x #{1}, z #{2}},
+                                                  :index-attrs           {:a #{1}, :z #{2}, :b #{1}},
+                                                  :root                  2}))))
+
 (deftest compute-run-graph-dynamic-resolvers-test
   (testing "unreachable"
     (is (= (compute-run-graph
@@ -1265,36 +1367,45 @@
                                          :b {:type         :prop,
                                              :dispatch-key :b,
                                              :key          :b}}
-            ::pcp/root                  1}))))
+            ::pcp/root                  1})))
+
+  (testing "optimized with dependencies"
+    (is (= (compute-run-graph
+             (-> {::pci/index-resolvers {'dynamic-resolver
+                                         {::pco/op-name           'dynamic-resolver
+                                          ::pco/cache?            false
+                                          ::pco/dynamic-resolver? true
+                                          ::pco/resolve           (fn [_ _])}}
+                  ;::pcp/snapshots*      (atom [])
+                  ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}
+                                         :label/type     {{:db/id {}} #{'dynamic-resolver}}}
+                  ::eql/query           [:release/script :label/type]
+                  ::resolvers           [{::pco/op-name 'id
+                                          ::pco/output  [:db/id]}]}))
+
+           {::pcp/nodes                 {2 {::pco/op-name  'id
+                                            ::pcp/node-id  2
+                                            ::pcp/expects  {:db/id {}}
+                                            ::pcp/input    {}
+                                            ::pcp/run-next 3}
+                                         3 {::pco/op-name      'dynamic-resolver
+                                            ::pcp/node-id      3
+                                            ::pcp/expects      {:label/type {} :release/script {}}
+                                            ::pcp/input        {:db/id {}}
+                                            ::pcp/node-parents #{2}
+                                            ::pcp/foreign-ast  (eql/query->ast [:label/type :release/script])}}
+            ::pcp/index-resolver->nodes '{dynamic-resolver #{3} id #{2}}
+            ::pcp/index-attrs           {:release/script #{3}, :label/type #{3}, :db/id #{2}}
+            ::pcp/index-ast             {:release/script {:type         :prop,
+                                                          :dispatch-key :release/script,
+                                                          :key          :release/script},
+                                         :label/type     {:type         :prop,
+                                                          :dispatch-key :label/type,
+                                                          :key          :label/type}}
+            ::pcp/root                  2}))))
 
 #_(deftest compute-run-graph-dynamic-resolvers-test
-    (testing "optimize multiple calls"
-      (is (= (compute-run-graph
-               (-> {::pci/index-resolvers {'dynamic-resolver
-                                           {::pco/op-name           'dynamic-resolver
-                                            ::pco/cache?            false
-                                            ::pco/dynamic-resolver? true
-                                            ::pco/resolve           (fn [_ _])}}
-                    ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}
-                                           :label/type     {{:db/id {}} #{'dynamic-resolver}}}
-                    ::eql/query           [:release/script :label/type]
-                    ::pcp/available-data  {:db/id {}}}))
 
-             {::pcp/nodes                 {1 {::pco/op-name          'dynamic-resolver
-                                              ::pcp/node-id          1
-                                              ::pcp/expects          {:release/script {} :label/type {}}
-                                              ::pcp/input            {:db/id {}}
-                                              ::pcp/source-for-attrs #{:release/script :label/type}
-                                              ::pcp/foreign-ast      (eql/query->ast [:release/script :label/type])}}
-              ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
-              ::pcp/index-attrs           {:release/script #{1}, :label/type #{1}}
-              ::pcp/index-ast             {:release/script {:type         :prop,
-                                                            :dispatch-key :release/script,
-                                                            :key          :release/script},
-                                           :label/type     {:type         :prop,
-                                                            :dispatch-key :label/type,
-                                                            :key          :label/type}}
-              ::pcp/root                  1})))
 
   (testing "optimized with dependencies"
     (is (= (compute-run-graph

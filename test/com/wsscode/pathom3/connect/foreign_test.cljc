@@ -4,6 +4,7 @@
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
+    [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.interface.eql :as p.eql]
@@ -73,13 +74,42 @@
           [:x :y :b :c] "error 2"})))
 
 (deftest process-foreign-query
-  (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
-                    (p.eql/foreign-interface))
-        env     (-> (pci/register
-                      [(pbir/constantly-resolver :y 20)
-                       (pcf/foreign-register foreign)]))]
-    (is (= (p.eql/process env [:x :y])
-           {:x 10 :y 20}))))
+  (testing "basic integration"
+    (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
+                      (p.eql/foreign-interface))
+          env     (-> (pci/register
+                        [(pbir/constantly-resolver :y 20)
+                         (pcf/foreign-register foreign)]))]
+      (is (= (p.eql/process env [:x :y])
+             {:x 10 :y 20}))))
+
+  (testing "nested query"
+    (testing "direct nest"
+      (let [foreign (-> (pci/register
+                          (pco/resolver 'n
+                            {::pco/output [{:a [:b :c]}]}
+                            (fn [_ _] {:a {:b 1 :c 2}})))
+                        (p.eql/foreign-interface))
+            env     (-> (pci/register
+                          [(pbir/constantly-resolver :y 20)
+                           (pcf/foreign-register foreign)]))]
+        (is (= (p.eql/process env [:a])
+               {:a {:b 1 :c 2}}))
+
+        (is (= (p.eql/process env [{:a [:b]}])
+               {:a {:b 1}}))))
+
+    (testing "extended deps"
+      (let [foreign (-> (pci/register
+                          (pco/resolver 'n
+                            {::pco/output [{:a [:b]}]}
+                            (fn [_ _] {:a {:b "value"}})))
+                        (p.eql/foreign-interface))
+            env     (-> (pci/register
+                          [(pbir/constantly-resolver :y 20)
+                           (pcf/foreign-register foreign)]))]
+        (is (= (p.eql/process env [:a])
+               {:a {:b "value"}}))))))
 
 (comment
   (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
@@ -88,6 +118,19 @@
                       [(pbir/constantly-resolver :y 20)
                        (pcf/foreign-register foreign)]))]
     (pcf/foreign-register foreign))
+
+  (let [foreign (-> (pci/register
+                      (pco/resolver 'n
+                        {::pco/output [{:a [:b :c]}]}
+                        (fn [_ _] {:a {:b 1 :c 2}})))
+                    (p.eql/foreign-interface))
+        env     (-> (pci/register
+                      [(pbir/constantly-resolver :y 20)
+                       (pcf/foreign-register foreign)])
+                    ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/connect-env)
+                     "debug"))]
+
+    (p.eql/process env [{:a [:b]}]))
 
   (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
                     (p.eql/foreign-interface))

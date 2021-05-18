@@ -176,7 +176,7 @@
 ; endregion
 
 (declare add-snapshot! compute-run-graph compute-run-graph* compute-attribute-graph
-         optimize-graph)
+         optimize-graph optimize-node)
 
 ; region node helpers
 
@@ -1311,16 +1311,36 @@
                   graph'         (cond-> graph
                                    (seq matching-nodes)
                                    (merge-sibling-resolver-nodes env parent-id (conj matching-nodes pivot)))]
-              (recur graph' (into #{} (remove matching-nodes) other-nodes)))
+              (recur
+                ; optimize the new merged node
+                (optimize-node graph' env (first (sort matching-nodes)))
+                (into #{} (remove matching-nodes) other-nodes)))
             graph))
         (simplify-branch-node env node-id))))
+
+(defn optimize-node
+  [graph env node-id]
+  (if-let [node (get-node graph node-id)]
+    (do
+      (add-snapshot! graph env {::snapshot-message (str "Visit node " node-id)
+                                ::highlight-nodes  #{node-id}})
+      (case (node-kind node)
+        ::node-resolver
+        (recur graph env (::run-next node))
+
+        ::node-and
+        (optimize-AND-branches graph env node-id)
+
+        ::node-or
+        (recur graph env (::run-next node))))
+    graph))
 
 (defn optimize-graph
   [graph env]
   (if (::run-and (get-root-node graph))
     (-> graph
         (add-snapshot! env {::snapshot-message "=== Start optimization"})
-        (optimize-AND-branches env (::root graph)))
+        (optimize-node env (::root graph)))
     graph))
 
 ; endregion
