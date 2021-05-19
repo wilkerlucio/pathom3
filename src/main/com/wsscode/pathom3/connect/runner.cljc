@@ -471,7 +471,7 @@
                 (fn [nid]
                   [nid
                    (->> (pcp/node-successors graph nid)
-                        (keep #(pcp/node-with-resolver-config graph env {::pcp/node-id %}))
+                        (keep #(pcp/node-with-resolver-config graph env %))
                         (map #(or (::pco/priority %) 0))
                         (distinct)
                         (sort #(compare %2 %))
@@ -605,8 +605,8 @@
 (defn process-mutations!
   "Runs the mutations gathered by the planner."
   [{::pcp/keys [graph] :as env}]
-  (doseq [ast (::pcp/mutations graph)]
-    (invoke-mutation! env ast)))
+  (doseq [key (::pcp/mutations graph)]
+    (invoke-mutation! env (entry-ast graph key))))
 
 (defn run-root-node!
   [{::pcp/keys [graph] :as env}]

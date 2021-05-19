@@ -32,6 +32,8 @@
     (into [] (distinct) (apply concat (map query-root-properties (vals query))))
     (->> query eql/query->ast :children (mapv :key))))
 
+(defn prop [k] {:type :prop :dispatch-key k :key k})
+
 (defn union-children?
   "Given an AST point, check if the children is a union query type."
   [ast]

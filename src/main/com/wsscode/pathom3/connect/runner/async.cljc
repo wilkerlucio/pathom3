@@ -366,8 +366,8 @@
   "Runs the mutations gathered by the planner."
   [{::pcp/keys [graph] :as env}]
   (reduce-async
-    (fn [_ ast]
-      (invoke-mutation! env ast))
+    (fn [_ key]
+      (invoke-mutation! env (pcr/entry-ast graph key)))
     nil
     (::pcp/mutations graph)))
 

@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
     [com.wsscode.pathom3.entity-tree :as p.ent]
@@ -56,3 +57,22 @@
                     (assoc ::pcr/root-query tx)
                     (p.ent/with-entity entity))
                 (eql/query->ast tx))))
+
+(>defn foreign-interface
+  "Returns a function that wraps the environment. When exposing Pathom to some external
+  system, this is the recommended way to do it. The format here makes your API compatible
+  with Pathom Foreign process, which allows the integration of distributed environments.
+
+  When calling the remote interface the user can send a query or a map containing the
+  query and the initial entity data. This map is open and you can use as a way to extend
+  the API."
+  [env] [map? => fn?]
+  (let [env' (pci/register env p.eql/foreign-indexes)]
+    (fn foreign-interface-internal [input]
+      (let [{:pathom/keys [tx entity ast] :as request} (p.eql/normalize-input input)
+            env'    (assoc env' ::source-request request)
+            entity' (or entity {})]
+
+        (if ast
+          (process-ast (p.ent/with-entity env' entity') ast)
+          (process env' entity' tx))))))
