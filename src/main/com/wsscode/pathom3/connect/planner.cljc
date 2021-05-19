@@ -552,6 +552,35 @@
       graph
       attrs)))
 
+(defn combine-run-next
+  [graph env node-ids pivot]
+  (let [run-next-nodes (into []
+                             (comp (map #(get-node graph %))
+                                   (filter ::run-next))
+                             node-ids)]
+    (cond
+      (= 1 (count run-next-nodes))
+      (let [{::keys [node-id run-next]} (first run-next-nodes)]
+        (-> graph
+            (remove-node-parent run-next node-id)
+            (set-node-run-next pivot run-next)))
+
+      (seq run-next-nodes)
+      (let [and-node (new-node env {::run-and #{}})]
+        (as-> graph <>
+          (include-node <> and-node)
+          (reduce
+            (fn [g {::keys [node-id run-next]}]
+              (-> g
+                  (add-branch-to-node (::node-id and-node) ::run-and run-next)
+                  (remove-node-parent run-next node-id)))
+            <>
+            run-next-nodes)
+          (set-node-run-next <> pivot (::node-id and-node))))
+
+      :else
+      graph)))
+
 (>defn simplify-branch-node
   "When a branch node contains a single branch out, remove the AND node and put that
   single item in place.
@@ -562,6 +591,7 @@
   [::graph map? ::node-id => ::graph]
   (let [node           (get-node graph node-id)
         target-node-id (and (= 1 (count (::run-and node)))
+                            (not (::run-next node))
                             (first (::run-and node)))]
     (if target-node-id
       (-> graph
@@ -596,38 +626,9 @@
     graph
     node-ids))
 
-(defn- combine-run-next
-  [graph env node-ids pivot]
-  (let [run-next-nodes (into []
-                             (comp (map #(get-node graph %))
-                                   (filter ::run-next))
-                             node-ids)]
-    (cond
-      (= 1 (count run-next-nodes))
-      (let [{::keys [node-id run-next]} (first run-next-nodes)]
-        (-> graph
-            (remove-node-parent run-next node-id)
-            (set-node-run-next pivot run-next)))
-
-      (seq run-next-nodes)
-      (let [and-node (new-node env {::run-and #{}})]
-        (as-> graph <>
-          (include-node <> and-node)
-          (reduce
-            (fn [g {::keys [node-id run-next]}]
-              (-> g
-                  (add-branch-to-node (::node-id and-node) ::run-and run-next)
-                  (remove-node-parent run-next node-id)))
-            <>
-            run-next-nodes)
-          (set-node-run-next <> pivot (::node-id and-node))))
-
-      :else
-      graph)))
-
 (defn merge-sibling-resolver-nodes
   [graph env parent-node-id node-ids]
-  (let [[pivot & node-ids'] (sort node-ids)
+  (let [[pivot & node-ids'] node-ids
         resolver (::pco/op-name (get-node graph pivot))]
     (add-snapshot! graph env {::snapshot-message (str "Merging sibling resolver calls to resolver " resolver)
                               ::highlight-nodes  (into #{} (conj node-ids parent-node-id))
@@ -1308,12 +1309,13 @@
                   matching-nodes (into #{}
                                        (filter #(can-merge-sibling-resolver-nodes? graph pivot %))
                                        other-nodes)
+                  merge-nodes    (sort (conj matching-nodes pivot))
                   graph'         (cond-> graph
                                    (seq matching-nodes)
-                                   (merge-sibling-resolver-nodes env parent-id (conj matching-nodes pivot)))]
+                                   (merge-sibling-resolver-nodes env parent-id merge-nodes))]
               (recur
                 ; optimize the new merged node
-                (optimize-node graph' env (first (sort matching-nodes)))
+                (optimize-node graph' env (first merge-nodes))
                 (into #{} (remove matching-nodes) other-nodes)))
             graph))
         (simplify-branch-node env node-id))))
