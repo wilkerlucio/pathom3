@@ -1386,32 +1386,14 @@
                                                                   :z #{4}},
                                                     :root 7})))
 
+    #_
     (testing "merge equal OR's on AND's"
       (is (= (compute-run-graph
                {::pci/index-oir  {:a {{} #{'x 'x2}}
                                   :b {{} #{'x 'x2}}}
                 ::pcp/snapshots* (atom [])
                 ::eql/query      [:a :b]})
-             '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    x,
-                                                                               :com.wsscode.pathom3.connect.planner/expects      {:a {},
-                                                                                                                                  :b {}},
-                                                                               :com.wsscode.pathom3.connect.planner/input        {:z {}},
-                                                                               :com.wsscode.pathom3.connect.planner/node-id      1,
-                                                                               :com.wsscode.pathom3.connect.planner/node-parents #{2}},
-                                                                            2 {:com.wsscode.pathom3.connect.operation/op-name z,
-                                                                               :com.wsscode.pathom3.connect.planner/expects   {:z {}},
-                                                                               :com.wsscode.pathom3.connect.planner/input     {},
-                                                                               :com.wsscode.pathom3.connect.planner/node-id   2,
-                                                                               :com.wsscode.pathom3.connect.planner/run-next  1}},
-                                                    :index-ast             {:a {:type         :prop,
-                                                                                :dispatch-key :a,
-                                                                                :key          :a},
-                                                                            :b {:type         :prop,
-                                                                                :dispatch-key :b,
-                                                                                :key          :b}},
-                                                    :index-resolver->nodes {x #{1}, z #{2}},
-                                                    :index-attrs           {:a #{1}, :z #{2}, :b #{1}},
-                                                    :root                  2})))))
+             '{})))))
 
 (deftest compute-run-graph-dynamic-resolvers-test
   (testing "unreachable"

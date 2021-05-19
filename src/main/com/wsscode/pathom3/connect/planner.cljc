@@ -1293,31 +1293,70 @@
   [graph node-id1 node-id2]
   (let [n1 (get-node graph node-id1)
         n2 (get-node graph node-id2)]
-    (and (::pco/op-name n1) ; is a resolver
-         (= (::pco/op-name n1) (::pco/op-name n2)) ; same resolver
-         ;(= nil (::run-next n1) (::run-next n2)) ; no run next on any (yet)
-         )))
+    (and
+      ; is a resolver
+      (::pco/op-name n1)
+      ; same resolver
+      (= (::pco/op-name n1) (::pco/op-name n2)))))
+
+(defn optimize-AND-resolver-siblings
+  [graph env parent-id pivot other-nodes]
+  (let [matching-nodes (into #{}
+                             (filter #(can-merge-sibling-resolver-nodes? graph pivot %))
+                             other-nodes)
+        merge-nodes    (sort (conj matching-nodes pivot))
+        graph'         (cond-> graph
+                         (seq matching-nodes)
+                         (merge-sibling-resolver-nodes env parent-id merge-nodes))]
+    [; optimize the new merged node
+     (optimize-node graph' env (first merge-nodes))
+     (into #{} (remove matching-nodes) other-nodes)]))
+
+(defn optimize-AND-resolvers-pass
+  "This pass will collapse the same resolver node branches. This also do a local optimization
+  on AND's and OR's sub-nodes. This is important to simplify the pass to merge OR nodes."
+  [graph env sibling-ids parent-id]
+  (loop [graph graph
+         [pivot & node-ids] sibling-ids]
+    (if pivot
+      (cond
+        (get-node graph pivot ::pco/op-name)
+        (let [[graph' node-ids'] (optimize-AND-resolver-siblings graph env parent-id pivot node-ids)]
+          (recur graph' node-ids'))
+
+        :else
+        (recur
+          (optimize-node graph env pivot)
+          node-ids))
+      graph)))
+
+(defn optimize-AND-ORs [graph _env sibling-ids _parent-id]
+  (let [or-nodes (into []
+                       (keep
+                         #(let [node (get-node graph %)]
+                            (if (::run-or node) node)))
+                       sibling-ids)]
+    (if (> (count or-nodes) 1)
+      (loop [graph graph
+             [pivot & other-nodes] or-nodes]
+        (reduce
+          (fn [graph or-node]
+            ; TODO need more checks
+            (if (= (count (::run-or pivot))
+                   (count (::run-or or-node)))
+              ; TODO need to figure how to merge the nodes
+              graph
+              graph))
+          graph
+          other-nodes))
+      graph)))
 
 (defn optimize-AND-branches
   [graph env node-id]
-  (let [{parent-id ::node-id
-         ::keys    [run-and]} (get-node graph node-id)]
-    (-> (loop [graph    graph
-               node-ids run-and]
-          (if-let [pivot (first node-ids)]
-            (let [other-nodes    (rest node-ids)
-                  matching-nodes (into #{}
-                                       (filter #(can-merge-sibling-resolver-nodes? graph pivot %))
-                                       other-nodes)
-                  merge-nodes    (sort (conj matching-nodes pivot))
-                  graph'         (cond-> graph
-                                   (seq matching-nodes)
-                                   (merge-sibling-resolver-nodes env parent-id merge-nodes))]
-              (recur
-                ; optimize the new merged node
-                (optimize-node graph' env (first merge-nodes))
-                (into #{} (remove matching-nodes) other-nodes)))
-            graph))
+  (let [{::keys [run-and]} (get-node graph node-id)]
+    (-> graph
+        (optimize-AND-resolvers-pass env run-and node-id)
+        ;(optimize-AND-ORs env run-and node-id)
         (simplify-branch-node env node-id))))
 
 (defn optimize-OR-branches [graph env node-id]
