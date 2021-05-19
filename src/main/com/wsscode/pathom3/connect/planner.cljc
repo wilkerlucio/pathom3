@@ -1341,7 +1341,7 @@
   [graph env]
   (if (::run-and (get-root-node graph))
     (-> graph
-        (add-snapshot! env {::snapshot-message "=== Start optimization"})
+        (add-snapshot! env {::snapshot-message "=== Optimize ==="})
         (optimize-node env (::root graph)))
     graph))
 
