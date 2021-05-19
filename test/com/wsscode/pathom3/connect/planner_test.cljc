@@ -1328,7 +1328,90 @@
                                                                               :key          :b}},
                                                   :index-resolver->nodes {x #{1}, z #{2}},
                                                   :index-attrs           {:a #{1}, :z #{2}, :b #{1}},
-                                                  :root                  2}))))
+                                                  :root                  2})))
+
+  (testing "optimize AND next node")
+
+  (testing "OR nodes"
+    (testing "navigate OR nodes"
+      (is (= (compute-run-graph
+               {::pci/index-oir  '{:a {{:x {}}       #{ax}
+                                       {:y {} :z {}} #{ayz}}
+                                   :x {{} #{x}}
+                                   :y {{} #{yz}}
+                                   :z {{} #{yz}}}
+                ;::pcp/snapshots* (atom [])
+                ::eql/query      [:a]})
+             '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name ax,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:x {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{2}},
+                                                            2 {:com.wsscode.pathom3.connect.operation/op-name x,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:x {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {},
+                                                               :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                               :com.wsscode.pathom3.connect.planner/run-next 1,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{7}},
+                                                            3 {:com.wsscode.pathom3.connect.operation/op-name ayz,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {:y {},
+                                                                                                           :z {}},
+                                                               :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{6}},
+                                                            4 {:com.wsscode.pathom3.connect.operation/op-name yz,
+                                                               :com.wsscode.pathom3.connect.planner/expects {:y {},
+                                                                                                             :z {}},
+                                                               :com.wsscode.pathom3.connect.planner/input {},
+                                                               :com.wsscode.pathom3.connect.planner/node-id 4,
+                                                               :com.wsscode.pathom3.connect.planner/node-parents #{6}},
+                                                            6 #:com.wsscode.pathom3.connect.planner{:node-id 6,
+                                                                                                    :run-and #{4},
+                                                                                                    :run-next 3,
+                                                                                                    :node-parents #{7}},
+                                                            7 #:com.wsscode.pathom3.connect.planner{:expects {:a {}},
+                                                                                                    :node-id 7,
+                                                                                                    :run-or #{6
+                                                                                                              2}}},
+                                                    :index-ast {:a {:type :prop,
+                                                                    :dispatch-key :a,
+                                                                    :key :a}},
+                                                    :index-resolver->nodes {ax #{1},
+                                                                            x #{2},
+                                                                            ayz #{3},
+                                                                            yz #{4}},
+                                                    :index-attrs {:a #{1 3},
+                                                                  :x #{2},
+                                                                  :y #{4},
+                                                                  :z #{4}},
+                                                    :root 7})))
+
+    (testing "merge equal OR's on AND's"
+      (is (= (compute-run-graph
+               {::pci/index-oir  {:a {{} #{'x 'x2}}
+                                  :b {{} #{'x 'x2}}}
+                ::pcp/snapshots* (atom [])
+                ::eql/query      [:a :b]})
+             '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    x,
+                                                                               :com.wsscode.pathom3.connect.planner/expects      {:a {},
+                                                                                                                                  :b {}},
+                                                                               :com.wsscode.pathom3.connect.planner/input        {:z {}},
+                                                                               :com.wsscode.pathom3.connect.planner/node-id      1,
+                                                                               :com.wsscode.pathom3.connect.planner/node-parents #{2}},
+                                                                            2 {:com.wsscode.pathom3.connect.operation/op-name z,
+                                                                               :com.wsscode.pathom3.connect.planner/expects   {:z {}},
+                                                                               :com.wsscode.pathom3.connect.planner/input     {},
+                                                                               :com.wsscode.pathom3.connect.planner/node-id   2,
+                                                                               :com.wsscode.pathom3.connect.planner/run-next  1}},
+                                                    :index-ast             {:a {:type         :prop,
+                                                                                :dispatch-key :a,
+                                                                                :key          :a},
+                                                                            :b {:type         :prop,
+                                                                                :dispatch-key :b,
+                                                                                :key          :b}},
+                                                    :index-resolver->nodes {x #{1}, z #{2}},
+                                                    :index-attrs           {:a #{1}, :z #{2}, :b #{1}},
+                                                    :root                  2})))))
 
 (deftest compute-run-graph-dynamic-resolvers-test
   (testing "unreachable"

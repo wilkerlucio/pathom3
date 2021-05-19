@@ -1320,30 +1320,39 @@
             graph))
         (simplify-branch-node env node-id))))
 
+(defn optimize-OR-branches [graph env node-id]
+  (let [{::keys [run-or]} (get-node graph node-id)]
+    (reduce
+      (fn [graph node-id]
+        (optimize-node graph env node-id))
+      graph
+      run-or)))
+
 (defn optimize-node
   [graph env node-id]
   (if-let [node (get-node graph node-id)]
     (do
       (add-snapshot! graph env {::snapshot-message (str "Visit node " node-id)
                                 ::highlight-nodes  #{node-id}})
-      (case (node-kind node)
-        ::node-resolver
-        (recur graph env (::run-next node))
+      (recur
+        (case (node-kind node)
+          ::node-resolver
+          graph
 
-        ::node-and
-        (optimize-AND-branches graph env node-id)
+          ::node-and
+          (optimize-AND-branches graph env node-id)
 
-        ::node-or
-        (recur graph env (::run-next node))))
+          ::node-or
+          (optimize-OR-branches graph env node-id))
+        env
+        (::run-next node)))
     graph))
 
 (defn optimize-graph
   [graph env]
-  (if (::run-and (get-root-node graph))
-    (-> graph
-        (add-snapshot! env {::snapshot-message "=== Optimize ==="})
-        (optimize-node env (::root graph)))
-    graph))
+  (-> graph
+      (add-snapshot! env {::snapshot-message "=== Optimize ==="})
+      (optimize-node env (::root graph))))
 
 ; endregion
 
