@@ -3282,39 +3282,39 @@
              {::pcp/snapshots* snaps*}
              4
              #{1 2 3})
-           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    dynamic-resolver,
-                                                                             :com.wsscode.pathom3.connect.planner/expects      {:a {},
-                                                                                                                                :b {},
-                                                                                                                                :c {}},
-                                                                             :com.wsscode.pathom3.connect.planner/input        {},
-                                                                             :com.wsscode.pathom3.connect.planner/node-id      1,
-                                                                             :com.wsscode.pathom3.connect.planner/foreign-ast  {:type     :root,
-                                                                                                                                :children [{:type         :prop,
-                                                                                                                                            :dispatch-key :a,
-                                                                                                                                            :key          :a}
-                                                                                                                                           {:type         :prop,
-                                                                                                                                            :dispatch-key :b,
-                                                                                                                                            :key          :b}
-                                                                                                                                           {:type         :prop,
-                                                                                                                                            :dispatch-key :c,
-                                                                                                                                            :key          :c}]},
-                                                                             :com.wsscode.pathom3.connect.planner/node-parents #{3}},
-                                                                          4 #:com.wsscode.pathom3.connect.planner{:node-id 4,
-                                                                                                                  :run-and #{1
-                                                                                                                             3
-                                                                                                                             2}}},
-                                                  :index-ast             {:a {:type         :prop,
-                                                                              :dispatch-key :a,
-                                                                              :key          :a},
-                                                                          :b {:type         :prop,
-                                                                              :dispatch-key :b,
-                                                                              :key          :b},
-                                                                          :c {:type         :prop,
-                                                                              :dispatch-key :c,
-                                                                              :key          :c}},
+           '#:com.wsscode.pathom3.connect.planner{:nodes {1 {:com.wsscode.pathom3.connect.operation/op-name dynamic-resolver,
+                                                             :com.wsscode.pathom3.connect.planner/expects {:a {},
+                                                                                                           :c {},
+                                                                                                           :b {}},
+                                                             :com.wsscode.pathom3.connect.planner/input {},
+                                                             :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                             :com.wsscode.pathom3.connect.planner/foreign-ast {:type :root,
+                                                                                                               :children [{:type :prop,
+                                                                                                                           :dispatch-key :a,
+                                                                                                                           :key :a}
+                                                                                                                          {:type :prop,
+                                                                                                                           :dispatch-key :c,
+                                                                                                                           :key :c}
+                                                                                                                          {:type :prop,
+                                                                                                                           :dispatch-key :b,
+                                                                                                                           :key :b}]},
+                                                             :com.wsscode.pathom3.connect.planner/node-parents #{3}},
+                                                          4 #:com.wsscode.pathom3.connect.planner{:node-id 4,
+                                                                                                  :run-and #{1
+                                                                                                             3
+                                                                                                             2}}},
+                                                  :index-ast {:a {:type :prop,
+                                                                  :dispatch-key :a,
+                                                                  :key :a},
+                                                              :b {:type :prop,
+                                                                  :dispatch-key :b,
+                                                                  :key :b},
+                                                              :c {:type :prop,
+                                                                  :dispatch-key :c,
+                                                                  :key :c}},
                                                   :index-resolver->nodes {dynamic-resolver #{1}},
-                                                  :index-attrs           {:a #{1}, :b #{1}, :c #{1}},
-                                                  :root                  4}))))
+                                                  :index-attrs {:a #{1}, :b #{1}, :c #{1}},
+                                                  :root 4}))))
 
 (deftest can-merge-sibling-resolver-nodes?-test
   (is (pcp/can-merge-sibling-resolver-nodes?
