@@ -148,7 +148,7 @@
   ::pf.eql/prop->ast)
 
 (>def ::mutations
-  "A vector with the AST of every mutation that appears in the query."
+  "A vector with the operation name of every mutation that appears in the query."
   (s/coll-of ::pco/op-name :kind vector?))
 
 (>def ::nested-process
