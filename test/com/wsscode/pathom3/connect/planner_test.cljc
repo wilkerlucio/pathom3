@@ -711,7 +711,7 @@
                                                   :index-ast             {:b {:type         :prop,
                                                                               :dispatch-key :b,
                                                                               :key          :b}},
-                                                  :unreachable-paths     {:a {:b {}}, :b {}}}))
+                                                  :unreachable-paths     {:a {}, :b {}}}))
 
     (is (= (compute-run-graph
              (-> {::eql/query          [:b]
