@@ -1271,7 +1271,71 @@
                {:a/id   1
                 :a/code "a-1"
                 :a/b    [#:f{:id 1 :code "f-1"}]
-                :a/c    [#:f{:id 2 :code "f-2"}]}}))))))
+                :a/c    [#:f{:id 2 :code "f-2"}]}}))))
+
+    (testing "issue-52 partial cycle"
+      (let [env (pci/register
+                  [(pco/resolver 'attribute-sql-projection
+                     {::pco/input  [:appKey]
+                      ::pco/output [:ont/attribute-sql-projection]}
+                     (fn [_ _] {:ont/attribute-sql-projection "blah"}))
+
+                   (pco/resolver 'event-withs
+                     {::pco/input  [:appKey :ont/attribute-sql-projection]
+                      ::pco/output [:ont/events-withs-fn]}
+                     (fn [_ _] {:ont/events-withs-fn "event-withs-fn"}))
+
+                   (pco/resolver 'query->portfolioKey-appKey
+                     {::pco/input    [:query/args]
+                      ::pco/output   [:portfolioKey :appKey]
+                      ::pco/priority 10}
+                     (fn [_ _] {:portfolioKey "p"
+                                :appKey       "a"}))
+
+                   (pco/resolver 'unformatted-metric-honey
+                     {::pco/input  [:ont/events-withs-fn]
+                      ::pco/output [:entity.metric.query.response/unformatted-metric-honey]}
+                     (fn [_ _] {:entity.metric.query.response/unformatted-metric-honey "something"}))
+
+                   (pco/resolver 'query->entity
+                     {::pco/input  [:query/args]
+                      ::pco/output [:entity]}
+                     (fn [_ _] {:entity "something"}))
+
+                   (pco/resolver 'entity
+                     {::pco/input  [:entities :entity]
+                      ::pco/output [:portfolioKey :appKey
+                                    :entity/friendlyName :entity/friendlyName-plural
+                                    :entity/parameters :entity/pkey-expr]}
+                     (fn [_ _] {:portfolioKey               "p"
+                                :appKey                     "a"
+                                :entity/friendlyName        "blah"
+                                :entity/friendlyName-plural "blahs"
+                                :entity/parameters          []
+                                :entity/pkey-expr           "something"}))
+
+                   (pco/resolver 'pega-entities
+                     {::pco/input  [:portfolioKey (pco/? :appKey)]
+                      ::pco/output [{:entities [:entity/friendlyName :entity/parameters :entity/id :entity :entity/pkey-expr]}]}
+                     (fn [_ _] {:entities [{:entity/friendlyName        "a"
+                                            :entity/friendlyName-plural "as"
+                                            :entity/parameters          []
+                                            :entity/id                  "something"
+                                            :entity/pkey-expr           "something"}]}))])]
+        (is (graph-response? env {:query/args []}
+              [:entity.metric.query.response/unformatted-metric-honey]
+              {:query/args [],
+               :portfolioKey "p",
+               :appKey "a",
+               :entities [#:entity{:friendlyName "a",
+                                   :friendlyName-plural "as",
+                                   :parameters [],
+                                   :id "something",
+                                   :pkey-expr "something"}],
+               :entity "something",
+               :ont/attribute-sql-projection "blah",
+               :ont/events-withs-fn "event-withs-fn",
+               :entity.metric.query.response/unformatted-metric-honey "something"}))))))
 
 (deftest run-graph!-run-stats
   (is (graph-response?

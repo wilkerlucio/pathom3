@@ -1,6 +1,7 @@
 (ns com.wsscode.pathom3.connect.planner
   (:require
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [com.fulcrologic.guardrails.core :refer [>def >defn >fdef => | <- ?]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
@@ -645,10 +646,12 @@
 ; region graph helpers
 
 (defn add-snapshot!
-  ([graph {::keys [snapshots*]} event-details]
+  ([graph {::keys [snapshots* snapshot-depth]} event-details]
    (if snapshots*
-     (swap! snapshots* conj (-> graph (dissoc ::source-ast ::available-data)
-                                (merge event-details))))
+     (let [pad            (str/join (repeat (or snapshot-depth 0) "-"))
+           event-details' (coll/update-if event-details ::snapshot-message #(str pad %))]
+       (swap! snapshots* conj (-> graph (dissoc ::source-ast ::available-data)
+                                  (merge event-details')))))
    graph))
 
 (defn base-graph []
@@ -677,7 +680,8 @@
   (update graph ::warnings coll/vconj warn))
 
 (defn merge-unreachable
-  "Copy unreachable attributes from discard-graph to target-graph"
+  "Copy unreachable attributes from discard-graph to target-graph. Using the extra arity
+  you can also add a new unreachable path in the same call."
   ([target-graph {::keys [unreachable-paths]}]
    (cond-> target-graph
      unreachable-paths
@@ -809,6 +813,30 @@
           shape))
       true)))
 
+(defn compute-attribute-nested-input-require [graph env attr shape nodes]
+  (add-snapshot! graph env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))})
+  ; TODO this should consider the case that a few of the nodes can provide the
+  ; sub-query, in this case only they should be kept in the graph, and the other
+  ; options must be removed
+  (let [checked-nodes (into []
+                            (map (fn [node]
+                                   (cond-> node
+                                     (shape-reachable? env (-> node ::pco/provides (get attr)) shape)
+                                     (assoc :valid-path? true))))
+                            nodes)]
+    (if (some :valid-path? checked-nodes)
+      (-> (reduce
+            (fn [g {:keys [valid-path?] ::keys [node-id]}]
+              (if-not valid-path?
+                (assoc-node g node-id ::invalid-node? true)
+                g))
+            graph
+            checked-nodes)
+          (extend-attribute-sub-query attr shape))
+      (-> graph
+          (dissoc ::root)
+          (add-unreachable-path env {attr shape})))))
+
 (defn compute-attribute-dependency-graph
   [graph {::keys [recursive-joins] :as env} attr shape]
   (add-snapshot! graph env {::snapshot-message (str "Processing dependency " {attr shape})})
@@ -843,29 +871,7 @@
 
           ; nested input requirement
           (seq shape)
-          (do
-            (add-snapshot! graph' env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))})
-            ; TODO this should consider the case that a few of the nodes can provide the
-            ; sub-query, in this case only they should be kept in the graph, and the other
-            ; options must be removed
-            (let [checked-nodes (into []
-                                      (map (fn [node]
-                                             (cond-> node
-                                               (shape-reachable? env (-> node ::pco/provides (get attr)) shape)
-                                               (assoc :valid-path? true))))
-                                      nodes)]
-              (if (some :valid-path? checked-nodes)
-                (-> (reduce
-                      (fn [g {:keys [valid-path?] ::keys [node-id]}]
-                        (if-not valid-path?
-                          (assoc-node g node-id ::invalid-node? true)
-                          g))
-                      graph'
-                      checked-nodes)
-                    (extend-attribute-sub-query attr shape))
-                (-> graph'
-                    (dissoc ::root)
-                    (add-unreachable-path env {attr shape})))))
+          (compute-attribute-nested-input-require graph' env attr shape nodes)
 
           :else
           graph'))
@@ -961,7 +967,7 @@
           (if-let [root (::root graph')]
             [graph'
              (assoc node-map attr root)]
-            (reduced [(merge-unreachable graph graph' env {attr shape}) nil])))))
+            (reduced [(merge-unreachable graph graph') nil])))))
     [graph {}]
     missing))
 
@@ -980,7 +986,7 @@
                (-> (remove-root-node-cluster [(get node-map attr)])
                    (add-snapshot! env {::snapshot-message "Optional computation overrode the required."})))
              (assoc node-map attr root)]
-            [(merge-unreachable graph graph' env {attr shape}) node-map]))))
+            [(merge-unreachable graph graph') node-map]))))
     [graph node-map]
     opt-missing))
 
@@ -1047,7 +1053,9 @@
         (if (seq (merge missing missing-opts))
           (let [graph-with-deps (compute-missing-chain
                                   graph'
-                                  (assoc env ::recursive-joins (index-recursive-joins env resolvers))
+                                  (-> env
+                                      (assoc ::recursive-joins (index-recursive-joins env resolvers))
+                                      (update ::snapshot-depth #(inc (or % 0))))
                                   missing
                                   missing-opts)]
             (cond
