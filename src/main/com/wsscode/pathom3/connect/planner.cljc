@@ -1,6 +1,7 @@
 (ns com.wsscode.pathom3.connect.planner
   (:require
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [com.fulcrologic.guardrails.core :refer [>def >defn >fdef => | <- ?]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
@@ -645,10 +646,12 @@
 ; region graph helpers
 
 (defn add-snapshot!
-  ([graph {::keys [snapshots*]} event-details]
+  ([graph {::keys [snapshots* snapshot-depth]} event-details]
    (if snapshots*
-     (swap! snapshots* conj (-> graph (dissoc ::source-ast ::available-data)
-                                (merge event-details))))
+     (let [pad            (str/join (repeat (or snapshot-depth 0) "-"))
+           event-details' (coll/update-if event-details ::snapshot-message #(str pad %))]
+       (swap! snapshots* conj (-> graph (dissoc ::source-ast ::available-data)
+                                  (merge event-details')))))
    graph))
 
 (defn base-graph []
@@ -1047,7 +1050,9 @@
         (if (seq (merge missing missing-opts))
           (let [graph-with-deps (compute-missing-chain
                                   graph'
-                                  (assoc env ::recursive-joins (index-recursive-joins env resolvers))
+                                  (-> env
+                                      (assoc ::recursive-joins (index-recursive-joins env resolvers))
+                                      (update ::snapshot-depth #(inc (or % 0))))
                                   missing
                                   missing-opts)]
             (cond
