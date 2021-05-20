@@ -812,6 +812,31 @@
           shape))
       true)))
 
+(defn compute-attribute-nested-input-require [graph env attr shape nodes]
+  (do
+    (add-snapshot! graph env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))})
+    ; TODO this should consider the case that a few of the nodes can provide the
+    ; sub-query, in this case only they should be kept in the graph, and the other
+    ; options must be removed
+    (let [checked-nodes (into []
+                              (map (fn [node]
+                                     (cond-> node
+                                       (shape-reachable? env (-> node ::pco/provides (get attr)) shape)
+                                       (assoc :valid-path? true))))
+                              nodes)]
+      (if (some :valid-path? checked-nodes)
+        (-> (reduce
+              (fn [g {:keys [valid-path?] ::keys [node-id]}]
+                (if-not valid-path?
+                  (assoc-node g node-id ::invalid-node? true)
+                  g))
+              graph
+              checked-nodes)
+            (extend-attribute-sub-query attr shape))
+        (-> graph
+            (dissoc ::root)
+            (add-unreachable-path env {attr shape}))))))
+
 (defn compute-attribute-dependency-graph
   [graph {::keys [recursive-joins] :as env} attr shape]
   (add-snapshot! graph env {::snapshot-message (str "Processing dependency " {attr shape})})
@@ -846,29 +871,7 @@
 
           ; nested input requirement
           (seq shape)
-          (do
-            (add-snapshot! graph' env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))})
-            ; TODO this should consider the case that a few of the nodes can provide the
-            ; sub-query, in this case only they should be kept in the graph, and the other
-            ; options must be removed
-            (let [checked-nodes (into []
-                                      (map (fn [node]
-                                             (cond-> node
-                                               (shape-reachable? env (-> node ::pco/provides (get attr)) shape)
-                                               (assoc :valid-path? true))))
-                                      nodes)]
-              (if (some :valid-path? checked-nodes)
-                (-> (reduce
-                      (fn [g {:keys [valid-path?] ::keys [node-id]}]
-                        (if-not valid-path?
-                          (assoc-node g node-id ::invalid-node? true)
-                          g))
-                      graph'
-                      checked-nodes)
-                    (extend-attribute-sub-query attr shape))
-                (-> graph'
-                    (dissoc ::root)
-                    (add-unreachable-path env {attr shape})))))
+          (compute-attribute-nested-input-require graph' env attr shape nodes)
 
           :else
           graph'))
