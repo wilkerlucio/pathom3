@@ -17,3 +17,8 @@ pom.xml.asc
 .nrepl-port
 node_modules/
 src/demos
+.clj-kondo/.cache
+.idea
+.shadow-cljs
+web/public/js
+sqlite.db

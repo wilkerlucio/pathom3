@@ -4,20 +4,17 @@
  :tasks
  {:init
   (do
-      (require 'tasks)
-      (def source-paths ["src" "test"]))
+    (require 'tasks)
+    (def source-paths ["src" "test"]))
 
   format-check
-  {:depends [init]
-   :task    (apply tasks/cljstyle "check" source-paths)}
+  {:task (apply tasks/cljstyle "check" source-paths)}
 
   format-fix
-  {:depends [init]
-   :task    (apply tasks/cljstyle "fix" source-paths)}
+  {:task (apply tasks/cljstyle "fix" source-paths)}
 
   lint
-  {:depends [init]
-   :task    (tasks/clj-kondo-lint source-paths)}
+  {:task (tasks/clj-kondo-lint source-paths)}
 
   setup-hooks
   tasks/setup-git-hooks
@@ -30,5 +27,5 @@
 
   test-cljs-once
   (do
-      (shell "shadow-cljs" "compile" "ci")
-      (shell "karma" "start" "--single-run"))}}
+    (shell "shadow-cljs" "compile" "ci")
+    (shell "karma" "start" "--single-run"))}}
