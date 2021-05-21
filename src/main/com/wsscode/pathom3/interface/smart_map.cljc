@@ -2,6 +2,7 @@
   "Smart map is a Pathom interface that provides a map-like data structure, but this
   structure will realize the values as the user requests then. Values realized are
   cached, meaning that subsequent lookups are fast."
+  {:clj-kondo/config {:linters {:private-call {:level :off}}}}
   (:require
     [clojure.core.protocols :as d]
     [clojure.spec.alpha :as s]
