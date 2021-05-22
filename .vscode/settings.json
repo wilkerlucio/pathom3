@@ -1,0 +1,14 @@
+{
+    "calva.replConnectSequences": [
+        {
+            "name": "REPL",
+            "projectType": "deps.edn",
+            "cljsType": "none",
+            "menuSelections": {
+                "cljAliases": [
+                    "provided", "test-deps", "demos", "local/devtools", "local/+pathom"
+                ]
+            }
+        }
+    ]
+}

@@ -22,3 +22,4 @@ src/demos
 .shadow-cljs
 web/public/js
 sqlite.db
+.calva/output-window/output.calva-repl
