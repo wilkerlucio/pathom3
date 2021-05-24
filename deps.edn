@@ -20,7 +20,8 @@
   {:extra-paths ["src/demos"]}
 
   :test-deps
-  {:extra-deps {nubank/matcher-combinators {:mvn/version "3.1.4"}
+  {:extra-paths ["test"]
+   :extra-deps {nubank/matcher-combinators {:mvn/version "3.1.4"}
                 meander/epsilon            {:mvn/version "0.0.602"}
                 org.clojure/test.check     {:mvn/version "1.1.0"}}}
 
