@@ -68,11 +68,16 @@
   the API."
   [env] [map? => fn?]
   (let [env' (pci/register env p.eql/foreign-indexes)]
-    (fn foreign-interface-internal [input]
-      (let [{:pathom/keys [tx entity ast] :as request} (p.eql/normalize-input input)
-            env'    (assoc env' ::source-request request)
-            entity' (or entity {})]
+    (fn foreign-interface-internal
+      ([env-extension input]
+       (let [{:pathom/keys [tx entity ast] :as request} (p.eql/normalize-input input)
+             env'    (-> env'
+                         (p.eql/extend-env env-extension)
+                         (assoc ::source-request request))
+             entity' (or entity {})]
 
-        (if ast
-          (process-ast (p.ent/with-entity env' entity') ast)
-          (process env' entity' tx))))))
+         (if ast
+           (process-ast (p.ent/with-entity env' entity') ast)
+           (process env' entity' tx))))
+      ([input]
+       (foreign-interface-internal nil input)))))

@@ -94,6 +94,11 @@
                  ::pci/index-resolvers
                  ::pci/index-mutations])})
 
+(defn extend-env [source-env env-extension]
+  (if (fn? env-extension)
+    (env-extension source-env)
+    (merge source-env env-extension)))
+
 (>defn foreign-interface
   "Returns a function that wraps the environment. When exposing Pathom to some external
   system, this is the recommended way to do it. The format here makes your API compatible
@@ -104,11 +109,16 @@
   the API."
   [env] [map? => fn?]
   (let [env' (pci/register env foreign-indexes)]
-    (fn foreign-interface-internal [input]
-      (let [{:pathom/keys [tx entity ast] :as request} (normalize-input input)
-            env'    (assoc env' ::source-request request)
-            entity' (or entity {})]
+    (fn foreign-interface-internal
+      ([env-extension input]
+       (let [{:pathom/keys [tx entity ast] :as request} (normalize-input input)
+             env'    (-> env'
+                         (extend-env env-extension)
+                         (assoc ::source-request request))
+             entity' (or entity {})]
 
-        (if ast
-          (process-ast (p.ent/with-entity env' entity') ast)
-          (process env' entity' tx))))))
+         (if ast
+           (process-ast (p.ent/with-entity env' entity') ast)
+           (process env' entity' tx))))
+      ([input]
+       (foreign-interface-internal nil input)))))

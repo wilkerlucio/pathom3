@@ -1,6 +1,7 @@
 (ns com.wsscode.pathom3.interface.eql-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.entity-tree :as p.ent]
@@ -14,7 +15,8 @@
 
 (def registry
   [geo/full-registry
-   coords])
+   coords
+   (pbir/constantly-fn-resolver :foo ::foo)])
 
 (deftest process-test
   (testing "read"
@@ -84,3 +86,27 @@
                                                              {::geo/left 20 ::geo/width 5}}}))
                           [{::coords [:right]}])
            {::coords #{{} {:right 25}}}))))
+
+(deftest foreign-interface-test
+  (let [fi (p.eql/foreign-interface (pci/register registry))]
+    (testing "call with just tx"
+      (is (= (fi [::coords])
+             {::coords
+              [{:x 10 :y 20}
+               {::geo/left 20 ::geo/width 5}]})))
+
+    (testing "call with entity and tx"
+      (is (= (fi {:pathom/entity {:left 10}
+                  :pathom/tx     [:x]})
+             {:x 10})))
+
+    (testing "merge env"
+      (is (= (fi [:foo])
+             {:foo nil}))
+
+      (is (= (fi {::foo "bar"} [:foo])
+             {:foo "bar"})))
+
+    (testing "modify env"
+      (is (= (fi #(pci/register % (pbir/constantly-resolver :new "value")) [:new])
+             {:new "value"})))))
