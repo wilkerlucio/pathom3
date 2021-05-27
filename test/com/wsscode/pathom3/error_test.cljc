@@ -19,7 +19,7 @@
 
   (testing "attribute not requested"
     (is (= (p.error/attribute-error {} :foo)
-           {:error :attribute-not-requested})))
+           {::p.error/error-type ::p.error/attribute-not-requested})))
 
   (testing "unreachable from plan"
     (is (= (let [data (p.eql/process
@@ -27,13 +27,13 @@
                           (pbir/single-attr-resolver :a :b str))
                         [:b])]
              (p.error/attribute-error data :b))
-           {:error :attribute-unreachable})))
+           {::p.error/error-type ::p.error/attribute-unreachable})))
 
   (testing "direct node error"
     (is (mcs/match?
-          {:error :node-errors
-           :nodes {1 {:type  :node-exception
-                      :error (match-error "Error")}}}
+          {::p.error/error-type         ::p.error/node-errors
+           ::p.error/node-error-details {1 {::p.error/error-type ::p.error/node-exception
+                                            ::p.error/exception  (match-error "Error")}}}
           (let [data (p.eql/process
                        (pci/register
                          (pbir/constantly-fn-resolver :a (fn [_] (throw (ex-info "Error" {})))))
@@ -48,16 +48,15 @@
                             (fn [_ _] {})))
                         [:a])]
              (p.error/attribute-error data :a))
-           {:error :node-errors
-            :nodes {1 {:type      :attribute-missing
-                       :attribute :a}}})))
+           {::p.error/error-type         ::p.error/node-errors
+            ::p.error/node-error-details {1 {::p.error/error-type ::p.error/attribute-missing}}})))
 
   (testing "ancestor error"
     (is (mcs/match?
-          {:error :node-errors
-           :nodes {1 {:type           :ancestor-error
-                      :ancestor-id    2
-                      :ancestor-error (match-error "Error")}}}
+          {::p.error/error-type         ::p.error/node-errors
+           ::p.error/node-error-details {1 {::p.error/error-type        ::p.error/ancestor-error
+                                            ::p.error/error-ancestor-id 2
+                                            ::p.error/exception         (match-error "Error")}}}
           (let [data (p.eql/process
                        (pci/register
                          [(pbir/constantly-fn-resolver :a (fn [_] (throw (ex-info "Error" {}))))
@@ -67,9 +66,9 @@
 
   (testing "ancestor error missing"
     (is (mcs/match?
-          {:error :node-errors
-           :nodes {1 {:type  :node-exception
-                      :error (match-error "Insufficient data")}}}
+          {::p.error/error-type         ::p.error/node-errors
+           ::p.error/node-error-details {1 {::p.error/error-type ::p.error/node-exception
+                                            ::p.error/exception  (match-error "Insufficient data")}}}
           (let [data (p.eql/process
                        (pci/register
                          [(pco/resolver 'a
