@@ -13,8 +13,8 @@
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.stats :as pcrs]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.eql :as pf.eql]
-    [com.wsscode.pathom3.interface.eql :as p.eql]
     [edn-query-language.core :as eql]
     #?@(:bb  []
         :clj [[potemkin.collections :refer [def-map-type]]])))
@@ -118,16 +118,14 @@
    (let [ent-tree @entity-tree*]
      (if-let [x (find ent-tree k)]
        (wrap-smart-map env (val x))
-       (let [ast   {:type     :root
-                    :children [(pf.eql/prop k)]}
-             stats (-> (pcr/run-graph! env ast entity-tree*) meta ::pcr/run-stats)]
+       (let [ast {:type     :root
+                  :children [(pf.eql/prop k)]}]
+         (-> (pcr/run-graph! env ast entity-tree*) meta ::pcr/run-stats)
+
          (when-let [error (and (refs/kw-identical? (get env ::error-mode) ::error-mode-loud)
-                               (-> (p.eql/process (pcrs/run-stats-env stats)
-                                                  {:com.wsscode.pathom3.attribute/attribute k}
-                                                  [::pcrs/attribute-error])
-                                   ::pcrs/attribute-error
-                                   ::pcr/node-error))]
-           (throw error))
+                               (p.error/attribute-error @entity-tree* k))]
+           (throw (ex-info "Smart Map fetch error" error)))
+
          (wrap-smart-map env (get @entity-tree* k default-value)))))))
 
 (defn sm-env-assoc
