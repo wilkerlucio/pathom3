@@ -6,6 +6,7 @@
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.runner :as pcr]
+    [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]))
 
@@ -16,7 +17,9 @@
                  (p.plugin/register (pbip/attribute-errors-plugin)))
              [:error])
            {::pcr/attribute-errors
-            {:error err}})))
+            {:error {::p.error/error-type         ::p.error/node-errors
+                     ::p.error/node-error-details {1 {::p.error/error-type ::p.error/node-exception
+                                                      ::p.error/exception  err}}}}})))
 
   (testing "only requested attributes show in errors"
     (let [err (ex-info "Err" {})]
@@ -26,7 +29,9 @@
                    (p.plugin/register (pbip/attribute-errors-plugin)))
                [:error])
              {::pcr/attribute-errors
-              {:error err}})))
+              {:error {::p.error/error-type         ::p.error/node-errors
+                       ::p.error/node-error-details {1 {::p.error/error-type ::p.error/node-exception
+                                                        ::p.error/exception  err}}}}})))
 
     (let [err (ex-info "Err" {})]
       (is (= (p.eql/process
@@ -35,7 +40,10 @@
                    (p.plugin/register (pbip/attribute-errors-plugin)))
                [:dep])
              {::pcr/attribute-errors
-              {:dep err}}))))
+              {:dep {::p.error/error-type         ::p.error/node-errors
+                     ::p.error/node-error-details {1 {::p.error/error-type        ::p.error/ancestor-error
+                                                      ::p.error/error-ancestor-id 2
+                                                      ::p.error/exception         err}}}}}))))
 
   (testing "nested"
     (let [err (ex-info "Err" {})]
@@ -45,7 +53,9 @@
                {:foo {}}
                [{:foo [:error]}])
              {:foo {::pcr/attribute-errors
-                    {:error err}}}))))
+                    {:error {::p.error/error-type         ::p.error/node-errors
+                             ::p.error/node-error-details {1 {::p.error/error-type ::p.error/node-exception
+                                                              ::p.error/exception  err}}}}}}))))
 
   (testing "don't try to fetch errors when there are no errors"
     (is (= (p.eql/process
