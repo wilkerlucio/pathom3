@@ -1,11 +1,8 @@
 (ns com.wsscode.pathom3.connect.runner.stats-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
-    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
-    [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.stats :as pcrs]
-    [com.wsscode.pathom3.interface.smart-map :as psm]
     [matcher-combinators.test]))
 
 (deftest resolver-accumulated-duration-test
@@ -31,36 +28,3 @@
          {::pcrs/overhead-duration-percentage 0.2})))
 
 (def err (ex-info "Error" {}))
-
-(defn error-resolver [attr]
-  (pbir/constantly-fn-resolver attr (fn [_] (throw err))))
-
-(deftest find-error-for-attribute-test
-  (is (= (let [stats (-> (psm/smart-map
-                           (pci/register (error-resolver :a)))
-                         (psm/sm-get-with-stats :a))]
-           (-> stats psm/smart-run-stats
-               (pcrs/get-attribute-error :a)))
-         {::pcrs/node-error-type ::pcrs/node-error-type-direct
-          ::pcr/node-error       err}))
-
-  (is (= (let [stats (-> (psm/smart-map
-                           (pci/register [(error-resolver :a)
-                                          (pbir/single-attr-resolver :a :b inc)]))
-                         (psm/sm-get-with-stats :b))]
-           (-> stats psm/smart-run-stats
-               (pcrs/get-attribute-error :b)))
-         {::pcrs/node-error-type ::pcrs/node-error-type-ancestor
-          ::pcrs/node-error-id   2
-          ::pcr/node-error       err}))
-
-  (testing "planning error"
-    (is (match?
-          {::pcrs/node-error-type ::pcrs/node-error-type-unreachable
-           ::pcr/node-error (fn [err]
-                              (= (ex-message err) "Can't find a path for :b"))}
-          (let [stats (-> (psm/smart-map
-                            (pci/register [(pbir/single-attr-resolver :a :b inc)]))
-                          (psm/sm-get-with-stats :b))]
-            (-> stats psm/smart-run-stats
-                (pcrs/get-attribute-error :b)))))))

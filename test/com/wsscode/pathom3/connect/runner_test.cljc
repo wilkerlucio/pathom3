@@ -9,10 +9,8 @@
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
-    [com.wsscode.pathom3.connect.runner.stats :as pcrs]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
-    [com.wsscode.pathom3.interface.smart-map :as psm]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
@@ -1797,20 +1795,6 @@
             (call)]
           #(= (::env-var %) (get % 'call))))))
 
-(deftest run-graph!-errors-test
-  (let [error (ex-info "Error" {})
-        stats (-> (run-graph (pci/register
-                               (pco/resolver 'error {::pco/output [:error]}
-                                 (fn [_ _] (throw error))))
-                             {}
-                             [:error])
-                  meta ::pcr/run-stats)
-        env   (pcrs/run-stats-env stats)]
-    (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
-               ::pcrs/attribute-error)
-           {::pcr/node-error       error
-            ::pcrs/node-error-type ::pcrs/node-error-type-direct}))))
-
 (deftest placeholder-merge-entity-test
   ; TODO: currently not possible, need to handle conflicts before
   #_(testing "forward current entity data"
@@ -1833,28 +1817,6 @@
               ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})}
              {:z true})
            {:>/p1 {:z true :x 10}}))))
-
-#?(:clj
-   (deftest run-graph!-async-tests
-     (is (= @(run-graph-async (pci/register
-                                (pco/resolver 'async {::pco/output [:foo]}
-                                  (fn [_ _] (p/resolved {:foo "foo"}))))
-                              {}
-                              [:foo])
-            {:foo "foo"}))
-
-     (testing "error"
-       (let [error (ex-info "Error" {})
-             stats @(run-graph-async (pci/register
-                                       (pco/resolver 'error {::pco/output [:error]}
-                                         (fn [_ _] (p/resolved (throw error)))))
-                                     {}
-                                     [:error])
-             env   (pcrs/run-stats-env (-> stats meta ::pcr/run-stats))]
-         (is (= (-> (psm/smart-map env {:com.wsscode.pathom3.attribute/attribute :error})
-                    ::pcrs/attribute-error)
-                {::pcr/node-error       error
-                 ::pcrs/node-error-type ::pcrs/node-error-type-direct}))))))
 
 (defn set-done [k]
   (fn [process]
