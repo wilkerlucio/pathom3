@@ -38,10 +38,10 @@
 (defn attribute-error
   "Return the attribute error, in case it failed."
   [response attribute]
-  (let [{:com.wsscode.pathom3.connect.planner/keys [index-ast index-attrs] :as run-stats}
-        (-> response meta :com.wsscode.pathom3.connect.runner/run-stats)]
-    (if (contains? response attribute)
-      nil
+  (if (contains? response attribute)
+    nil
+    (let [{:com.wsscode.pathom3.connect.planner/keys [index-ast index-attrs] :as run-stats}
+          (-> response meta :com.wsscode.pathom3.connect.runner/run-stats)]
       (if (contains? index-ast attribute)
         (if-let [nodes (get index-attrs attribute)]
           {::error-type         ::node-errors
