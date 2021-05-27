@@ -9,7 +9,7 @@
                  com.fulcrologic.guardrails.core/>defn   clojure.core/defn
                  potemkin.collections/def-map-type       clojure.core/deftype
                  com.wsscode.promesa.macros/clet         clojure.core/let}
- :linters       {:unsorted-required-namespaces {:level :warning}
+ :linters       {:unsorted-required-namespaces {:level :off}
                  :invalid-arity                {:level :error}
                  :missing-else-branch          {:level :off}
                  :unresolved-symbol            {:exclude [match? thrown-match?]}
