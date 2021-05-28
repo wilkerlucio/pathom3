@@ -35,6 +35,16 @@
         response (parser foreign-call)]
     response))
 
+(pco/defresolver foreign-indexes [env _]
+  {::pci/indexes
+   (select-keys env
+                [::pci/index-attributes
+                 ::pci/index-oir
+                 ::pci/index-io
+                 ::pci/autocomplete-ignore
+                 ::pci/index-resolvers
+                 ::pci/index-mutations])})
+
 (defn internalize-foreign-indexes
   ([{::pci/keys [index-source-id] :as indexes} foreign]
    (let [index-source-id (or index-source-id (gensym "dynamic-parser-"))]

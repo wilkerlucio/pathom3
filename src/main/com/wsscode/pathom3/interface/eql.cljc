@@ -2,8 +2,8 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
-    [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
@@ -76,24 +76,6 @@
      :pathom/entity {}}
     input))
 
-(pco/defresolver foreign-indexes [env _]
-  {::pco/output
-   [{::pci/indexes
-     [::pci/index-attributes
-      ::pci/index-oir
-      ::pci/index-io
-      ::pci/autocomplete-ignore
-      ::pci/index-resolvers
-      ::pci/index-mutations]}]}
-  {::pci/indexes
-   (select-keys env
-                [::pci/index-attributes
-                 ::pci/index-oir
-                 ::pci/index-io
-                 ::pci/autocomplete-ignore
-                 ::pci/index-resolvers
-                 ::pci/index-mutations])})
-
 (defn extend-env [source-env env-extension]
   (if (fn? env-extension)
     (env-extension source-env)
@@ -108,7 +90,7 @@
   query and the initial entity data. This map is open and you can use as a way to extend
   the API."
   [env] [map? => fn?]
-  (let [env' (pci/register env foreign-indexes)]
+  (let [env' (pci/register env pcf/foreign-indexes)]
     (fn foreign-interface-internal
       ([env-extension input]
        (let [{:pathom/keys [tx entity ast] :as request} (normalize-input input)
