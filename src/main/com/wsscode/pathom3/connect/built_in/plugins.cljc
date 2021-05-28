@@ -5,10 +5,9 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
-    [com.wsscode.pathom3.connect.runner.stats :as pcrs]
+    [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
     [com.wsscode.pathom3.interface.eql :as p.eql]
-    [com.wsscode.pathom3.interface.smart-map :as psm]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.promesa.macros :refer [clet]]))
 
@@ -30,19 +29,19 @@
    (fn attribute-errors-plugin-wrap-run-graph-external [run-graph!]
      (fn attribute-errors-plugin-wrap-run-graph-internal [env ast-or-graph entity-tree*]
        (clet [res (run-graph! env ast-or-graph entity-tree*)]
-         (let [stats (-> res meta :com.wsscode.pathom3.connect.runner/run-stats)]
-           (if (get-in stats [::pcr/node-run-stats ::pcr/nodes-with-error])
-             (let [smart-stats (psm/smart-run-stats stats)
-                   ast         (-> stats :com.wsscode.pathom3.connect.planner/index-ast)
-                   errors      (into {}
-                                     (keep (fn [k]
-                                             (if-let [error (pcrs/get-attribute-error smart-stats k)]
-                                               (coll/make-map-entry k (::pcr/node-error error)))))
-                                     (keys ast))]
-               (cond-> res
-                 (seq errors)
-                 (assoc ::pcr/attribute-errors errors)))
-             res)))))})
+         (if (p.error/scan-for-errors? res)
+           (let [ast    (-> res meta
+                            :com.wsscode.pathom3.connect.runner/run-stats
+                            :com.wsscode.pathom3.connect.planner/index-ast)
+                 errors (into {}
+                              (keep (fn [k]
+                                      (if-let [error (p.error/attribute-error res k)]
+                                        (coll/make-map-entry k error))))
+                              (keys ast))]
+             (cond-> res
+               (seq errors)
+               (assoc ::pcr/attribute-errors errors)))
+           res))))})
 
 (p.plugin/defplugin remove-stats-plugin
   "Remove the run stats from the result meta. Use this in production to avoid sending

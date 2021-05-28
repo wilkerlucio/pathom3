@@ -649,6 +649,7 @@
   ([graph {::keys [snapshots* snapshot-depth]} event-details]
    (if snapshots*
      (let [pad            (str/join (repeat (or snapshot-depth 0) "-"))
+           pad            (if (seq pad) (str pad " ") "")
            event-details' (coll/update-if event-details ::snapshot-message #(str pad %))]
        (swap! snapshots* conj (-> graph (dissoc ::source-ast ::available-data)
                                   (merge event-details')))))
@@ -1417,4 +1418,4 @@
                      (catch #?(:clj Throwable :cljs :default) e
                        {::snapshot-message (str "Planning stopped due to an error: " (ex-message e))
                         :error             e}))]
-    (conj @snapshots* (assoc graph ::snapshot-message "Completed graph."))))
+    (conj @snapshots* (assoc graph ::snapshot-message "Complete graph."))))

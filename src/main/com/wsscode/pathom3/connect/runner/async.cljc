@@ -348,7 +348,11 @@
                            (p.plugin/run-with-plugins env ::pcr/wrap-mutate
                              #(pco.prot/-mutate mutation %1 (:params %2)) env ast)
                            (throw (ex-info "Mutation not found" {::pco/op-name key}))))
-                       (p/catch (fn [e] {::pcr/mutation-error e})))
+                       (p/catch
+                         (fn [e]
+                           (p.plugin/run-with-plugins env ::pcr/wrap-mutation-error
+                             (fn [_ _ _]) env ast e)
+                           {::pcr/mutation-error e})))
           _        (pcr/merge-mutation-stats! env {::pco/op-name key}
                      {::pcr/mutation-run-finish-ms (time/now-ms)})
           result'  (if (::pcr/mutation-error result)

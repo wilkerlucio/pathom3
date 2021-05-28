@@ -36,7 +36,13 @@
     (is (thrown-with-msg?
           #?(:clj AssertionError :cljs js/Error)
           #"Tried to add duplicated plugin: com.wsscode.pathom3.plugin-test/op-plugin"
-          (p.plugin/register [op-plugin op-plugin])))))
+          (p.plugin/register [op-plugin op-plugin]))))
+
+  (testing "throw error on missing id"
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs js/Error)
+          #"Invalid plugin, make sure you set the ::p.plugin/id on it."
+          (p.plugin/register {})))))
 
 (deftest run-with-plugins-test
   (is (= (p.plugin/run-with-plugins plugin-env

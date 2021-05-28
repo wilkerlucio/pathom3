@@ -105,6 +105,7 @@
 (>def ::wrap-mutate fn?)
 (>def ::wrap-resolve fn?)
 (>def ::wrap-resolver-error fn?)
+(>def ::wrap-mutation-error fn?)
 (>def ::wrap-run-graph! fn?)
 
 (>def ::process-run-start-ms number?)
@@ -590,6 +591,8 @@
                        #(pco.prot/-mutate mutation %1 (:params %2)) env ast)
                      (throw (ex-info "Mutation not found" {::pco/op-name key})))
                    (catch #?(:clj Throwable :cljs :default) e
+                     (p.plugin/run-with-plugins env ::wrap-mutation-error
+                       (fn [_ _ _]) env ast e)
                      {::mutation-error e}))]
     (merge-mutation-stats! env {::pco/op-name key}
                            {::mutation-run-finish-ms (time/now-ms)})

@@ -113,7 +113,9 @@
        plugins)
 
      :else
-     env)))
+     (throw
+       (ex-info "Invalid plugin, make sure you set the ::p.plugin/id on it."
+                {:plugin plugins})))))
 
 (>defn remove-plugin
   "Remove a plugin."
