@@ -45,10 +45,18 @@
                  ::pci/index-resolvers
                  ::pci/index-mutations])})
 
+(defn remove-foreign-indexes [indexes]
+  (-> indexes
+      (update ::pci/index-resolvers dissoc `foreign-indexes)
+      (update ::pci/index-attributes dissoc ::pci/indexes)
+      (update ::pci/index-oir dissoc ::pci/indexes)
+      (update-in [::pci/index-io #{}] dissoc ::pci/indexes)))
+
 (defn internalize-foreign-indexes
   ([{::pci/keys [index-source-id] :as indexes} foreign]
    (let [index-source-id (or index-source-id (gensym "dynamic-parser-"))]
      (-> indexes
+         (remove-foreign-indexes)
          (update ::pci/index-resolvers
            (fn [resolvers]
              (coll/map-vals
@@ -59,7 +67,8 @@
              {::pco/cache?            false
               ::pco/dynamic-resolver? true}
              (fn [env _] (call-foreign env foreign))))
-         (dissoc ::pci/index-source-id)))))
+         (dissoc ::pci/index-source-id)
+         (assoc-in [::foreign-indexes index-source-id] indexes)))))
 
 (defn foreign-register
   [foreign]

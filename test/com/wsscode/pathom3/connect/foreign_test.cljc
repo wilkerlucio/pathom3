@@ -137,7 +137,7 @@
         env     (-> (pci/register
                       [(pbir/constantly-resolver :y 20)
                        (pcf/foreign-register foreign)]))]
-    (p.eql/process env [:x :y]))
+    env)
 
   ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/log-entry)
    {:pathom.viz.log/type :pathom.viz.log.type/trace
