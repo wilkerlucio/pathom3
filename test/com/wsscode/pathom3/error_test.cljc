@@ -76,4 +76,18 @@
                             (fn [_ _] {}))
                           (pbir/single-attr-resolver :a :b str)])
                        [:b])]
-            (p.error/attribute-error data :b))))))
+            (p.error/attribute-error data :b)))))
+
+  (testing "multiple errors"
+    (is (mcs/match?
+          {}
+          (let [response (p.eql/process
+                           (pci/register
+                             [(pco/resolver 'err1
+                                {::pco/output [:error-demo]}
+                                (fn [_ _] (throw (ex-info "One Error" {}))))
+                              (pco/resolver 'err2
+                                {::pco/output [:error-demo]}
+                                (fn [_ _] (throw (ex-info "Other Error" {}))))])
+                           [:error-demo])]
+            (p.error/attribute-error response :error-demo))))))
