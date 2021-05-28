@@ -15,24 +15,28 @@
 (defn attribute-node-error
   [{:com.wsscode.pathom3.connect.runner/keys [node-run-stats] :as graph} node-id]
   (let [{:com.wsscode.pathom3.connect.runner/keys [node-error node-run-finish-ms]} (get node-run-stats node-id)]
-    (coll/make-map-entry
-      node-id
-      (cond
-        node-error
+    (cond
+      node-error
+      (coll/make-map-entry
+        node-id
         {::error-type ::node-exception
-         ::exception  node-error}
+         ::exception  node-error})
 
-        node-run-finish-ms
-        {::error-type ::attribute-missing}
+      node-run-finish-ms
+      (coll/make-map-entry
+        node-id
+        {::error-type ::attribute-missing})
 
-        :else
-        (let [[node-id error] (->> (pcp/node-ancestors graph node-id)
-                                   (keep (fn [node-id]
-                                           (if-let [error (get-in node-run-stats [node-id :com.wsscode.pathom3.connect.runner/node-error])]
-                                             [node-id error])))
-                                   first)]
+      :else
+      (if-let [[node-id' error] (->> (pcp/node-ancestors graph node-id)
+                                     (keep (fn [node-id]
+                                             (if-let [error (get-in node-run-stats [node-id :com.wsscode.pathom3.connect.runner/node-error])]
+                                               [node-id error])))
+                                     first)]
+        (coll/make-map-entry
+          node-id
           {::error-type        ::ancestor-error
-           ::error-ancestor-id node-id
+           ::error-ancestor-id node-id'
            ::exception         error})))))
 
 (defn attribute-error
@@ -45,7 +49,7 @@
       (if (contains? index-ast attribute)
         (if-let [nodes (get index-attrs attribute)]
           {::error-type         ::node-errors
-           ::node-error-details (into {} (map #(attribute-node-error run-stats %)) nodes)}
+           ::node-error-details (into {} (keep #(attribute-node-error run-stats %)) nodes)}
           {::error-type ::attribute-unreachable})
         {::error-type ::attribute-not-requested}))))
 
