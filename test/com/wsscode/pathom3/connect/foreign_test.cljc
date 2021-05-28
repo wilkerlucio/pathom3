@@ -76,7 +76,7 @@
 (deftest process-foreign-query
   (testing "basic integration"
     (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
-                      (p.eql/foreign-interface))
+                      (p.eql/boundary-interface))
           env     (-> (pci/register
                         [(pbir/constantly-resolver :y 20)
                          (pcf/foreign-register foreign)]))]
@@ -89,7 +89,7 @@
                           (pco/resolver 'n
                             {::pco/output [{:a [:b :c]}]}
                             (fn [_ _] {:a {:b 1 :c 2}})))
-                        (p.eql/foreign-interface))
+                        (p.eql/boundary-interface))
             env     (-> (pci/register
                           [(pbir/constantly-resolver :y 20)
                            (pcf/foreign-register foreign)]))]
@@ -104,7 +104,7 @@
                           (pco/resolver 'n
                             {::pco/output [{:a [:b]}]}
                             (fn [_ _] {:a {:b "value"}})))
-                        (p.eql/foreign-interface))
+                        (p.eql/boundary-interface))
             env     (-> (pci/register
                           [(pbir/constantly-resolver :y 20)
                            (pcf/foreign-register foreign)]))]
@@ -113,7 +113,7 @@
 
 (comment
   (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
-                    (p.eql/foreign-interface))
+                    (p.eql/boundary-interface))
         env     (-> (pci/register
                       [(pbir/constantly-resolver :y 20)
                        (pcf/foreign-register foreign)]))]
@@ -123,7 +123,7 @@
                       (pco/resolver 'n
                         {::pco/output [{:a [:b :c]}]}
                         (fn [_ _] {:a {:b 1 :c 2}})))
-                    (p.eql/foreign-interface))
+                    (p.eql/boundary-interface))
         env     (-> (pci/register
                       [(pbir/constantly-resolver :y 20)
                        (pcf/foreign-register foreign)])
@@ -133,7 +133,7 @@
     (p.eql/process env [{:a [:b]}]))
 
   (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
-                    (p.eql/foreign-interface))
+                    (p.eql/boundary-interface))
         env     (-> (pci/register
                       [(pbir/constantly-resolver :y 20)
                        (pcf/foreign-register foreign)]))]

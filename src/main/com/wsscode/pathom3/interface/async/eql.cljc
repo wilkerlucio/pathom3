@@ -59,7 +59,7 @@
                     (p.ent/with-entity entity))
                 (eql/query->ast tx))))
 
-(>defn foreign-interface
+(>defn boundary-interface
   "Returns a function that wraps the environment. When exposing Pathom to some external
   system, this is the recommended way to do it. The format here makes your API compatible
   with Pathom Foreign process, which allows the integration of distributed environments.
@@ -69,7 +69,7 @@
   the API."
   [env] [map? => fn?]
   (let [env' (pci/register env pcf/foreign-indexes)]
-    (fn foreign-interface-internal
+    (fn boundary-interface-internal
       ([env-extension input]
        (let [{:pathom/keys [tx entity ast] :as request} (p.eql/normalize-input input)
              env'    (-> env'
@@ -81,4 +81,4 @@
            (process-ast (p.ent/with-entity env' entity') ast)
            (process env' entity' tx))))
       ([input]
-       (foreign-interface-internal nil input)))))
+       (boundary-interface-internal nil input)))))

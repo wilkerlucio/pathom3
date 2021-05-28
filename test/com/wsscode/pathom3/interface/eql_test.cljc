@@ -87,8 +87,8 @@
                           [{::coords [:right]}])
            {::coords #{{} {:right 25}}}))))
 
-(deftest foreign-interface-test
-  (let [fi (p.eql/foreign-interface (pci/register registry))]
+(deftest boundary-interface-test
+  (let [fi (p.eql/boundary-interface (pci/register registry))]
     (testing "call with just tx"
       (is (= (fi [::coords])
              {::coords

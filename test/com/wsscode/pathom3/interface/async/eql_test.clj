@@ -11,8 +11,8 @@
    (pbir/constantly-resolver :simple "value")
    (pbir/constantly-fn-resolver :foo ::foo)])
 
-(deftest foreign-interface-test
-  (let [fi (p.a.eql/foreign-interface (pci/register registry))]
+(deftest boundary-interface-test
+  (let [fi (p.a.eql/boundary-interface (pci/register registry))]
     (testing "call with just tx"
       (is (= @(fi [:simple])
              {:simple "value"})))
