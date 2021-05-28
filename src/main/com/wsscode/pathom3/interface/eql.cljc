@@ -69,8 +69,8 @@
   returns as is."
   [input]
   [(s/or :query ::eql/query
-         :config (s/keys :req [:pathom/tx] :opt [:pathom/entity]))
-   => (s/keys :req [:pathom/tx] :opt [:pathom/entity])]
+         :config (s/keys :req [(or :pathom/tx :pathom/ast)] :opt [:pathom/entity]))
+   => (s/keys :req [(or :pathom/tx :pathom/ast)] :opt [:pathom/entity])]
   (if (vector? input)
     {:pathom/tx     input
      :pathom/entity {}}
