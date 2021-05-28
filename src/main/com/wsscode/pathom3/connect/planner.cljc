@@ -1417,4 +1417,4 @@
                      (catch #?(:clj Throwable :cljs :default) e
                        {::snapshot-message (str "Planning stopped due to an error: " (ex-message e))
                         :error             e}))]
-    (conj @snapshots* (assoc graph ::snapshot-message "Completed graph."))))
+    (conj @snapshots* (assoc graph ::snapshot-message "Complete graph."))))
