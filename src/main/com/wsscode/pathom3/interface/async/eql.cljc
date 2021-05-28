@@ -68,7 +68,7 @@
   query and the initial entity data. This map is open and you can use as a way to extend
   the API."
   [env] [map? => fn?]
-  (let [env' (pci/register env pcf/foreign-indexes)]
+  (let [env' (pci/register env pcf/foreign-indexes-resolver)]
     (fn boundary-interface-internal
       ([env-extension input]
        (let [{:pathom/keys [tx entity ast] :as request} (p.eql/normalize-input input)

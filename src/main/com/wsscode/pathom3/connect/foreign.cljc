@@ -35,7 +35,7 @@
         response (parser foreign-call)]
     response))
 
-(pco/defresolver foreign-indexes [env _]
+(pco/defresolver foreign-indexes-resolver [env _]
   {::pci/indexes
    (select-keys env
                 [::pci/index-attributes
@@ -47,7 +47,7 @@
 
 (defn remove-foreign-indexes [indexes]
   (-> indexes
-      (update ::pci/index-resolvers dissoc `foreign-indexes)
+      (update ::pci/index-resolvers dissoc `foreign-indexes-resolver)
       (update ::pci/index-attributes dissoc ::pci/indexes)
       (update ::pci/index-oir dissoc ::pci/indexes)
       (update-in [::pci/index-io #{}] dissoc ::pci/indexes)))
