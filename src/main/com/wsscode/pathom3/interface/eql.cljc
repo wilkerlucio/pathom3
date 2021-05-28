@@ -76,7 +76,9 @@
      :pathom/entity {}}
     input))
 
-(defn extend-env [source-env env-extension]
+(>defn extend-env
+  [source-env env-extension]
+  [map? (s/or :fn fn? :map (s/? map?)) => map?]
   (if (fn? env-extension)
     (env-extension source-env)
     (merge source-env env-extension)))
