@@ -6,7 +6,8 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.interface.eql :as p.eql]
-    [com.wsscode.pathom3.test.geometry-resolvers :as geo]))
+    [com.wsscode.pathom3.test.geometry-resolvers :as geo]
+    [edn-query-language.core :as eql]))
 
 (pco/defresolver coords []
   {::coords
@@ -91,6 +92,12 @@
   (let [fi (p.eql/boundary-interface (pci/register registry))]
     (testing "call with just tx"
       (is (= (fi [::coords])
+             {::coords
+              [{:x 10 :y 20}
+               {::geo/left 20 ::geo/width 5}]})))
+
+    (testing "call with ast"
+      (is (= (fi {:pathom/ast (eql/query->ast [::coords])})
              {::coords
               [{:x 10 :y 20}
                {::geo/left 20 ::geo/width 5}]})))
