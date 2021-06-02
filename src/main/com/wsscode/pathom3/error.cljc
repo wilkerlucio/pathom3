@@ -53,9 +53,11 @@
           {::error-type ::attribute-unreachable})
         {::error-type ::attribute-not-requested}))))
 
-(defn scan-for-errors? [_response]
+(defn scan-for-errors? [response]
   ; some node error?
   ; something unreachable?
 
   ; is there a way to know if there wasn't any error without checking each attribute?
-  true)
+
+  ; check if map has meta
+  (some-> response meta (contains? :com.wsscode.pathom3.connect.runner/run-stats)))

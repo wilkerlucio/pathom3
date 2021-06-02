@@ -62,7 +62,19 @@
              (-> (pci/register (pbir/constantly-resolver :foo "bar"))
                  (p.plugin/register (pbip/attribute-errors-plugin)))
              [:foo])
-           {:foo "bar"}))))
+           {:foo "bar"})))
+
+  (testing "bug reports"
+    (testing "nested batch false positives"
+      (is (= (-> (p.plugin/register (pbip/attribute-errors-plugin))
+                 (pci/register [(pco/resolver 'a
+                                  {::pco/input  [:a/id]
+                                   ::pco/output [:a/code]
+                                   ::pco/batch? true}
+                                  (fn [_ input]
+                                    (mapv #(array-map :a/code (inc (:a/id %))) input)))])
+                 (p.eql/process [{[:a/id 1] [:a/code]}]))
+             {[:a/id 1] #:a{:code 2}})))))
 
 (deftest remove-stats-plugin-test
   (let [res (p.eql/process

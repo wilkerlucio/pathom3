@@ -1,5 +1,6 @@
 (ns com.wsscode.pathom3.connect.built-in.plugins
   (:require
+    [clojure.walk :as walk]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
@@ -10,6 +11,21 @@
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.promesa.macros :refer [clet]]))
+
+(defn process-entity-errors [entity]
+  (if (p.error/scan-for-errors? entity)
+    (let [ast    (-> entity meta
+                     :com.wsscode.pathom3.connect.runner/run-stats
+                     :com.wsscode.pathom3.connect.planner/index-ast)
+          errors (into {}
+                       (keep (fn [k]
+                               (if-let [error (p.error/attribute-error entity k)]
+                                 (coll/make-map-entry k error))))
+                       (keys ast))]
+      (cond-> entity
+        (seq errors)
+        (assoc ::pcr/attribute-errors errors)))
+    entity))
 
 (defn attribute-errors-plugin
   "This plugin makes attributes errors visible in the data."
@@ -25,23 +41,16 @@
            coll/sconj ::pcr/attribute-errors)
          ast)))
 
-   ::pcr/wrap-run-graph!
+   ::pcr/wrap-root-run-graph!
    (fn attribute-errors-plugin-wrap-run-graph-external [run-graph!]
      (fn attribute-errors-plugin-wrap-run-graph-internal [env ast-or-graph entity-tree*]
-       (clet [res (run-graph! env ast-or-graph entity-tree*)]
-         (if (p.error/scan-for-errors? res)
-           (let [ast    (-> res meta
-                            :com.wsscode.pathom3.connect.runner/run-stats
-                            :com.wsscode.pathom3.connect.planner/index-ast)
-                 errors (into {}
-                              (keep (fn [k]
-                                      (if-let [error (p.error/attribute-error res k)]
-                                        (coll/make-map-entry k error))))
-                              (keys ast))]
-             (cond-> res
-               (seq errors)
-               (assoc ::pcr/attribute-errors errors)))
-           res))))})
+       (clet [entity (run-graph! env ast-or-graph entity-tree*)]
+         (walk/postwalk
+           (fn [x]
+             (if (map? x)
+               (process-entity-errors x)
+               x))
+           entity))))})
 
 (p.plugin/defplugin remove-stats-plugin
   "Remove the run stats from the result meta. Use this in production to avoid sending
