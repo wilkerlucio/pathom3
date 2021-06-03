@@ -107,11 +107,11 @@
   [::p.attr/attribute => any?]
   (eql/update-property-param attr assoc ::optional? true))
 
-(>defn operation-config [operation]
+(>defn operation-config [^pop/IOperation operation]
   [::operation => ::operation-config]
   (pop/-operation-config operation))
 
-(>defn operation-type [operation]
+(>defn operation-type [^pop/IOperation operation]
   [::operation => ::operation-type]
   (pop/-operation-type operation))
 
