@@ -524,7 +524,9 @@
   "Plan and execute a request, given an environment (with indexes), the request AST
   and the entity-tree*."
   [env ast-or-graph entity-tree*]
-  [(s/keys) (s/or :ast :edn-query-language.ast/node
-                  :graph ::pcp/graph) ::p.ent/entity-tree*
+  [(s/or :env (s/keys) :env-promise p/promise?)
+   (s/or :ast :edn-query-language.ast/node
+         :graph ::pcp/graph) ::p.ent/entity-tree*
    => p/promise?]
-  (pcr/run-graph-with-plugins (assoc env ::async-runner? true) ast-or-graph entity-tree* run-graph-impl!))
+  (p/let [env env]
+    (pcr/run-graph-with-plugins (assoc env ::async-runner? true) ast-or-graph entity-tree* run-graph-impl!)))

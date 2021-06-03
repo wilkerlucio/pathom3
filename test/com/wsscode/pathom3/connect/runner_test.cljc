@@ -1795,6 +1795,15 @@
             (call)]
           #(= (::env-var %) (get % 'call))))))
 
+#?(:clj
+   (deftest run-graph!-async-tests
+     (testing "async env"
+       (is (= @(run-graph-async
+                 (p/promise (pci/register [(pbir/constantly-resolver :x 10)]))
+                 {}
+                 [:x])
+              {:x 10})))))
+
 (deftest placeholder-merge-entity-test
   ; TODO: currently not possible, need to handle conflicts before
   #_(testing "forward current entity data"
