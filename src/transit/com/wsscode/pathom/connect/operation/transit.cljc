@@ -18,5 +18,5 @@
    "pathom3/Mutation" (t/read-handler #(-> % (assoc ::pco/mutate restored-handler) pco/mutation))})
 
 (def write-handlers
-  {Resolver (t/write-handler "pathom3/Resolver" pco/operation-config)
-   Mutation (t/write-handler "pathom3/Mutation" pco/operation-config)})
+  {Resolver (t/write-handler (fn [_] "pathom3/Resolver") pco/operation-config)
+   Mutation (t/write-handler (fn [_] "pathom3/Mutation") pco/operation-config)})
