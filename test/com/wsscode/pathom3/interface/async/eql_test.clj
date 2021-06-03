@@ -37,4 +37,8 @@
   (testing "async env"
     (let [fi (p.a.eql/boundary-interface (p/promise (pci/register registry)))]
       (is (= @(fi [:simple])
-             {:simple "value"})))))
+             {:simple "value"}))
+
+      (testing "providing extra async env"
+        (is (= @(fi (p/promise {::foo "bar"}) [:foo])
+               {:foo "bar"}))))))

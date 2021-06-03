@@ -74,11 +74,12 @@
       ([env-extension input]
        (p/let [{:pathom/keys [tx entity ast] :as request} (p.eql/normalize-input input)
                ; ensure if it's a promise it gets resolved
-               env'    env'
-               env'    (-> env'
-                           (p.eql/extend-env env-extension)
-                           (assoc ::source-request request))
-               entity' (or entity {})]
+               env'          env'
+               env-extension env-extension
+               env'          (-> env'
+                                 (p.eql/extend-env env-extension)
+                                 (assoc ::source-request request))
+               entity'       (or entity {})]
 
          (if ast
            (process-ast (p.ent/with-entity env' entity') ast)
