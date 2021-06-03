@@ -7,9 +7,11 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    #?(:clj [com.wsscode.pathom3.interface.async.eql :as p.a.eql])
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.path :as p.path]
-    [edn-query-language.core :as eql]))
+    [edn-query-language.core :as eql]
+    [promesa.core :as p]))
 
 (deftest remove-internal-keys-test
   (is (= (pcf/remove-internal-keys {:foo                   "bar"
@@ -109,7 +111,18 @@
                           [(pbir/constantly-resolver :y 20)
                            (pcf/foreign-register foreign)]))]
         (is (= (p.eql/process env [:a])
-               {:a {:b "value"}}))))))
+               {:a {:b "value"}})))))
+
+  #?(:clj
+     (testing "async foreign"
+       (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
+                         (p.a.eql/boundary-interface))
+             env     (p/let [f' (pcf/foreign-register foreign)]
+                       (-> (pci/register
+                             [(pbir/constantly-resolver :y 20)
+                              f'])))]
+         (is (= @(p.a.eql/process env [:x :y])
+                {:x 10 :y 20}))))))
 
 (comment
   (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))

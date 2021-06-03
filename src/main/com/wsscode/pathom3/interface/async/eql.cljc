@@ -1,6 +1,5 @@
 (ns com.wsscode.pathom3.interface.async.eql
   (:require
-    [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -21,9 +20,10 @@
 
 (>defn process-ast
   [env ast]
-  [(s/keys) :edn-query-language.ast/node => p/promise?]
-  (p.plugin/run-with-plugins env ::p.eql/wrap-process-ast
-    process-ast* env ast))
+  [::pcra/env :edn-query-language.ast/node => p/promise?]
+  (p/let [env env]
+    (p.plugin/run-with-plugins env ::p.eql/wrap-process-ast
+      process-ast* env ast)))
 
 (>defn process
   "Evaluate EQL expression using async runner.
@@ -49,15 +49,17 @@
 
   For more options around processing check the docs on the connect runner."
   ([env tx]
-   [(s/keys) ::eql/query => p/promise?]
-   (process-ast (assoc env ::pcr/root-query tx) (eql/query->ast tx)))
+   [::pcra/env ::eql/query => p/promise?]
+   (p/let [env env]
+     (process-ast (assoc env ::pcr/root-query tx) (eql/query->ast tx))))
   ([env entity tx]
-   [(s/keys) map? ::eql/query => p/promise?]
+   [::pcra/env map? ::eql/query => p/promise?]
    (assert (map? entity) "Entity data must be a map.")
-   (process-ast (-> env
-                    (assoc ::pcr/root-query tx)
-                    (p.ent/with-entity entity))
-                (eql/query->ast tx))))
+   (p/let [env env]
+     (process-ast (-> env
+                      (assoc ::pcr/root-query tx)
+                      (p.ent/with-entity entity))
+                  (eql/query->ast tx)))))
 
 (>defn boundary-interface
   "Returns a function that wraps the environment. When exposing Pathom to some external
