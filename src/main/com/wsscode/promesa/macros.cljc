@@ -16,9 +16,10 @@
      (let [binds (reverse (partition 2 bindings))]
        (reduce
          (fn [acc [l r]]
-           `(let [~l ~r]
-              (if (p/promise? ~l)
-                (p/then ~l (fn [~l] ~acc))
-                ~acc)))
+           `(let [r# ~r]
+              (if (p/promise? r#)
+                (p/then r# (fn [~l] ~acc))
+                (let [~l r#]
+                  ~acc))))
          `(do ~@body)
          binds))))
