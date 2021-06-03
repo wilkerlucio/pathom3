@@ -21,6 +21,8 @@
     [com.wsscode.promesa.macros :refer [clet]]
     [promesa.core :as p]))
 
+(>def ::env (s/or :env (s/keys) :env-promise p/promise?))
+
 (declare run-node! run-graph!)
 
 (defn- reduce-async [f init coll]
@@ -524,7 +526,7 @@
   "Plan and execute a request, given an environment (with indexes), the request AST
   and the entity-tree*."
   [env ast-or-graph entity-tree*]
-  [(s/or :env (s/keys) :env-promise p/promise?)
+  [::env
    (s/or :ast :edn-query-language.ast/node
          :graph ::pcp/graph) ::p.ent/entity-tree*
    => p/promise?]

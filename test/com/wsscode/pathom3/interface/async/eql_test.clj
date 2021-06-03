@@ -4,7 +4,8 @@
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
-    [com.wsscode.pathom3.test.geometry-resolvers :as geo]))
+    [com.wsscode.pathom3.test.geometry-resolvers :as geo]
+    [promesa.core :as p]))
 
 (def registry
   [geo/full-registry
@@ -31,4 +32,9 @@
 
     (testing "modify env"
       (is (= @(fi #(pci/register % (pbir/constantly-resolver :new "value")) [:new])
-             {:new "value"})))))
+             {:new "value"}))))
+
+  (testing "async env"
+    (let [fi (p.a.eql/boundary-interface (p/promise (pci/register registry)))]
+      (is (= @(fi [:simple])
+             {:simple "value"})))))

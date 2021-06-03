@@ -67,15 +67,18 @@
   When calling the remote interface the user can send a query or a map containing the
   query and the initial entity data. This map is open and you can use as a way to extend
   the API."
-  [env] [map? => fn?]
-  (let [env' (pci/register env pcf/foreign-indexes-resolver)]
+  [env]
+  [::pcra/env => fn?]
+  (let [env' (p/let [env env] (pci/register env pcf/foreign-indexes-resolver))]
     (fn boundary-interface-internal
       ([env-extension input]
-       (let [{:pathom/keys [tx entity ast] :as request} (p.eql/normalize-input input)
-             env'    (-> env'
-                         (p.eql/extend-env env-extension)
-                         (assoc ::source-request request))
-             entity' (or entity {})]
+       (p/let [{:pathom/keys [tx entity ast] :as request} (p.eql/normalize-input input)
+               ; ensure if it's a promise it gets resolved
+               env'    env'
+               env'    (-> env'
+                           (p.eql/extend-env env-extension)
+                           (assoc ::source-request request))
+               entity' (or entity {})]
 
          (if ast
            (process-ast (p.ent/with-entity env' entity') ast)
