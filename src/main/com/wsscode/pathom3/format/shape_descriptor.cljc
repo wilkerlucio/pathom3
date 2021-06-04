@@ -182,6 +182,24 @@
     (or (empty s1) {})
     s1))
 
+(>defn intersection
+  "Like set/intersection, for shapes."
+  [s1 s2]
+  [(? ::shape-descriptor) (? ::shape-descriptor) => ::shape-descriptor]
+  (reduce-kv
+    (fn [out k sub]
+      (if-let [x (find s2 k)]
+        (let [v (val x)]
+          (if (and (seq sub) (seq v))
+            (let [sub-inter (intersection sub v)]
+              (if (seq sub-inter)
+                (assoc out k sub-inter)
+                (assoc out k {})))
+            (assoc out k {})))
+        out))
+    (or (empty s1) {})
+    s1))
+
 (>defn select-shape
   "Select the parts of data covered by shape. This is similar to select-keys, but for
   nested shapes."

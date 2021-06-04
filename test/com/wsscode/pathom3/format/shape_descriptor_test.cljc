@@ -160,6 +160,35 @@
     (is (= (psd/difference {:a {:b {} :c {}}} {:a {:b {}}})
            {:a {:c {}}}))))
 
+(deftest intersection-test
+  (is (= (psd/intersection {} {})
+         {}))
+
+  (is (= (psd/intersection {:a {}} {})
+         {}))
+
+  (is (= (psd/intersection {:a {}} {:b {}})
+         {}))
+
+  (is (= (psd/intersection {:a {}} {:a {}})
+         {:a {}}))
+
+  (testing "nested"
+    (is (= (psd/intersection {:a {:b {}}} {:a {}})
+           {:a {}}))
+
+    (is (= (psd/intersection {:a {}} {:a {:b {}}})
+           {:a {}}))
+
+    (is (= (psd/intersection {:a {:b {}}} {:a {:b {}}})
+           {:a {:b {}}}))
+
+    (is (= (psd/intersection {:a {:b {}}} {:a {:c {}}})
+           {:a {}}))
+
+    (is (= (psd/intersection {:a {:b {} :c {}}} {:a {:b {}}})
+           {:a {:b {}}}))))
+
 (deftest select-shape-test
   (is (= (psd/select-shape {} {})
          {}))
