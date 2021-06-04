@@ -901,6 +901,26 @@
     (or (::pco/dynamic-name resolver)
         resolver-name)))
 
+(defn compute-dynamic-resolver-nested-requirements-keep
+  [{::p.attr/keys [attribute]
+    ::pco/keys    [op-name]
+    ast           :edn-query-language.ast/node
+    :as           env}]
+  (if (seq (:children ast))
+    (let [config      (pci/resolver-config env op-name)
+          available   (get-in config [::pco/provides attribute])
+          graph       (compute-run-graph (-> (reset-env env)
+                                             (assoc
+                                               :edn-query-language.ast/node ast
+                                               ::available-data available)))
+          node-inputs (reduce
+                        (fn [i {::keys [input]}]
+                          (pfsd/merge-shapes i input))
+                        {}
+                        (vals (::nodes graph)))
+          ast-shape   (pfsd/ast->shape-descriptor ast)]
+      (pfsd/intersection available (pfsd/merge-shapes node-inputs ast-shape)))))
+
 (defn create-node-for-resolver-call
   "Create a new node representative to run a given resolver."
   [{::keys        [input]
@@ -908,10 +928,12 @@
     ::pco/keys    [op-name]
     ast           :edn-query-language.ast/node
     :as           env}]
-  (let [requires   {attribute {}}
-        ast-params (:params ast)
+  (let [ast-params (:params ast)
         config     (pci/resolver-config env op-name)
-        op-name'   (or (::pco/dynamic-name config) op-name)]
+        op-name'   (or (::pco/dynamic-name config) op-name)
+        dynamic?   (pci/dynamic-resolver? env op-name')
+        sub        (if dynamic? (compute-dynamic-resolver-nested-requirements-keep env))
+        requires   {attribute (or sub {})}]
     (cond->
       (new-node env
                 {::pco/op-name op-name'
@@ -921,9 +943,15 @@
       (seq ast-params)
       (assoc ::params ast-params)
 
-      (pci/dynamic-resolver? env op-name')
-      ;; TODO use op-name to figure nested foreign ast
-      (assoc ::foreign-ast {:type :root :children [ast]}))))
+      dynamic?
+      (assoc ::foreign-ast
+        {:type     :root
+         :children (if sub
+                     (let [ast' (pfsd/shape-descriptor->ast sub)]
+                       [(assoc ast
+                          :children (:children ast')
+                          :query (eql/ast->query ast'))])
+                     [ast])}))))
 
 (defn compute-resolver-leaf
   "For a set of resolvers (the R part of OIR index), create one OR node that branches

@@ -108,10 +108,10 @@
                             (fn [_ _] {:a {:b "value"}})))
                         (p.eql/boundary-interface))
             env     (-> (pci/register
-                          [(pbir/constantly-resolver :y 20)
+                          [(pbir/alias-resolver :b :c)
                            (pcf/foreign-register foreign)]))]
-        (is (= (p.eql/process env [:a])
-               {:a {:b "value"}})))))
+        (is (= (p.eql/process env [{:a [:c]}])
+               {:a {:c "value"}})))))
 
   #?(:clj
      (testing "async foreign"
@@ -123,6 +123,19 @@
                               f'])))]
          (is (= @(p.a.eql/process env [:x :y])
                 {:x 10 :y 20}))))))
+
+(comment
+  (let [foreign (-> (pci/register
+                      (pco/resolver 'n
+                        {::pco/output [{:a [:b]}]}
+                        (fn [_ _] {:a {:b "value"}})))
+                    (p.eql/boundary-interface))
+        env     (-> (pci/register
+                      [(pbir/alias-resolver :b :c)
+                       (pcf/foreign-register foreign)])
+                    ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/connect-env)
+                     "debug"))]
+    (p.eql/process env [{:a [:c]}])))
 
 (comment
   (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))

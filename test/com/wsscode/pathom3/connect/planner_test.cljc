@@ -1919,7 +1919,7 @@
                                               :key          :d1}}
             ::pcp/root                  4}))))
 
-#_
+
 (deftest compute-run-graph-dynamic-nested-queries-test
   (testing "simple nested query"
     (is (= (compute-run-graph
@@ -1939,8 +1939,6 @@
                                             ::pcp/node-id          1
                                             ::pcp/expects          {:a {:b {}}}
                                             ::pcp/input            {}
-                                            ::pcp/source-sym       'a
-                                            ::pcp/source-for-attrs #{:a}
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
             ::pcp/root                  1
@@ -1968,16 +1966,14 @@
                                       ::pco/input   [:b]
                                       ::pco/output  [:c]}]
               ::eql/query           [{:a [:c]}]})
-           {::pcp/nodes                 {1 {::pco/op-name          'dyn
-                                            ::pcp/node-id          1
+           {::pcp/nodes                 {2 {::pco/op-name          'dyn
+                                            ::pcp/node-id          2
                                             ::pcp/expects          {:a {:b {}}}
                                             ::pcp/input            {}
-                                            ::pcp/source-sym       'a
-                                            ::pcp/source-for-attrs #{:a}
                                             ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
-            ::pcp/index-resolver->nodes '{dyn #{1}}
-            ::pcp/root                  1
-            ::pcp/index-attrs           {:a #{1}}
+            ::pcp/index-resolver->nodes '{dyn #{2}}
+            ::pcp/root                  2
+            ::pcp/index-attrs           {:a #{2}}
             ::pcp/index-ast             {:a {:type         :join,
                                              :dispatch-key :a,
                                              :key          :a,
@@ -1986,6 +1982,7 @@
                                                              :dispatch-key :c,
                                                              :key          :c}]}}})))
 
+  #_
   (testing "collapse dynamic dependencies when they are from the same dynamic resolver"
     (is (= (compute-run-graph
              {::pci/index-oir       '{:local     {{:dynamic-1 {}} #{dynamic-1->local}}
@@ -2042,6 +2039,7 @@
                                                       :key          :dynamic-2}}
              ::pcp/root                  2})))
 
+  #_
   (testing "union queries"
     (testing "resolver has simple output"
       (is (= (compute-run-graph
@@ -2120,6 +2118,7 @@
                 ::pcp/root                  1
                 ::pcp/index-attrs           {:a #{1}}}))))
 
+  #_
   (testing "deep nesting"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
@@ -2192,6 +2191,7 @@
                                                                                :dispatch-key :d,
                                                                                :key          :d}]}]}}}))))
 
+  #_
   (testing "only returns the deps from the dynamic resolver in the child requirements"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
@@ -2262,6 +2262,7 @@
                                                              :dispatch-key :d,
                                                              :key          :d}]}}})))
 
+  #_
   (testing "indirect dependencies don't need to be in the query"
     (is (= (compute-run-graph
              {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
