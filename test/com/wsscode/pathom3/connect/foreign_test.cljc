@@ -83,7 +83,24 @@
                         [(pbir/constantly-resolver :y 20)
                          (pcf/foreign-register foreign)]))]
       (is (= (p.eql/process env [:x :y])
-             {:x 10 :y 20}))))
+             {:x 10 :y 20})))
+
+    (let [foreign  (-> (pci/register
+                         [(pbir/single-attr-resolver :a :b inc)
+                          (pbir/single-attr-resolver :c :d inc)
+                          (pbir/single-attr-resolver :e :f inc)])
+                       (p.eql/boundary-interface))
+          foreign2 (-> (pci/register
+                         [(pbir/single-attr-resolver :g :h inc)])
+                       (p.eql/boundary-interface))
+          env      (-> (pci/register
+                         [(pcf/foreign-register foreign)
+                          (pcf/foreign-register foreign2)
+                          (pbir/single-attr-resolver :b :c inc)
+                          (pbir/single-attr-resolver :d :e inc)
+                          (pbir/single-attr-resolver :f :g inc)]))]
+      (is (= (p.eql/process env {:a 1} [:h])
+             {:h 8}))))
 
   (testing "nested query"
     (testing "direct nest"
