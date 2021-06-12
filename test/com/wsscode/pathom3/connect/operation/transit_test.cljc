@@ -1,8 +1,8 @@
-(ns com.wsscode.pathom.connect.operation.transit-test
+(ns com.wsscode.pathom3.connect.operation.transit-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [com.wsscode.pathom.connect.operation.transit :as pcot]
     [com.wsscode.pathom3.connect.operation :as pco]
+    [com.wsscode.pathom3.connect.operation.transit :as pcot]
     [com.wsscode.transito :as transito]))
 
 (defn read-transit-str [^String s]

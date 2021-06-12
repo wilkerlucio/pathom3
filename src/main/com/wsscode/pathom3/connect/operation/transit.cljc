@@ -1,4 +1,4 @@
-(ns com.wsscode.pathom.connect.operation.transit
+(ns com.wsscode.pathom3.connect.operation.transit
   (:require
     [cognitect.transit :as t]
     [com.wsscode.pathom3.connect.operation
