@@ -1991,9 +1991,10 @@
                                            ::pco/dynamic-name 'dyn
                                            ::pco/output       [{:a [:b]}]
                                            ::pco/resolve      (fn [_ _])}
-                                     'c   {::pco/op-name 'c
-                                           ::pco/input   [:b]
-                                           ::pco/output  [:c]}}
+                                     'c   {::pco/op-name      'c
+                                           ::pco/dynamic-name 'dyn
+                                           ::pco/input        [:b]
+                                           ::pco/output       [:c]}}
               ::pci/index-oir       {:a {{} #{'a}}
                                      :c {{:b {}} #{'c}}}
               ::eql/query           [{:a [:c]}]})
@@ -2011,7 +2012,61 @@
                                              :query        [:c],
                                              :children     [{:type         :prop,
                                                              :dispatch-key :c,
-                                                             :key          :c}]}}})))
+                                                             :key          :c}]}}}))
+
+
+    (testing "keep intermediate dependency in case external resolvers need it"
+      (is (= (compute-run-graph
+               {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
+                                             ::pco/cache?            false
+                                             ::pco/dynamic-resolver? true
+                                             ::pco/resolve           (fn [_ _])}
+                                       'a   {::pco/op-name      'a
+                                             ::pco/dynamic-name 'dyn
+                                             ::pco/output       [{:a [:b]}]
+                                             ::pco/resolve      (fn [_ _])}
+                                       'c   {::pco/op-name      'c
+                                             ::pco/dynamic-name 'dyn
+                                             ::pco/input        [:b]
+                                             ::pco/output       [:c]}
+                                       'd   {::pco/op-name 'd
+                                             ::pco/input   [:b]
+                                             ::pco/output  [:d]}}
+                ::pci/index-oir       {:a {{} #{'a}}
+                                       :c {{:b {}} #{'c}}
+                                       :d {{:b {}} #{'d}}}
+                ::eql/query           [{:a [:c :d]}]})
+             '{:com.wsscode.pathom3.connect.planner/index-ast             {:a {:children     [{:dispatch-key :c
+                                                                                               :key          :c
+                                                                                               :type         :prop}
+                                                                                              {:dispatch-key :d
+                                                                                               :key          :d
+                                                                                               :type         :prop}]
+                                                                               :dispatch-key :a
+                                                                               :key          :a
+                                                                               :query        [:c
+                                                                                              :d]
+                                                                               :type         :join}}
+               :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{4}}
+               :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{4}}
+               :com.wsscode.pathom3.connect.planner/nodes                 {4 {:com.wsscode.pathom3.connect.operation/op-name   dyn
+                                                                              :com.wsscode.pathom3.connect.planner/expects     {:a {:b {}
+                                                                                                                                    :c {}}}
+                                                                              :com.wsscode.pathom3.connect.planner/foreign-ast {:children [{:children     [{:dispatch-key :c
+                                                                                                                                                            :key          :c
+                                                                                                                                                            :type         :prop}
+                                                                                                                                                           {:dispatch-key :b
+                                                                                                                                                            :key          :b
+                                                                                                                                                            :type         :prop}]
+                                                                                                                                            :dispatch-key :a
+                                                                                                                                            :key          :a
+                                                                                                                                            :query        [:c
+                                                                                                                                                           :b]
+                                                                                                                                            :type         :join}]
+                                                                                                                                :type     :root}
+                                                                              :com.wsscode.pathom3.connect.planner/input       {}
+                                                                              :com.wsscode.pathom3.connect.planner/node-id     4}}
+               :com.wsscode.pathom3.connect.planner/root                  4}))))
 
   #_(testing "collapse dynamic dependencies when they are from the same dynamic resolver"
       (is (= (compute-run-graph
@@ -3603,3 +3658,31 @@
                          4 {::pcp/run-next 1}
                          5 {::pcp/run-and #{1}}},
                  :root  1})))
+
+(deftest find-root-resolver-nodes-test
+  (is (= (pcp/find-root-resolver-nodes
+           {::pcp/nodes {1 {::pco/op-name 'res}}
+            ::pcp/root  1})
+         #{1}))
+
+  (is (= (pcp/find-root-resolver-nodes
+           {::pcp/nodes {1 {::pco/op-name 'res}
+                         2 {::pcp/run-and #{1}}}
+            ::pcp/root  2})
+         #{1}))
+
+  (is (= (pcp/find-root-resolver-nodes
+           {::pcp/nodes {1 {::pco/op-name 'res}
+                         2 {::pco/op-name 'other}
+                         3 {::pcp/run-and #{1 2}}}
+            ::pcp/root  3})
+         #{1 2}))
+
+  (is (= (pcp/find-root-resolver-nodes
+           {::pcp/nodes {1 {::pco/op-name 'res}
+                         2 {::pcp/run-and #{4 5}}
+                         3 {::pcp/run-and #{1 2}}
+                         4 {::pco/op-name 'other}
+                         5 {::pco/op-name 'other2}}
+            ::pcp/root  3})
+         #{1 4 5})))

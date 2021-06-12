@@ -783,6 +783,21 @@
   [::graph ::node => ::node]
   (peek (find-run-next-descendants graph node)))
 
+(>defn find-root-resolver-nodes
+  "Returns the first resolvers to get called in the graph. This will traverse AND and OR
+  node branches until the first resolvers are found. This function doesn't work the
+  run-next of nodes."
+  [{::keys [root] :as graph}]
+  [::graph => ::node-id-set]
+  (loop [nodes (transient #{})
+         queue (coll/queue [root])]
+    (if-let [node-id (peek queue)]
+      (let [{::pco/keys [op-name] :as node} (get-node graph node-id)]
+        (if op-name
+          (recur (conj! nodes node-id) (pop queue))
+          (recur nodes (into (pop queue) (node-branches node)))))
+      (persistent! nodes))))
+
 ; endregion
 
 ; region sub-query process
@@ -907,19 +922,26 @@
     ast           :edn-query-language.ast/node
     :as           env}]
   (if (seq (:children ast))
-    (let [config      (pci/resolver-config env op-name)
-          available   (get-in config [::pco/provides attribute])
-          graph       (compute-run-graph (-> (reset-env env)
-                                             (assoc
-                                               :edn-query-language.ast/node ast
-                                               ::available-data available)))
-          node-inputs (reduce
-                        (fn [i {::keys [input]}]
-                          (pfsd/merge-shapes i input))
-                        {}
-                        (vals (::nodes graph)))
-          ast-shape   (pfsd/ast->shape-descriptor ast)]
-      (pfsd/intersection available (pfsd/merge-shapes node-inputs ast-shape)))))
+    (let [{::pco/keys [dynamic-name] :as config} (pci/resolver-config env op-name)
+          available    (get-in config [::pco/provides attribute])
+          graph        (compute-run-graph (-> (reset-env env)
+                                              (assoc
+                                                :edn-query-language.ast/node ast
+                                                ::available-data available)))
+          root-res     (find-root-resolver-nodes graph)
+          nested-needs (transduce
+                         (map #(get-node graph %))
+                         (completing
+                           (fn [i {::keys [input expects] ::pco/keys [op-name]}]
+                             (if (= op-name dynamic-name)
+                               (pfsd/merge-shapes i expects)
+                               (pfsd/merge-shapes i input))))
+                         {}
+                         root-res)
+          ast-shape    (pfsd/ast->shape-descriptor ast)]
+      (tap> [graph root-res available nested-needs ast-shape])
+      (pfsd/merge-shapes nested-needs
+                         (pfsd/intersection available ast-shape)))))
 
 (defn create-node-for-resolver-call
   "Create a new node representative to run a given resolver."
