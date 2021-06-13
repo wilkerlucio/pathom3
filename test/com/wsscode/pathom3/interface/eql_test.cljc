@@ -104,7 +104,7 @@
 
     (testing "call with entity and tx"
       (is (= (fi {:pathom/entity {:left 10}
-                  :pathom/tx     [:x]})
+                  :pathom/eql    [:x]})
              {:x 10})))
 
     (testing "merge env"

@@ -69,10 +69,10 @@
   returns as is."
   [input]
   [(s/or :query ::eql/query
-         :config (s/keys :req [(or :pathom/tx :pathom/ast)] :opt [:pathom/entity]))
-   => (s/keys :req [(or :pathom/tx :pathom/ast)] :opt [:pathom/entity])]
+         :config (s/keys :req [(or :pathom/eql :pathom/ast)] :opt [:pathom/entity]))
+   => (s/keys :req [(or :pathom/eql :pathom/ast)] :opt [:pathom/entity])]
   (if (vector? input)
-    {:pathom/tx     input
+    {:pathom/eql    input
      :pathom/entity {}}
     input))
 
@@ -95,7 +95,7 @@
   (let [env' (pci/register env pcf/foreign-indexes-resolver)]
     (fn boundary-interface-internal
       ([env-extension input]
-       (let [{:pathom/keys [tx entity ast] :as request} (normalize-input input)
+       (let [{:pathom/keys [eql entity ast] :as request} (normalize-input input)
              env'    (-> env'
                          (extend-env env-extension)
                          (assoc ::source-request request))
@@ -103,6 +103,6 @@
 
          (if ast
            (process-ast (p.ent/with-entity env' entity') ast)
-           (process env' entity' tx))))
+           (process env' entity' eql))))
       ([input]
        (boundary-interface-internal nil input)))))
