@@ -78,6 +78,7 @@
 (>def ::resolver-run-finish-ms number?)
 
 (>def ::run-stats map?)
+(>def ::run-stats-omit? boolean?)
 (>def ::run-stats-omit-resolver-io? boolean?)
 
 (>def ::source-node-id ::pcp/node-id)
@@ -677,8 +678,13 @@
     ::graph-run-finish-ms (time/now-ms)
     ::node-run-stats (some-> env ::node-run-stats* deref)))
 
-(defn include-meta-stats [result env plan]
-  (vary-meta result assoc ::run-stats (assoc-end-plan-stats env plan)))
+(defn include-meta-stats
+  [result {::keys [run-stats-omit?]
+           :or    {run-stats-omit? false}
+           :as    env} plan]
+  (cond-> result
+    (not run-stats-omit?)
+    (vary-meta assoc ::run-stats (assoc-end-plan-stats env plan))))
 
 (defn mark-batch-errors [e env batch-op batch-items]
   (p.plugin/run-with-plugins env ::wrap-batch-resolver-error

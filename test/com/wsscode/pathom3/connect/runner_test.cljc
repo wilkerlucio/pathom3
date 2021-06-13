@@ -985,7 +985,15 @@
                        [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
                      {}
                      [{'(:>/id {:id 1}) [:v]}])
-                   :>/id meta ::pcr/run-stats))))
+                   :>/id meta ::pcr/run-stats)))
+
+    (is (nil? (-> (run-graph
+                    (-> {::pcr/run-stats-omit? true}
+                        (pci/register
+                          [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))]))
+                    {}
+                    [{'(:>/id {:id 1}) [:v]}])
+                  :>/id meta ::pcr/run-stats))))
 
   (testing "different plan"
     (is (graph-response?
