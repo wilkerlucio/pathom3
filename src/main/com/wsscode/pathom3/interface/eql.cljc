@@ -66,7 +66,10 @@
 
 (>defn normalize-input
   "Normalize a remote interface input. In case of vector it makes a map. Otherwise
-  returns as is."
+  returns as is.
+
+  IMPORTANT: :pathom/tx is deprecated and its going to be dropped, if you are using it please
+  replace it with :pathom/eql to avoid breakages in the future."
   [input]
   [(s/or :query ::eql/query
          :config (s/keys :req [(or :pathom/tx :pathom/eql :pathom/ast)] :opt [:pathom/entity]))
