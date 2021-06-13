@@ -85,6 +85,6 @@
 
          (if ast
            (process-ast (p.ent/with-entity env' entity') ast)
-           (process env' entity' eql))))
+           (process env' entity' (or eql (:pathom/tx request))))))
       ([input]
        (boundary-interface-internal nil input)))))

@@ -69,8 +69,8 @@
   returns as is."
   [input]
   [(s/or :query ::eql/query
-         :config (s/keys :req [(or :pathom/eql :pathom/ast)] :opt [:pathom/entity]))
-   => (s/keys :req [(or :pathom/eql :pathom/ast)] :opt [:pathom/entity])]
+         :config (s/keys :req [(or :pathom/tx :pathom/eql :pathom/ast)] :opt [:pathom/entity]))
+   => (s/keys :req [(or :pathom/tx :pathom/eql :pathom/ast)] :opt [:pathom/entity])]
   (if (vector? input)
     {:pathom/eql    input
      :pathom/entity {}}
@@ -103,6 +103,6 @@
 
          (if ast
            (process-ast (p.ent/with-entity env' entity') ast)
-           (process env' entity' eql))))
+           (process env' entity' (or eql (:pathom/tx request))))))
       ([input]
        (boundary-interface-internal nil input)))))

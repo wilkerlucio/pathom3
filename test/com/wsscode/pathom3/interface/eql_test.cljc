@@ -102,9 +102,14 @@
               [{:x 10 :y 20}
                {::geo/left 20 ::geo/width 5}]})))
 
-    (testing "call with entity and tx"
+    (testing "call with entity and eql"
       (is (= (fi {:pathom/entity {:left 10}
                   :pathom/eql    [:x]})
+             {:x 10})))
+
+    (testing "call with entity and tx"
+      (is (= (fi {:pathom/entity {:left 10}
+                  :pathom/tx     [:x]})
              {:x 10})))
 
     (testing "merge env"
