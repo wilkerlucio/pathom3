@@ -52,7 +52,7 @@
                x))
            entity))))})
 
-(p.plugin/defplugin remove-stats-plugin
+(p.plugin/defplugin ^:deprecate remove-stats-plugin
   "Remove the run stats from the result meta. Use this in production to avoid sending
   the stats. This is important for performance and security."
   {::pcr/wrap-run-graph!
