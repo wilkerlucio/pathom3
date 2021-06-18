@@ -484,14 +484,16 @@
 
 (defn node-attribute-provides
   "For a specific attribute, return a vector containing the provides of each node of
-  that resolver."
+  that resolver, or the current available data for it."
   [graph env attr]
-  (some->>
-    (get-in graph [::index-attrs attr])
-    (mapv
-      #(-> (node-with-resolver-config graph env %)
-           ::pco/provides
-           (get attr)))))
+  (if-let [available (get-in graph [::available-data attr])]
+    [available]
+    (some->>
+      (get-in graph [::index-attrs attr])
+      (mapv
+        #(-> (node-with-resolver-config graph env %)
+             ::pco/provides
+             (get attr))))))
 
 (defn transfer-node-parent
   "Transfer the node parent from source node to target node. This function will also
@@ -939,7 +941,6 @@
                          {}
                          root-res)
           ast-shape    (pfsd/ast->shape-descriptor ast)]
-      (tap> [graph root-res available nested-needs ast-shape])
       (pfsd/merge-shapes nested-needs
                          (pfsd/intersection available ast-shape)))))
 

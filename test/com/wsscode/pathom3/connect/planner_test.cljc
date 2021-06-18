@@ -855,7 +855,54 @@
                                                   :index-resolver->nodes {total-score #{1},
                                                                           users       #{3}},
                                                   :index-attrs           {:total-score #{1}, :users #{3 2}},
-                                                  :root                  3}))))
+                                                  :root                  3})))
+
+  (testing "nested dependency on available data"
+    (is (= (compute-run-graph
+             (assoc
+               (pci/register
+                 [(pco/resolver 'ab->c
+                    {::pco/input  [:a :b]
+                     ::pco/output [:c]}
+                    (fn [_ _]
+                      {:c "val"}))
+                  (pco/resolver 'items
+                    {::pco/output [{:items [:a :b]}]}
+                    (fn [_ _]
+                      {:items [{:a 1 :b 2}]}))
+                  (pco/resolver 'z
+                    {::pco/input  [{:items [:c :b]}]
+                     ::pco/output [:z]}
+                    (fn [_ _]
+                      {:z "Z"}))])
+
+               ::eql/query [:z]))
+           '{::pcp/nodes                 {1 {::pco/op-name      z,
+                                             ::pcp/expects      {:z {}},
+                                             ::pcp/input        {:items {:c {},
+                                                                         :b {}}},
+                                             ::pcp/node-id      1,
+                                             ::pcp/node-parents #{2}},
+                                          2 {::pco/op-name  items,
+                                             ::pcp/expects  {:items {}},
+                                             ::pcp/input    {},
+                                             ::pcp/node-id  2,
+                                             ::pcp/run-next 1}},
+             ::pcp/index-ast             {:z     {:type         :prop,
+                                                  :dispatch-key :z,
+                                                  :key          :z},
+                                          :items {:type         :join,
+                                                  :children     [{:type         :prop,
+                                                                  :key          :c,
+                                                                  :dispatch-key :c}
+                                                                 {:type         :prop,
+                                                                  :key          :b,
+                                                                  :dispatch-key :b}],
+                                                  :key          :items,
+                                                  :dispatch-key :items}},
+             ::pcp/index-resolver->nodes {z #{1}, items #{2}},
+             ::pcp/index-attrs           {:z #{1}, :items #{2}},
+             ::pcp/root                  2}))))
 
 (deftest compute-run-graph-optional-inputs-test
   (testing "plan continues when optional thing is missing"
