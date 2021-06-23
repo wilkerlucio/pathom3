@@ -918,13 +918,17 @@
     (or (::pco/dynamic-name resolver)
         resolver-name)))
 
-(defn compute-dynamic-resolver-nested-requirements-keep
+(defn compute-dynamic-resolver-nested-requirements
+  "Considering the resolver output, find out what a query can extend during nesting.
+
+  This function is a useful tool for developers of custom dynamic resolvers."
   [{::p.attr/keys [attribute]
     ::pco/keys    [op-name]
     ast           :edn-query-language.ast/node
     :as           env}]
   (if (seq (:children ast))
     (let [{::pco/keys [dynamic-name] :as config} (pci/resolver-config env op-name)
+          dynamic-name (or dynamic-name (::pco/dynamic-name env))
           available    (get-in config [::pco/provides attribute])
           graph        (compute-run-graph (-> (reset-env env)
                                               (assoc
@@ -955,7 +959,7 @@
         config     (pci/resolver-config env op-name)
         op-name'   (or (::pco/dynamic-name config) op-name)
         dynamic?   (pci/dynamic-resolver? env op-name')
-        sub        (if dynamic? (compute-dynamic-resolver-nested-requirements-keep env))
+        sub        (if dynamic? (compute-dynamic-resolver-nested-requirements env))
         requires   {attribute (or sub {})}]
     (cond->
       (new-node env
