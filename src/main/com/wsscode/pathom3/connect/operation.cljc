@@ -147,6 +147,10 @@
 
   Returns an instance of the Resolver type.
   "
+  ([op-name config]
+   [::op-name (s/keys :opt [::output ::params]) => ::resolver]
+   (resolver (-> config
+                 (coll/merge-defaults {::op-name op-name}))))
   ([op-name config resolve]
    [::op-name (s/keys :opt [::output ::params]) ::resolve => ::resolver]
    (resolver (-> config
