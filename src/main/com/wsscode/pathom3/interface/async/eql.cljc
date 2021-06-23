@@ -68,7 +68,23 @@
 
   When calling the remote interface the user can send a query or a map containing the
   query and the initial entity data. This map is open and you can use as a way to extend
-  the API."
+  the API.
+
+  Boundary interface:
+
+  ([env-ext request])
+  ([request])
+
+  Request is one of:
+
+  1. An EQL request
+  2. A map, supported keys:
+      :pathom/eql
+      :pathom/ast
+      :pathom/entity
+
+  Env ext can be either a map to merge in the original env, or a function that transforms
+  the env."
   [env]
   [::pcra/env => fn?]
   (let [env' (p/let [env env] (pci/register env pcf/foreign-indexes-resolver))]
