@@ -177,7 +177,7 @@
 ; endregion
 
 (declare add-snapshot! compute-run-graph compute-run-graph* compute-attribute-graph
-         optimize-graph optimize-node)
+         optimize-graph optimize-node remove-node-expects-index-attrs)
 
 ; region node helpers
 
@@ -334,6 +334,20 @@
        :else
        graph))))
 
+(defn set-node-expects
+  "Set node expects, this also removes previous references from index-attrs and add
+  new ones for the new expects."
+  [graph node-id expects]
+  (-> graph
+      (remove-node-expects-index-attrs node-id)
+      (assoc-node node-id ::expects expects)
+      (as-> <>
+        (reduce
+          (fn [g attr]
+            (update-in g [::index-attrs attr] coll/sconj node-id))
+          <>
+          (keys expects)))))
+
 (defn set-node-source-for-attrs
   ([graph env] (set-node-source-for-attrs graph env (::root graph)))
   ([graph {::p.attr/keys [attribute]} node-id]
@@ -391,6 +405,23 @@
   ;; TODO disconnect run-next
   (remove-from-parent-branches graph node-id))
 
+(defn disj-rem [m k item]
+  (let [new-val (disj (get m k) item)]
+    (if (seq new-val)
+      (assoc m k new-val)
+      (dissoc m k))))
+
+(defn remove-node-expects-index-attrs
+  "Since the node has attribute indexes associated with it, this removes those links
+  considering the attributes listed on expects."
+  [graph node-id]
+  (let [expects (get-node graph node-id ::expects)]
+    (reduce
+      (fn [g attr]
+        (update g ::index-attrs disj-rem attr node-id))
+      graph
+      (keys expects))))
+
 (defn remove-node*
   "Remove a node from the graph. Doesn't remove any references, caution!"
   [graph node-id]
@@ -417,6 +448,7 @@
         (remove-branch-node-parents node-id)
         (remove-node-parent run-next node-id)
         (remove-from-parent-branches node)
+        (remove-node-expects-index-attrs node-id)
         (remove-node* node-id))))
 
 (defn remove-root-node-cluster
@@ -1431,24 +1463,45 @@
       graph
       run-or)))
 
+(defn optimize-resolver-chain?
+  [graph {::keys [op-name run-next]}]
+  (= op-name
+     (get-node graph run-next ::pco/op-name)))
+
+(defn optimize-resolver-chain
+  "Merge node and its run-next, when they are the same dynamic resolver."
+  [graph node-id]
+  (let [{::keys [run-next]} (get-node graph node-id)
+        next (get-node graph run-next)]
+    (-> graph
+        (set-node-run-next node-id (::run-next next))
+        (set-node-expects node-id (::expects next))
+        (assoc-node node-id ::foreign-ast (::foreign-ast next))
+        (remove-node run-next))))
+
 (defn optimize-node
   [graph env node-id]
   (if-let [node (get-node graph node-id)]
     (do
       (add-snapshot! graph env {::snapshot-message (str "Visit node " node-id)
                                 ::highlight-nodes  #{node-id}})
-      (recur
-        (case (node-kind node)
-          ::node-resolver
-          graph
+      (case (node-kind node)
+        ::node-resolver
+        (if (optimize-resolver-chain? graph node)
+          (recur (optimize-resolver-chain graph node-id) env node-id)
+          (recur graph env (::run-next node)))
 
-          ::node-and
+        ::node-and
+        (recur
           (optimize-AND-branches graph env node-id)
+          env
+          (::run-next node))
 
-          ::node-or
-          (optimize-OR-branches graph env node-id))
-        env
-        (::run-next node)))
+        ::node-or
+        (recur
+          (optimize-OR-branches graph env node-id)
+          env
+          (::run-next node))))
     graph))
 
 (defn optimize-graph

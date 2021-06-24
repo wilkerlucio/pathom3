@@ -3531,6 +3531,103 @@
                               ::pcp/run-and #{3 4}}}}
              1 2))))
 
+(deftest optimize-resolver-chain-test
+  (is (= (pcp/optimize-resolver-chain
+           '#::pcp{:nodes                 {1 {::pco/op-name      dynamic-resolver,
+                                              ::pcp/expects      {:c {}},
+                                              ::pcp/input        {:b {}},
+                                              ::pcp/node-id      1,
+                                              ::pcp/node-parents #{2}
+                                              ::pcp/foreign-ast  {:type     :root,
+                                                                  :children [{:type         :prop,
+                                                                              :dispatch-key :c,
+                                                                              :key          :c}]}},
+                                           2 {::pcp/node-id     2,
+                                              ::pco/op-name     dynamic-resolver,
+                                              ::pcp/expects     {:b {}},
+                                              ::pcp/input       {:a {}},
+                                              ::pcp/run-next    1
+                                              ::pcp/foreign-ast {:type     :root,
+                                                                 :children [{:type         :prop,
+                                                                             :dispatch-key :b,
+                                                                             :key          :b}]}}}
+                   :index-ast             {:c {:type         :prop,
+                                               :dispatch-key :c,
+                                               :key          :c}}
+                   :index-resolver->nodes {dynamic-resolver #{1 2}}
+                   :index-attrs           {:b #{2}, :c #{1}}
+                   :root                  2}
+           2)
+         '#::pcp{:nodes                 {2 {::pcp/node-id     2,
+                                            ::pco/op-name     dynamic-resolver,
+                                            ::pcp/expects     {:c {}},
+                                            ::pcp/input       {:a {}},
+                                            ::pcp/foreign-ast {:type     :root,
+                                                               :children [{:type         :prop,
+                                                                           :dispatch-key :c,
+                                                                           :key          :c}]}}}
+                 :index-ast             {:c {:type         :prop,
+                                             :dispatch-key :c,
+                                             :key          :c}}
+                 :index-resolver->nodes {dynamic-resolver #{2}}
+                 :index-attrs           {:c #{2}}
+                 :root                  2}))
+
+  (is (= (pcp/optimize-resolver-chain
+           '#::pcp{:nodes                 {1 {::pco/op-name      dynamic-resolver,
+                                              ::pcp/expects      {:c {}},
+                                              ::pcp/input        {:b {}},
+                                              ::pcp/node-id      1,
+                                              ::pcp/run-next     3
+                                              ::pcp/node-parents #{2}
+                                              ::pcp/foreign-ast  {:type     :root,
+                                                                  :children [{:type         :prop,
+                                                                              :dispatch-key :c,
+                                                                              :key          :c}]}},
+                                           2 {::pcp/node-id     2,
+                                              ::pco/op-name     dynamic-resolver,
+                                              ::pcp/expects     {:b {}},
+                                              ::pcp/input       {:a {}},
+                                              ::pcp/run-next    1
+                                              ::pcp/foreign-ast {:type     :root,
+                                                                 :children [{:type         :prop,
+                                                                             :dispatch-key :b,
+                                                                             :key          :b}]}}
+                                           3 {::pcp/node-id      3
+                                              ::pco/op-name      other-resolver
+                                              ::pcp/expects      {:d {}},
+                                              ::pcp/input        {:c {}}
+                                              ::pcp/node-parents #{1}}}
+                   :index-ast             {:c {:type         :prop,
+                                               :dispatch-key :c,
+                                               :key          :c}}
+                   :index-resolver->nodes {dynamic-resolver #{1 2}
+                                           other-resolver   #{3}}
+                   :index-attrs           {:b #{2}, :c #{1} :d #{3}}
+                   :root                  2}
+           2)
+         '#::pcp{:nodes                 {2 {::pcp/node-id     2,
+                                            ::pco/op-name     dynamic-resolver,
+                                            ::pcp/expects     {:c {}},
+                                            ::pcp/input       {:a {}},
+                                            ::pcp/run-next    3
+                                            ::pcp/foreign-ast {:type     :root,
+                                                               :children [{:type         :prop,
+                                                                           :dispatch-key :c,
+                                                                           :key          :c}]}}
+                                         3 {::pcp/node-id      3
+                                            ::pco/op-name      other-resolver
+                                            ::pcp/expects      {:d {}},
+                                            ::pcp/input        {:c {}}
+                                            ::pcp/node-parents #{2}}}
+                 :index-ast             {:c {:type         :prop,
+                                             :dispatch-key :c,
+                                             :key          :c}}
+                 :index-resolver->nodes {dynamic-resolver #{2}
+                                         other-resolver   #{3}}
+                 :index-attrs           {:c #{2} :d #{3}}
+                 :root                  2})))
+
 (deftest optimize-AND-branches-test
   (is (= (pcp/optimize-AND-branches
            '#::pcp{:nodes                 {1 {::pco/op-name      dynamic-resolver,
@@ -3733,3 +3830,12 @@
                          5 {::pco/op-name 'other2}}
             ::pcp/root  3})
          #{1 4 5})))
+
+(deftest remove-node-expects-index-attrs-test
+  (is (= (pcp/remove-node-expects-index-attrs
+           {::pcp/nodes       {1 {::pcp/expects {:a {} :b {}}}}
+            ::pcp/index-attrs {:a #{1} :b #{1}}}
+           1)
+         {::pcp/nodes       {1 {::pcp/expects {:a {}
+                                               :b {}}}}
+          ::pcp/index-attrs {}})))
