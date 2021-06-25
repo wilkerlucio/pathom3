@@ -156,21 +156,24 @@
   the output to input index in the ::pc/index-oir and the reverse index for auto-complete
   to the index ::pc/index-io."
   ([indexes resolver]
-   (let [{::pco/keys [op-name output requires] :as op-config} (pco/operation-config resolver)
+   (let [{::pco/keys [op-name output requires dynamic-resolver?] :as op-config} (pco/operation-config resolver)
          input'     (into #{} (keys requires))
          root-props (pfse/query-root-properties output)]
      (assert (nil? (com.wsscode.pathom3.connect.indexes/resolver indexes op-name))
        (str "Tried to register duplicated resolver: " op-name))
      (merge-indexes indexes
-       {::index-resolvers  ^:com.wsscode.pathom3.connect.runner/map-container? {op-name resolver}
-        ::index-attributes (index-attributes op-config)
-        ::index-io         {input' (pfsd/query->shape-descriptor output)}
-        ::index-oir        (reduce (fn [indexes out-attr]
-                                     (cond-> indexes
-                                       (not (contains? requires out-attr))
-                                       (update-in [out-attr requires] coll/sconj op-name)))
-                             {}
-                             root-props)}))))
+       (cond->
+         {::index-resolvers ^:com.wsscode.pathom3.connect.runner/map-container? {op-name resolver}}
+         (not dynamic-resolver?)
+         (assoc
+           ::index-attributes (index-attributes op-config)
+           ::index-io {input' (pfsd/query->shape-descriptor output)}
+           ::index-oir (reduce (fn [indexes out-attr]
+                                 (cond-> indexes
+                                   (not (contains? requires out-attr))
+                                   (update-in [out-attr requires] coll/sconj op-name)))
+                         {}
+                         root-props)))))))
 
 (defn- register-mutation
   "Low level function to add a mutation to the index. For mutations, the index-mutations

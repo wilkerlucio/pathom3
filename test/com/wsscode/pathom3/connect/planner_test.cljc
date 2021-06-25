@@ -1612,7 +1612,56 @@
                                                   :index-attrs           {:release/script #{1},
                                                                           :db/id          #{2},
                                                                           :label/type     #{1}},
-                                                  :root                  2}))))
+                                                  :root                  2})))
+
+  (testing "dependency reuse"
+    (is (= (compute-run-graph
+             (->
+               {::eql/query          [:d]
+                ::pcp/available-data {:a {}}}
+               (pci/register
+                 [(pco/resolver 'dynamic-resolver
+                    {::pco/dynamic-resolver? true})
+                  (pco/resolver 'b
+                    {::pco/input        [:a]
+                     ::pco/output       [:b]
+                     ::pco/dynamic-name 'dynamic-resolver})
+                  (pco/resolver 'c
+                    {::pco/input        [:b]
+                     ::pco/output       [:c]
+                     ::pco/dynamic-name 'dynamic-resolver})
+                  (pco/resolver 'other-resolver
+                    {::pco/input  [:b :c]
+                     ::pco/output [:d]})])))
+           '{::pcp/nodes                 {1 {::pco/op-name      other-resolver,
+                                             ::pcp/expects      {:d {}},
+                                             ::pcp/input        {:b {},
+                                                                 :c {}},
+                                             ::pcp/node-id      1,
+                                             ::pcp/node-parents #{5}},
+                                          2 {::pco/op-name      dynamic-resolver,
+                                             ::pcp/expects      {:b {},
+                                                                 :c {}},
+                                             ::pcp/input        {:a {}},
+                                             ::pcp/node-id      2,
+                                             ::pcp/foreign-ast  {:type     :root,
+                                                                 :children [{:type         :prop,
+                                                                             :key          :b,
+                                                                             :dispatch-key :b}
+                                                                            {:type         :prop,
+                                                                             :key          :c,
+                                                                             :dispatch-key :c}]},
+                                             ::pcp/node-parents #{5}},
+                                          5 {::pcp/node-id  5,
+                                             ::pcp/run-and  #{2},
+                                             ::pcp/run-next 1}},
+             ::pcp/index-ast             {:d {:type         :prop,
+                                              :dispatch-key :d,
+                                              :key          :d}},
+             ::pcp/index-resolver->nodes {other-resolver   #{1},
+                                          dynamic-resolver #{2}},
+             ::pcp/index-attrs           {:d #{1}, :b #{2}, :c #{2}},
+             ::pcp/root                  5}))))
 
 #_(deftest compute-run-graph-dynamic-resolvers-test
 
@@ -3532,7 +3581,7 @@
              1 2))))
 
 (deftest optimize-resolver-chain-test
-  (is (= (pcp/optimize-resolver-chain
+  (is (= (pcp/optimize-dynamic-resolver-chain
            '#::pcp{:nodes                 {1 {::pco/op-name      dynamic-resolver,
                                               ::pcp/expects      {:c {}},
                                               ::pcp/input        {:b {}},
@@ -3573,7 +3622,7 @@
                  :index-attrs           {:c #{2}}
                  :root                  2}))
 
-  (is (= (pcp/optimize-resolver-chain
+  (is (= (pcp/optimize-dynamic-resolver-chain
            '#::pcp{:nodes                 {1 {::pco/op-name      dynamic-resolver,
                                               ::pcp/expects      {:c {}},
                                               ::pcp/input        {:b {}},

@@ -1447,37 +1447,45 @@
           other-nodes))
       graph)))
 
+(defn optimize-branch-items [graph env branch-node-id]
+  (let [branches (node-branches (get-node graph branch-node-id))]
+    (reduce
+      (fn [graph node-id]
+        (optimize-node graph env node-id))
+      graph
+      branches)))
+
 (defn optimize-AND-branches
   [graph env node-id]
   (let [{::keys [run-and]} (get-node graph node-id)]
     (-> graph
+        (optimize-branch-items env node-id)
         (optimize-AND-resolvers-pass env run-and node-id)
         ;(optimize-AND-ORs env run-and node-id)
         (simplify-branch-node env node-id))))
 
 (defn optimize-OR-branches [graph env node-id]
-  (let [{::keys [run-or]} (get-node graph node-id)]
-    (reduce
-      (fn [graph node-id]
-        (optimize-node graph env node-id))
-      graph
-      run-or)))
+  (optimize-branch-items graph env node-id))
 
-(defn optimize-resolver-chain?
-  [graph {::keys [op-name run-next]}]
+(defn optimize-dynamic-resolver-chain?
+  [graph {::pco/keys [op-name] ::keys [run-next]}]
   (= op-name
      (get-node graph run-next ::pco/op-name)))
 
-(defn optimize-resolver-chain
+(defn optimize-dynamic-resolver-chain
   "Merge node and its run-next, when they are the same dynamic resolver."
   [graph node-id]
-  (let [{::keys [run-next]} (get-node graph node-id)
+  (let [{::keys [run-next] :as node} (get-node graph node-id)
         next (get-node graph run-next)]
-    (-> graph
-        (set-node-run-next node-id (::run-next next))
-        (set-node-expects node-id (::expects next))
-        (assoc-node node-id ::foreign-ast (::foreign-ast next))
-        (remove-node run-next))))
+    (if (optimize-dynamic-resolver-chain? graph node)
+      (recur
+        (-> graph
+            (set-node-run-next node-id (::run-next next))
+            (set-node-expects node-id (::expects next))
+            (assoc-node node-id ::foreign-ast (::foreign-ast next))
+            (remove-node run-next))
+        node-id)
+      graph)))
 
 (defn optimize-node
   [graph env node-id]
@@ -1487,9 +1495,10 @@
                                 ::highlight-nodes  #{node-id}})
       (case (node-kind node)
         ::node-resolver
-        (if (optimize-resolver-chain? graph node)
-          (recur (optimize-resolver-chain graph node-id) env node-id)
-          (recur graph env (::run-next node)))
+        (let [graph' (optimize-dynamic-resolver-chain graph node-id)]
+          (recur graph'
+            env
+            (get-node graph' node-id ::run-next)))
 
         ::node-and
         (recur

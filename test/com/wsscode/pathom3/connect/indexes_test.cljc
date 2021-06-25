@@ -85,7 +85,12 @@
       (is (= (-> (pco/resolver 'r {::pco/output [{:item [:detail]}]} (fn [_ _]))
                  (pci/register)
                  ::pci/index-io)
-             {#{} {:item {:detail {}}}}))))
+             {#{} {:item {:detail {}}}})))
+
+    (testing "dynamic resolver"
+      (let [resolver (pco/resolver 'r {::pco/dynamic-resolver? true} (fn [_ _]))]
+        (is (= (pci/register resolver)
+               {:com.wsscode.pathom3.connect.indexes/index-resolvers {'r resolver}})))))
 
   (testing "mutation"
     (let [mutation (pco/mutation 'm {::pco/output [:foo]

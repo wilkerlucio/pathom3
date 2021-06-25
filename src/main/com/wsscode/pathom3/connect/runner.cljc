@@ -743,7 +743,8 @@
                              (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
             start        (time/now-ms)
             responses    (try
-                           (pco.prot/-resolve resolver batch-env inputs)
+                           (p.plugin/run-with-plugins env ::wrap-batch-resolve
+                             pco.prot/-resolve resolver batch-env inputs)
                            (catch #?(:clj Throwable :cljs :default) e
                              (mark-batch-errors e env batch-op batch-items)))
             finish       (time/now-ms)]
