@@ -13,13 +13,6 @@
     [edn-query-language.core :as eql]
     [promesa.core :as p]))
 
-(deftest remove-internal-keys-test
-  (is (= (pcf/remove-internal-keys {:foo                   "bar"
-                                    :com.wsscode/me        "value"
-                                    :com.wsscode.pathom/me "value"})
-         {:foo            "bar"
-          :com.wsscode/me "value"})))
-
 (deftest compute-foreign-query-test
   (testing "no inputs"
     (is (= (pcf/compute-foreign-query

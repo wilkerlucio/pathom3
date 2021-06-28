@@ -1,6 +1,5 @@
 (ns com.wsscode.pathom3.connect.foreign
   (:require
-    [clojure.string :as str]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
@@ -11,9 +10,6 @@
 
 (def index-query
   [::pci/indexes])
-
-(defn remove-internal-keys [m]
-  (into {} (remove (fn [[k _]] (str/starts-with? (or (namespace k) "") "com.wsscode.pathom"))) m))
 
 (defn compute-foreign-input [{::pcp/keys [node] :as env}]
   (let [input  (::pcp/input node)
