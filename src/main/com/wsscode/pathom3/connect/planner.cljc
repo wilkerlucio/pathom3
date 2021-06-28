@@ -1474,16 +1474,19 @@
 
 (defn optimize-dynamic-resolver-chain
   "Merge node and its run-next, when they are the same dynamic resolver."
-  [graph node-id]
+  [graph env node-id]
   (let [{::keys [run-next] :as node} (get-node graph node-id)
         next (get-node graph run-next)]
     (if (optimize-dynamic-resolver-chain? graph node)
       (recur
         (-> graph
+            (add-snapshot! env {::snapshot-message "Merge chained same dynamic resolvers."
+                                ::highlight-nodes  #{node-id run-next}})
             (set-node-run-next node-id (::run-next next))
             (set-node-expects node-id (::expects next))
             (assoc-node node-id ::foreign-ast (::foreign-ast next))
             (remove-node run-next))
+        env
         node-id)
       graph)))
 
@@ -1495,7 +1498,7 @@
                                 ::highlight-nodes  #{node-id}})
       (case (node-kind node)
         ::node-resolver
-        (let [graph' (optimize-dynamic-resolver-chain graph node-id)]
+        (let [graph' (optimize-dynamic-resolver-chain graph env node-id)]
           (recur graph'
             env
             (get-node graph' node-id ::run-next)))

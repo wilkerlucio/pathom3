@@ -5,10 +5,11 @@
     [com.wsscode.misc.coll :as coll]
     ;[com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
-    ;[com.wsscode.pathom3.connect.foreign :as pcf]
+    [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
+    [com.wsscode.pathom3.interface.eql :as p.eql]
     [edn-query-language.core :as eql]))
 
 (defn register-index [resolvers]
@@ -32,8 +33,7 @@
     env))
 
 (defn compute-env
-  [{::keys     [resolvers ;dynamics
-                ]
+  [{::keys     [resolvers dynamics]
     ::pcp/keys [snapshots*]
     ::eql/keys [query]
     :as        options}]
@@ -52,15 +52,17 @@
     snapshots*
     (assoc ::pcp/snapshots* snapshots*)
 
-    #_#_dynamics
-        (as-> <>
-          (reduce
-            (fn [env' [name resolvers]]
-              (pci/merge-indexes env'
-                (pcf/internalize-foreign-indexes
-                  (assoc (register-index resolvers) ::pci/index-source-id name))))
-            <>
-            dynamics))))
+    dynamics
+    (as-> <>
+      (reduce
+        (fn [env' [name resolvers]]
+          (pci/register env' (-> resolvers
+                                 register-index
+                                 (assoc ::pci/index-source-id name)
+                                 p.eql/boundary-interface
+                                 pcf/foreign-register)))
+        <>
+        dynamics))))
 
 (defn compute-run-graph
   [{::keys     [time?]
@@ -1661,95 +1663,139 @@
              ::pcp/index-resolver->nodes {other-resolver   #{1},
                                           dynamic-resolver #{2}},
              ::pcp/index-attrs           {:d #{1}, :b #{2}, :c #{2}},
-             ::pcp/root                  5}))))
+             ::pcp/root                  5})))
 
-#_(deftest compute-run-graph-dynamic-resolvers-test
+  (testing "optimized with dependencies"
+    (is (= (compute-run-graph
+             (-> {::pci/index-resolvers {'dynamic-resolver
+                                         {::pco/op-name           'dynamic-resolver
+                                          ::pco/cache?            false
+                                          ::pco/dynamic-resolver? true
+                                          ::pco/resolve           (fn [_ _])}}
+                  ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}
+                                         :label/type     {{:db/id {}} #{'dynamic-resolver}}}
+                  ::eql/query           [:release/script :label/type]
+                  ::resolvers           [{::pco/op-name 'id
+                                          ::pco/output  [:db/id]}]}))
 
+           '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    dynamic-resolver,
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:release/script {},
+                                                                                                                               :label/type     {}},
+                                                                            :com.wsscode.pathom3.connect.planner/input        {:db/id {}},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      1,
+                                                                            :com.wsscode.pathom3.connect.planner/foreign-ast  {:type     :root,
+                                                                                                                               :children [{:type         :prop,
+                                                                                                                                           :dispatch-key :release/script,
+                                                                                                                                           :key          :release/script}
+                                                                                                                                          {:type         :prop,
+                                                                                                                                           :dispatch-key :label/type,
+                                                                                                                                           :key          :label/type}]},
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{2}},
+                                                                         2 {:com.wsscode.pathom3.connect.operation/op-name id,
+                                                                            :com.wsscode.pathom3.connect.planner/expects   {:db/id {}},
+                                                                            :com.wsscode.pathom3.connect.planner/input     {},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id   2,
+                                                                            :com.wsscode.pathom3.connect.planner/run-next  1}},
+             :com.wsscode.pathom3.connect.planner/index-ast             {:release/script {:type         :prop,
+                                                                                          :dispatch-key :release/script,
+                                                                                          :key          :release/script},
+                                                                         :label/type     {:type         :prop,
+                                                                                          :dispatch-key :label/type,
+                                                                                          :key          :label/type}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dynamic-resolver #{1},
+                                                                         id               #{2}},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:release/script #{1},
+                                                                         :db/id          #{2},
+                                                                         :label/type     #{1}},
+             :com.wsscode.pathom3.connect.planner/root                  2})))
 
-    (testing "optimized with dependencies"
-      (is (= (compute-run-graph
-               (-> {::pci/index-resolvers {'dynamic-resolver
-                                           {::pco/op-name           'dynamic-resolver
-                                            ::pco/cache?            false
-                                            ::pco/dynamic-resolver? true
-                                            ::pco/resolve           (fn [_ _])}}
-                    ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}
-                                           :label/type     {{:db/id {}} #{'dynamic-resolver}}}
-                    ::eql/query           [:release/script :label/type]
-                    ::resolvers           [{::pco/op-name 'id
-                                            ::pco/output  [:db/id]}]}))
+  (testing "chained calls"
+    (is (= (compute-run-graph
+             (-> {::pci/index-resolvers {'dynamic-resolver
+                                         {::pco/op-name           'dynamic-resolver
+                                          ::pco/cache?            false
+                                          ::pco/dynamic-resolver? true
+                                          ::pco/resolve           (fn [_ _])}}
+                  ::pci/index-oir       {:a {{} #{'dynamic-resolver}}
+                                         :b {{:a {}} #{'dynamic-resolver}}}
+                  ::eql/query           [:b]}))
 
-             {::pcp/nodes                 {2 {::pco/op-name          'id
-                                              ::pcp/node-id          2
-                                              ::pcp/expects          {:db/id {}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-for-attrs #{:db/id}
-                                              ::pcp/run-next         3}
-                                           3 {::pco/op-name          'dynamic-resolver
-                                              ::pcp/node-id          3
-                                              ::pcp/expects          {:label/type {} :release/script {}}
-                                              ::pcp/input            {:db/id {}}
-                                              ::pcp/source-for-attrs #{:release/script :label/type}
-                                              ::pcp/node-parents     #{2}
-                                              ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
-              ::pcp/index-resolver->nodes '{dynamic-resolver #{3} id #{2}}
-              ::pcp/index-attrs           {:release/script #{3}, :label/type #{3}, :db/id #{2}}
-              ::pcp/index-ast             {:release/script {:type         :prop,
-                                                            :dispatch-key :release/script,
-                                                            :key          :release/script},
-                                           :label/type     {:type         :prop,
-                                                            :dispatch-key :label/type,
-                                                            :key          :label/type}}
-              ::pcp/root                  2})))
+           '{:com.wsscode.pathom3.connect.planner/nodes                 {2 {:com.wsscode.pathom3.connect.operation/op-name   dynamic-resolver,
+                                                                            :com.wsscode.pathom3.connect.planner/expects     {:b {}},
+                                                                            :com.wsscode.pathom3.connect.planner/input       {},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id     2,
+                                                                            :com.wsscode.pathom3.connect.planner/foreign-ast {:type     :root,
+                                                                                                                              :children [{:type         :prop,
+                                                                                                                                          :dispatch-key :b,
+                                                                                                                                          :key          :b}]}}},
+             :com.wsscode.pathom3.connect.planner/index-ast             {:b {:type         :prop,
+                                                                             :dispatch-key :b,
+                                                                             :key          :b}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dynamic-resolver #{2}},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:b #{2}},
+             :com.wsscode.pathom3.connect.planner/root                  2}))
 
-    (testing "chained calls"
-      (is (= (compute-run-graph
-               (-> {::pci/index-resolvers {'dynamic-resolver
-                                           {::pco/op-name           'dynamic-resolver
-                                            ::pco/cache?            false
-                                            ::pco/dynamic-resolver? true
-                                            ::pco/resolve           (fn [_ _])}}
-                    ::pci/index-oir       {:a {{} #{'dynamic-resolver}}
-                                           :b {{:a {}} #{'dynamic-resolver}}}
-                    ::eql/query           [:b]}))
+    (is (= (compute-run-graph
+             (-> {::pci/index-resolvers {'dynamic-resolver
+                                         {::pco/op-name           'dynamic-resolver
+                                          ::pco/cache?            false
+                                          ::pco/dynamic-resolver? true
+                                          ::pco/resolve           (fn [_ _])}}
+                  ::pci/index-oir       {:a {{} #{'dynamic-resolver}}
+                                         :b {{:a {}} #{'dynamic-resolver}}
+                                         :c {{:b {}} #{'dynamic-resolver}}}
+                  ::eql/query           [:c]}))
 
-             {::pcp/nodes                 {2 {::pco/op-name          'dynamic-resolver
-                                              ::pcp/node-id          2
-                                              ::pcp/expects          {:a {} :b {}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-for-attrs #{:b :a}
-                                              ::pcp/foreign-ast      (eql/query->ast [:a :b])}}
-              ::pcp/index-resolver->nodes {'dynamic-resolver #{2}}
-              ::pcp/root                  2
-              ::pcp/index-attrs           {:b #{2}, :a #{2}}
-              ::pcp/index-ast             {:b {:type         :prop,
-                                               :dispatch-key :b,
-                                               :key          :b}}}))
+           '{:com.wsscode.pathom3.connect.planner/nodes                 {3 {:com.wsscode.pathom3.connect.operation/op-name   dynamic-resolver,
+                                                                            :com.wsscode.pathom3.connect.planner/expects     {:c {}},
+                                                                            :com.wsscode.pathom3.connect.planner/input       {},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id     3,
+                                                                            :com.wsscode.pathom3.connect.planner/foreign-ast {:type     :root,
+                                                                                                                              :children [{:type         :prop,
+                                                                                                                                          :dispatch-key :c,
+                                                                                                                                          :key          :c}]}}},
+             :com.wsscode.pathom3.connect.planner/index-ast             {:c {:type         :prop,
+                                                                             :dispatch-key :c,
+                                                                             :key          :c}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dynamic-resolver #{3}},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:c #{3}},
+             :com.wsscode.pathom3.connect.planner/root                  3}))
 
-      (is (= (compute-run-graph
-               (-> {::pci/index-resolvers {'dynamic-resolver
-                                           {::pco/op-name           'dynamic-resolver
-                                            ::pco/cache?            false
-                                            ::pco/dynamic-resolver? true
-                                            ::pco/resolve           (fn [_ _])}}
-                    ::pci/index-oir       {:a {{} #{'dynamic-resolver}}
-                                           :b {{:a {}} #{'dynamic-resolver}}
-                                           :c {{:b {}} #{'dynamic-resolver}}}
-                    ::eql/query           [:c]}))
+    (is (= (compute-run-graph
+             (-> {::pci/index-resolvers {'dynamic-resolver
+                                         {::pco/op-name           'dynamic-resolver
+                                          ::pco/cache?            false
+                                          ::pco/dynamic-resolver? true
+                                          ::pco/resolve           (fn [_ _])}}
+                  ::resolvers           [{::pco/op-name 'z
+                                          ::pco/output  [:z]}]
+                  ::pci/index-oir       {:a {{:z {}} #{'dynamic-resolver}}
+                                         :b {{:a {}} #{'dynamic-resolver}}}
+                  ::eql/query           [:b]}))
 
-             {::pcp/nodes                 {3 {::pco/op-name          'dynamic-resolver
-                                              ::pcp/node-id          3
-                                              ::pcp/expects          {:a {} :b {} :c {}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-for-attrs #{:c :b :a}
-                                              ::pcp/foreign-ast      (eql/query->ast [:a :b :c])}}
-              ::pcp/index-resolver->nodes '{dynamic-resolver #{3}}
-              ::pcp/root                  3
-              ::pcp/index-attrs           {:c #{3}, :b #{3}, :a #{3}}
-              ::pcp/index-ast             {:c {:type         :prop,
-                                               :dispatch-key :c,
-                                               :key          :c}}}))
+           '{:com.wsscode.pathom3.connect.planner/nodes                 {2 {:com.wsscode.pathom3.connect.operation/op-name    dynamic-resolver,
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:b {}},
+                                                                            :com.wsscode.pathom3.connect.planner/input        {:z {}},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      2,
+                                                                            :com.wsscode.pathom3.connect.planner/foreign-ast  {:type     :root,
+                                                                                                                               :children [{:type         :prop,
+                                                                                                                                           :dispatch-key :b,
+                                                                                                                                           :key          :b}]},
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{3}},
+                                                                         3 {:com.wsscode.pathom3.connect.operation/op-name z,
+                                                                            :com.wsscode.pathom3.connect.planner/expects   {:z {}},
+                                                                            :com.wsscode.pathom3.connect.planner/input     {},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id   3,
+                                                                            :com.wsscode.pathom3.connect.planner/run-next  2}},
+             :com.wsscode.pathom3.connect.planner/index-ast             {:b {:type         :prop,
+                                                                             :dispatch-key :b,
+                                                                             :key          :b}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dynamic-resolver #{2},
+                                                                         z                #{3}},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:b #{2}, :z #{3}},
+             :com.wsscode.pathom3.connect.planner/root                  3}))
 
+    (testing "chain with dynamic at start"
       (is (= (compute-run-graph
                (-> {::pci/index-resolvers {'dynamic-resolver
                                            {::pco/op-name           'dynamic-resolver
@@ -1757,64 +1803,67 @@
                                             ::pco/dynamic-resolver? true
                                             ::pco/resolve           (fn [_ _])}}
                     ::resolvers           [{::pco/op-name 'z
+                                            ::pco/input   [:b]
                                             ::pco/output  [:z]}]
-                    ::pci/index-oir       {:a {{:z {}} #{'dynamic-resolver}}
+                    ::pci/index-oir       {:a {{} #{'dynamic-resolver}}
                                            :b {{:a {}} #{'dynamic-resolver}}}
-                    ::eql/query           [:b]}))
+                    ::eql/query           [:z]}))
 
-             {::pcp/nodes                 {2 {::pco/op-name          'dynamic-resolver
-                                              ::pcp/node-id          2
-                                              ::pcp/expects          {:a {} :b {}}
-                                              ::pcp/input            {:z {}}
-                                              ::pcp/node-parents     #{3}
-                                              ::pcp/source-for-attrs #{:b :a}
-                                              ::pcp/foreign-ast      (eql/query->ast [:a :b])}
-                                           3 {::pco/op-name          'z
-                                              ::pcp/node-id          3
-                                              ::pcp/expects          {:z {}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-for-attrs #{:z}
-                                              ::pcp/run-next         2}}
-              ::pcp/index-resolver->nodes '{dynamic-resolver #{2} z #{3}}
-              ::pcp/root                  3
-              ::pcp/index-attrs           {:z #{3}, :b #{2}, :a #{2}}
-              ::pcp/index-ast             {:b {:type         :prop,
-                                               :dispatch-key :b,
-                                               :key          :b}}}))
+             '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    z,
+                                                                              :com.wsscode.pathom3.connect.planner/expects      {:z {}},
+                                                                              :com.wsscode.pathom3.connect.planner/input        {:b {}},
+                                                                              :com.wsscode.pathom3.connect.planner/node-id      1,
+                                                                              :com.wsscode.pathom3.connect.planner/node-parents #{3}},
+                                                                           3 {:com.wsscode.pathom3.connect.operation/op-name   dynamic-resolver,
+                                                                              :com.wsscode.pathom3.connect.planner/expects     {:b {}},
+                                                                              :com.wsscode.pathom3.connect.planner/input       {},
+                                                                              :com.wsscode.pathom3.connect.planner/node-id     3,
+                                                                              :com.wsscode.pathom3.connect.planner/foreign-ast {:type     :root,
+                                                                                                                                :children [{:type         :prop,
+                                                                                                                                            :key          :b,
+                                                                                                                                            :dispatch-key :b}]},
+                                                                              :com.wsscode.pathom3.connect.planner/run-next    1}},
+               :com.wsscode.pathom3.connect.planner/index-ast             {:z {:type         :prop,
+                                                                               :dispatch-key :z,
+                                                                               :key          :z}},
+               :com.wsscode.pathom3.connect.planner/index-resolver->nodes {z                #{1},
+                                                                           dynamic-resolver #{3}},
+               :com.wsscode.pathom3.connect.planner/index-attrs           {:z #{1}, :b #{3}},
+               :com.wsscode.pathom3.connect.planner/root                  3})))
 
-      (testing "chain with dynamic at start"
-        (is (= (compute-run-graph
-                 (-> {::pci/index-resolvers {'dynamic-resolver
-                                             {::pco/op-name           'dynamic-resolver
-                                              ::pco/cache?            false
-                                              ::pco/dynamic-resolver? true
-                                              ::pco/resolve           (fn [_ _])}}
-                      ::resolvers           [{::pco/op-name 'z
-                                              ::pco/input   [:b]
-                                              ::pco/output  [:z]}]
-                      ::pci/index-oir       {:a {{} #{'dynamic-resolver}}
-                                             :b {{:a {}} #{'dynamic-resolver}}}
-                      ::eql/query           [:z]}))
+    (testing "merging long chains"
+      (is (= (compute-run-graph
+               (-> {::dynamics  {'dyn [{::pco/op-name 'a
+                                        ::pco/output  [:a]}
+                                       {::pco/op-name 'b
+                                        ::pco/input   [:a]
+                                        ::pco/output  [:b]}
+                                       {::pco/op-name 'c
+                                        ::pco/input   [:b]
+                                        ::pco/output  [:c]}
+                                       {::pco/op-name 'd
+                                        ::pco/input   [:c]
+                                        ::pco/output  [:d]}
+                                       {::pco/op-name 'e
+                                        ::pco/input   [:d]
+                                        ::pco/output  [:e]}]}
+                    ::eql/query [:e]}))
+             '{:com.wsscode.pathom3.connect.planner/nodes                 {5 {:com.wsscode.pathom3.connect.operation/op-name   dyn,
+                                                                              :com.wsscode.pathom3.connect.planner/expects     {:e {}},
+                                                                              :com.wsscode.pathom3.connect.planner/input       {},
+                                                                              :com.wsscode.pathom3.connect.planner/node-id     5,
+                                                                              :com.wsscode.pathom3.connect.planner/foreign-ast {:type     :root,
+                                                                                                                                :children [{:type         :prop,
+                                                                                                                                            :dispatch-key :e,
+                                                                                                                                            :key          :e}]}}},
+               :com.wsscode.pathom3.connect.planner/index-ast             {:e {:type         :prop,
+                                                                               :dispatch-key :e,
+                                                                               :key          :e}},
+               :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{5}},
+               :com.wsscode.pathom3.connect.planner/index-attrs           {:e #{5}},
+               :com.wsscode.pathom3.connect.planner/root                  5})))))
 
-               {::pcp/nodes                 {1 {::pco/op-name          'z
-                                                ::pcp/node-id          1
-                                                ::pcp/expects          {:z {}}
-                                                ::pcp/input            {:b {}}
-                                                ::pcp/node-parents     #{3}
-                                                ::pcp/source-for-attrs #{:z}}
-                                             3 {::pco/op-name          'dynamic-resolver
-                                                ::pcp/node-id          3
-                                                ::pcp/expects          {:a {} :b {}}
-                                                ::pcp/input            {}
-                                                ::pcp/source-for-attrs #{:b :a}
-                                                ::pcp/run-next         1
-                                                ::pcp/foreign-ast      (eql/query->ast [:a :b])}}
-                ::pcp/index-resolver->nodes '{z #{1} dynamic-resolver #{3}}
-                ::pcp/root                  3
-                ::pcp/index-attrs           {:z #{1}, :b #{3}, :a #{3}}
-                ::pcp/index-ast             {:z {:type         :prop,
-                                                 :dispatch-key :z,
-                                                 :key          :z}}}))))
+#_(deftest compute-run-graph-dynamic-resolvers-test
 
     (testing "multiple dependencies on dynamic resolver"
       (is (= (compute-run-graph
@@ -1941,35 +1990,6 @@
                                                             :dispatch-key :complex,
                                                             :key          :complex}}
               ::pcp/root                  2})))
-
-    #_(testing "merging long chains"
-        (is (= (compute-run-graph
-                 (-> {::dynamics  {'dyn [{::pco/op-name 'a
-                                          ::pco/output  [:a]}
-                                         {::pco/op-name 'a1
-                                          ::pco/input   [:c]
-                                          ::pco/output  [:a]}
-                                         {::pco/op-name 'a2
-                                          ::pco/input   [:d]
-                                          ::pco/output  [:a]}
-                                         {::pco/op-name 'b
-                                          ::pco/output  [:b]}
-                                         {::pco/op-name 'b1
-                                          ::pco/input   [:c]
-                                          ::pco/output  [:b]}
-                                         {::pco/op-name 'c
-                                          ::pco/output  [:c :d]}]}
-                      ::eql/query [:a :b]}))
-               {::pcp/nodes                 {6 {::pco/op-name          'dyn
-                                                ::pcp/node-id          6
-                                                ::pcp/expects          {:b {} :a {} :c {} :d {}}
-                                                ::pcp/input            {}
-                                                ::pcp/source-sym       'b
-                                                ::pcp/source-for-attrs #{:c :b :d :a}
-                                                ::pcp/foreign-ast      (eql/query->ast [:b :a :c :d])}}
-                ::pcp/index-resolver->nodes '{dyn #{6}}
-                ::pcp/index-attrs           {:c #{6}, :b #{6}, :d #{6}, :a #{6}}
-                ::pcp/root                  6})))
 
     (testing "dynamic dependency input on local dependency and dynamic dependency"
       (is (= (compute-run-graph
@@ -3606,6 +3626,7 @@
                    :index-resolver->nodes {dynamic-resolver #{1 2}}
                    :index-attrs           {:b #{2}, :c #{1}}
                    :root                  2}
+           {}
            2)
          '#::pcp{:nodes                 {2 {::pcp/node-id     2,
                                             ::pco/op-name     dynamic-resolver,
@@ -3654,6 +3675,7 @@
                                            other-resolver   #{3}}
                    :index-attrs           {:b #{2}, :c #{1} :d #{3}}
                    :root                  2}
+           {}
            2)
          '#::pcp{:nodes                 {2 {::pcp/node-id     2,
                                             ::pco/op-name     dynamic-resolver,
