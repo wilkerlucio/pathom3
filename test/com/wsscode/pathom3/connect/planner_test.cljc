@@ -1861,7 +1861,38 @@
                                                                                :key          :e}},
                :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{5}},
                :com.wsscode.pathom3.connect.planner/index-attrs           {:e #{5}},
-               :com.wsscode.pathom3.connect.planner/root                  5})))))
+               :com.wsscode.pathom3.connect.planner/root                  5}))))
+
+  ; not sure if I'm going though with this
+  #_
+  (testing "transient attributes"
+    (is (= (debug-compute-run-graph
+             (-> {::dynamics            {'dyn [{::pco/op-name 'type
+                                                ::pco/input   [:type]
+                                                ::pco/output  [:ta :tb :tc]}
+                                               {::pco/op-name 'type-by-id
+                                                ::pco/input   [:tid]
+                                                ::pco/output  [:type]}]}
+                  ::pci/transient-attrs #{:type}
+                  ::pcp/available-data  {:tid {}}
+                  ::eql/query           [:tb :type]}))
+           '{:com.wsscode.pathom3.connect.planner/nodes                 {2 {:com.wsscode.pathom3.connect.operation/op-name   dyn,
+                                                                            :com.wsscode.pathom3.connect.planner/expects     {:tb {}},
+                                                                            :com.wsscode.pathom3.connect.planner/input       {:tid {}},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id     2,
+                                                                            :com.wsscode.pathom3.connect.planner/foreign-ast {:type     :root,
+                                                                                                                              :children [{:type         :prop,
+                                                                                                                                          :dispatch-key :tb,
+                                                                                                                                          :key          :tb}]}}},
+             :com.wsscode.pathom3.connect.planner/index-ast             {:tb   {:type         :prop,
+                                                                                :dispatch-key :tb,
+                                                                                :key          :tb},
+                                                                         :type {:type         :prop,
+                                                                                :dispatch-key :type,
+                                                                                :key          :type}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{2}},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:tb #{2}},
+             :com.wsscode.pathom3.connect.planner/root                  2}))))
 
 #_(deftest compute-run-graph-dynamic-resolvers-test
 
