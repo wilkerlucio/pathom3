@@ -41,9 +41,10 @@
                 [::pci/index-attributes
                  ::pci/index-oir
                  ::pci/index-io
-                 ::pci/autocomplete-ignore
                  ::pci/index-resolvers
-                 ::pci/index-mutations])})
+                 ::pci/index-mutations
+                 ::pci/transient-attrs
+                 ::pci/index-source-id])})
 
 (defn remove-foreign-indexes [indexes]
   (-> indexes
@@ -53,24 +54,32 @@
       (update-in [::pci/index-io #{}] dissoc ::pci/indexes)))
 
 (defn internalize-foreign-indexes
-  ([{::pci/keys [index-source-id] :as indexes} foreign]
-   (let [index-source-id (or index-source-id (gensym "dynamic-parser-"))]
-     (-> indexes
-         (remove-foreign-indexes)
-         (update ::pci/index-resolvers
-           (fn [resolvers]
-             (coll/map-vals
-               #(pco/update-config % assoc ::pco/dynamic-name index-source-id)
-               resolvers)))
-         (assoc-in [::pci/index-resolvers index-source-id]
-           (pco/resolver index-source-id
-             {::pco/cache?            false
-              ::pco/dynamic-resolver? true}
-             (fn [env _] (call-foreign env foreign))))
-         (dissoc ::pci/index-source-id)
-         (assoc-in [::foreign-indexes index-source-id] indexes)))))
+  "Introduce a new dynamic resolver and make all the resolvers in the index point to
+  it."
+  [{::pci/keys [index-source-id] :as indexes} foreign]
+  (let [index-source-id (or index-source-id (gensym "dynamic-parser-"))]
+    (-> indexes
+        (remove-foreign-indexes)
+        (update ::pci/index-resolvers
+          (fn [resolvers]
+            (coll/map-vals
+              #(pco/update-config % assoc ::pco/dynamic-name index-source-id)
+              resolvers)))
+        (assoc-in [::pci/index-resolvers index-source-id]
+          (pco/resolver index-source-id
+            {::pco/cache?            false
+             ::pco/dynamic-resolver? true}
+            (fn [env _] (call-foreign env foreign))))
+        (dissoc ::pci/index-source-id)
+        (assoc-in [::foreign-indexes index-source-id] indexes))))
 
 (defn foreign-register
+  "Load foreign indexes and incorporate it as an external data source. This will make
+  every resolver from the remote to point to a single one, enabling data delegation
+  to the foreign node.
+
+  The return of this function is the indexes, you can use pci/register to add them
+  into your environment."
   [foreign]
   (clet [{::pci/keys [indexes]} (foreign index-query)]
     (internalize-foreign-indexes indexes foreign)))
