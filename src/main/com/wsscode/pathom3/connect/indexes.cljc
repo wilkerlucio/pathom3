@@ -35,6 +35,16 @@
 (>def ::attr-mutation-output-in op-set)
 (>def ::attr-mutation-param-in op-set)
 
+(>def ::transient-attrs
+  "A set containing attributes that should be considered transient.
+
+  A transit attribute should appear only in dynamic resolvers, their purpose is to work
+  as linking points between attributes, but they are not valid attributes themselves.
+
+  In other words, transient attributes reference other attributes, but they can't be
+  queried."
+  ::p.attr/attributes-set)
+
 (declare resolver mutation)
 
 (defn merge-oir
@@ -280,6 +290,9 @@
   [(s/keys :req [::index-oir]) ::p.attr/attribute
    => boolean?]
   (contains? index-oir k))
+
+(defn transient-attr? [{::keys [transient-attrs]} attr]
+  (contains? transient-attrs attr))
 
 (defn reachable-attributes*
   [{::keys [index-io] :as env} queue attributes]
