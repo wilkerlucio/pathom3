@@ -30,9 +30,9 @@
     ::keys        [join-node]} errors]
   (coll/map-keys #(into (pop path) (cond-> % join-node next)) errors))
 
-(defn call-foreign [env parser]
+(defn call-foreign [env foreign]
   (let [foreign-call (compute-foreign-query env)
-        response (parser foreign-call)]
+        response (foreign foreign-call)]
     response))
 
 (pco/defresolver foreign-indexes-resolver [env _]
@@ -57,7 +57,7 @@
   "Introduce a new dynamic resolver and make all the resolvers in the index point to
   it."
   [{::pci/keys [index-source-id] :as indexes} foreign]
-  (let [index-source-id (or index-source-id (gensym "dynamic-parser-"))]
+  (let [index-source-id (or index-source-id (gensym "foreign-pathom-"))]
     (-> indexes
         (remove-foreign-indexes)
         (update ::pci/index-resolvers
