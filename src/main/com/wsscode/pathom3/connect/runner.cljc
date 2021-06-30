@@ -340,7 +340,7 @@
                  ::nested-waiting? true}})
 
 (defn invoke-resolver-with-plugins [resolver env input-data]
-  (p.plugin/run-with-plugins env ::wrap-resolve pco.prot/-resolve resolver env input-data))
+  (p.plugin/run-with-plugins env ::wrap-resolve #(pco.prot/-resolve resolver % %2) env input-data))
 
 (defn- invoke-resolver-cached
   [env cache? op-name resolver cache-store input-data params]

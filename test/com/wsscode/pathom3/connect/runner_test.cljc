@@ -1803,6 +1803,18 @@
             (call)]
           #(= (::env-var %) (get % 'call))))))
 
+(deftest run-graph!-wrap-resolve-test
+  (testing "extending resolver execution"
+    (is (graph-response?
+          (-> (pci/register (pbir/constantly-resolver :foo "bar"))
+              (p.plugin/register {::p.plugin/id      'wrap
+                                  ::pcr/wrap-resolve (fn [resolve]
+                                                       (fn [env input]
+                                                         (resolve env input)))}))
+          {}
+          [:foo]
+          {:foo "bar"}))))
+
 #?(:clj
    (deftest run-graph!-async-tests
      (testing "async env"
