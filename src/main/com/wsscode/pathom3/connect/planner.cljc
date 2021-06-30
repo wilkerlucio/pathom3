@@ -1288,7 +1288,7 @@
                     (if root
                       ; success
                       [graph' (conj node-ids root)]
-                      ; failed, collect unreachables
+                      ; failed, collect unreachable
                       [(merge-unreachable graph graph') node-ids]))))
 
               ; process mutation
