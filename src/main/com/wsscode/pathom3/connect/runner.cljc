@@ -339,14 +339,17 @@
                  ::pcp/node        node
                  ::nested-waiting? true}})
 
+(defn invoke-resolver-with-plugins [resolver env input-data]
+  (p.plugin/run-with-plugins env ::wrap-resolve pco.prot/-resolve resolver env input-data))
+
 (defn- invoke-resolver-cached
   [env cache? op-name resolver cache-store input-data params]
   (if cache?
     (p.cache/cached cache-store env
       [op-name input-data params]
-      #(pco.prot/-resolve resolver env input-data))
+      #(invoke-resolver-with-plugins resolver env input-data))
 
-    (pco.prot/-resolve resolver env input-data)))
+    (invoke-resolver-with-plugins resolver env input-data)))
 
 (defn warn-batch-unsupported [env op-name]
   (l/warn ::event-batch-unsupported
@@ -359,9 +362,9 @@
   (if cache?
     (p.cache/cached cache-store env
       [op-name input-data params]
-      #(first (pco.prot/-resolve resolver env [input-data])))
+      #(first (invoke-resolver-with-plugins resolver env [input-data])))
 
-    (first (pco.prot/-resolve resolver env [input-data]))))
+    (first (invoke-resolver-with-plugins resolver env [input-data]))))
 
 (defn batch-hold-token
   [env cache? op-name node cache-store input-data]
@@ -440,8 +443,7 @@
     (run-next-node! env node)
     (let [_ (merge-node-stats! env node {::node-run-start-ms (time/now-ms)})
           {::keys [batch-hold] :as response}
-          (p.plugin/run-with-plugins env ::wrap-resolve
-            invoke-resolver-from-node env node)]
+          (invoke-resolver-from-node env node)]
       (cond
         ; propagate batch hold up, this will make all nodes to stop running
         ; so they can wait for the batch result
@@ -743,8 +745,7 @@
                              (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
             start        (time/now-ms)
             responses    (try
-                           (p.plugin/run-with-plugins env ::wrap-batch-resolve
-                             pco.prot/-resolve resolver batch-env inputs)
+                           (invoke-resolver-with-plugins resolver batch-env inputs)
                            (catch #?(:clj Throwable :cljs :default) e
                              (mark-batch-errors e env batch-op batch-items)))
             finish       (time/now-ms)]

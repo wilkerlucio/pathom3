@@ -153,12 +153,12 @@
     (p.cache/cached cache-store env
       [op-name input-data params]
       #(try
-         (pco.prot/-resolve resolver env input-data)
+         (pcr/invoke-resolver-with-plugins resolver env input-data)
          (catch #?(:clj Throwable :cljs :default) e
            (p/rejected e))))
 
     (try
-      (pco.prot/-resolve resolver env input-data)
+      (pcr/invoke-resolver-with-plugins resolver env input-data)
       (catch #?(:clj Throwable :cljs :default) e
         (p/rejected e)))))
 
@@ -169,13 +169,13 @@
     (p.cache/cached cache-store env
       [op-name input-data params]
       #(try
-         (clet [res (pco.prot/-resolve resolver env [input-data])]
+         (clet [res (pcr/invoke-resolver-with-plugins resolver env [input-data])]
            (first res))
          (catch #?(:clj Throwable :cljs :default) e
            (p/rejected e))))
 
     (try
-      (clet [res (pco.prot/-resolve resolver env [input-data])]
+      (clet [res (pcr/invoke-resolver-with-plugins resolver env [input-data])]
         (first res))
       (catch #?(:clj Throwable :cljs :default) e
         (p/rejected e)))))
@@ -243,8 +243,7 @@
     (p/let [_ (pcr/merge-node-stats! env node {::pcr/node-run-start-ms (time/now-ms)})
             env' (assoc env ::pcp/node node)
             {::pcr/keys [batch-hold] :as response}
-            (p.plugin/run-with-plugins env' ::pcr/wrap-resolve
-              invoke-resolver-from-node env' node)]
+            (invoke-resolver-from-node env' node)]
       (cond
         batch-hold response
 
@@ -451,7 +450,7 @@
                 batch-env    (-> batch-items first ::pcr/env
                                  (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
                 start        (time/now-ms)
-                responses    (-> (pco.prot/-resolve resolver batch-env inputs)
+                responses    (-> (pcr/invoke-resolver-with-plugins resolver batch-env inputs)
                                  (p/catch (fn [e] (pcr/mark-batch-errors e env batch-op batch-items))))
                 finish       (time/now-ms)]
 
