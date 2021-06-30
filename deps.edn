@@ -3,6 +3,7 @@
 
  :deps
  {com.fulcrologic/guardrails {:mvn/version "1.1.4"}
+  org.clojure/core.async     {:mvn/version "1.3.610"}
   com.wsscode/cljc-misc      {:mvn/version "2021.05.12"}
   com.wsscode/log            {:git/url "https://github.com/wilkerlucio/log"
                               :sha     "1ac61009b3a57d5d09515ca823556bbe440c292d"}
