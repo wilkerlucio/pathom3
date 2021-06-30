@@ -162,7 +162,7 @@
     => ::resolver]
    (when-not (s/valid? (s/keys) config)
      (s/explain (s/keys) config)
-     (throw (ex-info (str "Invalid config on defresolver " name)
+     (throw (ex-info (str "Invalid config on resolver " name)
                      {:explain-data (s/explain-data (s/keys) config)})))
    (if (resolver? config)
      config
