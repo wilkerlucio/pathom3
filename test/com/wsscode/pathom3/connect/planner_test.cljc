@@ -82,7 +82,6 @@
       @snapshots*
       graph)))
 
-
 #?(:clj
    (defn debug-compute-run-graph
      "Use this to run plan graph and also log the steps to Pathom Viz"
@@ -341,7 +340,7 @@
                :com.wsscode.pathom3.connect.planner/index-ast {doit {:dispatch-key doit,
                                                                      :key doit,
                                                                      :params {},
-                                                                     :meta {:line 340, :column 32},
+                                                                     :meta {:line 339, :column 32},
                                                                      :type :call,
                                                                      :query [:done],
                                                                      :children [{:type :prop,
@@ -365,7 +364,7 @@
                                                                      :type :call,
                                                                      :query [:done?],
                                                                      :meta                                            {:column 32
-                                                                                                                       :line   361}
+                                                                                                                       :line   360}
                                                                      :children [{:type :prop,
                                                                                  :dispatch-key :done?,
                                                                                  :key :done?}],
@@ -390,7 +389,7 @@
                                                                      :dispatch-key                                    doit
                                                                      :key                                             doit
                                                                      :meta                                            {:column 32
-                                                                                                                       :line   383}
+                                                                                                                       :line   382}
                                                                      :params                                          {}
                                                                      :query                                           [:done?]
                                                                      :type                                            :call}}
@@ -1959,178 +1958,6 @@
              :com.wsscode.pathom3.connect.planner/index-attrs           {:tb #{2}},
              :com.wsscode.pathom3.connect.planner/root                  2}))))
 
-#_(deftest compute-run-graph-dynamic-resolvers-test
-
-    (testing "multiple dependencies on dynamic resolver"
-      (is (= (compute-run-graph
-               (-> {::pci/index-resolvers {'dynamic-resolver
-                                           {::pco/op-name           'dynamic-resolver
-                                            ::pco/cache?            false
-                                            ::pco/dynamic-resolver? true
-                                            ::pco/resolve           (fn [_ _])}}
-                    ::pci/index-oir       {:a {{:b {} :c {}} #{'dynamic-resolver}}
-                                           :b {{} #{'dynamic-resolver}}
-                                           :c {{} #{'dynamic-resolver}}}
-                    ::eql/query           [:a]}))
-
-             '#:com.wsscode.pathom3.connect.planner{:index-ast             {:a {:dispatch-key :a
-                                                                                :key          :a
-                                                                                :type         :prop}}
-                                                    :index-attrs           {:c #{2}, :b #{2}, :a #{2}}
-                                                    :index-resolver->nodes {dynamic-resolver #{2}}
-                                                    :nodes                 {2 {:com.wsscode.pathom3.connect.operation/op-name        dynamic-resolver
-                                                                               :com.wsscode.pathom3.connect.planner/expects          {:a {}
-                                                                                                                                      :b {}
-                                                                                                                                      :c {}}
-                                                                               :com.wsscode.pathom3.connect.planner/foreign-ast      {:children [{:dispatch-key :b
-                                                                                                                                                  :key          :b
-                                                                                                                                                  :type         :prop}
-                                                                                                                                                 {:dispatch-key :c
-                                                                                                                                                  :key          :c
-                                                                                                                                                  :type         :prop}
-                                                                                                                                                 {:dispatch-key :a
-                                                                                                                                                  :key          :a
-                                                                                                                                                  :type         :prop}]
-                                                                                                                                      :type     :root}
-                                                                               :com.wsscode.pathom3.connect.planner/input            {}
-                                                                               :com.wsscode.pathom3.connect.planner/node-id          2
-                                                                               :com.wsscode.pathom3.connect.planner/source-for-attrs #{:a
-                                                                                                                                       :b
-                                                                                                                                       :c}}}
-                                                    :root                  2})))
-
-    (testing "multiple calls to dynamic resolver"
-      (is (= (compute-run-graph
-               (-> {::pci/index-resolvers {'dynamic-resolver
-                                           {::pco/op-name           'dynamic-resolver
-                                            ::pco/cache?            false
-                                            ::pco/dynamic-resolver? true
-                                            ::pco/resolve           (fn [_ _])}}
-                    ::resolvers           [{::pco/op-name 'b
-                                            ::pco/input   [:a]
-                                            ::pco/output  [:b]}]
-                    ::pci/index-oir       {:a {{} #{'dynamic-resolver}}
-                                           :c {{:b {}} #{'dynamic-resolver}}}
-                    ::eql/query           [:c]}))
-
-             {::pcp/nodes                 {1 {::pco/op-name          'dynamic-resolver
-                                              ::pcp/node-id          1
-                                              ::pcp/expects          {:c {}}
-                                              ::pcp/input            {:b {}}
-                                              ::pcp/node-parents     #{2}
-                                              ::pcp/source-for-attrs #{:c}
-                                              ::pcp/foreign-ast      (eql/query->ast [:c])}
-                                           2 {::pco/op-name          'b
-                                              ::pcp/node-id          2
-                                              ::pcp/expects          {:b {}}
-                                              ::pcp/input            {:a {}}
-                                              ::pcp/run-next         1
-                                              ::pcp/node-parents     #{3}
-                                              ::pcp/source-for-attrs #{:b}}
-                                           3 {::pco/op-name          'dynamic-resolver
-                                              ::pcp/node-id          3
-                                              ::pcp/expects          {:a {}}
-                                              ::pcp/input            {}
-                                              ::pcp/run-next         2
-                                              ::pcp/source-for-attrs #{:a}
-                                              ::pcp/foreign-ast      (eql/query->ast [:a])}}
-              ::pcp/index-resolver->nodes '{dynamic-resolver #{1 3} b #{2}}
-              ::pcp/root                  3
-              ::pcp/index-attrs           {:c #{1}, :b #{2}, :a #{3}}
-              ::pcp/index-ast             {:c {:type         :prop,
-                                               :dispatch-key :c,
-                                               :key          :c}}})))
-
-    (testing "inner repeated dependencies"
-      (is (= (compute-run-graph
-               (-> {::pci/index-resolvers {'dynamic-resolver
-                                           {::pco/op-name           'dynamic-resolver
-                                            ::pco/cache?            false
-                                            ::pco/dynamic-resolver? true
-                                            ::pco/resolve           (fn [_ _])}}
-                    ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}
-                                           :label/type     {{:db/id {}} #{'dynamic-resolver}}}
-                    ::eql/query           [:release/script :complex]
-                    ::resolvers           [{::pco/op-name 'id
-                                            ::pco/output  [:db/id]}
-                                           {::pco/op-name 'complex
-                                            ::pco/input   [:db/id :label/type]
-                                            ::pco/output  [:complex]}]}))
-
-             {::pcp/nodes                 {2 {::pco/op-name          'id
-                                              ::pcp/node-id          2
-                                              ::pcp/expects          {:db/id {}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-for-attrs #{:db/id}
-                                              ::pcp/run-next         4}
-                                           3 {::pco/op-name          'complex
-                                              ::pcp/node-id          3
-                                              ::pcp/expects          {:complex {}}
-                                              ::pcp/input            {:label/type {} :db/id {}}
-                                              ::pcp/node-parents     #{4}
-                                              ::pcp/source-for-attrs #{:complex}}
-                                           4 {::pco/op-name          'dynamic-resolver
-                                              ::pcp/node-id          4
-                                              ::pcp/expects          {:label/type {} :release/script {}}
-                                              ::pcp/input            {:db/id {}}
-                                              ::pcp/source-for-attrs #{:release/script :label/type}
-                                              ::pcp/node-parents     #{2}
-                                              ::pcp/run-next         3
-                                              ::pcp/foreign-ast      (eql/query->ast [:label/type :release/script])}}
-              ::pcp/index-resolver->nodes '{dynamic-resolver #{4} id #{2} complex #{3}}
-              ::pcp/index-attrs           {:release/script #{4}, :label/type #{4}, :complex #{3}, :db/id #{2}}
-              ::pcp/index-ast             {:release/script {:type         :prop,
-                                                            :dispatch-key :release/script,
-                                                            :key          :release/script},
-                                           :complex        {:type         :prop,
-                                                            :dispatch-key :complex,
-                                                            :key          :complex}}
-              ::pcp/root                  2})))
-
-    (testing "dynamic dependency input on local dependency and dynamic dependency"
-      (is (= (compute-run-graph
-               (-> {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                                 ::pco/cache?            false
-                                                 ::pco/dynamic-resolver? true
-                                                 ::pco/resolve           (fn [_ _])}}
-                    ::pci/index-oir       {:d1 {{:d2 {} :l1 {}} #{'dyn}}
-                                           :d2 {{} #{'dyn}}}
-                    ::resolvers           [{::pco/op-name 'l1
-                                            ::pco/output  [:l1]}]
-                    ::eql/query           [:d1]}))
-
-             {::pcp/nodes                 {1 {::pco/op-name          'dyn
-                                              ::pcp/node-id          1
-                                              ::pcp/expects          {:d1 {}}
-                                              ::pcp/input            {:d2 {} :l1 {}}
-                                              ::pcp/node-parents     #{4}
-                                              ::pcp/source-for-attrs #{:d1}
-                                              ::pcp/foreign-ast      (eql/query->ast [:d1])}
-                                           2 {::pco/op-name          'dyn
-                                              ::pcp/node-id          2
-                                              ::pcp/expects          {:d2 {}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-for-attrs #{:d2}
-                                              ::pcp/node-parents     #{4}
-                                              ::pcp/foreign-ast      (eql/query->ast [:d2])}
-                                           3 {::pco/op-name          'l1
-                                              ::pcp/node-id          3
-                                              ::pcp/expects          {:l1 {}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-for-attrs #{:l1}
-                                              ::pcp/node-parents     #{4}}
-                                           4 {::pcp/node-id  4
-                                              ::pcp/expects  {:l1 {} :d2 {}}
-                                              ::pcp/run-and  #{3 2}
-                                              ::pcp/run-next 1}}
-              ::pcp/index-resolver->nodes '{dyn #{1 2} l1 #{3}}
-              ::pcp/index-attrs           {:d1 #{1}, :d2 #{2}, :l1 #{3}}
-              ::pcp/index-ast             {:d1 {:type         :prop,
-                                                :dispatch-key :d1,
-                                                :key          :d1}}
-              ::pcp/root                  4}))))
-
-
 (deftest compute-run-graph-dynamic-nested-queries-test
   (testing "user query request directly available nested data"
     (is (= (compute-run-graph
@@ -2592,149 +2419,6 @@
                                                                :dispatch-key :e,
                                                                :key          :e}]}}}))))
 
-#_(deftest root-execution-node?-test
-    (is (= (pcp/root-execution-node?
-             {::pcp/nodes {}}
-             1)
-           true))
-    (is (= (pcp/root-execution-node?
-             {::pcp/nodes {1 {::pcp/node-parents #{2}}
-                           2 {::pcp/run-and #{1}}}}
-             1)
-           true))
-    (is (= (pcp/root-execution-node?
-             {::pcp/nodes {1 {::pcp/node-parents #{2}}}}
-             1)
-           false)))
-
-#_(deftest find-node-direct-ancestor-chain-test
-    (testing "return self on edge"
-      (is (= (pcp/find-node-direct-ancestor-chain
-               {::pcp/nodes {1 {}}}
-               1)
-             [1])))
-
-    (testing "follow single node"
-      (is (= (pcp/find-node-direct-ancestor-chain
-               {::pcp/nodes {1 {::pcp/node-parents #{2}}}}
-               1)
-             [2 1]))))
-
-#_(deftest find-furthest-ancestor-test
-    (testing "return self on edge"
-      (is (= (pcp/find-furthest-ancestor
-               {::pcp/nodes {1 {}}}
-               1)
-             1)))
-
-    (testing "follow single node"
-      (is (= (pcp/find-furthest-ancestor
-               {::pcp/nodes {1 {::pcp/node-parents #{2}}}}
-               1)
-             2)))
-
-    (testing "dont end on and-nodes"
-      (is (= (pcp/find-furthest-ancestor
-               {::pcp/nodes {1 {::pcp/node-parents #{2}}
-                             2 {::pcp/run-and #{}}}}
-               1)
-             1)))
-
-    (testing "jump and nodes if there is a singular node after"
-      (is (= (pcp/find-furthest-ancestor
-               {::pcp/nodes {1 {::pcp/node-parents #{2}}
-                             2 {::pcp/run-and      #{}
-                                ::pcp/node-parents #{3}}
-                             3 {}}}
-               1)
-             3))
-      (is (= (pcp/find-furthest-ancestor
-               {::pcp/nodes {1 {::pcp/node-parents #{2}}
-                             2 {::pcp/run-and      #{}
-                                ::pcp/node-parents #{3}}
-                             3 {::pcp/node-parents #{4}}
-                             4 {::pcp/run-and #{}}}}
-               1)
-             3))))
-
-#_(deftest find-dependent-ancestor-test
-    (testing "no parents, return self"
-      (is (= (pcp/find-dependent-ancestor
-               {::pcp/nodes {1 {::pcp/node-id 1}}}
-               {}
-               1)
-             1)))
-
-    (testing "no dependencies, return self"
-      (is (= (pcp/find-dependent-ancestor
-               {::pcp/nodes {1 {::pcp/node-id 1
-                                ::pcp/input   {}}}}
-               {}
-               1)
-             1)))
-
-    (testing "traverse chain"
-      (is (= (pcp/find-dependent-ancestor
-               {::pcp/nodes {1 {::pcp/node-id      1
-                                ::pcp/input        {:a {}}
-                                ::pcp/node-parents #{2}}
-                             2 {::pcp/node-id 2
-                                ::pcp/expects {:a {}}}}}
-               {}
-               1)
-             2)))
-
-    (testing "multiple paths"
-      (is (= (pcp/find-dependent-ancestor
-               {::pcp/nodes {1 {::pcp/node-id      1
-                                ::pcp/input        {:a {}}
-                                ::pcp/node-parents #{2 3}}
-                             2 {::pcp/node-id 2
-                                ::pcp/expects {}}
-                             3 {::pcp/node-id 3
-                                ::pcp/expects {:a {}}}}}
-               {}
-               1)
-             3)))
-
-    (testing "considers available data"
-      (is (= (pcp/find-dependent-ancestor
-               {::pcp/nodes {1 {::pcp/node-id      1
-                                ::pcp/input        {:a {}}
-                                ::pcp/node-parents #{2}}
-                             2 {::pcp/node-id 2
-                                ::pcp/expects {:a {}}}}}
-               {::pcp/available-data {:a {}}}
-               1)
-             1)))
-
-    (testing "accumulate dependencies"
-      (is (= (pcp/find-dependent-ancestor
-               {::pcp/nodes {1 {::pcp/node-id      1
-                                ::pcp/input        {:a {}}
-                                ::pcp/node-parents #{2}}
-                             2 {::pcp/node-id      2
-                                ::pcp/input        {:b {}}
-                                ::pcp/expects      {:a {}}
-                                ::pcp/node-parents #{3}}
-                             3 {::pcp/node-id 3
-                                ::pcp/expects {:b {}}}}}
-               {}
-               1)
-             3)))
-
-    #_(testing "get latest when not available"
-        (is (= (pcp/find-dependent-ancestor
-                 {::pcp/nodes {1 {::pcp/node-id      1
-                                  ::pcp/input        {:a {}}
-                                  ::pcp/node-parents #{2}}
-                               2 {::pcp/node-id 2
-                                  ::pcp/input   {:b {}}
-                                  ::pcp/expects {:a {}}}}}
-                 {}
-                 1)
-               2))))
-
 (deftest find-run-next-descendants-test
   (testing "return the node if that's the latest"
     (is (= (pcp/find-run-next-descendants
@@ -2766,22 +2450,6 @@
               ::pcp/run-next 2})
            {::pcp/node-id 2}))))
 
-#_(deftest same-resolver-test
-    (is (= (pcp/same-resolver?
-             {::pco/op-name 'a}
-             {::pco/op-name 'a})
-           true))
-
-    (is (= (pcp/same-resolver?
-             {::pco/op-name 'b}
-             {::pco/op-name 'a})
-           false))
-
-    (is (= (pcp/same-resolver?
-             {}
-             {})
-           false)))
-
 (deftest node-ancestors-test
   (is (= (pcp/node-ancestors
            '{::pcp/nodes {1 {::pcp/node-id 1}
@@ -2805,32 +2473,6 @@
                           6 {::pcp/node-parents #{5 4}}}}
            6)
          [6 4 5 1 2 3])))
-
-#_(deftest node-ancestors-paths-test
-    (is (= (pcp/node-ancestors-paths
-             '{::pcp/nodes {1 {::pcp/node-id 1}
-                            2 {::pcp/node-parents #{1}}}}
-             2)
-           [[2 1]]))
-
-    (is (= (pcp/node-ancestors-paths
-             '{::pcp/nodes {1 {::pcp/node-id 1}
-                            2 {::pcp/node-parents #{1}}
-                            3 {::pcp/node-parents #{2}}}}
-             3)
-           [[3 2 1]]))
-
-    (is (= (pcp/node-ancestors-paths
-             '{::pcp/nodes {1 {::pcp/node-id 1}
-                            2 {::pcp/node-id 2}
-                            3 {::pcp/node-id 3}
-                            4 {::pcp/node-parents #{2 1}}
-                            5 {::pcp/node-parents #{3}}
-                            6 {::pcp/node-parents #{5 4}}}}
-             6)
-           [[6 4 1]
-            [6 4 2]
-            [6 5 3]])))
 
 (deftest node-successors-test
   (testing "leaf"
@@ -2886,77 +2528,6 @@
                             4 {}}}
              1)
            [1 3 2 4]))))
-
-#_(deftest first-common-ancestors*-test
-    (is (= (pcp/first-common-ancestors*
-             [[[1 2]]])
-           #{2})))
-
-#_(deftest first-common-ancestor-test
-    (is (= (pcp/first-common-ancestor
-             '{::pcp/nodes {1 {::pcp/run-and #{2 3}}
-                            2 {::pcp/node-parents #{1}}
-                            3 {::pcp/node-parents #{1}}}}
-             #{2 3})
-           1))
-
-    (is (= (pcp/first-common-ancestor
-             '{::pcp/nodes {1 {::pcp/run-and #{2 3}}
-                            2 {::pcp/node-parents #{1 4}}
-                            3 {::pcp/node-parents #{1}}
-                            4 {}}}
-             #{2 3})
-           1))
-
-    (testing "single node returns itself"
-      (is (= (pcp/first-common-ancestor
-               '{::pcp/nodes {1 {::pcp/run-and #{2 3}}
-                              2 {::pcp/node-parents #{1 4}}
-                              3 {::pcp/node-parents #{1}}
-                              4 {}}}
-               #{2})
-             2)))
-
-    (testing "when nodes are on a chain, get the chain edge"
-      (is (= (pcp/first-common-ancestor
-               '{::pcp/nodes {1 {::pcp/run-next 2}
-                              2 {::pcp/node-parents #{1}}}}
-               #{1 2})
-             2)))
-
-    (testing "nodes are part of both branch and next of a branch parent, pick next"
-      ;    2
-      ;  /
-      ; 1 - 3
-      ;  \ NEXT
-      ;   4
-      (is (= (pcp/first-common-ancestor
-               '{::pcp/nodes {1 {::pcp/node-id  1
-                                 ::pcp/run-and  #{2 3}
-                                 ::pcp/run-next 4}
-                              2 {::pcp/node-id      2
-                                 ::pcp/node-parents #{1}}
-                              3 {::pcp/node-id      3
-                                 ::pcp/node-parents #{1}}
-                              4 {::pcp/node-id 4 ::pcp/node-parents #{1}}}}
-               #{3 4})
-             4)))
-
-    (testing "goes back when OR is at parent"
-      (is (= (pcp/first-common-ancestor
-               '{::pcp/nodes {5  {::pcp/node-id      5
-                                  ::pcp/node-parents #{12 19}}
-                              9  {::pcp/node-id      9
-                                  ::pcp/node-parents #{5}}
-                              12 {::pcp/node-id      12
-                                  ::pcp/node-parents #{19}
-                                  ::pcp/run-or       #{5 18}}
-                              18 {::pcp/node-id      18
-                                  ::pcp/node-parents #{12}}
-                              19 {::pcp/node-id 19
-                                  ::pcp/run-and #{12 5}}}}
-               #{9 18})
-             19))))
 
 (deftest remove-node-test
   (testing "remove node and references"
@@ -3016,251 +2587,6 @@
                                            b #{2}}}
             1)))))
 
-#_(deftest collapse-nodes-chain-test
-    (testing "merge requires and attr sources"
-      (is (= (pcp/collapse-nodes-chain
-               '{::pcp/nodes                 {1 {::pcp/node-id          1
-                                                 ::pco/op-name          a
-                                                 ::pcp/expects          {:a {}}
-                                                 ::pcp/source-for-attrs #{:a}}
-                                              2 {::pcp/node-id          2
-                                                 ::pco/op-name          a
-                                                 ::pcp/expects          {:b {}}
-                                                 ::pcp/source-for-attrs #{:b}}}
-                 ::pcp/index-resolver->nodes {a #{1 2}}
-                 ::pcp/index-attrs           {:b #{2}, :a #{1}}}
-               1 2)
-             '{::pcp/nodes                 {1 {::pcp/node-id          1
-                                               ::pco/op-name          a
-                                               ::pcp/source-for-attrs #{:a :b}
-                                               ::pcp/expects          {:a {}
-                                                                       :b {}}}}
-               ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/index-attrs           {:b #{1}, :a #{1}}})))
-
-    (testing "keep input from outer most"
-      (is (= (pcp/collapse-nodes-chain
-               '{::pcp/nodes                 {1 {::pcp/node-id          1
-                                                 ::pco/op-name          a
-                                                 ::pcp/input            {:x {}}
-                                                 ::pcp/expects          {:a {}}
-                                                 ::pcp/source-for-attrs #{:a}}
-                                              2 {::pcp/node-id          2
-                                                 ::pco/op-name          a
-                                                 ::pcp/input            {:y {}}
-                                                 ::pcp/expects          {:b {}}
-                                                 ::pcp/source-for-attrs #{:b}}}
-                 ::pcp/index-resolver->nodes {a #{1 2}}
-                 ::pcp/index-attrs           {:b #{2}, :a #{1}}}
-               1 2)
-             '{::pcp/nodes                 {1 {::pcp/node-id          1
-                                               ::pco/op-name          a
-                                               ::pcp/input            {:x {}}
-                                               ::pcp/source-for-attrs #{:a :b}
-                                               ::pcp/expects          {:a {}
-                                                                       :b {}}}}
-               ::pcp/index-resolver->nodes {a #{1}}
-               ::pcp/index-attrs           {:b #{1}, :a #{1}}})))
-
-    (testing "pull run next"
-      (is (= (pcp/collapse-nodes-chain
-               '{::pcp/nodes                 {1 {::pcp/node-id 1
-                                                 ::pco/op-name a}
-                                              2 {::pcp/node-id  2
-                                                 ::pco/op-name  a
-                                                 ::pcp/run-next 3}
-                                              3 {::pcp/node-id      3
-                                                 ::pco/op-name      b
-                                                 ::pcp/node-parents #{2}}}
-                 ::pcp/index-resolver->nodes {a #{1 2}
-                                              b #{3}}}
-               1 2)
-             '{::pcp/nodes                 {1 {::pcp/node-id  1
-                                               ::pco/op-name  a
-                                               ::pcp/run-next 3}
-                                            3 {::pcp/node-id      3
-                                               ::pco/op-name      b
-                                               ::pcp/node-parents #{1}}}
-               ::pcp/index-resolver->nodes {a #{1}
-                                            b #{3}}})))
-
-    (testing "move after nodes"
-      (is (= (pcp/collapse-nodes-chain
-               '{::pcp/nodes                 {1 {::pcp/node-id 1
-                                                 ::pco/op-name a}
-                                              2 {::pcp/node-id      2
-                                                 ::pco/op-name      a
-                                                 ::pcp/node-parents #{3 4}}
-                                              3 {::pcp/node-id  3
-                                                 ::pco/op-name  b
-                                                 ::pcp/run-next 2}
-                                              4 {::pcp/node-id  4
-                                                 ::pco/op-name  c
-                                                 ::pcp/run-next 2}}
-                 ::pcp/index-resolver->nodes {a #{1 2}
-                                              b #{3}
-                                              c #{4}}}
-               1 2)
-             '{::pcp/nodes                 {1 {::pcp/node-id      1
-                                               ::pco/op-name      a
-                                               ::pcp/node-parents #{3 4}}
-                                            3 {::pcp/node-id  3
-                                               ::pco/op-name  b
-                                               ::pcp/run-next 1}
-                                            4 {::pcp/node-id  4
-                                               ::pco/op-name  c
-                                               ::pcp/run-next 1}}
-               ::pcp/index-resolver->nodes {a #{1}
-                                            b #{3}
-                                            c #{4}}}))))
-
-#_(deftest compute-node-chain-depth-test
-    (testing "simple chain"
-      (is (= (pcp/compute-node-chain-depth
-               {::pcp/nodes {1 {}}}
-               1)
-             {::pcp/nodes {1 {::pcp/node-chain-depth 0}}}))
-
-      (is (= (pcp/compute-node-chain-depth
-               {::pcp/nodes {1 {::pcp/node-chain-depth 42}}}
-               1)
-             {::pcp/nodes {1 {::pcp/node-chain-depth 42}}}))
-
-      (is (= (pcp/compute-node-chain-depth
-               {::pcp/nodes {1 {::pcp/run-next 2}
-                             2 {}}}
-               1)
-             {::pcp/nodes {1 {::pcp/run-next         2
-                              ::pcp/node-chain-depth 1}
-                           2 {::pcp/node-chain-depth 0}}}))
-
-      (is (= (pcp/compute-node-chain-depth
-               {::pcp/nodes {1 {::pcp/run-next 2}
-                             2 {::pcp/run-next 3}
-                             3 {}}}
-               1)
-             {::pcp/nodes {1 {::pcp/run-next         2
-                              ::pcp/node-chain-depth 2}
-                           2 {::pcp/run-next         3
-                              ::pcp/node-chain-depth 1}
-                           3 {::pcp/node-chain-depth 0}}})))
-
-    (testing "branches chain"
-      (is (= (pcp/compute-node-chain-depth
-               {::pcp/nodes {1 {::pcp/run-and #{2 3}}
-                             2 {}
-                             3 {}}}
-               1)
-             {::pcp/nodes {1 {::pcp/run-and           #{2 3}
-                              ::pcp/node-chain-depth  1
-                              ::pcp/node-branch-depth 1}
-                           2 {::pcp/node-chain-depth 0}
-                           3 {::pcp/node-chain-depth 0}}}))
-
-      (is (= (pcp/compute-node-chain-depth
-               {::pcp/nodes {1 {::pcp/run-and  #{2 3}
-                                ::pcp/run-next 4}
-                             2 {}
-                             3 {}
-                             4 {}}}
-               1)
-             {::pcp/nodes {1 {::pcp/run-and           #{2 3}
-                              ::pcp/run-next          4
-                              ::pcp/node-chain-depth  2
-                              ::pcp/node-branch-depth 1}
-                           2 {::pcp/node-chain-depth 0}
-                           3 {::pcp/node-chain-depth 0}
-                           4 {::pcp/node-chain-depth 0}}}))))
-
-#_(deftest compute-node-depth-test
-    (is (= (pcp/compute-node-depth
-             {::pcp/nodes {1 {}}}
-             1)
-           {::pcp/nodes {1 {::pcp/node-depth 0}}}))
-
-    (is (= (pcp/compute-node-depth
-             {::pcp/nodes {1 {::pcp/node-parents #{2}}
-                           2 {}}}
-             1)
-           {::pcp/nodes {1 {::pcp/node-parents #{2} ::pcp/node-depth 1}
-                         2 {::pcp/node-depth        0
-                            ::pcp/node-branch-depth 0}}}))
-
-    (is (= (pcp/compute-node-depth
-             {::pcp/nodes {1 {::pcp/node-parents #{2}}
-                           2 {::pcp/node-parents #{3}}
-                           3 {}}}
-             1)
-           {::pcp/nodes {1 {::pcp/node-parents #{2}
-                            ::pcp/node-depth   2}
-                         2 {::pcp/node-parents      #{3}
-                            ::pcp/node-depth        1
-                            ::pcp/node-branch-depth 0}
-                         3 {::pcp/node-depth        0
-                            ::pcp/node-branch-depth 0}}}))
-
-    (testing "in case of multiple depths, use the deepest"
-      (is (= (pcp/compute-node-depth
-               {::pcp/nodes {1 {::pcp/node-parents #{2 4}}
-                             2 {::pcp/node-parents #{3}}
-                             3 {}
-                             4 {}}}
-               1)
-             {::pcp/nodes {1 {::pcp/node-parents #{4 2}
-                              ::pcp/node-depth   2}
-                           2 {::pcp/node-parents      #{3}
-                              ::pcp/node-depth        1
-                              ::pcp/node-branch-depth 0}
-                           3 {::pcp/node-depth        0
-                              ::pcp/node-branch-depth 0}
-                           4 {::pcp/node-depth        0
-                              ::pcp/node-branch-depth 0}}})))
-
-    (testing "in case of run next of a branch node, it should be one more than the deepest item in the branch nodes"
-      (is (= (pcp/compute-node-depth
-               {::pcp/nodes {1 {::pcp/node-parents #{2}}
-                             2 {::pcp/run-next 1
-                                ::pcp/run-and  #{3 4}}
-                             3 {::pcp/node-parents #{2}}
-                             4 {::pcp/node-parents #{2}}}}
-               1)
-             {::pcp/nodes {1 {::pcp/node-parents #{2}
-                              ::pcp/node-depth   2}
-                           2 {::pcp/run-and           #{3 4}
-                              ::pcp/run-next          1
-                              ::pcp/node-depth        0
-                              ::pcp/node-branch-depth 1}
-                           3 {::pcp/node-parents     #{2}
-                              ::pcp/node-chain-depth 0}
-                           4 {::pcp/node-parents     #{2}
-                              ::pcp/node-chain-depth 0}}}))))
-
-#_(deftest node-depth-test
-    (is (= (pcp/node-depth
-             {::pcp/nodes {1 {::pcp/node-parents #{2}}
-                           2 {}}}
-             1)
-           1)))
-
-#_(deftest compute-all-node-depths-test
-    (is (= (pcp/compute-all-node-depths
-             {::pcp/nodes {1 {::pcp/node-parents #{2}}
-                           2 {::pcp/node-parents #{3}}
-                           3 {}
-                           4 {}
-                           5 {::pcp/node-parents #{4}}}})
-           {::pcp/nodes {1 {::pcp/node-parents #{2}
-                            ::pcp/node-depth   2}
-                         2 {::pcp/node-parents      #{3}
-                            ::pcp/node-branch-depth 0
-                            ::pcp/node-depth        1}
-                         3 {::pcp/node-branch-depth 0
-                            ::pcp/node-depth        0}
-                         4 {::pcp/node-depth        0
-                            ::pcp/node-branch-depth 0}
-                         5 {::pcp/node-parents #{4}
-                            ::pcp/node-depth   1}}})))
-
 (deftest set-node-run-next-test
   (is (= (pcp/set-node-run-next
            {::pcp/nodes {1 {}
@@ -3278,48 +2604,10 @@
          {::pcp/nodes {1 {}
                        2 {}}})))
 
-#_(deftest params-conflicting-keys-test
-    (is (= (pcp/params-conflicting-keys {} {})
-           #{}))
-
-    (is (= (pcp/params-conflicting-keys {:x 1} {:y 2})
-           #{}))
-
-    (is (= (pcp/params-conflicting-keys {:x 1} {:x 2})
-           #{:x}))
-
-    (is (= (pcp/params-conflicting-keys {:x 1} {:x 1})
-           #{})))
-
 (deftest graph-provides-test
   (is (= (pcp/graph-provides
            {::pcp/index-attrs {:b #{2}, :a #{1}}})
          #{:b :a})))
-
-#_(deftest node-parent-run-next-test
-    (is (= (pcp/node-parent-run-next {::pcp/nodes {1 {::pcp/node-id      1
-                                                      ::pcp/node-parents #{2}}
-                                                   2 {::pcp/node-id  2
-                                                      ::pcp/run-next 1}}}
-             {::pcp/node-id      1
-              ::pcp/node-parents #{2}})
-           2))
-
-    (is (= (pcp/node-parent-run-next {::pcp/nodes {1 {::pcp/node-id      1
-                                                      ::pcp/node-parents #{3 2}}
-                                                   2 {::pcp/node-id  2
-                                                      ::pcp/run-next 1}
-                                                   3 {::pcp/run-and #{2}}}}
-             {::pcp/node-id      1
-              ::pcp/node-parents #{2}})
-           2))
-
-    (is (= (pcp/node-parent-run-next {::pcp/nodes {1 {::pcp/node-id      1
-                                                      ::pcp/node-parents #{2}}
-                                                   2 {::pcp/node-id 2}}}
-             {::pcp/node-id      1
-              ::pcp/node-parents #{2}})
-           nil)))
 
 (deftest merge-unreachable-test
   (is (= (pcp/merge-unreachable
