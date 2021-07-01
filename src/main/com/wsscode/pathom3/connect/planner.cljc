@@ -950,8 +950,20 @@
     (or (::pco/dynamic-name resolver)
         resolver-name)))
 
-(defn compute-dynamic-resolver-nested-requirements
-  "Considering the resolver output, find out what a query can extend during nesting.
+(defn promote-foreign-ast-children
+  "Moves the children from foreign ast to the main children. Also removes the foreign
+  ast attribute."
+  [{::keys [foreign-ast] :as ast}]
+  (-> ast
+      (dissoc ::foreign-ast)
+      (cond->
+        (:children foreign-ast)
+        (assoc :children (:children foreign-ast)))))
+
+(defn compute-dynamic-nested-requirements
+  "Considering the operation output, find out what a query can extend during nesting.
+
+  Pathom uses it to compute the dynamic requirements to send into dynamic resolvers.
 
   This function is a useful tool for developers of custom dynamic resolvers."
   [{::p.attr/keys [attribute]
@@ -959,9 +971,11 @@
     ast           :edn-query-language.ast/node
     :as           env}]
   (if (seq (:children ast))
-    (let [{::pco/keys [dynamic-name] :as config} (pci/resolver-config env op-name)
+    (let [{::pco/keys [dynamic-name provides]} (pci/operation-config env op-name)
           dynamic-name (or dynamic-name (::pco/dynamic-name env))
-          available    (get-in config [::pco/provides attribute])
+          available    (if attribute
+                         (get provides attribute)
+                         provides)
           graph        (compute-run-graph (-> (reset-env env)
                                               (assoc
                                                 :edn-query-language.ast/node ast
@@ -991,7 +1005,7 @@
         config     (pci/resolver-config env op-name)
         op-name'   (or (::pco/dynamic-name config) op-name)
         dynamic?   (pci/dynamic-resolver? env op-name')
-        sub        (if dynamic? (compute-dynamic-resolver-nested-requirements env))
+        sub        (if dynamic? (compute-dynamic-nested-requirements env))
         requires   {attribute (or sub {})}]
     (cond->
       (new-node env
@@ -1267,6 +1281,24 @@
     (pph/placeholder-key? env attr)
     (compute-run-graph* (add-placeholder-entry graph attr) env)))
 
+(defn plan-mutation-nested-query [graph env {:keys [key] :as ast}]
+  (if-let [nested-shape (-> env
+                            (assoc
+                              ::pco/op-name key
+                              :edn-query-language.ast/node ast)
+                            (dissoc ::p.attr/attribute)
+                            (compute-dynamic-nested-requirements))]
+    (assoc-in graph [::index-ast key ::foreign-ast]
+      (pfsd/shape-descriptor->ast nested-shape))
+    graph))
+
+(defn plan-mutation [graph env {:keys [key] :as ast}]
+  (if-let [mutation (pci/mutation env key)]
+    (cond-> (update graph ::mutations coll/vconj key)
+      (-> mutation pco/operation-config ::pco/dynamic-name)
+      (plan-mutation-nested-query env ast))
+    (update graph ::mutations coll/vconj key)))
+
 (defn compute-run-graph*
   "Starts scanning the AST to plan for each attribute."
   [graph env]
@@ -1293,7 +1325,7 @@
 
               ; process mutation
               (refs/kw-identical? (:type ast) :call)
-              [(update graph ::mutations coll/vconj (:key ast)) node-ids]
+              [(plan-mutation graph env ast) node-ids]
 
               :else
               [graph node-ids]))

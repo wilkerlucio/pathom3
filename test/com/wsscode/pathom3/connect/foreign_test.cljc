@@ -5,17 +5,35 @@
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
+    [com.wsscode.pathom3.connect.operation.transit :as pct]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     #?(:clj [com.wsscode.pathom3.interface.async.eql :as p.a.eql])
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.path :as p.path]
+    [com.wsscode.transito :as transito]
     [edn-query-language.core :as eql]
     [promesa.core :as p]))
 
+(defn tread [s]
+  (transito/read-str s {:handlers pct/read-handlers}))
+
+(defn twrite [x]
+  (transito/write-str x {:handlers pct/write-handlers}))
+
+(defn write-read [x]
+  (-> x twrite tread))
+
+(defn serialize-boundary
+  "Encode and decode request with transit to simulate wire process."
+  [env]
+  (let [boundary (p.eql/boundary-interface env)]
+    (fn [request]
+      (-> request write-read boundary write-read))))
+
 (deftest compute-foreign-query-test
   (testing "no inputs"
-    (is (= (pcf/compute-foreign-query
+    (is (= (pcf/compute-foreign-request
              (-> {::pcp/node {::pcp/foreign-ast (eql/query->ast [:a])}}
                  (p.ent/with-entity {})))
            #:pathom{:ast    {:children [{:dispatch-key :a
@@ -25,7 +43,7 @@
                     :entity {}})))
 
   (testing "inputs, but no parent ident, single attribute always goes as ident"
-    (is (= (pcf/compute-foreign-query
+    (is (= (pcf/compute-foreign-request
              (-> {::pcp/node {::pcp/foreign-ast (eql/query->ast [:a])
                               ::pcp/input       {:z {}}}}
                  (p.ent/with-entity {:z "bar"})))
@@ -36,7 +54,7 @@
                     :entity {:z "bar"}})))
 
   (testing "with multiple inputs"
-    (is (= (pcf/compute-foreign-query
+    (is (= (pcf/compute-foreign-request
              (-> {::pcp/node    {::pcp/foreign-ast (eql/query->ast [:a])
                                  ::pcp/input       {:x {}
                                                     :z {}}}
@@ -71,7 +89,7 @@
 (deftest process-foreign-query
   (testing "basic integration"
     (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
-                      (p.eql/boundary-interface))
+                      (serialize-boundary))
           env     (-> (pci/register
                         [(pbir/constantly-resolver :y 20)
                          (pcf/foreign-register foreign)]))]
@@ -82,10 +100,10 @@
                          [(pbir/single-attr-resolver :a :b inc)
                           (pbir/single-attr-resolver :c :d inc)
                           (pbir/single-attr-resolver :e :f inc)])
-                       (p.eql/boundary-interface))
+                       (serialize-boundary))
           foreign2 (-> (pci/register
                          [(pbir/single-attr-resolver :g :h inc)])
-                       (p.eql/boundary-interface))
+                       (serialize-boundary))
           env      (-> (pci/register
                          [(pcf/foreign-register foreign)
                           (pcf/foreign-register foreign2)
@@ -101,7 +119,7 @@
                           (pco/resolver 'n
                             {::pco/output [{:a [:b :c]}]}
                             (fn [_ _] {:a {:b 1 :c 2}})))
-                        (p.eql/boundary-interface))
+                        (serialize-boundary))
             env     (-> (pci/register
                           [(pbir/constantly-resolver :y 20)
                            (pcf/foreign-register foreign)]))]
@@ -116,7 +134,7 @@
                           (pco/resolver 'n
                             {::pco/output [{:a [:b]}]}
                             (fn [_ _] {:a {:b "value"}})))
-                        (p.eql/boundary-interface))
+                        (serialize-boundary))
             env     (-> (pci/register
                           [(pbir/alias-resolver :b :c)
                            (pcf/foreign-register foreign)]))]
@@ -134,22 +152,45 @@
          (is (= @(p.a.eql/process env [:x :y])
                 {:x 10 :y 20}))))))
 
-(comment
-  (let [foreign (-> (pci/register
-                      (pco/resolver 'n
-                        {::pco/output [{:a [:b]}]}
-                        (fn [_ _] {:a {:b "value"}})))
-                    (p.eql/boundary-interface))
-        env     (-> (pci/register
-                      [(pbir/alias-resolver :b :c)
-                       (pcf/foreign-register foreign)])
-                    ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/connect-env)
-                     "debug"))]
-    (p.eql/process env [{:a [:c]}])))
+(deftest process-foreign-mutation-test
+  (testing "basic foreign mutation call"
+    (let [foreign (-> (pci/register (pco/mutation 'doit {::pco/output [:done]} (fn [_ _] {:done true})))
+                      (serialize-boundary))
+          env     (-> (pci/register (pcf/foreign-register foreign)))]
+      (is (= (p.eql/process env ['(doit {})])
+             {'doit {:done true}}))))
+
+  (testing "mutation query going over"
+    (testing "attribute directly in mutation output"
+      (let [foreign (-> (pci/register
+                          (pco/mutation 'doit {::pco/output [:done]} (fn [_ _] {:done true :other "bla"})))
+                        (serialize-boundary))
+            env     (-> (pci/register (pcf/foreign-register foreign)))]
+        (is (= (p.eql/process env [{'(doit {}) [:done]}])
+               {'doit {:done true}}))))
+
+    (testing "attribute extended from mutation, but still in the same foreign"
+      (let [foreign (-> (pci/register
+                          [(pbir/alias-resolver :done :done?)
+                           (pco/mutation 'doit {::pco/output [:done]} (fn [_ _] {:done true :other "bla"}))])
+                        (serialize-boundary))
+            env     (-> (pci/register (pcf/foreign-register foreign)))]
+        (is (= (p.eql/process env [{'(doit {}) [:done?]}])
+               {'doit {:done? true}}))))
+
+    (testing "attribute extended from mutation locally"
+      (let [foreign (-> (pci/register
+                          (pco/mutation 'doit {::pco/output [:done]} (fn [_ _] {:done true :other "bla"})))
+                        (serialize-boundary))
+            env     (-> (pci/register
+                          [(pcf/foreign-register foreign)
+                           (pbir/alias-resolver :done :done?)]))]
+        (is (= (p.eql/process env [{'(doit {}) [:done?]}])
+               {'doit {:done? true}}))))))
 
 (comment
   (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
-                    (p.eql/boundary-interface))
+                    (serialize-boundary))
         env     (-> (pci/register
                       [(pbir/constantly-resolver :y 20)
                        (pcf/foreign-register foreign)]))]

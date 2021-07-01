@@ -589,6 +589,18 @@
     {}
     (::pcp/placeholders graph)))
 
+(defn run-foreign-mutation
+  [env {:keys [key] :as ast}]
+  (let [ast      (cond-> ast (not (:children ast)) (dissoc :children))
+        mutation (pci/mutation env key)
+        foreign  (pci/resolver env (-> mutation pco/operation-config ::pco/dynamic-name))
+        ast      (pcp/promote-foreign-ast-children ast)]
+    (-> (pco.prot/-resolve
+          foreign
+          (assoc env ::pcp/node {::pcp/foreign-ast {:type :root :children [ast]}})
+          {})
+        (get key))))
+
 (defn invoke-mutation!
   "Run mutation from AST."
   [env {:keys [key] :as ast}]
@@ -599,8 +611,10 @@
                                          ::mutation-run-start-ms start})
         result   (try
                    (if mutation
-                     (p.plugin/run-with-plugins env ::wrap-mutate
-                       #(pco.prot/-mutate mutation %1 (:params %2)) env ast)
+                     (if (-> mutation pco/operation-config ::pco/dynamic-name)
+                       (run-foreign-mutation env ast)
+                       (p.plugin/run-with-plugins env ::wrap-mutate
+                         #(pco.prot/-mutate mutation %1 (:params %2)) env ast))
                      (throw (ex-info "Mutation not found" {::pco/op-name key})))
                    (catch #?(:clj Throwable :cljs :default) e
                      (p.plugin/run-with-plugins env ::wrap-mutation-error

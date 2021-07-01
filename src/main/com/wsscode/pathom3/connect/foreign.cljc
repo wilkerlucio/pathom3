@@ -16,7 +16,7 @@
         entity (p.ent/entity env)]
     (select-keys entity (keys input))))
 
-(defn compute-foreign-query
+(defn compute-foreign-request
   [{::pcp/keys [node] :as env}]
   {:pathom/ast    (::pcp/foreign-ast node)
    :pathom/entity (compute-foreign-input env)})
@@ -27,7 +27,7 @@
   (coll/map-keys #(into (pop path) (cond-> % join-node next)) errors))
 
 (defn call-foreign [env foreign]
-  (let [foreign-call (compute-foreign-query env)
+  (let [foreign-call (compute-foreign-request env)
         response (foreign foreign-call)]
     response))
 
@@ -56,6 +56,11 @@
   (let [index-source-id (or index-source-id (gensym "foreign-pathom-"))]
     (-> indexes
         (remove-foreign-indexes)
+        (update ::pci/index-mutations
+          (fn [mutations]
+            (coll/map-vals
+              #(pco/update-config % assoc ::pco/dynamic-name index-source-id)
+              mutations)))
         (update ::pci/index-resolvers
           (fn [resolvers]
             (coll/map-vals
