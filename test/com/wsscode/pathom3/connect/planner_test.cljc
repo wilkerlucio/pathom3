@@ -335,12 +335,11 @@
     (testing "attribute directly in mutation output"
       (is (= (compute-run-graph
                {::dynamics  {'dyn [(pco/mutation 'doit {::pco/output [:done]} (fn [_ _]))]}
-                ::eql/query [{'(doit {}) [:done]}]})
+                ::eql/query [{(list 'doit {}) [:done]}]})
              '{:com.wsscode.pathom3.connect.planner/nodes {},
                :com.wsscode.pathom3.connect.planner/index-ast {doit {:dispatch-key doit,
                                                                      :key doit,
                                                                      :params {},
-                                                                     :meta {:line 339, :column 32},
                                                                      :type :call,
                                                                      :query [:done],
                                                                      :children [{:type :prop,
@@ -356,15 +355,13 @@
       (is (= (compute-run-graph
                {::dynamics  {'dyn [(pco/mutation 'doit {::pco/output [:done]} (fn [_ _]))
                                    (pbir/alias-resolver :done :done?)]}
-                ::eql/query [{'(doit {}) [:done?]}]})
+                ::eql/query [{(list 'doit {}) [:done?]}]})
              '{:com.wsscode.pathom3.connect.planner/nodes {},
                :com.wsscode.pathom3.connect.planner/index-ast {doit {:dispatch-key doit,
                                                                      :key doit,
                                                                      :params {},
                                                                      :type :call,
                                                                      :query [:done?],
-                                                                     :meta                                            {:column 32
-                                                                                                                       :line   360}
                                                                      :children [{:type :prop,
                                                                                  :dispatch-key :done?,
                                                                                  :key :done?}],
@@ -378,7 +375,7 @@
       (is (= (compute-run-graph
                {::dynamics  {'dyn [(pco/mutation 'doit {::pco/output [:done]} (fn [_ _]))]}
                 ::resolvers [(pbir/alias-resolver :done :done?)]
-                ::eql/query [{'(doit {}) [:done?]}]})
+                ::eql/query [{(list 'doit {}) [:done?]}]})
              '{:com.wsscode.pathom3.connect.planner/index-ast {doit {:children                                        [{:dispatch-key :done?
                                                                                                                         :key          :done?
                                                                                                                         :type         :prop}]
@@ -388,8 +385,6 @@
                                                                                                                        :type     :root}
                                                                      :dispatch-key                                    doit
                                                                      :key                                             doit
-                                                                     :meta                                            {:column 32
-                                                                                                                       :line   382}
                                                                      :params                                          {}
                                                                      :query                                           [:done?]
                                                                      :type                                            :call}}
