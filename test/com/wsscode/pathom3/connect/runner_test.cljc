@@ -857,15 +857,14 @@
               {}
               [:err]))))
 
-    (let [err (ex-info "Fail fast" {})]
-      (is (thrown-with-msg?
-            #?(:clj Throwable :cljs js/Error)
-            #"Fail fast"
-            @(run-graph-async
-               (pci/register {::pcr/fail-fast? true}
-                             (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
-               {}
-               [:err])))))
+    #?(:clj
+       (let [err (ex-info "Fail fast" {})]
+         (is (thrown-with-msg? Throwable #"Fail fast"
+               @(run-graph-async
+                  (pci/register {::pcr/fail-fast? true}
+                                (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
+                  {}
+                  [:err]))))))
 
   (testing "fail fast mutation"
     (let [err (ex-info "Fail fast" {})]
@@ -878,15 +877,14 @@
               {}
               ['(err {})]))))
 
-    (let [err (ex-info "Fail fast" {})]
-      (is (thrown-with-msg?
-            #?(:clj Throwable :cljs js/Error)
-            #"Fail fast"
-            @(run-graph-async
-               (pci/register {::pcr/fail-fast? true}
-                             (pco/mutation 'err {} (fn [_ _] (throw err))))
-               {}
-               ['(err {})]))))))
+    #?(:clj
+       (let [err (ex-info "Fail fast" {})]
+         (is (thrown-with-msg? Throwable #"Fail fast"
+               @(run-graph-async
+                  (pci/register {::pcr/fail-fast? true}
+                                (pco/mutation 'err {} (fn [_ _] (throw err))))
+                  {}
+                  ['(err {})])))))))
 
 (defn batchfy
   "Convert a resolver in a batch version of it."
