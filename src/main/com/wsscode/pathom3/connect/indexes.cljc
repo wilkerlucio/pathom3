@@ -289,6 +289,10 @@
      :else
      (throw (ex-info "Invalid type to register" {::operations operation-or-operations-or-indexes})))))
 
+(defn operation-config [env op-name]
+  (or (resolver-config env op-name)
+      (mutation-config env op-name)))
+
 (>defn attribute-available?
   "Check if some attribute is known in the index, this checks uses the index-oir."
   [{::keys [index-oir]} k]
