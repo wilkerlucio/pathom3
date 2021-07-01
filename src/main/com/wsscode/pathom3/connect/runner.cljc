@@ -26,6 +26,11 @@
 
 (>def ::batch-error? boolean?)
 
+(>def ::fail-fast?
+  "Defaults to false. When set to true, in case of exceptions in resolvers or mutations,
+  Pathom will fail immediately."
+  boolean?)
+
 (>def ::batch-hold
   "A map containing information to trigger a batch for a resolver node."
   (s/keys))
@@ -200,6 +205,9 @@
   [graph k]
   (-> (pcp/entry-ast graph k)
       (normalize-ast-recursive-query graph k)))
+
+(defn fail-fast [{::keys [fail-fast?]} error]
+  (if fail-fast? (throw error)))
 
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
@@ -423,6 +431,7 @@
                                 env cache? op-name resolver cache-store input-data params)))
                           (catch #?(:clj Throwable :cljs :default) e
                             (mark-resolver-error-with-plugins env node e)
+                            (fail-fast env e)
                             ::node-error))
         finish          (time/now-ms)]
     (if-not (valid-response? result)
@@ -596,6 +605,7 @@
                    (catch #?(:clj Throwable :cljs :default) e
                      (p.plugin/run-with-plugins env ::wrap-mutation-error
                        (fn [_ _ _]) env ast e)
+                     (fail-fast env e)
                      {::mutation-error e}))]
     (merge-mutation-stats! env {::pco/op-name key}
                            {::mutation-run-finish-ms (time/now-ms)})

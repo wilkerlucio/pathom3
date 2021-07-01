@@ -223,6 +223,7 @@
                             (p/catch
                               (fn [error]
                                 (pcr/mark-resolver-error-with-plugins env node error)
+                                (pcr/fail-fast env error)
                                 ::pcr/node-error)))]
     (p/let [result result]
       (let [finish (time/now-ms)]
@@ -353,6 +354,7 @@
                          (fn [e]
                            (p.plugin/run-with-plugins env ::pcr/wrap-mutation-error
                              (fn [_ _ _]) env ast e)
+                           (pcr/fail-fast env e)
                            {::pcr/mutation-error e})))
           _        (pcr/merge-mutation-stats! env {::pco/op-name key}
                      {::pcr/mutation-run-finish-ms (time/now-ms)})
