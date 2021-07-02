@@ -8,7 +8,7 @@
   com.wsscode/log            {:git/url "https://github.com/wilkerlucio/log"
                               :sha     "1ac61009b3a57d5d09515ca823556bbe440c292d"}
   funcool/promesa            {:mvn/version "6.0.0"}
-  edn-query-language/eql     {:mvn/version "1.0.2"}
+  edn-query-language/eql     {:mvn/version "2021.02.28"}
   potemkin/potemkin          {:mvn/version "0.4.5"}}
 
  :aliases
