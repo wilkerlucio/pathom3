@@ -14,29 +14,32 @@
 (defn attr-munge [attr]
   (munge (subs (str attr) 1)))
 
+(defn combine-names [na nb]
+  (cond
+    (not nb)
+    na
+
+    (not na)
+    nb
+
+    (= na nb)
+    na
+
+    :else
+    (str (str na "->" nb))))
+
 (defn attr-alias-resolver-name [from to]
-  (let [nsa (namespace from)
-        nsb (namespace to)
-        nsc (cond
-              (not nsb)
-              nsa
-
-              (not nsa)
-              nsb
-
-              (= nsa nsb)
-              nsa
-
-              :else
-              (str (munge (str nsa "-" nsb))))]
-
-    (symbol nsc (str (munge (name from)) "->" (munge (name to))))))
+  (symbol
+    (combine-names
+      (or (namespace from) "-unqualified")
+      (or (namespace to) "-unqualified"))
+    (combine-names (name from) (name to))))
 
 (defn alias-resolver
   "Create a resolver that will convert attribute `from` to a attribute `to` with
   the same value. This only creates the alias in one direction."
   [from to]
-  (let [resolver-name (symbol (str (attr-alias-resolver-name from to) "-alias"))]
+  (let [resolver-name (symbol (str (attr-alias-resolver-name from to) "--alias"))]
     (pco/resolver resolver-name
       {::pco/input  [from]
        ::pco/output [to]
@@ -52,7 +55,7 @@
 (defn constantly-resolver
   "Create a simple resolver that always return `value` for `attribute`."
   ([attribute value]
-   (let [resolver-name (symbol (str (attr-munge attribute) "-constant"))]
+   (let [resolver-name (symbol (str (attr-munge attribute) "--constant"))]
      (pco/resolver resolver-name
        {::pco/output [attribute]
         ::pco/cache? false}
@@ -62,7 +65,7 @@
   "Create a simple resolver that always calls value-fn and return its value. Note that
   cache is disabled by default in this resolver."
   ([attribute value-fn]
-   (let [resolver-name (symbol (str (attr-munge attribute) "-constant"))]
+   (let [resolver-name (symbol (str (attr-munge attribute) "--constant"))]
      (pco/resolver resolver-name
        {::pco/output [attribute]
         ::pco/cache? false}
@@ -73,7 +76,7 @@
 
   `f` receives a single argument, which is the attribute value from `source`."
   [source target f]
-  (let [resolver-name (symbol (str (attr-alias-resolver-name source target) "-single-attr-transform"))]
+  (let [resolver-name (symbol (str (attr-alias-resolver-name source target) "--single-attr-transform"))]
     (pco/resolver resolver-name
       {::pco/input  [source]
        ::pco/output [target]}
@@ -83,7 +86,7 @@
 (defn single-attr-with-env-resolver
   "Similar single-attr-resolver, but `f` receives two arguments, `env` and the input."
   [source target f]
-  (let [resolver-name (symbol (str (attr-alias-resolver-name source target) "-single-attr-transform"))]
+  (let [resolver-name (symbol (str (attr-alias-resolver-name source target) "--single-attr-transform"))]
     (pco/resolver resolver-name
       {::pco/input  [source]
        ::pco/output [target]}
@@ -123,7 +126,7 @@
   ([attr-key table]
    [::p.attr/attribute ::entity-table
     => ::pco/resolver]
-   (let [resolver-name (symbol (str (attr-alias-resolver-name attr-key "-static-table")))]
+   (let [resolver-name (symbol (str (attr-alias-resolver-name attr-key "--static-table")))]
      (static-table-resolver resolver-name attr-key table)))
   ([resolver-name attr-key table]
    [::pco/op-name ::p.attr/attribute ::entity-table
@@ -157,7 +160,7 @@
   [input output mapping]
   [::p.attr/attribute ::p.attr/attribute map?
    => ::pco/resolver]
-  (let [resolver-name (symbol (str (attr-alias-resolver-name input output) "-static-attribute-map"))]
+  (let [resolver-name (symbol (str (attr-alias-resolver-name input output) "--static-attribute-map"))]
     (pco/resolver resolver-name
       {::pco/input  [input]
        ::pco/output [output]}
@@ -191,7 +194,7 @@
   [table-name attr-key output]
   [::p.attr/attribute ::p.attr/attribute ::pco/output
    => ::pco/resolver]
-  (let [resolver-name (symbol (str (attr-munge attr-key) "-table-" (attr-munge table-name)))]
+  (let [resolver-name (symbol (str (attr-munge attr-key) "--table-" (attr-munge table-name)))]
     (pco/resolver resolver-name
       {::pco/input  [attr-key table-name]
        ::pco/output output}
@@ -225,7 +228,7 @@
   [table-name attr-key output]
   [::p.attr/attribute ::p.attr/attribute ::pco/output
    => ::pco/resolver]
-  (let [resolver-name (symbol (str (attr-munge attr-key) "-env-table-" (attr-munge table-name)))]
+  (let [resolver-name (symbol (str (attr-munge attr-key) "--env-table-" (attr-munge table-name)))]
     (pco/resolver resolver-name
       {::pco/input  [attr-key]
        ::pco/output output}
