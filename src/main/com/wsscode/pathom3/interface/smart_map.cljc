@@ -21,6 +21,10 @@
 
 (declare smart-map smart-map? sm-env datafy-smart-map)
 
+(>def ::persistent-cache?
+  "Flat to decide if the resolver cache should persist in memory for later invocations."
+  boolean?)
+
 (>def ::error-mode
   #{::error-mode-silent
     ::error-mode-loud})
