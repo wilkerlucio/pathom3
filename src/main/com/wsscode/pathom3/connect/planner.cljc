@@ -851,8 +851,8 @@
     (if (seq missing)
       (let [graph (compute-run-graph
                     (-> (reset-env env)
+                        (update ::snapshot-depth #(inc (or % 0)))
                         (assoc
-                          ::snapshot-depth (inc (::snapshot-depth env 0))
                           ::available-data available
                           :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing))))]
         (every?
