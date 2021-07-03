@@ -852,6 +852,7 @@
       (let [graph (compute-run-graph
                     (-> (reset-env env)
                         (assoc
+                          ::snapshot-depth (inc (::snapshot-depth env))
                           ::available-data available
                           :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing))))]
         (every?
@@ -1394,7 +1395,7 @@
             ::plan-cache*])
     => ::graph]
    (add-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
-                             ::snapshot-message "Start query plan"})
+                             ::snapshot-message "=== Start query plan ==="})
 
    (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
                                       (::available-data env)
