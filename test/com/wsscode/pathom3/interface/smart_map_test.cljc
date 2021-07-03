@@ -330,5 +330,7 @@
     (is (= (::geo/left sm) 10))))
 
 (comment
-  (psm/smart-map (pci/register registry)
-    {:x 3}))
+  (-> (pci/register registry)
+      (assoc :com.wsscode.pathom3.connect.planner/plan-cache* (atom {}))
+      ((requiring-resolve 'com.wsscode.pathom.viz.ws-connector.pathom3/connect-env)
+       "geo")))
