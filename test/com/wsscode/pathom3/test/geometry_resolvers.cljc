@@ -49,6 +49,9 @@
 (pco/defresolver half-width [{::keys [width]}]
   {::half-width (/ width 2)})
 
+(pco/defresolver half-width-rev [{::keys [half-width]}]
+  {::width (* half-width 2)})
+
 (pco/defresolver half-height [{::keys [height]}]
   {::half-height (/ height 2)})
 
@@ -81,6 +84,7 @@
    width
    height
    half-width
+   half-width-rev
    half-height
    center-x
    center-y
@@ -108,3 +112,8 @@
    (pbir/alias-resolver :ry :r)])
 
 (def full-registry [registry geo->svg-registry])
+
+(comment
+  (map (comp ::pco/op-name pco/operation-config) (flatten geo->svg-registry))
+
+  (pbir/alias-resolver :foo/id :foo-other/id))
