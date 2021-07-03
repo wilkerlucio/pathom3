@@ -28,18 +28,30 @@
     :else
     (str (str na "->" nb))))
 
-(defn attr-alias-resolver-name [from to]
-  (symbol
-    (combine-names
-      (or (namespace from) "-unqualified")
-      (or (namespace to) "-unqualified"))
-    (combine-names (name from) (name to))))
+(defn attr-ns [kw]
+  (or (namespace kw) "-unqualified"))
+
+(defn attr-alias-resolver-name
+  ([from to]
+   (symbol
+     (combine-names (attr-ns from) (attr-ns to))
+     (combine-names (name from) (name to))))
+  ([from to suffix]
+   (symbol
+     (combine-names (attr-ns from) (attr-ns to))
+     (str (combine-names (name from) (name to)) "--" suffix))))
+
+(defn attr->sym
+  ([kw]
+   (symbol (attr-ns kw) (name kw)))
+  ([kw suffix]
+   (symbol (attr-ns kw) (str (name kw) "--" suffix))))
 
 (defn alias-resolver
   "Create a resolver that will convert attribute `from` to a attribute `to` with
   the same value. This only creates the alias in one direction."
   [from to]
-  (let [resolver-name (symbol (str (attr-alias-resolver-name from to) "--alias"))]
+  (let [resolver-name (attr-alias-resolver-name from to "alias")]
     (pco/resolver resolver-name
       {::pco/input  [from]
        ::pco/output [to]
@@ -55,7 +67,7 @@
 (defn constantly-resolver
   "Create a simple resolver that always return `value` for `attribute`."
   ([attribute value]
-   (let [resolver-name (symbol (str (attr-munge attribute) "--constant"))]
+   (let [resolver-name (attr->sym attribute)]
      (pco/resolver resolver-name
        {::pco/output [attribute]
         ::pco/cache? false}
@@ -65,7 +77,7 @@
   "Create a simple resolver that always calls value-fn and return its value. Note that
   cache is disabled by default in this resolver."
   ([attribute value-fn]
-   (let [resolver-name (symbol (str (attr-munge attribute) "--constant"))]
+   (let [resolver-name (attr->sym attribute)]
      (pco/resolver resolver-name
        {::pco/output [attribute]
         ::pco/cache? false}
@@ -76,7 +88,7 @@
 
   `f` receives a single argument, which is the attribute value from `source`."
   [source target f]
-  (let [resolver-name (symbol (str (attr-alias-resolver-name source target) "--single-attr-transform"))]
+  (let [resolver-name (attr-alias-resolver-name source target "attr-transform")]
     (pco/resolver resolver-name
       {::pco/input  [source]
        ::pco/output [target]}
@@ -86,7 +98,7 @@
 (defn single-attr-with-env-resolver
   "Similar single-attr-resolver, but `f` receives two arguments, `env` and the input."
   [source target f]
-  (let [resolver-name (symbol (str (attr-alias-resolver-name source target) "--single-attr-transform"))]
+  (let [resolver-name (attr-alias-resolver-name source target "attr-transform")]
     (pco/resolver resolver-name
       {::pco/input  [source]
        ::pco/output [target]}
@@ -123,20 +135,20 @@
   name to be used to related the data, in this case we use `:song/id` on both, so they
   get connected by it.
   "
-  ([attr-key table]
+  ([attribute table]
    [::p.attr/attribute ::entity-table
     => ::pco/resolver]
-   (let [resolver-name (symbol (str (attr-munge attr-key) "--static-table"))]
-     (static-table-resolver resolver-name attr-key table)))
-  ([resolver-name attr-key table]
+   (let [resolver-name (attr->sym attribute "static-table")]
+     (static-table-resolver resolver-name attribute table)))
+  ([resolver-name attribute table]
    [::pco/op-name ::p.attr/attribute ::entity-table
     => ::pco/resolver]
    (let [output (table-output table)]
      (pco/resolver resolver-name
-       {::pco/input  [attr-key]
+       {::pco/input  [attribute]
         ::pco/output output}
        (fn [_ input]
-         (let [id (get input attr-key)]
+         (let [id (get input attribute)]
            (get table id)))))))
 
 (>defn static-attribute-map-resolver

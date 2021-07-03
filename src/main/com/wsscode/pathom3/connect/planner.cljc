@@ -754,6 +754,9 @@
 (defn add-placeholder-entry [graph attr]
   (update graph ::placeholders coll/sconj attr))
 
+(defn inc-snapshot-depth [env]
+  (update env ::snapshot-depth #(inc (or % 0))))
+
 ; endregion
 
 ; region node traversal
@@ -851,7 +854,7 @@
     (if (seq missing)
       (let [graph (compute-run-graph
                     (-> (reset-env env)
-                        (update ::snapshot-depth #(inc (or % 0)))
+                        (inc-snapshot-depth)
                         (assoc
                           ::available-data available
                           :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing))))]
@@ -978,6 +981,7 @@
                          (get provides attribute)
                          provides)
           graph        (compute-run-graph (-> (reset-env env)
+                                              (inc-snapshot-depth)
                                               (assoc
                                                 :edn-query-language.ast/node ast
                                                 ::available-data available)))
