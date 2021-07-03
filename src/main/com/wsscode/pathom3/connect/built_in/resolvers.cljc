@@ -15,7 +15,22 @@
   (munge (subs (str attr) 1)))
 
 (defn attr-alias-resolver-name [from to]
-  (symbol (str (attr-munge from) "->" (attr-munge to))))
+  (let [nsa (namespace from)
+        nsb (namespace to)
+        nsc (cond
+              (not nsb)
+              nsa
+
+              (not nsa)
+              nsb
+
+              (= nsa nsb)
+              nsa
+
+              :else
+              (str (munge (str nsa "-" nsb))))]
+
+    (symbol nsc (str (munge (name from)) "->" (munge (name to))))))
 
 (defn alias-resolver
   "Create a resolver that will convert attribute `from` to a attribute `to` with
