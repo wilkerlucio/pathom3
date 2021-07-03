@@ -126,7 +126,7 @@
   ([attr-key table]
    [::p.attr/attribute ::entity-table
     => ::pco/resolver]
-   (let [resolver-name (symbol (str (attr-alias-resolver-name attr-key "--static-table")))]
+   (let [resolver-name (symbol (str (attr-munge attr-key) "--static-table"))]
      (static-table-resolver resolver-name attr-key table)))
   ([resolver-name attr-key table]
    [::pco/op-name ::p.attr/attribute ::entity-table

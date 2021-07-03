@@ -590,7 +590,7 @@
            ::pco/requires {}
            ::pco/output   [:foo],
            ::pco/cache?   false,
-           ::pco/op-name  foo-constant,
+           ::pco/op-name  foo--constant,
            :extra         "data"})))
 
 (deftest describe-input-test

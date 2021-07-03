@@ -852,7 +852,7 @@
       (let [graph (compute-run-graph
                     (-> (reset-env env)
                         (assoc
-                          ::snapshot-depth (inc (::snapshot-depth env))
+                          ::snapshot-depth (inc (::snapshot-depth env 0))
                           ::available-data available
                           :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing))))]
         (every?

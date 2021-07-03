@@ -1160,8 +1160,8 @@
           (pci/register
             {::pcr/resolver-cache*
              (volatile!
-               {['id->v-single-attr-transform {:id 1} {}] {:v 100}
-                ['id->v-single-attr-transform {:id 3} {}] {:v 300}})}
+               {['-unqualified/id->v--single-attr-transform {:id 1} {}] {:v 100}
+                ['-unqualified/id->v--single-attr-transform {:id 3} {}] {:v 300}})}
             [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
           {:list
            [{:id 1}
@@ -1178,8 +1178,8 @@
             (pci/register
               {::custom-cache*
                (volatile!
-                 {['id->v-single-attr-transform {:id 1} {}] {:v 100}
-                  ['id->v-single-attr-transform {:id 3} {}] {:v 300}})}
+                 {['-unqualified/id->v--single-attr-transform {:id 1} {}] {:v 100}
+                  ['-unqualified/id->v--single-attr-transform {:id 3} {}] {:v 300}})}
               [(-> (batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
                    (pco/update-config assoc ::pco/cache-store ::custom-cache*))])
             {:list
@@ -1196,8 +1196,8 @@
             (pci/register
               {::custom-cache*
                (custom-cache
-                 {['id->v-single-attr-transform {:id 1} {}] {:v 100}
-                  ['id->v-single-attr-transform {:id 3} {}] {:v 300}})}
+                 {['-unqualified/id->v--single-attr-transform {:id 1} {}] {:v 100}
+                  ['-unqualified/id->v--single-attr-transform {:id 3} {}] {:v 300}})}
               [(-> (batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))
                    (pco/update-config assoc ::pco/cache-store ::custom-cache*))])
             {:list
@@ -1552,7 +1552,7 @@
             {:x 10
              :y 20}))
       (is (= @cache*
-             '{[x->y-single-attr-transform {:x 10} {}] {:y 20}})))
+             '{[-unqualified/x->y--single-attr-transform {:x 10} {}] {:y 20}})))
 
     (testing "with params"
       (let [cache* (atom {})]
@@ -1566,7 +1566,7 @@
               {:x 10
                :y 20}))
         (is (= @cache*
-               '{[x->y-single-attr-transform {:x 10} {:foo "bar"}] {:y 20}}))))
+               '{[-unqualified/x->y--single-attr-transform {:x 10} {:foo "bar"}] {:y 20}}))))
 
     (testing "custom cache key"
       (let [cache*    (atom {})
@@ -1585,21 +1585,21 @@
         (is (= @cache*
                '{}))
         (is (= @my-cache*
-               '{[x->y-single-attr-transform {:x 10} {}] {:y 20}})))))
+               '{[-unqualified/x->y--single-attr-transform {:x 10} {}] {:y 20}})))))
 
   (testing "cache hit"
     (is (graph-response?
           (-> (pci/register
                 [(pbir/constantly-resolver :x 10)
                  (pbir/single-attr-resolver :x :y #(* 2 %))])
-              (assoc ::pcr/resolver-cache* (atom {'[x->y-single-attr-transform {:x 10} {}] {:y 30}})))
+              (assoc ::pcr/resolver-cache* (atom {'[-unqualified/x->y--single-attr-transform {:x 10} {}] {:y 30}})))
           {}
           [:y]
           {:x 10
            :y 30})))
 
   (testing "cache don't hit with different params"
-    (let [cache* (atom {'[x->y-single-attr-transform {:x 10} {}] {:y 30}})]
+    (let [cache* (atom {'[-unqualified/x->y--single-attr-transform {:x 10} {}] {:y 30}})]
       (is (graph-response?
             (-> (pci/register
                   [(pbir/constantly-resolver :x 10)
@@ -1611,8 +1611,8 @@
              :y 20}))
 
       (is (= @cache*
-             {'[x->y-single-attr-transform {:x 10} {}]      {:y 30}
-              '[x->y-single-attr-transform {:x 10} {:z 42}] {:y 20}}))))
+             {'[-unqualified/x->y--single-attr-transform {:x 10} {}]      {:y 30}
+              '[-unqualified/x->y--single-attr-transform {:x 10} {:z 42}] {:y 20}}))))
 
   (testing "resolver with cache disabled"
     (is (graph-response?
