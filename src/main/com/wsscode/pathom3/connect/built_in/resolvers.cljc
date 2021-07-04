@@ -156,7 +156,7 @@
   map entry.
 
       (def registry
-        [(pbir/attribute-map :song/id :song/name
+        [(pbir/static-attribute-map-resolver :song/id :song/name
            {1 \"Marchinha Psicotica de Dr. Soup\"
             2 \"There's Enough\"})
 
