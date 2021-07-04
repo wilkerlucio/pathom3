@@ -67,7 +67,7 @@
 (defn constantly-resolver
   "Create a simple resolver that always return `value` for `attribute`."
   ([attribute value]
-   (let [resolver-name (attr->sym attribute)]
+   (let [resolver-name (attr->sym attribute "const")]
      (pco/resolver resolver-name
        {::pco/output [attribute]
         ::pco/cache? false}
@@ -77,7 +77,7 @@
   "Create a simple resolver that always calls value-fn and return its value. Note that
   cache is disabled by default in this resolver."
   ([attribute value-fn]
-   (let [resolver-name (attr->sym attribute)]
+   (let [resolver-name (attr->sym attribute "const-fn")]
      (pco/resolver resolver-name
        {::pco/output [attribute]
         ::pco/cache? false}
