@@ -573,10 +573,12 @@
   (update na ::expects pfsd/merge-shapes (::expects nb)))
 
 (defn combine-inputs [na nb]
-  (update na ::input pfsd/merge-shapes (::input nb)))
+  (if (::input nb)
+    (update na ::input pfsd/merge-shapes (::input nb))
+    na))
 
 (defn combine-foreign-ast [na nb]
-  (if (::foreign-ast na)
+  (if (::foreign-ast nb)
     (update na ::foreign-ast pf.eql/merge-ast-children (::foreign-ast nb))
     na))
 
