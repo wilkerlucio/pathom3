@@ -572,6 +572,9 @@
 (defn combine-expects [na nb]
   (update na ::expects pfsd/merge-shapes (::expects nb)))
 
+(defn combine-inputs [na nb]
+  (update na ::input pfsd/merge-shapes (::input nb)))
+
 (defn combine-foreign-ast [na nb]
   (if (::foreign-ast na)
     (update na ::foreign-ast pf.eql/merge-ast-children (::foreign-ast nb))
@@ -648,6 +651,7 @@
         ; merge any extra keys from source node, but without overriding anything
         (update-node target-node-id nil coll/merge-defaults source-node)
         (update-node target-node-id nil combine-expects source-node)
+        (update-node target-node-id nil combine-inputs source-node)
         (update-node target-node-id nil combine-foreign-ast source-node)
         (transfer-node-indexes target-node-id source-node-id)
         (remove-node-edges source-node-id)
