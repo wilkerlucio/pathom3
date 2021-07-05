@@ -76,16 +76,6 @@
                  (p.eql/process [{[:a/id 1] [:a/code]}]))
              {[:a/id 1] #:a{:code 2}})))))
 
-(deftest remove-stats-plugin-test
-  (let [res (p.eql/process
-              (-> (pci/register (pbir/constantly-resolver :foo "bar"))
-                  (p.plugin/register pbip/remove-stats-plugin))
-              [:foo])]
-    (is (= res
-           {:foo "bar"}))
-    (is (= (meta res)
-           {}))))
-
 (deftest mutation-resolve-params-test
   (is (= (p.eql/process
            (-> (pci/register

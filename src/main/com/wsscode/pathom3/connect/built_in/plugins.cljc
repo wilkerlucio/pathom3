@@ -65,6 +65,7 @@
   {::pcr/wrap-run-graph!
    (fn remove-stats-plugin-wrap-run-graph-external [run-graph!]
      (fn remove-stats-plugin-wrap-run-graph-internal [env ast-or-graph entity-tree*]
+       (throw (ex-info "Plugin going to be removed, please use `::pcr/omit-run-stats?` true config instead." {}))
        (clet [response (run-graph! env ast-or-graph entity-tree*)]
          (vary-meta response dissoc :com.wsscode.pathom3.connect.runner/run-stats))))})
 
