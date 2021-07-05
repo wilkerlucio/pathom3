@@ -113,6 +113,16 @@
       (is (= (p.eql/process env {:a 1} [:h])
              {:h 8}))))
 
+  (testing "multiple inputs"
+    (let [foreign (-> (pci/register [(pbir/single-attr-resolver :a :aa str)
+                                     (pbir/single-attr-resolver :b :bb str)])
+                      (serialize-boundary))
+          env     (-> (pci/register
+                        [(pco/resolver 'ab {::pco/output [:a :b]} (fn [_ _] {:a 1 :b 2}))
+                         (pcf/foreign-register foreign)]))]
+      (is (= (p.eql/process env [:aa :bb])
+             {:aa "1" :bb "2"}))))
+
   (testing "nested query"
     (testing "direct nest"
       (let [foreign (-> (pci/register
