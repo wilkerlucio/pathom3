@@ -1388,6 +1388,7 @@
             ::pci/index-mutations
             ::pci/index-oir
             ::pci/index-resolvers
+            ::optimize-graph?
             ::plan-cache*])
     => ::graph]
    (compute-run-graph {} env))
