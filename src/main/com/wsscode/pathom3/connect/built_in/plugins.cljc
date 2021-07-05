@@ -53,8 +53,15 @@
            entity))))})
 
 (p.plugin/defplugin ^:deprecate remove-stats-plugin
-  "Remove the run stats from the result meta. Use this in production to avoid sending
-  the stats. This is important for performance and security."
+  "DEPRECATED
+
+  This plugin is deprecated and is going to get removed, please instead use the
+  option `::pcr/omit-run-stats?` true in your env to disable run stats meta.
+
+  Remove the run stats from the result meta. Use this in production to avoid sending
+  the stats. This is important for performance and security.
+
+  "
   {::pcr/wrap-run-graph!
    (fn remove-stats-plugin-wrap-run-graph-external [run-graph!]
      (fn remove-stats-plugin-wrap-run-graph-internal [env ast-or-graph entity-tree*]
