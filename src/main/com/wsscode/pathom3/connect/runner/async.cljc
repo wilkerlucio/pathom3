@@ -3,6 +3,7 @@
   and performance characteristics might change."
   (:require
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.log :as l]
     [com.wsscode.misc.coll :as coll]
@@ -203,11 +204,13 @@
         resolver-cache* (get env cache-store)
         _               (pcr/merge-node-stats! env node
                           {::pcr/resolver-run-start-ms (time/now-ms)})
-        result          (-> (if (pfsd/missing input-shape input entity)
+        result          (-> (if-let [missing (pfsd/missing input-shape input entity)]
                               (if (pcr/missing-maybe-in-pending-batch? env input)
                                 (pcr/wait-batch-response env node)
-                                (p/rejected (ex-info "Insufficient data" {:required  input
-                                                                          :available input-shape})))
+                                (p/rejected (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
+                                                     {:required  input
+                                                      :available input-shape
+                                                      :missing   missing})))
                               (cond
                                 batch?
                                 (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]

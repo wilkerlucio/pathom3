@@ -68,7 +68,7 @@
     (is (mcs/match?
           {::p.error/error-type         ::p.error/node-errors
            ::p.error/node-error-details {1 {::p.error/error-type ::p.error/node-exception
-                                            ::p.error/exception  (match-error "Insufficient data")}}}
+                                            ::p.error/exception  (match-error "Insufficient data calling resolver '-unqualified/a->b--attr-transform. Missing attrs :a")}}}
           (let [data (p.eql/process
                        (pci/register
                          [(pco/resolver 'a

@@ -199,8 +199,8 @@
             {::map-container {:foo {::p.path/path [::map-container :foo]}}}))))
 
   (testing "insufficient data"
-    (let [res (run-graph (pci/register [(pco/resolver 'a {::pco/output [:a]
-                                                          ::pco/input  [:b]}
+    (let [res (run-graph (pci/register [(pco/resolver 'a {::pco/input  [:b]
+                                                          ::pco/output [:a]}
                                           (fn [_ _] {:a "a"}))
                                         (pco/resolver 'b {::pco/output [:b]}
                                           (fn [_ _] {}))])
@@ -212,13 +212,14 @@
                  (get 1)
                  ::pcr/node-error
                  ex-message)
-             "Insufficient data"))
+             "Insufficient data calling resolver 'a. Missing attrs :b"))
       (is (= (-> res meta ::pcr/run-stats
                  ::pcr/node-run-stats
                  (get 1)
                  ::pcr/node-error
                  ex-data)
              {:available {}
+              :missing   {:b {}}
               :required  {:b {}}}))))
 
   (testing "ending values"
