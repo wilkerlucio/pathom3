@@ -1029,7 +1029,7 @@
                    :>/id meta ::pcr/run-stats)))
 
     (is (nil? (-> (run-graph
-                    (-> {::pcr/run-stats-omit? true}
+                    (-> {::pcr/omit-run-stats? true}
                         (pci/register
                           [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))]))
                     {}
@@ -1407,7 +1407,7 @@
 
   (is (graph-response?
         (pci/register
-          {::pcr/run-stats-omit-resolver-io? true}
+          {::pcr/omit-run-stats-resolver-io? true}
           [(pco/resolver 'a {::pco/output [:a]} (fn [_ _] {:a 1}))
            (pco/resolver 'b {::pco/output [:b]
                              ::pco/input  [:a]} (fn [_ _] {:b 2}))])
@@ -1465,7 +1465,7 @@
 
     (is (graph-response?
           (pci/register
-            {::pcr/run-stats-omit-resolver-io? true}
+            {::pcr/omit-run-stats-resolver-io? true}
             [(pco/resolver 'a {::pco/input  [:id]
                                ::pco/output [:x]
                                ::pco/batch? true}
