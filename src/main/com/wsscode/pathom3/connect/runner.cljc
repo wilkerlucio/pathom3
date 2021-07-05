@@ -83,8 +83,8 @@
 (>def ::resolver-run-finish-ms number?)
 
 (>def ::run-stats map?)
-(>def ::run-stats-omit? boolean?)
-(>def ::run-stats-omit-resolver-io? boolean?)
+(>def ::omit-run-stats? boolean?)
+(>def ::omit-run-stats-resolver-io? boolean?)
 
 (>def ::source-node-id ::pcp/node-id)
 
@@ -316,8 +316,8 @@
     ::resolver-cache*))
 
 (defn report-resolver-io-stats
-  [{::keys [run-stats-omit-resolver-io?]} input-data result]
-  (if run-stats-omit-resolver-io?
+  [{::keys [omit-run-stats-resolver-io?]} input-data result]
+  (if omit-run-stats-resolver-io?
     {::node-resolver-input-shape  (pfsd/data->shape-descriptor input-data)
      ::node-resolver-output-shape (pfsd/data->shape-descriptor result)}
 
@@ -705,11 +705,11 @@
     ::node-run-stats (some-> env ::node-run-stats* deref)))
 
 (defn include-meta-stats
-  [result {::keys [run-stats-omit?]
-           :or    {run-stats-omit? false}
+  [result {::keys [omit-run-stats?]
+           :or    {omit-run-stats? false}
            :as    env} plan]
   (cond-> result
-    (not run-stats-omit?)
+    (not omit-run-stats?)
     (vary-meta assoc ::run-stats (assoc-end-plan-stats env plan))))
 
 (defn mark-batch-errors [e env batch-op batch-items]
