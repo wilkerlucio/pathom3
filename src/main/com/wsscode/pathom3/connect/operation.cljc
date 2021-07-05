@@ -132,6 +132,17 @@
     (describe-input* input-ast [] outs* false)
     @outs*))
 
+(defn- eql->root-attrs [eql]
+  (->> eql eql/query->ast :children (into #{} (map :key))))
+
+(defn input-destructure-missing [{::keys [input inferred-input]}]
+  (if (and input
+           inferred-input)
+    (let [missing (set/difference
+                    (eql->root-attrs inferred-input)
+                    (eql->root-attrs input))]
+      (if (seq missing) missing))))
+
 (>defn resolver
   "Helper to create a resolver. A resolver have at least a name, the output definition
   and the resolve function.
@@ -158,7 +169,7 @@
    (resolver (-> config
                  (coll/merge-defaults {::op-name op-name})
                  (assoc ::resolve resolve))))
-  ([{::keys [transform] :as config}]
+  ([{::keys [transform op-name inferred-input input] :as config}]
    [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve ::transform])
           :resolver ::resolver)
     => ::resolver]
@@ -166,6 +177,13 @@
      (s/explain (s/keys) config)
      (throw (ex-info (str "Invalid config on resolver " name)
                      {:explain-data (s/explain-data (s/keys) config)})))
+
+   (if-let [missing (input-destructure-missing config)]
+     (throw (ex-info
+              (str "Input of resolver " op-name " destructuring requires attributes \"" (str/join "," missing) "\" that are not present at the input definition.")
+              {::input          input
+               ::inferred-input inferred-input})))
+
    (if (resolver? config)
      config
      (let [{::keys [resolve output] :as config} (cond-> config transform transform)
@@ -312,32 +330,17 @@
                 [val]))))
         m))
 
-(defn- eql->root-attrs [eql]
-  (->> eql eql/query->ast :children (into #{} (map :key))))
-
-(defn input-destructure-missing [input inferred-input]
-  (if (and input
-           inferred-input)
-    (let [missing (set/difference
-                    (eql->root-attrs inferred-input)
-                    (eql->root-attrs input))]
-      (if (seq missing) missing))))
-
-(defn params->resolver-options [{:keys  [arglist options body docstring]
-                                 ::keys [op-name]}]
+(defn params->resolver-options [{:keys [arglist options body docstring]}]
   (let [[input-type input-arg] (last arglist)
         last-expr      (last body)
         inferred-input (if (refs/kw-identical? :map input-type)
                          (extract-destructure-map-keys-as-keywords input-arg))]
-    (if-let [missing (input-destructure-missing (::input options) inferred-input)]
-      (throw (ex-info
-               (str "Input of resolver " op-name " destructuring requires attributes \"" (str/join "," missing) "\" that are not present at the input definition.")
-               {::input          (::input options)
-                ::inferred-input inferred-input})))
-
     (cond-> options
       (and (map? last-expr) (not (::output options)))
       (assoc ::output (pf.eql/data->query last-expr))
+
+      inferred-input
+      (assoc ::inferred-input inferred-input)
 
       (and inferred-input
            (not (::input options)))
