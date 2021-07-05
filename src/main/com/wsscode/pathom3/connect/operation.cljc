@@ -1,6 +1,8 @@
 (ns com.wsscode.pathom3.connect.operation
   (:require
+    [clojure.set :as set]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef |]]
     [com.wsscode.misc.coll :as coll]
     #?(:clj [com.wsscode.misc.macros :as macros])
@@ -126,7 +128,7 @@
 
 (defn describe-input [input]
   (let [input-ast (eql/query->ast input)
-        outs* (volatile! {::requires {}})]
+        outs*     (volatile! {::requires {}})]
     (describe-input* input-ast [] outs* false)
     @outs*))
 
@@ -310,16 +312,36 @@
                 [val]))))
         m))
 
-(defn params->resolver-options [{:keys [arglist options body docstring]}]
+(defn- eql->root-attrs [eql]
+  (->> eql eql/query->ast :children (into #{} (map :key))))
+
+(defn input-destructure-missing [input inferred-input]
+  (if (and input
+           inferred-input)
+    (let [missing (set/difference
+                    (eql->root-attrs inferred-input)
+                    (eql->root-attrs input))]
+      (if (seq missing) missing))))
+
+(defn params->resolver-options [{:keys  [arglist options body docstring]
+                                 ::keys [op-name]}]
   (let [[input-type input-arg] (last arglist)
-        last-expr (last body)]
+        last-expr      (last body)
+        inferred-input (if (refs/kw-identical? :map input-type)
+                         (extract-destructure-map-keys-as-keywords input-arg))]
+    (if-let [missing (input-destructure-missing (::input options) inferred-input)]
+      (throw (ex-info
+               (str "Input of resolver " op-name " destructuring requires attributes \"" (str/join "," missing) "\" that are not present at the input definition.")
+               {::input          (::input options)
+                ::inferred-input inferred-input})))
+
     (cond-> options
       (and (map? last-expr) (not (::output options)))
       (assoc ::output (pf.eql/data->query last-expr))
 
-      (and (refs/kw-identical? :map input-type)
+      (and inferred-input
            (not (::input options)))
-      (assoc ::input (extract-destructure-map-keys-as-keywords input-arg))
+      (assoc ::input inferred-input)
 
       docstring
       (assoc ::docstring docstring))))
@@ -433,7 +455,7 @@
            defdoc   (cond-> [] docstring (conj docstring))]
        `(def ~name
           ~@defdoc
-          (resolver '~fqsym ~(params->resolver-options params)
+          (resolver '~fqsym ~(params->resolver-options (assoc params ::op-name fqsym))
                     (fn ~name ~arglist'
                       ~@body))))))
 
