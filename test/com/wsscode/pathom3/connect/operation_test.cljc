@@ -297,8 +297,9 @@
              '{:name    foo
                :arglist [[:sym env] [:map {:keys [dep]}]]
                :body    [{:foo "bar"}]})
-           {::pco/input  [:dep]
-            ::pco/output [:foo]}))
+           {::pco/inferred-input [:dep]
+            ::pco/input          [:dep]
+            ::pco/output         [:foo]}))
 
     (testing "preserve user input when defined"
       (is (= (pco/params->resolver-options
@@ -306,8 +307,9 @@
                  :arglist [[:sym env] [:map {:keys [dep]}]]
                  :options {::pco/input [:dep :other]}
                  :body    [{:foo "bar"}]})
-             {::pco/input  [:dep :other]
-              ::pco/output [:foo]}))))
+             {::pco/inferred-input [:dep]
+              ::pco/input          [:dep :other]
+              ::pco/output         [:foo]}))))
 
   (testing "implicit output"
     (is (= (pco/params->resolver-options
@@ -454,7 +456,8 @@
                  (com.wsscode.pathom3.connect.operation/resolver
                    'user/foo
                    #:com.wsscode.pathom3.connect.operation{:output [:sample],
-                                                           :input  [:dep]}
+                                                           :input  [:dep]
+                                                           :inferred-input [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
      (testing "implicit output, including implicit inputs via destructuring"
@@ -463,8 +466,9 @@
               '(def foo
                  (com.wsscode.pathom3.connect.operation/resolver
                    'user/foo
-                   #:com.wsscode.pathom3.connect.operation{:output [{:sample [:thing]}],
-                                                           :input  [:dep]}
+                   #:com.wsscode.pathom3.connect.operation{:output         [{:sample [:thing]}],
+                                                           :input          [:dep]
+                                                           :inferred-input [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
      (testing "explicit input"
