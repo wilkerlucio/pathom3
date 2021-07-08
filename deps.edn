@@ -6,7 +6,7 @@
   org.clojure/core.async     {:mvn/version "1.3.610"}
   com.wsscode/cljc-misc      {:mvn/version "2021.05.12"}
   com.wsscode/log            {:git/url "https://github.com/wilkerlucio/log"
-                              :sha     "1ac61009b3a57d5d09515ca823556bbe440c292d"}
+                              :sha     "325675d8d2871e74e789e836713ea769139e9c61"}
   funcool/promesa            {:mvn/version "6.0.0"}
   edn-query-language/eql     {:mvn/version "2021.02.28"}
   potemkin/potemkin          {:mvn/version "0.4.5"}}
@@ -42,4 +42,19 @@
 
   :test-cljs
   {:extra-paths ["test"]
-   :extra-deps  {thheller/shadow-cljs {:mvn/version "2.11.9"}}}}}
+   :extra-deps  {thheller/shadow-cljs {:mvn/version "2.11.9"}}}
+
+  :uberjar
+  {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.1.245"}}
+   :exec-fn      hf.depstar/uberjar
+   :exec-args    {:aot true}}
+
+  :jar
+  {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.1.245"}}
+   :exec-fn      hf.depstar/jar
+   :exec-args    {}}
+
+  :depstar
+  {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.1.245"}}
+   :ns-default   hf.depstar
+   :exec-args    {}}}}
