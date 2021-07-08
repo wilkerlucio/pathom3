@@ -1,11 +1,21 @@
 (ns com.wsscode.promesa.macros
-  (:require
-    [promesa.core :as p])
+  #?@(:bb
+      []
+      :default
+      [(:require [promesa.core :as p])])
   #?(:cljs
      (:require-macros
        [com.wsscode.promesa.macros])))
 
-#?(:clj
+#?(:bb
+   (defmacro clet
+     "On Babashka this macro just does the same as let."
+     [bindings & body]
+     (assert (even? (count bindings)))
+     `(let ~bindings
+        ~@body))
+
+   :clj
    (defmacro clet
      "This is similar to promesa let. But this only returns a promise if some of
      the bindings is a promise. Otherwise returns values as-is. This function is
