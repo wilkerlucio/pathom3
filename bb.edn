@@ -24,7 +24,7 @@
 
   artifact:deploy
   {:task (if (tasks/released?)
-           (println "Version" (tasks/current-version) "is already released (tag for it exists).")
+           (println "Version" (tasks/current-version) "is already released (tag for it exists). Bump with bb version:bump and try again.")
            (do
              (run 'test)
              (tasks/artifact-build)
