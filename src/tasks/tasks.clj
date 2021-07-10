@@ -124,9 +124,10 @@
   ([current-version]
    (let [today (current-date)
          [_ date iteration] (re-find #"(\d{4}\.\d{2}\.\d{2})(?:-(\d+))?" (or current-version ""))]
-     (if (= date today)
-       (str date "-" (or (some-> iteration Integer/parseInt inc) 1))
-       today))))
+     (str (if (= date today)
+            (str date "-" (or (some-> iteration Integer/parseInt inc) 1))
+            today)
+          "-alpha"))))
 
 (defn bump! []
   (let [version (next-version)]
