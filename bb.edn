@@ -23,15 +23,15 @@
    :task    (shell (str "mvn install:install-file -Dfile=" artifact " -DpomFile=pom.xml"))}
 
   artifact:deploy
-  {:depends [artifact:build]
-   :task    (if (tasks/released?)
-              (println "Version" (tasks/current-version) "is already released (tag for it exists).")
-              (do
-                (run 'test)
-                (tasks/artifact-deploy)
-                (tasks/create-tag! (tasks/version-tag))
-                (tasks/push-with-tags)
-                (println "Deployed version" (tasks/current-version) "to Clojars!")))}
+  {:task (if (tasks/released?)
+           (println "Version" (tasks/current-version) "is already released (tag for it exists).")
+           (do
+             (run 'test)
+             (tasks/artifact-build)
+             (tasks/artifact-deploy)
+             (tasks/create-tag! (tasks/version-tag))
+             (tasks/push-with-tags)
+             (println "Deployed version" (tasks/current-version) "to Clojars!")))}
 
   ; region snapshot
 
