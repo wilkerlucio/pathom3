@@ -12,7 +12,7 @@
     (def source-paths ["src" "test"]))
 
   artifact
-  (str "target/pathom3-" (tasks/current-version) ".jar")
+  (tasks/artifact-path)
 
   artifact:build
   {:depends [artifact]
@@ -23,8 +23,14 @@
    :task    (shell (str "mvn install:install-file -Dfile=" artifact " -DpomFile=pom.xml"))}
 
   artifact:deploy
-  {:depends [artifact:build artifact]
-   :task    (clojure (str "-X:deploy :artifact " artifact))}
+  {:depends [artifact:build]
+   :task    (if (tasks/released?)
+              (println "Version" (tasks/current-version) "is already released (tag for it exists).")
+              (do
+                (run 'test)
+                (tasks/artifact-deploy)
+                (tasks/create-tag (tasks/version-tag))
+                (tasks/push-with-tags)))}
 
   ; region snapshot
 
@@ -41,7 +47,7 @@
 
   artifact:snapshot:deploy
   {:depends [artifact:snapshot:build artifact:snapshot]
-   :task    (clojure (str "-X:deploy :artifact " artifact:snapshot))}
+   :task    (clojure (str "-X:deploy :artifact '\"" artifact:snapshot "\"'"))}
 
   ; endregion
 

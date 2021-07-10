@@ -108,10 +108,31 @@
 
 ; endregion
 
-; region version
+; region git
+
+(defn git-tags []
+  (into #{} (str/split-lines (sh-out "git" "tag" "-l"))))
+
+(defn create-tag! [version]
+  (sh "git" "tag" "-a" version "-m" version))
+
+(defn push-with-tags []
+  (sh "git" "push")
+  (sh "git" "push" "--tags"))
+
+; endregion
+
+; region artifact
 
 (defn current-version []
   (str/trim (slurp "VERSION")))
+
+(defn artifact-path []
+  (str "target/pathom3-" (tasks/current-version) ".jar"))
+
+(defn version-tag
+  ([] (version-tag (current-version)))
+  ([version] (str "v" version)))
 
 (defn- current-date []
   (str/replace
@@ -128,6 +149,20 @@
             (str date "-" (or (some-> iteration Integer/parseInt inc) 1))
             today)
           "-alpha"))))
+
+(defn released?
+  ([] (released? (current-version)))
+  ([version]
+   (contains? (git-tags) (version-tag version))))
+
+(defn artifact-build
+  ([]
+   (clojure "-X:jar" ":jar" (artifact-path) ":version" (current-version))))
+
+(defn artifact-deploy
+  ([] (artifact-deploy (artifact-path)))
+  ([artifact]
+   (clojure "-X:deploy" ":artifact" artifact)))
 
 (defn bump! []
   (let [version (next-version)]
