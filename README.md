@@ -1,4 +1,4 @@
-# Pathom 3
+# Pathom 3 [![Clojars Project](https://img.shields.io/clojars/v/com.wsscode/pathom3.svg)](https://clojars.org/com.wsscode/pathom3) ![Test](https://github.com/wilkerlucio/pathom3/workflows/Test/badge.svg) [![cljdoc badge](https://cljdoc.xyz/badge/com.wsscode/pathom3)](https://cljdoc.xyz/d/com.wsscode/pathom3/CURRENT)
 
 ![Pathom Logo](repo-resources/pathom-banner-padded.png)
 
