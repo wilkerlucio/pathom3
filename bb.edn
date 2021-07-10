@@ -11,18 +11,18 @@
   (do
     (def source-paths ["src" "test"]))
 
-  artifact
+  lib:artifact
   (tasks/artifact-path)
 
-  artifact:build
-  {:depends [artifact]
-   :task    (clojure (str "-X:jar :jar " artifact " :version '\"" (tasks/current-version) "\"'"))}
+  lib:build
+  {:depends [lib:artifact]
+   :task    (clojure (str "-X:jar :jar " lib:artifact " :version '\"" (tasks/current-version) "\"'"))}
 
-  artifact:install
-  {:depends [artifact:build artifact]
-   :task    (shell (str "mvn install:install-file -Dfile=" artifact " -DpomFile=pom.xml"))}
+  lib:install
+  {:depends [lib:build lib:artifact]
+   :task    (shell (str "mvn install:install-file -Dfile=" lib:artifact " -DpomFile=pom.xml"))}
 
-  artifact:deploy
+  lib:deploy
   {:task (if (tasks/released?)
            (println "Version" (tasks/current-version) "is already released (tag for it exists). Bump with bb version:bump and try again.")
            (do
@@ -35,20 +35,20 @@
 
   ; region snapshot
 
-  artifact:snapshot-version
+  lib:snapshot-version
   (str (tasks/current-version) "-SNAPSHOT")
 
-  artifact:snapshot
-  {:depends [artifact:snapshot-version]
-   :task    (str "target/pathom3-" artifact:snapshot-version ".jar")}
+  lib:snapshot
+  {:depends [lib:snapshot-version]
+   :task    (str "target/pathom3-" lib:snapshot-version ".jar")}
 
-  artifact:snapshot:build
-  {:depends [artifact:snapshot artifact:snapshot-version]
-   :task    (clojure (str "-X:jar :jar " artifact:snapshot " :version '\"" artifact:snapshot-version "\"'"))}
+  lib:snapshot:build
+  {:depends [lib:snapshot lib:snapshot-version]
+   :task    (clojure (str "-X:jar :jar " lib:snapshot " :version '\"" lib:snapshot-version "\"'"))}
 
-  artifact:snapshot:deploy
-  {:depends [artifact:snapshot:build artifact:snapshot]
-   :task    (clojure (str "-X:deploy :artifact '\"" artifact:snapshot "\"'"))}
+  lib:snapshot:deploy
+  {:depends [lib:snapshot:build lib:snapshot]
+   :task    (clojure (str "-X:deploy :artifact '\"" lib:snapshot "\"'"))}
 
   ; endregion
 
