@@ -10,8 +10,8 @@
   <url>https://github.com/wilkerlucio/pathom3</url>
   <licenses>
     <license>
-      <name>MIT</name>
-      <url>https://opensource.org/licenses/MIT</url>
+      <name>EPL-2.0</name>
+      <url>https://github.com/wilkerlucio/pathom3/blob/master/LICENSE</url>
     </license>
   </licenses>
   <scm>
