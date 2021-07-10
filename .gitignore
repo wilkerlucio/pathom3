@@ -1,6 +1,5 @@
 # Created by .ignore support plugin (hsz.mobi)
 ### Clojure template
-pom.xml
 pom.xml.asc
 *.jar
 *.class
