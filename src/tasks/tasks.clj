@@ -1,6 +1,7 @@
 (ns tasks
   (:require
     [babashka.deps :as deps]
+    [babashka.fs :as fs]
     [babashka.process :as p]
     [clojure.string :as str])
   (:import
@@ -124,7 +125,8 @@
 ; region artifact
 
 (defn current-version []
-  (str/trim (slurp "VERSION")))
+  (if (fs/exists? "VERSION")
+    (str/trim (slurp "VERSION"))))
 
 (defn artifact-path []
   (str "target/pathom3-" (tasks/current-version) ".jar"))
