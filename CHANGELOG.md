@@ -7,4 +7,4 @@
 - Add transit dependencies to fix cljdoc compilation
 
 [2021.07.9]
-- Initial release
+- Initial JAR release
