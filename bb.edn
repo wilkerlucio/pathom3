@@ -29,7 +29,7 @@
               (do
                 (run 'test)
                 (tasks/artifact-deploy)
-                (tasks/create-tag (tasks/version-tag))
+                (tasks/create-tag! (tasks/version-tag))
                 (tasks/push-with-tags)
                 (println "Deployed version" (tasks/current-version) "to Clojars!")))}
 
