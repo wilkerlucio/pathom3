@@ -2,10 +2,18 @@
  ["src/tasks"]
 
  :tasks
- {:init
+ {:requires
+  ([babashka.fs :as fs]
+   [cheshire.core :as json]
+   [tasks])
+
+  :init
   (do
-    (require 'tasks)
     (def source-paths ["src" "test"]))
+
+  build
+  (clojure
+    (str "-X:jar :jar target/pathom3.jar :group-id com.wsscode :artifact-id pathom3 :version '\"" (tasks/current-version) "\"'"))
 
   format-check
   {:task (apply tasks/cljstyle "check" source-paths)}
