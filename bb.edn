@@ -19,11 +19,11 @@
    :task    (clojure (str "-X:jar :jar " artifact " :version '\"" (tasks/current-version) "\"'"))}
 
   artifact:install
-  {:depends [build artifact]
+  {:depends [artifact:build artifact]
    :task    (shell (str "mvn install:install-file -Dfile=" artifact " -DpomFile=pom.xml"))}
 
   artifact:deploy
-  {:depends [artifact build]
+  {:depends [artifact artifact:build]
    :task    (clojure (str "-X:deploy :artifact " artifact))}
 
   format-check
