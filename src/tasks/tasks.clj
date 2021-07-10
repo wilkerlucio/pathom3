@@ -117,8 +117,7 @@
   (sh "git" "tag" "-a" version "-m" version))
 
 (defn push-with-tags []
-  (sh "git" "push")
-  (sh "git" "push" "--tags"))
+  (sh "git" "push" "--follow-tags"))
 
 ; endregion
 
