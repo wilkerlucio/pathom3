@@ -23,8 +23,27 @@
    :task    (shell (str "mvn install:install-file -Dfile=" artifact " -DpomFile=pom.xml"))}
 
   artifact:deploy
-  {:depends [artifact artifact:build]
+  {:depends [artifact:build artifact]
    :task    (clojure (str "-X:deploy :artifact " artifact))}
+
+  ; region snapshot
+
+  artifact:snapshot-version
+  (str (tasks/current-version) "-SNAPSHOT")
+
+  artifact:snapshot
+  {:depends [artifact:snapshot-version]
+   :task    (str "target/pathom3-" artifact:snapshot-version ".jar")}
+
+  artifact:snapshot:build
+  {:depends [artifact:snapshot artifact:snapshot-version]
+   :task    (clojure (str "-X:jar :jar " artifact:snapshot " :version '\"" artifact:snapshot-version "\"'"))}
+
+  artifact:snapshot:deploy
+  {:depends [artifact:snapshot:build artifact:snapshot]
+   :task    (clojure (str "-X:deploy :artifact " artifact:snapshot))}
+
+  ; endregion
 
   format-check
   {:task (apply tasks/cljstyle "check" source-paths)}
