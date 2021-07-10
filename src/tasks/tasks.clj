@@ -2,7 +2,12 @@
   (:require
     [babashka.deps :as deps]
     [babashka.process :as p]
-    [clojure.string :as str]))
+    [clojure.string :as str])
+  (:import
+    (java.time
+      LocalDate)
+    (java.time.format
+      DateTimeFormatter)))
 
 ; region helpers
 
@@ -100,5 +105,32 @@
         (update-file-index path))
 
       (clj-kondo-lint paths))))
+
+; endregion
+
+; region version
+
+(defn current-version []
+  (str/trim (slurp "VERSION")))
+
+(defn- current-date []
+  (str/replace
+    (.format (LocalDate/now) DateTimeFormatter/ISO_LOCAL_DATE)
+    "-"
+    "."))
+
+(defn next-version
+  ([] (next-version (current-version)))
+  ([current-version]
+   (let [today (current-date)
+         [_ date iteration] (re-find #"(\d{4}\.\d{2}\.\d{2})(?:-(\d+))?" (or current-version ""))]
+     (if (= date today)
+       (str date "-" (or (some-> iteration Integer/parseInt inc) 1))
+       today))))
+
+(defn bump! []
+  (let [version (next-version)]
+    (spit "VERSION" version)
+    version))
 
 ; endregion

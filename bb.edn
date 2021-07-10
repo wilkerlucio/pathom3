@@ -16,6 +16,11 @@
   lint
   {:task (tasks/clj-kondo-lint source-paths)}
 
+  version:bump
+  {:doc  "Bump version to current date."
+   :task (let [version (tasks/bump!)]
+           (println "Bumped to" version))}
+
   setup-hooks
   tasks/setup-git-hooks
 
