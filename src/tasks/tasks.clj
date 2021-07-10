@@ -3,6 +3,7 @@
     [babashka.deps :as deps]
     [babashka.fs :as fs]
     [babashka.process :as p]
+    [clojure.data.xml :as xml]
     [clojure.string :as str])
   (:import
     (java.time
@@ -119,6 +120,28 @@
 
 (defn push-with-tags []
   (sh "git" "push" "--follow-tags"))
+
+; endregion
+
+; region pom.xml
+
+(defn update-child-tag [element tag f]
+  (update element :content
+    #(mapv
+       (fn [element]
+         (if (= tag (:tag element))
+           (f element)
+           element))
+       %)))
+
+(defn update-pom-scm-tag [new-tag]
+  (-> (xml/parse-str (slurp "pom.xml"))
+      (update-child-tag :xmlns.http%3A%2F%2Fmaven.apache.org%2FPOM%2F4.0.0/scm
+                        (fn [scm-el]
+                          (update-child-tag scm-el :xmlns.http%3A%2F%2Fmaven.apache.org%2FPOM%2F4.0.0/tag
+                                            #(assoc % :content [new-tag]))))
+      (xml/emit-str)
+      (->> (spit "pom.xml"))))
 
 ; endregion
 
