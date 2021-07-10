@@ -9,7 +9,9 @@
                               :sha     "325675d8d2871e74e789e836713ea769139e9c61"}
   funcool/promesa            {:mvn/version "6.0.0"}
   edn-query-language/eql     {:mvn/version "2021.02.28"}
-  potemkin/potemkin          {:mvn/version "0.4.5"}}
+  potemkin/potemkin          {:mvn/version "0.4.5"}
+  com.cognitect/transit-clj  {:mvn/version "1.0.324"}
+  com.cognitect/transit-cljs {:mvn/version "0.8.269"}}
 
  :aliases
  {:provided
