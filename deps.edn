@@ -1,5 +1,5 @@
 {:paths
- ["src/main" "src/transit" "src/promesa" "resources"]
+ ["src/main" "src/promesa" "resources"]
 
  :deps
  {com.fulcrologic/guardrails {:mvn/version "1.1.4"}
@@ -32,7 +32,7 @@
 
   :tasks
   {:extra-paths ["src/tasks"]
-   :extra-deps  {babashka/babashka {:mvn/version "0.3.3"}}}
+   :extra-deps  {babashka/babashka {:mvn/version "0.4.6"}}}
 
   :test
   {:extra-paths ["test"]
