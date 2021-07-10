@@ -8,7 +8,7 @@ Pathom3 is a redesign of Pathom, this is a new library and uses different namesp
 
 ## Status
 
-Alpha, avoid for critical parts. Recommended for enthusiasts and people looking to help
+Alpha, changes and breakages may occur. Recommended for enthusiasts and people looking to help
 and chasing bugs and help improve the development of Pathom.
 
 ## Install
