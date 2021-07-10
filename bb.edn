@@ -11,9 +11,20 @@
   (do
     (def source-paths ["src" "test"]))
 
-  build
-  (clojure
-    (str "-X:jar :jar target/pathom3.jar :group-id com.wsscode :artifact-id pathom3 :version '\"" (tasks/current-version) "\"'"))
+  artifact
+  (str "target/pathom3-" (tasks/current-version) ".jar")
+
+  artifact:build
+  {:depends [artifact]
+   :task    (clojure (str "-X:jar :jar " artifact " :version '\"" (tasks/current-version) "\"'"))}
+
+  artifact:install
+  {:depends [build artifact]
+   :task    (shell (str "mvn install:install-file -Dfile=" artifact " -DpomFile=pom.xml"))}
+
+  artifact:deploy
+  {:depends [artifact build]
+   :task    (clojure (str "-X:deploy :artifact " artifact))}
 
   format-check
   {:task (apply tasks/cljstyle "check" source-paths)}
