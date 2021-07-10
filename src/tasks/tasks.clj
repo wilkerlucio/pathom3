@@ -154,14 +154,17 @@
   ([version]
    (contains? (git-tags) (version-tag version))))
 
+(defn str-arg [s]
+  (pr-str (str s)))
+
 (defn artifact-build
   ([]
-   (clojure "-X:jar" ":jar" (artifact-path) ":version" (current-version))))
+   (clojure "-X:jar" ":jar" (artifact-path) ":version" (str-arg (current-version)))))
 
 (defn artifact-deploy
   ([] (artifact-deploy (artifact-path)))
   ([artifact]
-   (clojure "-X:deploy" ":artifact" artifact)))
+   (clojure "-X:deploy" ":artifact" (str-arg artifact))))
 
 (defn bump! []
   (let [version (next-version)]
