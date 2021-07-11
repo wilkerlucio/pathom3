@@ -902,7 +902,7 @@
             #?(:clj Throwable :cljs js/Error)
             #"Fail fast"
             (run-graph
-              (pci/register {:com.wsscode.pathom3.connect.system/loose-mode? true}
+              (pci/register {:com.wsscode.pathom3.system/loose-mode? true}
                             (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
               {}
               [:err]))))
@@ -911,7 +911,7 @@
        (let [err (ex-info "Fail fast" {})]
          (is (thrown-with-msg? Throwable #"Fail fast"
                @(run-graph-async
-                  (pci/register {:com.wsscode.pathom3.connect.system/loose-mode? true}
+                  (pci/register {:com.wsscode.pathom3.system/loose-mode? true}
                                 (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
                   {}
                   [:err]))))))
@@ -922,7 +922,7 @@
             #?(:clj Throwable :cljs js/Error)
             #"Fail fast"
             (run-graph
-              (pci/register {:com.wsscode.pathom3.connect.system/loose-mode? true}
+              (pci/register {:com.wsscode.pathom3.system/loose-mode? true}
                             (pco/mutation 'err {} (fn [_ _] (throw err))))
               {}
               ['(err {})]))))
@@ -931,7 +931,7 @@
        (let [err (ex-info "Fail fast" {})]
          (is (thrown-with-msg? Throwable #"Fail fast"
                @(run-graph-async
-                  (pci/register {:com.wsscode.pathom3.connect.system/loose-mode? true}
+                  (pci/register {:com.wsscode.pathom3.system/loose-mode? true}
                                 (pco/mutation 'err {} (fn [_ _] (throw err))))
                   {}
                   ['(err {})])))))))

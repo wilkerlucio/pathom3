@@ -124,4 +124,9 @@
 
     (testing "modify env"
       (is (= (fi #(pci/register % (pbir/constantly-resolver :new "value")) [:new])
-             {:new "value"})))))
+             {:new "value"})))
+
+    (testing "loose mode"
+      (is (= (fi {:pathom/eql         [:invalid]
+                  :pathom/loose-mode? true})
+             {})))))

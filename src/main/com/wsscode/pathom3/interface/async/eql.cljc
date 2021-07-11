@@ -95,6 +95,7 @@
                env'          env'
                env-extension env-extension
                env'          (-> env'
+                                 (p.eql/boundary-env input)
                                  (p.eql/extend-env env-extension)
                                  (assoc ::source-request request))
                entity'       (or entity {})]
