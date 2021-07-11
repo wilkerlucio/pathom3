@@ -288,9 +288,10 @@
     (refs/gswap! node-run-stats* update op-name coll/merge-defaults data)))
 
 (defn mark-node-error
-  [{::keys [node-run-stats*]}
+  [{::keys [node-run-stats*] :as env}
    {::pcp/keys [node-id]}
    error]
+  (fail-fast env error)
   (if node-run-stats*
     (doto node-run-stats*
       (refs/gswap! assoc-in [node-id ::node-error] error)
@@ -429,11 +430,10 @@
                                   env cache? op-name resolver cache-store input-data params)))
                             (catch #?(:clj Throwable :cljs :default) e
                               (mark-node-error-with-plugins env node e)
-                              (fail-fast env e)
                               ::node-error))
         finish          (time/now-ms)]
     (if-not (valid-response? response)
-      (throw (ex-info (str "Invalid response " (pr-str response) " on call to resolver " op-name) {:response response})))
+      (mark-node-error-with-plugins env node (ex-info (str "Invalid response " (pr-str response) " on call to resolver " op-name) {:response response})))
     (merge-node-stats! env node
       (cond-> {::resolver-run-finish-ms finish}
         (not (::batch-hold response))

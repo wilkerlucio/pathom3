@@ -204,7 +204,7 @@
         resolver-cache* (get env cache-store)
         _               (pcr/merge-node-stats! env node
                           {::pcr/resolver-run-start-ms (time/now-ms)})
-        result          (-> (if-let [missing (pfsd/missing input-shape input entity)]
+        response        (-> (if-let [missing (pfsd/missing input-shape input entity)]
                               (if (pcr/missing-maybe-in-pending-batch? env input)
                                 (pcr/wait-batch-response env node)
                                 (p/rejected (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
@@ -226,15 +226,16 @@
                             (p/catch
                               (fn [error]
                                 (pcr/mark-node-error-with-plugins env node error)
-                                (pcr/fail-fast env error)
                                 ::pcr/node-error)))]
-    (p/let [result result]
+    (p/let [response response]
+      (if-not (pcr/valid-response? response)
+        (pcr/mark-node-error-with-plugins env node (ex-info (str "Invalid response " (pr-str response) " on call to resolver " op-name) {:response response})))
       (let [finish (time/now-ms)]
         (pcr/merge-node-stats! env node
           (cond-> {::pcr/resolver-run-finish-ms finish}
-            (not (::pcr/batch-hold result))
-            (merge (pcr/report-resolver-io-stats env input-data result)))))
-      result)))
+            (not (::pcr/batch-hold response))
+            (merge (pcr/report-resolver-io-stats env input-data response)))))
+      response)))
 
 (defn run-resolver-node!
   "This function evaluates the resolver associated with the node.

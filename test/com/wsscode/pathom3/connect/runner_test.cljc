@@ -1263,6 +1263,7 @@
   (testing "errors"
     (let [res (run-graph
                 (pci/register
+                  {:com.wsscode.pathom3.system/loose-mode? true}
                   [batch-fetch-error
                    (pbir/constantly-resolver :list
                                              [{:id 1}
