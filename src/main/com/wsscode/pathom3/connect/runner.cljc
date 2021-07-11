@@ -27,11 +27,6 @@
 
 (>def ::batch-error? boolean?)
 
-(>def ::fail-fast?
-  "Defaults to false. When set to true, in case of exceptions in resolvers or mutations,
-  Pathom will fail immediately."
-  boolean?)
-
 (>def ::batch-hold
   "A map containing information to trigger a batch for a resolver node."
   (s/keys))
@@ -207,8 +202,8 @@
   (-> (pcp/entry-ast graph k)
       (normalize-ast-recursive-query graph k)))
 
-(defn fail-fast [{::keys [fail-fast?]} error]
-  (if fail-fast? (throw error)))
+(defn fail-fast [{:keys [com.wsscode.pathom3.system/loose-mode?]} error]
+  (if-not loose-mode? (throw error)))
 
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
@@ -292,7 +287,7 @@
   (if node-run-stats*
     (refs/gswap! node-run-stats* update op-name coll/merge-defaults data)))
 
-(defn mark-resolver-error
+(defn mark-node-error
   [{::keys [node-run-stats*]}
    {::pcp/keys [node-id]}
    error]
@@ -301,10 +296,10 @@
       (refs/gswap! assoc-in [node-id ::node-error] error)
       (refs/gswap! update ::nodes-with-error coll/sconj node-id))))
 
-(defn mark-resolver-error-with-plugins
+(defn mark-node-error-with-plugins
   [env node e]
   (p.plugin/run-with-plugins env ::wrap-resolver-error
-    mark-resolver-error env node e))
+    mark-node-error env node e))
 
 (defn choose-cache-store [env cache-store]
   (if cache-store
@@ -433,7 +428,7 @@
                                 (invoke-resolver-cached
                                   env cache? op-name resolver cache-store input-data params)))
                             (catch #?(:clj Throwable :cljs :default) e
-                              (mark-resolver-error-with-plugins env node e)
+                              (mark-node-error-with-plugins env node e)
                               (fail-fast env e)
                               ::node-error))
         finish          (time/now-ms)]
@@ -504,6 +499,17 @@
   [{::keys [node-run-stats*]} {::pcp/keys [node-id]} taken-path-id]
   (refs/gswap! node-run-stats* update-in [node-id ::taken-paths] coll/vconj taken-path-id))
 
+(defn fail-or-error [or-node errors]
+  (ex-info
+    (str "All paths from an OR node failed. Expected: " (::pcp/expects or-node) "\n"
+         (str/join "\n" (mapv ex-message errors)))
+    {:errors errors}))
+
+(defn handle-or-error [env or-node res]
+  (let [error (fail-or-error or-node (::or-option-error res))]
+    (mark-node-error-with-plugins env or-node error)
+    (fail-fast env error)))
+
 (>defn run-or-node!
   [{::pcp/keys [graph]
     ::keys     [choose-path]
@@ -514,7 +520,8 @@
   (merge-node-stats! env or-node {::node-run-start-ms (time/now-ms)})
 
   (let [res (if-not (all-requires-ready? env or-node)
-              (loop [nodes run-or]
+              (loop [nodes  run-or
+                     errors []]
                 (if (seq nodes)
                   (let [picked-node-id (choose-path env or-node nodes)
                         node-id        (if (contains? nodes picked-node-id)
@@ -526,14 +533,30 @@
                                                     :actual-used     (first nodes)})
                                            (first nodes)))]
                     (add-taken-path! env or-node node-id)
-                    (let [res (run-node! env (pcp/get-node graph node-id))]
-                      (if (::batch-hold res)
+                    (let [res (try
+                                (run-node! env (pcp/get-node graph node-id))
+                                (catch #?(:clj Throwable :cljs :default) e
+                                  {::or-option-error e}))]
+                      (cond
+                        (::batch-hold res)
                         res
+
+                        (::or-option-error res)
+                        (recur (disj nodes node-id) (conj errors (::or-option-error res)))
+
+                        :else
                         (if (all-requires-ready? env or-node)
                           (merge-node-stats! env or-node {::success-path node-id})
-                          (recur (disj nodes node-id)))))))))]
-    (if (::batch-hold res)
+                          (recur (disj nodes node-id) errors)))))
+                  {::or-option-error errors})))]
+    (cond
+      (::batch-hold res)
       res
+
+      (::or-option-error res)
+      (handle-or-error env or-node res)
+
+      :else
       (do
         (merge-node-stats! env or-node {::node-run-finish-ms (time/now-ms)})
         (run-next-node! env or-node)))))
@@ -618,7 +641,7 @@
                        (run-foreign-mutation env ast)
                        (p.plugin/run-with-plugins env ::wrap-mutate
                          #(pco.prot/-mutate mutation %1 (:params %2)) env ast))
-                     (throw (ex-info "Mutation not found" {::pco/op-name key})))
+                     (throw (ex-info (str "Mutation " key " not found") {::pco/op-name key})))
                    (catch #?(:clj Throwable :cljs :default) e
                      (p.plugin/run-with-plugins env ::wrap-mutation-error
                        (fn [_ _ _]) env ast e)
@@ -722,7 +745,7 @@
   (doseq [{env'       ::env
            ::pcp/keys [node]} batch-items]
     (p.plugin/run-with-plugins env' ::wrap-resolver-error
-      mark-resolver-error env' node (ex-info "Batch error" {::batch-error? true} e)))
+      mark-node-error env' node (ex-info "Batch error" {::batch-error? true} e)))
 
   ::node-error)
 

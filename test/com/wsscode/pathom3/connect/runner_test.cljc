@@ -199,11 +199,13 @@
             {::map-container {:foo {::p.path/path [::map-container :foo]}}}))))
 
   (testing "insufficient data"
-    (let [res (run-graph (pci/register [(pco/resolver 'a {::pco/input  [:b]
-                                                          ::pco/output [:a]}
-                                          (fn [_ _] {:a "a"}))
-                                        (pco/resolver 'b {::pco/output [:b]}
-                                          (fn [_ _] {}))])
+    (let [res (run-graph (pci/register
+                           {:com.wsscode.pathom3.system/loose-mode? true}
+                           [(pco/resolver 'a {::pco/input  [:b]
+                                              ::pco/output [:a]}
+                              (fn [_ _] {:a "a"}))
+                            (pco/resolver 'b {::pco/output [:b]}
+                              (fn [_ _] {}))])
                          {}
                          [:a])]
       (is (= res {}))
@@ -339,34 +341,70 @@
   (testing "processing OR nodes"
     (testing "return the first option that works, don't call the others"
       (let [spy (atom 0)]
-        (is (= (run-graph (pci/register [(pco/resolver `value
-                                           {::pco/output [:value]}
-                                           (fn [_ _]
-                                             (swap! spy inc)
-                                             {:value 1}))
-                                         (pco/resolver `value2
-                                           {::pco/output [:value]}
-                                           (fn [_ _]
-                                             (swap! spy inc)
-                                             {:value 2}))])
-                          {}
-                          [:value])
-               {:value #?(:clj 1 :cljs 2)}))
+        (is (is (= (run-graph
+                     (pci/register
+                       [(pco/resolver `value
+                          {::pco/output [:value]}
+                          (fn [_ _]
+                            (swap! spy inc)
+                            {:value 1}))
+                        (pco/resolver `value2
+                          {::pco/output [:value]}
+                          (fn [_ _]
+                            (swap! spy inc)
+                            {:value 2}))])
+                     {}
+                     [:value])
+                   {:value #?(:clj 1 :cljs 2)})))
         (is (= @spy 1))))
 
     (testing "one option fail, one succeed"
       (let [spy (atom 0)]
-        (is (= (run-graph (pci/register [(pco/resolver `error-long-touch
-                                           {::pco/output   [:error]
-                                            ::pco/priority 1}
-                                           (fn [_ _]
-                                             (swap! spy inc)
-                                             (throw (ex-info "Error" {}))))
-                                         (pbir/constantly-resolver :error "value")])
+        (is (= (run-graph (pci/register
+                            [(pco/resolver `error-long-touch
+                               {::pco/output   [:error]
+                                ::pco/priority 1}
+                               (fn [_ _]
+                                 (swap! spy inc)
+                                 (throw (ex-info "Error" {}))))
+                             (pbir/constantly-resolver :error "value")])
                           {}
                           [:error])
                {:error "value"}))
         (is (= @spy 1))))
+
+    (testing "all options fail"
+      (is (thrown-with-msg?
+            #?(:clj Throwable :cljs js/Error)
+            #"All paths from an OR node failed. Expected: \{:error \{}}"
+            (run-graph (pci/register
+                         [(pco/resolver `error1
+                            {::pco/output [:error]}
+                            (fn [_ _]
+                              (throw (ex-info "Error 1" {}))))
+                          (pco/resolver `error2
+                            {::pco/output [:error]}
+                            (fn [_ _]
+                              (throw (ex-info "Error 2" {}))))])
+                       {}
+                       [:error])))
+
+      #?(:clj
+         (testing "async"
+           (is (thrown-with-msg?
+                 #?(:clj Throwable :cljs js/Error)
+                 #"All paths from an OR node failed. Expected: \{:error \{}}"
+                 @(run-graph-async (pci/register
+                                     [(pco/resolver `error1
+                                        {::pco/output [:error]}
+                                        (fn [_ _]
+                                          (throw (ex-info "Error 1" {}))))
+                                      (pco/resolver `error2
+                                        {::pco/output [:error]}
+                                        (fn [_ _]
+                                          (throw (ex-info "Error 2" {}))))])
+                                   {}
+                                   [:error]))))))
 
     (testing "custom prioritization"
       (is (graph-response?
@@ -864,7 +902,7 @@
             #?(:clj Throwable :cljs js/Error)
             #"Fail fast"
             (run-graph
-              (pci/register {::pcr/fail-fast? true}
+              (pci/register {:com.wsscode.pathom3.connect.system/loose-mode? true}
                             (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
               {}
               [:err]))))
@@ -873,7 +911,7 @@
        (let [err (ex-info "Fail fast" {})]
          (is (thrown-with-msg? Throwable #"Fail fast"
                @(run-graph-async
-                  (pci/register {::pcr/fail-fast? true}
+                  (pci/register {:com.wsscode.pathom3.connect.system/loose-mode? true}
                                 (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
                   {}
                   [:err]))))))
@@ -884,7 +922,7 @@
             #?(:clj Throwable :cljs js/Error)
             #"Fail fast"
             (run-graph
-              (pci/register {::pcr/fail-fast? true}
+              (pci/register {:com.wsscode.pathom3.connect.system/loose-mode? true}
                             (pco/mutation 'err {} (fn [_ _] (throw err))))
               {}
               ['(err {})]))))
@@ -893,7 +931,7 @@
        (let [err (ex-info "Fail fast" {})]
          (is (thrown-with-msg? Throwable #"Fail fast"
                @(run-graph-async
-                  (pci/register {::pcr/fail-fast? true}
+                  (pci/register {:com.wsscode.pathom3.connect.system/loose-mode? true}
                                 (pco/mutation 'err {} (fn [_ _] (throw err))))
                   {}
                   ['(err {})])))))))
@@ -1441,6 +1479,7 @@
   (testing "error"
     (is (graph-response?
           (pci/register
+            {:com.wsscode.pathom3.system/loose-mode? true}
             [(pco/resolver 'a {::pco/output [:x]}
                (fn [_ _] (throw (ex-info "Err" {}))))])
           {}
@@ -1774,6 +1813,7 @@
   (testing "recursive nested input"
     (is (graph-response?
           (pci/register
+            {:com.wsscode.pathom3.system/loose-mode? true}
             [(pco/resolver 'nested-input-recursive
                {::pco/input  [:name {:children '...}]
                 ::pco/output [:names]}
@@ -1823,6 +1863,7 @@
     (let [err (ex-info "Error" {})]
       (is (graph-response?
             (pci/register
+              {:com.wsscode.pathom3.system/loose-mode? true}
               [(pbir/alias-resolver :result :other)
                (pco/mutation 'call {}
                  (fn [_ _] (throw err)))])
@@ -1833,13 +1874,14 @@
   (testing "mutation not found"
     (is (graph-response?
           (pci/register
+            {:com.wsscode.pathom3.system/loose-mode? true}
             [(pbir/alias-resolver :result :other)])
           {}
           '[(not-here {:this "thing"})]
           (fn [res]
             (mcs/match?
               {'not-here {::pcr/mutation-error (fn [e]
-                                                 (and (= "Mutation not found"
+                                                 (and (= "Mutation not-here not found"
                                                          (ex-message e))
                                                       (= {::pco/op-name 'not-here}
                                                          (ex-data e))))}}
@@ -1939,7 +1981,7 @@
                                         (mutation env ast)
                                         (catch #?(:clj Throwable :cljs js/Error) e
                                           (reset! err* e)
-                                          (throw e)))))}))
+                                          nil))))}))
             {}
             ['(foo)]
             (fn [_]

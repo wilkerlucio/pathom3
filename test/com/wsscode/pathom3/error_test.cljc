@@ -37,6 +37,7 @@
                                             ::p.error/exception  (match-error "Error")}}}
           (let [data (p.eql/process
                        (pci/register
+                         {:com.wsscode.pathom3.system/loose-mode? true}
                          (pbir/constantly-fn-resolver :a (fn [_] (throw (ex-info "Error" {})))))
                        [:a])]
             (p.error/attribute-error data :a)))))
@@ -44,6 +45,7 @@
   (testing "attribute missing on output"
     (is (= (let [data (p.eql/process
                         (pci/register
+                          {:com.wsscode.pathom3.system/loose-mode? true}
                           (pco/resolver 'a
                             {::pco/output [:a]}
                             (fn [_ _] {})))
@@ -60,6 +62,7 @@
                                             ::p.error/exception         (match-error "Error")}}}
           (let [data (p.eql/process
                        (pci/register
+                         {:com.wsscode.pathom3.system/loose-mode? true}
                          [(pbir/constantly-fn-resolver :a (fn [_] (throw (ex-info "Error" {}))))
                           (pbir/single-attr-resolver :a :b str)])
                        [:b])]
@@ -72,6 +75,7 @@
                                             ::p.error/exception  (match-error "Insufficient data calling resolver '-unqualified/a->b--attr-transform. Missing attrs :a")}}}
           (let [data (p.eql/process
                        (pci/register
+                         {:com.wsscode.pathom3.system/loose-mode? true}
                          [(pco/resolver 'a
                             {::pco/output [:a]}
                             (fn [_ _] {}))
@@ -84,6 +88,7 @@
           {}
           (let [response (p.eql/process
                            (pci/register
+                             {:com.wsscode.pathom3.system/loose-mode? true}
                              [(pco/resolver 'err1
                                 {::pco/output [:error-demo]}
                                 (fn [_ _] (throw (ex-info "One Error" {}))))

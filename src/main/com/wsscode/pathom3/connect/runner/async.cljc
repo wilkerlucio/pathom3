@@ -225,7 +225,7 @@
                                   env cache? op-name resolver cache-store input-data params)))
                             (p/catch
                               (fn [error]
-                                (pcr/mark-resolver-error-with-plugins env node error)
+                                (pcr/mark-node-error-with-plugins env node error)
                                 (pcr/fail-fast env error)
                                 ::pcr/node-error)))]
     (p/let [result result]
@@ -268,7 +268,8 @@
     :or        {choose-path pcr/default-choose-path}
     :as        env}
    or-node
-   nodes]
+   nodes
+   errors]
   (if (seq nodes)
     (p/let [picked-node-id (choose-path env or-node nodes)
             node-id        (if (contains? nodes picked-node-id)
@@ -280,12 +281,21 @@
                                         :actual-used     (first nodes)})
                                (first nodes)))
             _              (pcr/add-taken-path! env or-node node-id)
-            node-res       (run-node! env (pcp/get-node graph node-id))]
-      (if (::pcr/batch-hold node-res)
+            node-res       (-> (p/let [res (run-node! env (pcp/get-node graph node-id))]
+                                 res)
+                               (p/catch #(array-map ::pcr/or-option-error %)))]
+      (cond
+        (::pcr/batch-hold node-res)
         node-res
+
+        (::pcr/or-option-error node-res)
+        (run-or-node!* env or-node (disj nodes node-id) (conj errors (::pcr/or-option-error node-res)))
+
+        :else
         (if (pcr/all-requires-ready? env or-node)
           (pcr/merge-node-stats! env or-node {::pcr/success-path node-id})
-          (run-or-node!* env or-node (disj nodes node-id)))))))
+          (run-or-node!* env or-node (disj nodes node-id) errors))))
+    {::pcr/or-option-error errors}))
 
 (>defn run-or-node!
   [env {::pcp/keys [run-or] :as or-node}]
@@ -293,9 +303,15 @@
   (p/do!
     (pcr/merge-node-stats! env or-node {::pcr/node-run-start-ms (time/now-ms)})
 
-    (p/let [res (run-or-node!* env or-node run-or)]
-      (if (::pcr/batch-hold res)
+    (p/let [res (run-or-node!* env or-node run-or [])]
+      (cond
+        (::pcr/batch-hold res)
         res
+
+        (::pcr/or-option-error res)
+        (pcr/handle-or-error env or-node res)
+
+        :else
         (do
           (pcr/merge-node-stats! env or-node {::pcr/node-run-finish-ms (time/now-ms)})
           (run-next-node! env or-node))))))
@@ -352,7 +368,7 @@
                          (if mutation
                            (p.plugin/run-with-plugins env ::pcr/wrap-mutate
                              #(pco.prot/-mutate mutation %1 (:params %2)) env ast)
-                           (throw (ex-info "Mutation not found" {::pco/op-name key}))))
+                           (throw (ex-info (str "Mutation " key " not found") {::pco/op-name key}))))
                        (p/catch
                          (fn [e]
                            (p.plugin/run-with-plugins env ::pcr/wrap-mutation-error
