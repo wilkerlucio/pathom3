@@ -1347,16 +1347,22 @@
       (create-root-and graph' env node-ids)
       graph')))
 
+(defn verify-index-ast
+  [{::keys [index-ast]}]
+  {:type     :root
+   :children (->> index-ast
+                  (vals)
+                  (into []
+                        (comp
+                          (remove (comp ::pco/optional? :params))
+                          (remove (comp #{'...} :query)))))})
+
 (defn verify-plan!*
   [env
-   {::keys [unreachable-paths
-            index-ast]
+   {::keys [unreachable-paths]
     :as    graph}]
   (if (seq unreachable-paths)
-    (let [user-required (pfsd/ast->shape-descriptor {:type     :root
-                                                     :children (->> index-ast
-                                                                    (vals)
-                                                                    (remove (comp #{'...} :query)))})
+    (let [user-required (pfsd/ast->shape-descriptor (verify-index-ast graph))
           missing       (pfsd/intersection unreachable-paths user-required)]
       (if (seq missing)
         (let [path (get env ::p.path/path)]

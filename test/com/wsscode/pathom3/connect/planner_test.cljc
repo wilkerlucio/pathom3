@@ -285,6 +285,27 @@
                                    :key          :a
                                    :type         :prop}}}))
 
+      (testing "optional"
+        (is (= (compute-run-graph
+                 {::resolvers [{::pco/op-name 'a
+                                ::pco/output  [:a]}]
+                  ::eql/query [:a (pco/? :b)]})
+               '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                                                :com.wsscode.pathom3.connect.planner/expects   {:a {}},
+                                                                                :com.wsscode.pathom3.connect.planner/input     {},
+                                                                                :com.wsscode.pathom3.connect.planner/node-id   1}},
+                 :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :prop,
+                                                                                 :dispatch-key :a,
+                                                                                 :key          :a},
+                                                                             :b {:type         :prop,
+                                                                                 :dispatch-key :b,
+                                                                                 :key          :b,
+                                                                                 :params       {:com.wsscode.pathom3.connect.operation/optional? true}}},
+                 :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
+                 :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{1}},
+                 :com.wsscode.pathom3.connect.planner/root                  1,
+                 :com.wsscode.pathom3.connect.planner/unreachable-paths     {:b {}}})))
+
       (testing "exposed nested needs"
         (is (= (compute-run-graph
                  {::pci/index-oir      '{}
