@@ -295,6 +295,17 @@
                       :left      7}
                      20]}))))
 
+(deftest run-graph!-fail-cases-test
+  (testing "invalid resolver response"
+    (is (thrown-with-msg? #?(:clj Throwable :cljs :default)
+                          #"Invalid response 123 on call to resolver foo"
+          (run-graph (pci/register
+                       (pco/resolver 'foo
+                         {::pco/output [:foo]}
+                         (fn [_ _] 123)))
+                     {}
+                     [:foo])))))
+
 (deftest run-graph!-final-test
   (testing "map value"
     (is (graph-response? (pci/register geo/registry)

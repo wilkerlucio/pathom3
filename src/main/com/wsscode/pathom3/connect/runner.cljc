@@ -412,38 +412,38 @@
         resolver-cache* (get env cache-store)
         _               (merge-node-stats! env node
                           {::resolver-run-start-ms (time/now-ms)})
-        result          (try
-                          (if-let [missing (pfsd/missing input-shape input entity)]
-                            (if (missing-maybe-in-pending-batch? env input)
-                              (wait-batch-response env node)
-                              (throw (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
-                                              {:required  input
-                                               :available input-shape
-                                               :missing   missing})))
-                            (cond
-                              batch?
-                              (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
-                                (val x)
-                                (if (::unsupported-batch? env)
-                                  (invoke-resolver-cached-batch
-                                    env cache? op-name resolver cache-store input-data params)
-                                  (batch-hold-token env cache? op-name node cache-store input-data)))
+        response          (try
+                            (if-let [missing (pfsd/missing input-shape input entity)]
+                              (if (missing-maybe-in-pending-batch? env input)
+                                (wait-batch-response env node)
+                                (throw (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
+                                                {:required  input
+                                                 :available input-shape
+                                                 :missing   missing})))
+                              (cond
+                                batch?
+                                (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
+                                  (val x)
+                                  (if (::unsupported-batch? env)
+                                    (invoke-resolver-cached-batch
+                                      env cache? op-name resolver cache-store input-data params)
+                                    (batch-hold-token env cache? op-name node cache-store input-data)))
 
-                              :else
-                              (invoke-resolver-cached
-                                env cache? op-name resolver cache-store input-data params)))
-                          (catch #?(:clj Throwable :cljs :default) e
-                            (mark-resolver-error-with-plugins env node e)
-                            (fail-fast env e)
-                            ::node-error))
+                                :else
+                                (invoke-resolver-cached
+                                  env cache? op-name resolver cache-store input-data params)))
+                            (catch #?(:clj Throwable :cljs :default) e
+                              (mark-resolver-error-with-plugins env node e)
+                              (fail-fast env e)
+                              ::node-error))
         finish          (time/now-ms)]
-    (if-not (valid-response? result)
-      (l/warn ::invalid-resolver-response {::pco/op-name op-name :response result}))
+    (if-not (valid-response? response)
+      (throw (ex-info (str "Invalid response " (pr-str response) " on call to resolver " op-name) {:response response})))
     (merge-node-stats! env node
       (cond-> {::resolver-run-finish-ms finish}
-        (not (::batch-hold result))
-        (merge (report-resolver-io-stats env input-data result))))
-    result))
+        (not (::batch-hold response))
+        (merge (report-resolver-io-stats env input-data response))))
+    response))
 
 (defn run-resolver-node!
   "This function evaluates the resolver associated with the node.

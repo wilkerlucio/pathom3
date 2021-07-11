@@ -1346,6 +1346,31 @@
       (create-root-and graph' env node-ids)
       graph')))
 
+(defn verify-plan!*
+  [{::keys [unreachable-paths
+            index-ast]
+    :as    graph}]
+  (if (seq unreachable-paths)
+    (let [user-required (pfsd/ast->shape-descriptor {:type     :root
+                                                     :children (->> index-ast
+                                                                    (vals)
+                                                                    (remove (comp #{'...} :query)))})
+          missing       (pfsd/intersection unreachable-paths user-required)]
+      (if (seq missing)
+        (throw
+          (ex-info (str "Pathom can't find a path for the following elements in the query: " (pr-str (pfsd/shape-descriptor->query missing)))
+                   {::unreachable-paths missing}))
+        graph))
+    graph))
+
+(defn verify-plan!
+  "This will cause an exception to throw in case the plan can't reach some required
+  attribute"
+  [{:com.wsscode.pathom3.system/keys [tolerant-mode?]} graph]
+  (if-not tolerant-mode?
+    (verify-plan!* graph)
+    graph))
+
 (>defn compute-run-graph
   "Generates a run plan for a given environment, the environment should contain the
   indexes in it (::pc/index-oir and ::pc/index-resolvers). It computes a plan to execute
@@ -1408,22 +1433,24 @@
    (add-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
                              ::snapshot-message "=== Start query plan ==="})
 
-   (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
-                                      (::available-data env)
-                                      (:edn-query-language.ast/node env)]
-     #(let [env' (-> (merge (base-env) env)
-                     (vary-meta assoc ::original-env env))]
-        (cond->
-          (compute-run-graph*
-            (merge (base-graph)
-                   graph
-                   {::index-ast      (pf.eql/index-ast (:edn-query-language.ast/node env))
-                    ::source-ast     (:edn-query-language.ast/node env)
-                    ::available-data (::available-data env)})
-            env')
+   (verify-plan!
+     env
+     (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
+                                        (::available-data env)
+                                        (:edn-query-language.ast/node env)]
+       #(let [env' (-> (merge (base-env) env)
+                       (vary-meta assoc ::original-env env))]
+          (cond->
+            (compute-run-graph*
+              (merge (base-graph)
+                     graph
+                     {::index-ast      (pf.eql/index-ast (:edn-query-language.ast/node env))
+                      ::source-ast     (:edn-query-language.ast/node env)
+                      ::available-data (::available-data env)})
+              env')
 
-          optimize-graph?
-          (optimize-graph env'))))))
+            optimize-graph?
+            (optimize-graph env')))))))
 
 ; endregion
 

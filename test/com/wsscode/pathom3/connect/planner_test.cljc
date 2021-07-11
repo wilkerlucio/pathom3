@@ -210,7 +210,8 @@
   (testing "no path"
     (is (= (compute-run-graph
              {::pci/index-oir '{}
-              ::eql/query     [:a]})
+              ::eql/query     [:a]
+              :com.wsscode.pathom3.system/tolerant-mode? true})
            {::pcp/nodes             {}
             ::pcp/unreachable-paths {:a {}}
             ::pcp/index-ast         {:a {:dispatch-key :a
@@ -220,7 +221,8 @@
     (testing "broken chain"
       (is (= (compute-run-graph
                {::pci/index-oir '{:b {{:a {}} #{b}}}
-                ::eql/query     [:b]})
+                ::eql/query     [:b]
+                :com.wsscode.pathom3.system/tolerant-mode? true})
              '#::pcp{:nodes             {}
                      :unreachable-paths {:b {}, :a {}}
                      :index-ast         {:b {:dispatch-key :b
@@ -229,7 +231,8 @@
 
       (is (= (compute-run-graph
                {::pci/index-oir '{:b {{:a {}} #{b1 b}}}
-                ::eql/query     [:b]})
+                ::eql/query     [:b]
+                :com.wsscode.pathom3.system/tolerant-mode? true})
              '#::pcp{:nodes             {}
                      :unreachable-paths {:a {} :b {}}
                      :index-ast         {:b {:dispatch-key :b
@@ -243,7 +246,8 @@
                               ::pco/input   [:a]
                               ::pco/output  [:b]}]
                 ::eql/query [:b]
-                ::out       {::pcp/unreachable-paths {:a {}}}})
+                ::out       {::pcp/unreachable-paths {:a {}}}
+                :com.wsscode.pathom3.system/tolerant-mode? true})
              '#::pcp{:nodes             {}
                      :unreachable-paths {:a {} :b {}}
                      :index-ast         {:b {:dispatch-key :b
@@ -257,7 +261,8 @@
                              {::pco/op-name 'c
                               ::pco/input   [:b]
                               ::pco/output  [:c]}]
-                ::eql/query [:c]})
+                ::eql/query [:c]
+                :com.wsscode.pathom3.system/tolerant-mode? true})
              '#::pcp{:nodes             {}
                      :unreachable-paths {:a {} :b {} :c {}}
                      :index-ast         {:c {:dispatch-key :c
@@ -273,7 +278,8 @@
                              {::pco/op-name 'c
                               ::pco/input   [:b :d]
                               ::pco/output  [:c]}]
-                ::eql/query [:c]})
+                ::eql/query [:c]
+                :com.wsscode.pathom3.system/tolerant-mode? true})
              '#::pcp{:nodes             {}
                      :unreachable-paths {:c {}, :b {}, :a {}}
                      :index-ast         {:c {:dispatch-key :c
@@ -446,7 +452,8 @@
                            {::pco/op-name 'b
                             ::pco/input   [:a]
                             ::pco/output  [:b]}]
-              ::eql/query [:a]})
+              ::eql/query [:a]
+              :com.wsscode.pathom3.system/tolerant-mode? true})
            '#::pcp{:nodes             {},
                    :unreachable-paths {:b {}, :a {}},
                    :index-ast         {:a {:type         :prop,
@@ -463,7 +470,8 @@
                            {::pco/op-name 'c
                             ::pco/input   [:b]
                             ::pco/output  [:c]}]
-              ::eql/query [:a]})
+              ::eql/query [:a]
+              :com.wsscode.pathom3.system/tolerant-mode? true})
            '#::pcp{:nodes             {}
                    :unreachable-paths {:c {}, :b {}, :a {}}
                    :index-ast         {:a {:type         :prop,
@@ -516,7 +524,8 @@
                                  ::pco/input   [{:users [:user/score]}]
                                  ::pco/output  [:scores-sum]}
                                 {::pco/op-name users
-                                 ::pco/output  [{:users [:user/id]}]}]}))
+                                 ::pco/output  [{:users [:user/id]}]}]
+                  :com.wsscode.pathom3.system/tolerant-mode? true}))
            '{::pcp/nodes             {}
              ::pcp/unreachable-paths {:scores-sum {}
                                       :users      {:user/score {}}}
@@ -534,7 +543,8 @@
                                  ::pco/output  [{:users [:user/id]}]}
                                 {::pco/op-name user
                                  ::pco/input   [:user/id]
-                                 ::pco/output  [:user/score]}]}))
+                                 ::pco/output  [:user/score]}]
+                  :com.wsscode.pathom3.system/tolerant-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
                                                                              :com.wsscode.pathom3.connect.planner/node-id      1,
                                                                              :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}},
@@ -570,7 +580,8 @@
                              ::pco/output  [{:a [:b]}]}
                             {::pco/op-name z
                              ::pco/input   [{:a [:b]}]
-                             ::pco/output  [:z]}]})
+                             ::pco/output  [:z]}]
+              :com.wsscode.pathom3.system/tolerant-mode? true})
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1                  {:com.wsscode.pathom3.connect.operation/op-name    z,
                                                                                               :com.wsscode.pathom3.connect.planner/expects      {:z {}},
                                                                                               :com.wsscode.pathom3.connect.planner/input        {:a {:b {}}},
@@ -626,7 +637,8 @@
                                           ::pco/output  [{:users [:user/id]}]}
                                          {::pco/op-name user
                                           ::pco/input   [:user/id]
-                                          ::pco/output  [:user/score]}]}))
+                                          ::pco/output  [:user/score]}]
+                  :com.wsscode.pathom3.system/tolerant-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name scores-sum,
                                                                              :com.wsscode.pathom3.connect.planner/node-id   1,
                                                                              :com.wsscode.pathom3.connect.planner/expects   {:scores-sum {}},
@@ -658,7 +670,8 @@
                                           ::pco/output  [:other]}
                                          {::pco/op-name user
                                           ::pco/input   [:user/id]
-                                          ::pco/output  [:user/score]}]}))
+                                          ::pco/output  [:user/score]}]
+                  :com.wsscode.pathom3.system/tolerant-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
                                                                              :com.wsscode.pathom3.connect.planner/node-id      1,
                                                                              :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}},
@@ -696,7 +709,8 @@
                                           ::pco/output  [{:users [:user/id]}]}
                                          {::pco/op-name user
                                           ::pco/input   [:user/id]
-                                          ::pco/output  [:user/score]}]}))
+                                          ::pco/output  [:user/score]}]
+                  :com.wsscode.pathom3.system/tolerant-mode? true}))
            '{:com.wsscode.pathom3.connect.planner/nodes
              {1
               {:com.wsscode.pathom3.connect.operation/op-name scores-sum,
@@ -725,7 +739,8 @@
                                  ::pco/output  [{:users [:user/id]}]}
                                 {::pco/op-name user
                                  ::pco/input   [:user/id]
-                                 ::pco/output  [:user/score]}]}))
+                                 ::pco/output  [:user/score]}]
+                  :com.wsscode.pathom3.system/tolerant-mode? true}))
            '{:com.wsscode.pathom3.connect.planner/nodes
              {1
               {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
@@ -767,7 +782,8 @@
              (-> {::eql/query [:b]
                   ::resolvers '[{::pco/op-name x
                                  ::pco/input   [{:a [:b]}]
-                                 ::pco/output  [:b]}]}))
+                                 ::pco/output  [:b]}]
+                  :com.wsscode.pathom3.system/tolerant-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes             {},
                                                   :index-ast         {:b {:type         :prop,
                                                                           :dispatch-key :b,
@@ -779,7 +795,8 @@
                   ::pcp/available-data {:a {}}
                   ::resolvers          '[{::pco/op-name x
                                           ::pco/input   [{:a [:b]}]
-                                          ::pco/output  [:b]}]}))
+                                          ::pco/output  [:b]}]
+                  :com.wsscode.pathom3.system/tolerant-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes             {},
                                                   :index-ast         {:b {:type         :prop,
                                                                           :dispatch-key :b,
@@ -973,7 +990,8 @@
                                 ::pco/input   [:x (pco/? :y)]
                                 ::pco/output  [:foo]}
                                {::pco/op-name 'x
-                                ::pco/output  [:x]}]}))
+                                ::pco/output  [:x]}]
+                  :com.wsscode.pathom3.system/tolerant-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    foo,
                                                                              :com.wsscode.pathom3.connect.planner/node-id      1,
                                                                              :com.wsscode.pathom3.connect.planner/expects      {:foo {}},
@@ -1001,7 +1019,8 @@
                                {::pco/op-name 'x
                                 ::pco/output  [:x]}
                                {::pco/op-name 'y
-                                ::pco/output  [:y]}]}))
+                                ::pco/output  [:y]}]
+                  :com.wsscode.pathom3.system/tolerant-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    foo,
                                                                              :com.wsscode.pathom3.connect.planner/node-id      1,
                                                                              :com.wsscode.pathom3.connect.planner/expects      {:foo {}},
@@ -1034,7 +1053,8 @@
                (-> {::eql/query [:foo]
                     ::resolvers [{::pco/op-name 'foo
                                   ::pco/input   [(pco/? :y)]
-                                  ::pco/output  [:foo]}]}))
+                                  ::pco/output  [:foo]}]
+                    :com.wsscode.pathom3.system/tolerant-mode? true}))
              '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name foo,
                                                                                :com.wsscode.pathom3.connect.planner/node-id   1,
                                                                                :com.wsscode.pathom3.connect.planner/expects   {:foo {}},
@@ -1510,7 +1530,8 @@
                                                         ::pco/dynamic-resolver? true
                                                         ::pco/resolve           (fn [_ _])}}
               ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}}
-              ::eql/query           [:release/script]})
+              ::eql/query           [:release/script]
+              :com.wsscode.pathom3.system/tolerant-mode? true})
            {::pcp/nodes             {}
             ::pcp/unreachable-paths {:db/id          {}
                                      :release/script {}}
@@ -2619,6 +2640,7 @@
   (is (false? (pcp/shape-reachable?
                 (compute-env
                   {::eql/query [:scores-sum]
+                   :com.wsscode.pathom3.system/tolerant-mode? true
                    ::resolvers '[{::pco/op-name scores-sum
                                   ::pco/input   [{:users [:user/score]}]
                                   ::pco/output  [:scores-sum]}
