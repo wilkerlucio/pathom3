@@ -297,7 +297,7 @@
 
 (deftest run-graph!-fail-cases-test
   (testing "invalid resolver response"
-    (is (thrown-with-msg? #?(:clj Throwable :cljs :default)
+    (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
                           #"Invalid response 123 on call to resolver foo"
           (run-graph (pci/register
                        (pco/resolver 'foo
@@ -1937,7 +1937,7 @@
                                     (fn [env ast]
                                       (try
                                         (mutation env ast)
-                                        (catch #?(:clj Throwable :cljs :default) e
+                                        (catch #?(:clj Throwable :cljs js/Error) e
                                           (reset! err* e)
                                           (throw e)))))}))
             {}

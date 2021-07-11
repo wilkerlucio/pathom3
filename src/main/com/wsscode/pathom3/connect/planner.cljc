@@ -1366,8 +1366,8 @@
 (defn verify-plan!
   "This will cause an exception to throw in case the plan can't reach some required
   attribute"
-  [{:com.wsscode.pathom3.system/keys [tolerant-mode?]} graph]
-  (if-not tolerant-mode?
+  [{:com.wsscode.pathom3.system/keys [loose-mode?]} graph]
+  (if-not loose-mode?
     (verify-plan!* graph)
     graph))
 
