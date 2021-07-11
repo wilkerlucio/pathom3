@@ -630,7 +630,8 @@
      (-> env
          (assoc ::smart-map? true)
          (coll/merge-defaults
-           (cond-> {:com.wsscode.pathom3.connect.planner/plan-cache* (atom {})}
+           (cond-> {:com.wsscode.pathom3.connect.planner/plan-cache* (atom {})
+                    :com.wsscode.pathom3.system/loose-mode?          true}
              persistent-cache?
              (assoc ::pcr/resolver-cache* (atom {}))))
          (p.ent/with-entity context)
