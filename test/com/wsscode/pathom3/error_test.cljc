@@ -24,6 +24,7 @@
   (testing "unreachable from plan"
     (is (= (let [data (p.eql/process
                         (pci/register
+                          {:com.wsscode.pathom3.system/loose-mode? true}
                           (pbir/single-attr-resolver :a :b str))
                         [:b])]
              (p.error/attribute-error data :b))

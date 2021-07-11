@@ -11,6 +11,7 @@
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.placeholder :as pph]
     [edn-query-language.core :as eql])
   #?(:cljs
@@ -1347,7 +1348,8 @@
       graph')))
 
 (defn verify-plan!*
-  [{::keys [unreachable-paths
+  [env
+   {::keys [unreachable-paths
             index-ast]
     :as    graph}]
   (if (seq unreachable-paths)
@@ -1357,18 +1359,23 @@
                                                                     (remove (comp #{'...} :query)))})
           missing       (pfsd/intersection unreachable-paths user-required)]
       (if (seq missing)
-        (throw
-          (ex-info (str "Pathom can't find a path for the following elements in the query: " (pr-str (pfsd/shape-descriptor->query missing)))
-                   {::unreachable-paths missing}))
+        (let [path (get env ::p.path/path)]
+          (throw
+            (ex-info
+              (cond-> (str "Pathom can't find a path for the following elements in the query: " (pr-str (pfsd/shape-descriptor->query missing)))
+                path
+                (str " at path " (pr-str path)))
+              {::unreachable-paths missing
+               ::p.path/path       path})))
         graph))
     graph))
 
 (defn verify-plan!
   "This will cause an exception to throw in case the plan can't reach some required
   attribute"
-  [{:com.wsscode.pathom3.system/keys [loose-mode?]} graph]
+  [{:com.wsscode.pathom3.system/keys [loose-mode?] :as env} graph]
   (if-not loose-mode?
-    (verify-plan!* graph)
+    (verify-plan!* env graph)
     graph))
 
 (>defn compute-run-graph
