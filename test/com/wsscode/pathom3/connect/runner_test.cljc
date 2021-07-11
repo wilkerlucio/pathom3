@@ -1264,11 +1264,7 @@
     (let [res (run-graph
                 (pci/register
                   {:com.wsscode.pathom3.system/loose-mode? true}
-                  [batch-fetch-error
-                   (pbir/constantly-resolver :list
-                                             [{:id 1}
-                                              {:id 2}
-                                              {:id 3}])])
+                  [batch-fetch-error])
                 {:id 1}
                 [:v])]
       (is (= res
