@@ -300,7 +300,7 @@
 (deftest run-graph!-fail-cases-test
   (testing "invalid resolver response"
     (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
-                          #"Invalid response 123 on call to resolver foo"
+          #"Resolver foo returned an invalid response: 123"
           (run-graph (pci/register
                        (pco/resolver 'foo
                          {::pco/output [:foo]}

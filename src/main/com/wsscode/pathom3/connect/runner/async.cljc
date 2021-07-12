@@ -227,9 +227,8 @@
                               (fn [error]
                                 (pcr/mark-node-error-with-plugins env node error)
                                 ::pcr/node-error)))]
-    (p/let [response response]
-      (if-not (pcr/valid-response? response)
-        (pcr/mark-node-error-with-plugins env node (ex-info (str "Invalid response " (pr-str response) " on call to resolver " op-name) {:response response})))
+    (p/let [response response
+            response (pcr/validate-response! env node response)]
       (let [finish (time/now-ms)]
         (pcr/merge-node-stats! env node
           (cond-> {::pcr/resolver-run-finish-ms finish}

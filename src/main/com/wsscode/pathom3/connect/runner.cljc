@@ -295,7 +295,8 @@
   (if node-run-stats*
     (doto node-run-stats*
       (refs/gswap! assoc-in [node-id ::node-error] error)
-      (refs/gswap! update ::nodes-with-error coll/sconj node-id))))
+      (refs/gswap! update ::nodes-with-error coll/sconj node-id)))
+  ::node-error)
 
 (defn mark-node-error-with-plugins
   [env node e]
@@ -380,10 +381,21 @@
                  ::node-resolver-input input-data
                  ::env                 env}})
 
-(defn valid-response? [x]
+(defn valid-resolver-response? [x]
   (or (map? x)
-      (nil? x)
-      (refs/kw-identical? x ::node-error)))
+      (nil? x)))
+
+(defn special-resolver-signal? [response]
+  (or (refs/kw-identical? response ::node-error)
+      (and (map? response) (contains? response ::batch-hold))))
+
+(defn validate-response!
+  [env {::pco/keys [op-name]
+        :as        node} response]
+  (if (or (special-resolver-signal? response)
+          (valid-resolver-response? response))
+    response
+    (mark-node-error-with-plugins env node (ex-info (str "Resolver " op-name " returned an invalid response: " (pr-str response)) {:response response}))))
 
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
@@ -408,32 +420,30 @@
         resolver-cache* (get env cache-store)
         _               (merge-node-stats! env node
                           {::resolver-run-start-ms (time/now-ms)})
-        response          (try
-                            (if-let [missing (pfsd/missing input-shape input entity)]
-                              (if (missing-maybe-in-pending-batch? env input)
-                                (wait-batch-response env node)
-                                (throw (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
-                                                {:required  input
-                                                 :available input-shape
-                                                 :missing   missing})))
-                              (cond
-                                batch?
-                                (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
-                                  (val x)
-                                  (if (::unsupported-batch? env)
-                                    (invoke-resolver-cached-batch
-                                      env cache? op-name resolver cache-store input-data params)
-                                    (batch-hold-token env cache? op-name node cache-store input-data)))
+        response        (try
+                          (if-let [missing (pfsd/missing input-shape input entity)]
+                            (if (missing-maybe-in-pending-batch? env input)
+                              (wait-batch-response env node)
+                              (throw (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
+                                       {:required  input
+                                        :available input-shape
+                                        :missing   missing})))
+                            (cond
+                              batch?
+                              (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
+                                (val x)
+                                (if (::unsupported-batch? env)
+                                  (invoke-resolver-cached-batch
+                                    env cache? op-name resolver cache-store input-data params)
+                                  (batch-hold-token env cache? op-name node cache-store input-data)))
 
-                                :else
-                                (invoke-resolver-cached
-                                  env cache? op-name resolver cache-store input-data params)))
-                            (catch #?(:clj Throwable :cljs :default) e
-                              (mark-node-error-with-plugins env node e)
-                              ::node-error))
-        finish          (time/now-ms)]
-    (if-not (valid-response? response)
-      (mark-node-error-with-plugins env node (ex-info (str "Invalid response " (pr-str response) " on call to resolver " op-name) {:response response})))
+                              :else
+                              (invoke-resolver-cached
+                                env cache? op-name resolver cache-store input-data params)))
+                          (catch #?(:clj Throwable :cljs :default) e
+                            (mark-node-error-with-plugins env node e)))
+        finish          (time/now-ms)
+        response        (validate-response! env node response)]
     (merge-node-stats! env node
       (cond-> {::resolver-run-finish-ms finish}
         (not (::batch-hold response))
