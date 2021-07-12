@@ -112,6 +112,7 @@
       :pathom/eql
       :pathom/ast
       :pathom/entity
+      :pathom/lenient-mode?
 
   Env ext can be either a map to merge in the original env, or a function that transforms
   the env.
