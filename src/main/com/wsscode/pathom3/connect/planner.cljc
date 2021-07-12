@@ -979,6 +979,7 @@
   This function is a useful tool for developers of custom dynamic resolvers."
   [{::p.attr/keys [attribute]
     ::pco/keys    [op-name]
+    ::p.path/keys [path]
     ast           :edn-query-language.ast/node
     :as           env}]
   (if (seq (:children ast))
@@ -988,6 +989,7 @@
                          (get provides attribute)
                          provides)
           graph        (compute-run-graph (-> (reset-env env)
+                                              (assoc ::p.path/path (coll/vconj path attribute))
                                               (inc-snapshot-depth)
                                               (assoc
                                                 :edn-query-language.ast/node ast
