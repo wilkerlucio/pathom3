@@ -1357,7 +1357,8 @@
                   (into []
                         (comp
                           (remove (comp ::pco/optional? :params))
-                          (remove (comp #{'...} :query)))))})
+                          (remove (comp #{'...} :query))
+                          (remove (comp int? :query)))))})
 
 (defn verify-plan!*
   [env
