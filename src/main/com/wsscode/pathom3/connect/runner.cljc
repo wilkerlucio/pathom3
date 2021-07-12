@@ -202,8 +202,8 @@
   (-> (pcp/entry-ast graph k)
       (normalize-ast-recursive-query graph k)))
 
-(defn fail-fast [{:keys [com.wsscode.pathom3.system/loose-mode?]} error]
-  (if-not loose-mode? (throw error)))
+(defn fail-fast [{:keys [com.wsscode.pathom3.system/lenient-mode?]} error]
+  (if-not lenient-mode? (throw error)))
 
 (>defn process-attr-subquery
   [{::pcp/keys [graph]

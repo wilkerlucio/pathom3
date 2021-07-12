@@ -338,9 +338,9 @@
 (deftest compute-run-graph-no-path-tolerant-mode-test
   (testing "no path"
     (is (= (compute-run-graph
-             {::pci/index-oir                         '{}
-              ::eql/query                             [:a]
-              :com.wsscode.pathom3.system/loose-mode? true})
+             {::pci/index-oir                           '{}
+              ::eql/query                               [:a]
+              :com.wsscode.pathom3.system/lenient-mode? true})
            {::pcp/nodes             {}
             ::pcp/unreachable-paths {:a {}}
             ::pcp/index-ast         {:a {:dispatch-key :a
@@ -349,9 +349,9 @@
 
     (testing "broken chain"
       (is (= (compute-run-graph
-               {::pci/index-oir                         '{:b {{:a {}} #{b}}}
-                ::eql/query                             [:b]
-                :com.wsscode.pathom3.system/loose-mode? true})
+               {::pci/index-oir                           '{:b {{:a {}} #{b}}}
+                ::eql/query                               [:b]
+                :com.wsscode.pathom3.system/lenient-mode? true})
              '#::pcp{:nodes             {}
                      :unreachable-paths {:b {}, :a {}}
                      :index-ast         {:b {:dispatch-key :b
@@ -359,9 +359,9 @@
                                              :type         :prop}}}))
 
       (is (= (compute-run-graph
-               {::pci/index-oir                         '{:b {{:a {}} #{b1 b}}}
-                ::eql/query                             [:b]
-                :com.wsscode.pathom3.system/loose-mode? true})
+               {::pci/index-oir                           '{:b {{:a {}} #{b1 b}}}
+                ::eql/query                               [:b]
+                :com.wsscode.pathom3.system/lenient-mode? true})
              '#::pcp{:nodes             {}
                      :unreachable-paths {:a {} :b {}}
                      :index-ast         {:b {:dispatch-key :b
@@ -369,14 +369,14 @@
                                              :type         :prop}}}))
 
       (is (= (compute-run-graph
-               {::resolvers                             [{::pco/op-name 'a
-                                                          ::pco/output  [:a]}
-                                                         {::pco/op-name 'b
-                                                          ::pco/input   [:a]
-                                                          ::pco/output  [:b]}]
-                ::eql/query                             [:b]
-                ::out                                   {::pcp/unreachable-paths {:a {}}}
-                :com.wsscode.pathom3.system/loose-mode? true})
+               {::resolvers                               [{::pco/op-name 'a
+                                                            ::pco/output  [:a]}
+                                                           {::pco/op-name 'b
+                                                            ::pco/input   [:a]
+                                                            ::pco/output  [:b]}]
+                ::eql/query                               [:b]
+                ::out                                     {::pcp/unreachable-paths {:a {}}}
+                :com.wsscode.pathom3.system/lenient-mode? true})
              '#::pcp{:nodes             {}
                      :unreachable-paths {:a {} :b {}}
                      :index-ast         {:b {:dispatch-key :b
@@ -384,14 +384,14 @@
                                              :type         :prop}}}))
 
       (is (= (compute-run-graph
-               {::resolvers                             [{::pco/op-name 'b
-                                                          ::pco/input   [:a]
-                                                          ::pco/output  [:b]}
-                                                         {::pco/op-name 'c
-                                                          ::pco/input   [:b]
-                                                          ::pco/output  [:c]}]
-                ::eql/query                             [:c]
-                :com.wsscode.pathom3.system/loose-mode? true})
+               {::resolvers                               [{::pco/op-name 'b
+                                                            ::pco/input   [:a]
+                                                            ::pco/output  [:b]}
+                                                           {::pco/op-name 'c
+                                                            ::pco/input   [:b]
+                                                            ::pco/output  [:c]}]
+                ::eql/query                               [:c]
+                :com.wsscode.pathom3.system/lenient-mode? true})
              '#::pcp{:nodes             {}
                      :unreachable-paths {:a {} :b {} :c {}}
                      :index-ast         {:c {:dispatch-key :c
@@ -399,16 +399,16 @@
                                              :type         :prop}}}))
 
       (is (= (compute-run-graph
-               {::resolvers                             [{::pco/op-name 'b
-                                                          ::pco/input   [:a]
-                                                          ::pco/output  [:b]}
-                                                         {::pco/op-name 'd
-                                                          ::pco/output  [:d]}
-                                                         {::pco/op-name 'c
-                                                          ::pco/input   [:b :d]
-                                                          ::pco/output  [:c]}]
-                ::eql/query                             [:c]
-                :com.wsscode.pathom3.system/loose-mode? true})
+               {::resolvers                               [{::pco/op-name 'b
+                                                            ::pco/input   [:a]
+                                                            ::pco/output  [:b]}
+                                                           {::pco/op-name 'd
+                                                            ::pco/output  [:d]}
+                                                           {::pco/op-name 'c
+                                                            ::pco/input   [:b :d]
+                                                            ::pco/output  [:c]}]
+                ::eql/query                               [:c]
+                :com.wsscode.pathom3.system/lenient-mode? true})
              '#::pcp{:nodes             {}
                      :unreachable-paths {:c {}, :b {}, :a {}}
                      :index-ast         {:c {:dispatch-key :c
@@ -536,14 +536,14 @@
 (deftest compute-run-graph-cycles-test
   (testing "cycles"
     (is (= (compute-run-graph
-             {::resolvers                             [{::pco/op-name 'a
-                                                        ::pco/input   [:b]
-                                                        ::pco/output  [:a]}
-                                                       {::pco/op-name 'b
-                                                        ::pco/input   [:a]
-                                                        ::pco/output  [:b]}]
-              ::eql/query                             [:a]
-              :com.wsscode.pathom3.system/loose-mode? true})
+             {::resolvers                               [{::pco/op-name 'a
+                                                          ::pco/input   [:b]
+                                                          ::pco/output  [:a]}
+                                                         {::pco/op-name 'b
+                                                          ::pco/input   [:a]
+                                                          ::pco/output  [:b]}]
+              ::eql/query                               [:a]
+              :com.wsscode.pathom3.system/lenient-mode? true})
            '#::pcp{:nodes             {},
                    :unreachable-paths {:b {}, :a {}},
                    :index-ast         {:a {:type         :prop,
@@ -551,17 +551,17 @@
                                            :key          :a}}}))
 
     (is (= (compute-run-graph
-             {::resolvers                             [{::pco/op-name 'a
-                                                        ::pco/input   [:c]
-                                                        ::pco/output  [:a]}
-                                                       {::pco/op-name 'b
-                                                        ::pco/input   [:a]
-                                                        ::pco/output  [:b]}
-                                                       {::pco/op-name 'c
-                                                        ::pco/input   [:b]
-                                                        ::pco/output  [:c]}]
-              ::eql/query                             [:a]
-              :com.wsscode.pathom3.system/loose-mode? true})
+             {::resolvers                               [{::pco/op-name 'a
+                                                          ::pco/input   [:c]
+                                                          ::pco/output  [:a]}
+                                                         {::pco/op-name 'b
+                                                          ::pco/input   [:a]
+                                                          ::pco/output  [:b]}
+                                                         {::pco/op-name 'c
+                                                          ::pco/input   [:b]
+                                                          ::pco/output  [:c]}]
+              ::eql/query                               [:a]
+              :com.wsscode.pathom3.system/lenient-mode? true})
            '#::pcp{:nodes             {}
                    :unreachable-paths {:c {}, :b {}, :a {}}
                    :index-ast         {:a {:type         :prop,
@@ -609,13 +609,13 @@
 (deftest compute-run-graph-nested-inputs-test
   (testing "discard non available paths on nesting"
     (is (= (compute-run-graph
-             (-> {::eql/query                             [:scores-sum]
-                  ::resolvers                             '[{::pco/op-name scores-sum
-                                                             ::pco/input   [{:users [:user/score]}]
-                                                             ::pco/output  [:scores-sum]}
-                                                            {::pco/op-name users
-                                                             ::pco/output  [{:users [:user/id]}]}]
-                  :com.wsscode.pathom3.system/loose-mode? true}))
+             (-> {::eql/query                               [:scores-sum]
+                  ::resolvers                               '[{::pco/op-name scores-sum
+                                                               ::pco/input   [{:users [:user/score]}]
+                                                               ::pco/output  [:scores-sum]}
+                                                              {::pco/op-name users
+                                                               ::pco/output  [{:users [:user/id]}]}]
+                  :com.wsscode.pathom3.system/lenient-mode? true}))
            '{::pcp/nodes             {}
              ::pcp/unreachable-paths {:scores-sum {}
                                       :users      {:user/score {}}}
@@ -625,16 +625,16 @@
 
   (testing "allow possible path"
     (is (= (compute-run-graph
-             (-> {::eql/query                             [:scores-sum]
-                  ::resolvers                             '[{::pco/op-name scores-sum
-                                                             ::pco/input   [{:users [:user/score]}]
-                                                             ::pco/output  [:scores-sum]}
-                                                            {::pco/op-name users
-                                                             ::pco/output  [{:users [:user/id]}]}
-                                                            {::pco/op-name user
-                                                             ::pco/input   [:user/id]
-                                                             ::pco/output  [:user/score]}]
-                  :com.wsscode.pathom3.system/loose-mode? true}))
+             (-> {::eql/query                               [:scores-sum]
+                  ::resolvers                               '[{::pco/op-name scores-sum
+                                                               ::pco/input   [{:users [:user/score]}]
+                                                               ::pco/output  [:scores-sum]}
+                                                              {::pco/op-name users
+                                                               ::pco/output  [{:users [:user/id]}]}
+                                                              {::pco/op-name user
+                                                               ::pco/input   [:user/id]
+                                                               ::pco/output  [:user/score]}]
+                  :com.wsscode.pathom3.system/lenient-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
                                                                              :com.wsscode.pathom3.connect.planner/node-id      1,
                                                                              :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}},
@@ -661,17 +661,17 @@
 
   (testing "mark bad paths regarding nested inputs"
     (is (= (compute-run-graph
-             {::eql/query                             [:z]
-              ::resolvers                             '[{::pco/op-name a1
-                                                         ::pco/output  [{:a [:c]}]}
-                                                        {::pco/op-name a2
-                                                         ::pco/output  [:a]}
-                                                        {::pco/op-name a3
-                                                         ::pco/output  [{:a [:b]}]}
-                                                        {::pco/op-name z
-                                                         ::pco/input   [{:a [:b]}]
-                                                         ::pco/output  [:z]}]
-              :com.wsscode.pathom3.system/loose-mode? true})
+             {::eql/query                               [:z]
+              ::resolvers                               '[{::pco/op-name a1
+                                                           ::pco/output  [{:a [:c]}]}
+                                                          {::pco/op-name a2
+                                                           ::pco/output  [:a]}
+                                                          {::pco/op-name a3
+                                                           ::pco/output  [{:a [:b]}]}
+                                                          {::pco/op-name z
+                                                           ::pco/input   [{:a [:b]}]
+                                                           ::pco/output  [:z]}]
+              :com.wsscode.pathom3.system/lenient-mode? true})
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1                  {:com.wsscode.pathom3.connect.operation/op-name    z,
                                                                                               :com.wsscode.pathom3.connect.planner/expects      {:z {}},
                                                                                               :com.wsscode.pathom3.connect.planner/input        {:a {:b {}}},
@@ -718,17 +718,17 @@
 
   (testing "data partially available, require join lookup"
     (is (= (compute-run-graph
-             (-> {::eql/query                             [:scores-sum]
-                  ::pcp/available-data                    {:users {:user/id {}}}
-                  ::resolvers                             '[{::pco/op-name scores-sum
-                                                             ::pco/input   [{:users [:user/score]}]
-                                                             ::pco/output  [:scores-sum]}
-                                                            {::pco/op-name users
-                                                             ::pco/output  [{:users [:user/id]}]}
-                                                            {::pco/op-name user
-                                                             ::pco/input   [:user/id]
-                                                             ::pco/output  [:user/score]}]
-                  :com.wsscode.pathom3.system/loose-mode? true}))
+             (-> {::eql/query                               [:scores-sum]
+                  ::pcp/available-data                      {:users {:user/id {}}}
+                  ::resolvers                               '[{::pco/op-name scores-sum
+                                                               ::pco/input   [{:users [:user/score]}]
+                                                               ::pco/output  [:scores-sum]}
+                                                              {::pco/op-name users
+                                                               ::pco/output  [{:users [:user/id]}]}
+                                                              {::pco/op-name user
+                                                               ::pco/input   [:user/id]
+                                                               ::pco/output  [:user/score]}]
+                  :com.wsscode.pathom3.system/lenient-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name scores-sum,
                                                                              :com.wsscode.pathom3.connect.planner/node-id   1,
                                                                              :com.wsscode.pathom3.connect.planner/expects   {:scores-sum {}},
@@ -749,19 +749,19 @@
 
   (testing "data partially available, require nested and resolver call"
     (is (= (compute-run-graph
-             (-> {::eql/query                             [:scores-sum]
-                  ::pcp/available-data                    {:users {:user/id {}}}
-                  ::resolvers                             '[{::pco/op-name scores-sum
-                                                             ::pco/input   [{:users [:user/score]} :other]
-                                                             ::pco/output  [:scores-sum]}
-                                                            {::pco/op-name users
-                                                             ::pco/output  [{:users [:user/id]}]}
-                                                            {::pco/op-name other
-                                                             ::pco/output  [:other]}
-                                                            {::pco/op-name user
-                                                             ::pco/input   [:user/id]
-                                                             ::pco/output  [:user/score]}]
-                  :com.wsscode.pathom3.system/loose-mode? true}))
+             (-> {::eql/query                               [:scores-sum]
+                  ::pcp/available-data                      {:users {:user/id {}}}
+                  ::resolvers                               '[{::pco/op-name scores-sum
+                                                               ::pco/input   [{:users [:user/score]} :other]
+                                                               ::pco/output  [:scores-sum]}
+                                                              {::pco/op-name users
+                                                               ::pco/output  [{:users [:user/id]}]}
+                                                              {::pco/op-name other
+                                                               ::pco/output  [:other]}
+                                                              {::pco/op-name user
+                                                               ::pco/input   [:user/id]
+                                                               ::pco/output  [:user/score]}]
+                  :com.wsscode.pathom3.system/lenient-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
                                                                              :com.wsscode.pathom3.connect.planner/node-id      1,
                                                                              :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}},
@@ -790,17 +790,17 @@
 
   (testing "data completely available, skip dependency"
     (is (= (compute-run-graph
-             (-> {::eql/query                             [:scores-sum]
-                  ::pcp/available-data                    {:users {:user/score {}}}
-                  ::resolvers                             '[{::pco/op-name scores-sum
-                                                             ::pco/input   [{:users [:user/score]}]
-                                                             ::pco/output  [:scores-sum]}
-                                                            {::pco/op-name users
-                                                             ::pco/output  [{:users [:user/id]}]}
-                                                            {::pco/op-name user
-                                                             ::pco/input   [:user/id]
-                                                             ::pco/output  [:user/score]}]
-                  :com.wsscode.pathom3.system/loose-mode? true}))
+             (-> {::eql/query                               [:scores-sum]
+                  ::pcp/available-data                      {:users {:user/score {}}}
+                  ::resolvers                               '[{::pco/op-name scores-sum
+                                                               ::pco/input   [{:users [:user/score]}]
+                                                               ::pco/output  [:scores-sum]}
+                                                              {::pco/op-name users
+                                                               ::pco/output  [{:users [:user/id]}]}
+                                                              {::pco/op-name user
+                                                               ::pco/input   [:user/id]
+                                                               ::pco/output  [:user/score]}]
+                  :com.wsscode.pathom3.system/lenient-mode? true}))
            '{:com.wsscode.pathom3.connect.planner/nodes
              {1
               {:com.wsscode.pathom3.connect.operation/op-name scores-sum,
@@ -818,19 +818,19 @@
 
   (testing "multiple resolvers for the same root but different sub queries"
     (is (= (compute-run-graph
-             (-> {::eql/query                             [:scores-sum :total-max-score]
-                  ::resolvers                             '[{::pco/op-name scores-sum
-                                                             ::pco/input   [{:users [:user/score]}]
-                                                             ::pco/output  [:scores-sum]}
-                                                            {::pco/op-name total-max
-                                                             ::pco/input   [{:users [:user/max-score]}]
-                                                             ::pco/output  [:total-max-score]}
-                                                            {::pco/op-name users
-                                                             ::pco/output  [{:users [:user/id]}]}
-                                                            {::pco/op-name user
-                                                             ::pco/input   [:user/id]
-                                                             ::pco/output  [:user/score]}]
-                  :com.wsscode.pathom3.system/loose-mode? true}))
+             (-> {::eql/query                               [:scores-sum :total-max-score]
+                  ::resolvers                               '[{::pco/op-name scores-sum
+                                                               ::pco/input   [{:users [:user/score]}]
+                                                               ::pco/output  [:scores-sum]}
+                                                              {::pco/op-name total-max
+                                                               ::pco/input   [{:users [:user/max-score]}]
+                                                               ::pco/output  [:total-max-score]}
+                                                              {::pco/op-name users
+                                                               ::pco/output  [{:users [:user/id]}]}
+                                                              {::pco/op-name user
+                                                               ::pco/input   [:user/id]
+                                                               ::pco/output  [:user/score]}]
+                  :com.wsscode.pathom3.system/lenient-mode? true}))
            '{:com.wsscode.pathom3.connect.planner/nodes
              {1
               {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
@@ -869,11 +869,11 @@
 
   (testing "self output reference in input"
     (is (= (compute-run-graph
-             (-> {::eql/query                             [:b]
-                  ::resolvers                             '[{::pco/op-name x
-                                                             ::pco/input   [{:a [:b]}]
-                                                             ::pco/output  [:b]}]
-                  :com.wsscode.pathom3.system/loose-mode? true}))
+             (-> {::eql/query                               [:b]
+                  ::resolvers                               '[{::pco/op-name x
+                                                               ::pco/input   [{:a [:b]}]
+                                                               ::pco/output  [:b]}]
+                  :com.wsscode.pathom3.system/lenient-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes             {},
                                                   :index-ast         {:b {:type         :prop,
                                                                           :dispatch-key :b,
@@ -881,12 +881,12 @@
                                                   :unreachable-paths {:a {}, :b {}}}))
 
     (is (= (compute-run-graph
-             (-> {::eql/query                             [:b]
-                  ::pcp/available-data                    {:a {}}
-                  ::resolvers                             '[{::pco/op-name x
-                                                             ::pco/input   [{:a [:b]}]
-                                                             ::pco/output  [:b]}]
-                  :com.wsscode.pathom3.system/loose-mode? true}))
+             (-> {::eql/query                               [:b]
+                  ::pcp/available-data                      {:a {}}
+                  ::resolvers                               '[{::pco/op-name x
+                                                               ::pco/input   [{:a [:b]}]
+                                                               ::pco/output  [:b]}]
+                  :com.wsscode.pathom3.system/lenient-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes             {},
                                                   :index-ast         {:b {:type         :prop,
                                                                           :dispatch-key :b,
@@ -1075,13 +1075,13 @@
 (deftest compute-run-graph-optional-inputs-test
   (testing "plan continues when optional thing is missing"
     (is (= (compute-run-graph
-             (-> {::eql/query                             [:foo]
-                  ::resolvers                             [{::pco/op-name 'foo
-                                                            ::pco/input   [:x (pco/? :y)]
-                                                            ::pco/output  [:foo]}
-                                                           {::pco/op-name 'x
-                                                            ::pco/output  [:x]}]
-                  :com.wsscode.pathom3.system/loose-mode? true}))
+             (-> {::eql/query                               [:foo]
+                  ::resolvers                               [{::pco/op-name 'foo
+                                                              ::pco/input   [:x (pco/? :y)]
+                                                              ::pco/output  [:foo]}
+                                                             {::pco/op-name 'x
+                                                              ::pco/output  [:x]}]
+                  :com.wsscode.pathom3.system/lenient-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    foo,
                                                                              :com.wsscode.pathom3.connect.planner/node-id      1,
                                                                              :com.wsscode.pathom3.connect.planner/expects      {:foo {}},
@@ -1102,15 +1102,15 @@
 
   (testing "adds optionals to plan, when available"
     (is (= (compute-run-graph
-             (-> {::eql/query                             [:foo]
-                  ::resolvers                             [{::pco/op-name 'foo
-                                                            ::pco/input   [:x (pco/? :y)]
-                                                            ::pco/output  [:foo]}
-                                                           {::pco/op-name 'x
-                                                            ::pco/output  [:x]}
-                                                           {::pco/op-name 'y
-                                                            ::pco/output  [:y]}]
-                  :com.wsscode.pathom3.system/loose-mode? true}))
+             (-> {::eql/query                               [:foo]
+                  ::resolvers                               [{::pco/op-name 'foo
+                                                              ::pco/input   [:x (pco/? :y)]
+                                                              ::pco/output  [:foo]}
+                                                             {::pco/op-name 'x
+                                                              ::pco/output  [:x]}
+                                                             {::pco/op-name 'y
+                                                              ::pco/output  [:y]}]
+                  :com.wsscode.pathom3.system/lenient-mode? true}))
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    foo,
                                                                              :com.wsscode.pathom3.connect.planner/node-id      1,
                                                                              :com.wsscode.pathom3.connect.planner/expects      {:foo {}},
@@ -1140,11 +1140,11 @@
   (testing "only optional"
     (testing "unavailable"
       (is (= (compute-run-graph
-               (-> {::eql/query                             [:foo]
-                    ::resolvers                             [{::pco/op-name 'foo
-                                                              ::pco/input   [(pco/? :y)]
-                                                              ::pco/output  [:foo]}]
-                    :com.wsscode.pathom3.system/loose-mode? true}))
+               (-> {::eql/query                               [:foo]
+                    ::resolvers                               [{::pco/op-name 'foo
+                                                                ::pco/input   [(pco/? :y)]
+                                                                ::pco/output  [:foo]}]
+                    :com.wsscode.pathom3.system/lenient-mode? true}))
              '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name foo,
                                                                                :com.wsscode.pathom3.connect.planner/node-id   1,
                                                                                :com.wsscode.pathom3.connect.planner/expects   {:foo {}},
@@ -1615,13 +1615,13 @@
 (deftest compute-run-graph-dynamic-resolvers-test
   (testing "unreachable"
     (is (= (compute-run-graph
-             {::pci/index-resolvers                   {'dynamic-resolver {::pco/op-name           'dynamic-resolver
-                                                                          ::pco/cache?            false
-                                                                          ::pco/dynamic-resolver? true
-                                                                          ::pco/resolve           (fn [_ _])}}
-              ::pci/index-oir                         {:release/script {{:db/id {}} #{'dynamic-resolver}}}
-              ::eql/query                             [:release/script]
-              :com.wsscode.pathom3.system/loose-mode? true})
+             {::pci/index-resolvers                     {'dynamic-resolver {::pco/op-name           'dynamic-resolver
+                                                                            ::pco/cache?            false
+                                                                            ::pco/dynamic-resolver? true
+                                                                            ::pco/resolve           (fn [_ _])}}
+              ::pci/index-oir                           {:release/script {{:db/id {}} #{'dynamic-resolver}}}
+              ::eql/query                               [:release/script]
+              :com.wsscode.pathom3.system/lenient-mode? true})
            {::pcp/nodes             {}
             ::pcp/unreachable-paths {:db/id          {}
                                      :release/script {}}
@@ -2729,13 +2729,13 @@
 (deftest shape-reachable?-test
   (is (false? (pcp/shape-reachable?
                 (compute-env
-                  {::eql/query                             [:scores-sum]
-                   :com.wsscode.pathom3.system/loose-mode? true
-                   ::resolvers                             '[{::pco/op-name scores-sum
-                                                              ::pco/input   [{:users [:user/score]}]
-                                                              ::pco/output  [:scores-sum]}
-                                                             {::pco/op-name users
-                                                              ::pco/output  [{:users [:user/id]}]}]})
+                  {::eql/query                               [:scores-sum]
+                   :com.wsscode.pathom3.system/lenient-mode? true
+                   ::resolvers                               '[{::pco/op-name scores-sum
+                                                                ::pco/input   [{:users [:user/score]}]
+                                                                ::pco/output  [:scores-sum]}
+                                                               {::pco/op-name users
+                                                                ::pco/output  [{:users [:user/id]}]}]})
                 {}
                 {:users {:user/score {}}})))
 

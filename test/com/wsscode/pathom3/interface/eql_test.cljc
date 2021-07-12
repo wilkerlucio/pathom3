@@ -34,7 +34,7 @@
 
     (testing "when not found, key is omitted"
       (is (= (p.eql/process (-> (pci/register
-                                  {:com.wsscode.pathom3.system/loose-mode? true}
+                                  {:com.wsscode.pathom3.system/lenient-mode? true}
                                   geo/full-registry)
                                 (p.ent/with-entity {:left 10}))
                             [::geo/top])
@@ -68,7 +68,7 @@
             :width 50})))
 
   (testing "process sequence"
-    (is (= (p.eql/process (-> {:com.wsscode.pathom3.system/loose-mode? true}
+    (is (= (p.eql/process (-> {:com.wsscode.pathom3.system/lenient-mode? true}
                               (pci/register registry)
                               (p.ent/with-entity {::coords (list
                                                              {:x 10 :y 20}
@@ -127,6 +127,6 @@
              {:new "value"})))
 
     (testing "loose mode"
-      (is (= (fi {:pathom/eql         [:invalid]
-                  :pathom/loose-mode? true})
+      (is (= (fi {:pathom/eql           [:invalid]
+                  :pathom/lenient-mode? true})
              {})))))
