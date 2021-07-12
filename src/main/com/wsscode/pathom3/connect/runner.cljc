@@ -425,9 +425,9 @@
                             (if (missing-maybe-in-pending-batch? env input)
                               (wait-batch-response env node)
                               (throw (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
-                                       {:required  input
-                                        :available input-shape
-                                        :missing   missing})))
+                                              {:required  input
+                                               :available input-shape
+                                               :missing   missing})))
                             (cond
                               batch?
                               (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]

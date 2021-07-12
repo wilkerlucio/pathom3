@@ -52,23 +52,6 @@
                x))
            entity))))})
 
-(p.plugin/defplugin ^:deprecate remove-stats-plugin
-  "DEPRECATED
-
-  This plugin is deprecated and is going to get removed, please instead use the
-  option `::pcr/omit-run-stats?` true in your env to disable run stats meta.
-
-  Remove the run stats from the result meta. Use this in production to avoid sending
-  the stats. This is important for performance and security.
-
-  "
-  {::pcr/wrap-run-graph!
-   (fn remove-stats-plugin-wrap-run-graph-external [run-graph!]
-     (fn remove-stats-plugin-wrap-run-graph-internal [env ast-or-graph entity-tree*]
-       (throw (ex-info "Plugin going to be removed, please use `::pcr/omit-run-stats?` true config instead." {}))
-       (clet [response (run-graph! env ast-or-graph entity-tree*)]
-         (vary-meta response dissoc :com.wsscode.pathom3.connect.runner/run-stats))))})
-
 (p.plugin/defplugin mutation-resolve-params
   "Remove the run stats from the result meta. Use this in production to avoid sending
   the stats. This is important for performance and security.
