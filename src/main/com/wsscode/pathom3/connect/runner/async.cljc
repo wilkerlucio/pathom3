@@ -59,7 +59,9 @@
               [(conj seq sub-res)
                (inc idx)]))
           [(empty s) 0]
-          s)
+          (cond-> s
+            (coll/coll-append-at-head? s)
+            reverse))
         (p/then first))))
 
 (defn process-map-container-subquery

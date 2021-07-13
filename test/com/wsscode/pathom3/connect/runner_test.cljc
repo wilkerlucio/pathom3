@@ -225,11 +225,12 @@
               :required  {:b {}}}))))
 
   (testing "ending values"
-    (let [res (run-graph (pci/register [(pco/resolver 'a {::pco/output [{:a [:n]}]}
-                                          (fn [_ _] {:a '({:n 1} {:n 2})}))])
-                         {}
-                         [{:a [:n]}])]
-      (is (= res {:a '({:n 1} {:n 2})}))))
+    (is (graph-response?
+          (pci/register [(pco/resolver 'a {::pco/output [{:a [:n]}]}
+                           (fn [_ _] {:a '({:n 1} {:n 2})}))])
+          {}
+          [{:a [:n]}]
+          {:a '({:n 1} {:n 2})})))
 
   (testing "processing sequence of consistent elements"
     (is (graph-response? (pci/register [geo/full-registry
