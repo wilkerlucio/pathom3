@@ -358,7 +358,7 @@
                      {:value 2}))])
               {}
               [:value]
-              {:value #?(:clj 2 :cljs 1)}))
+              {:value 2}))
         (is (= @spy #?(:clj 2 :cljs 1)))))
 
     (testing "one option fail, one succeed"
@@ -447,8 +447,8 @@
             [:value]
             (fn [res]
               (mcs/match?
-                {::pcr/taken-paths  [2]
-                 ::pcr/success-path 2}
+                {::pcr/taken-paths  [#?(:clj 2 :cljs 1)]
+                 ::pcr/success-path #?(:clj 2 :cljs 1)}
                 (-> res meta ::pcr/run-stats ::pcr/node-run-stats (get 3)))))))
 
     (testing "standard priority"
