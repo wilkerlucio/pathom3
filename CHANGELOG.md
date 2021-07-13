@@ -2,7 +2,7 @@
 
 ## [Next]
 - BREAKING CHANGE: Strict mode by default, now errors surface quickly
-- Optional loose mode via setting `:com.wsscode.pathom3.system/lenient-mode? true`
+- Optional lenient mode via setting `:com.wsscode.pathom3.system/lenient-mode? true`
 - Fix async runner reversing lists
 
 ## [2021.07.10-1]
