@@ -1687,6 +1687,22 @@
         {:foo    "baz"
          :>/path {:foo "baz"}}))
 
+  (testing "with batch"
+    (is (graph-response? (pci/register
+                           [(pco/resolver 'batch
+                              {::pco/batch? true
+                               ::pco/input  [:x]
+                               ::pco/output [:y]}
+                              (fn [_ xs]
+                                (mapv #(array-map :y (inc (:x %))) xs)))])
+          {:x 10}
+          '[:y
+            {:>/go [:y]}]
+          {:x    10
+           :y    11
+           :>/go {:x 10
+                  :y 11}})))
+
   (testing "modified data"
     (is (graph-response? (pci/register
                            [(pbir/single-attr-resolver :x :y #(* 2 %))])
