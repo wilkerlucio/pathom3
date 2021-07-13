@@ -21,6 +21,8 @@
     [matcher-combinators.test]
     [promesa.core :as p]))
 
+(declare thrown-with-msg?)
+
 (defn match-keys? [ks]
   (fn [m]
     (reduce
@@ -342,48 +344,49 @@
   (testing "processing OR nodes"
     (testing "return the first option that works, don't call the others"
       (let [spy (atom 0)]
-        (is (is (= (run-graph
-                     (pci/register
-                       [(pco/resolver `value
-                          {::pco/output [:value]}
-                          (fn [_ _]
-                            (swap! spy inc)
-                            {:value 1}))
-                        (pco/resolver `value2
-                          {::pco/output [:value]}
-                          (fn [_ _]
-                            (swap! spy inc)
-                            {:value 2}))])
-                     {}
-                     [:value])
-                   {:value #?(:clj 1 :cljs 2)})))
-        (is (= @spy 1))))
+        (is (graph-response?
+              (pci/register
+                [(pco/resolver 'value
+                   {::pco/output [:value]}
+                   (fn [_ _]
+                     (swap! spy inc)
+                     {:value 1}))
+                 (pco/resolver 'value2
+                   {::pco/output [:value]}
+                   (fn [_ _]
+                     (swap! spy inc)
+                     {:value 2}))])
+              {}
+              [:value]
+              {:value #?(:clj 2 :cljs 1)}))
+        (is (= @spy #?(:clj 2 :cljs 1)))))
 
     (testing "one option fail, one succeed"
       (let [spy (atom 0)]
-        (is (= (run-graph (pci/register
-                            [(pco/resolver `error-long-touch
-                               {::pco/output   [:error]
-                                ::pco/priority 1}
-                               (fn [_ _]
-                                 (swap! spy inc)
-                                 (throw (ex-info "Error" {}))))
-                             (pbir/constantly-resolver :error "value")])
-                          {}
-                          [:error])
-               {:error "value"}))
-        (is (= @spy 1))))
+        (is (graph-response?
+              (pci/register
+                [(pco/resolver 'error-long-touch
+                   {::pco/output   [:error]
+                    ::pco/priority 1}
+                   (fn [_ _]
+                     (swap! spy inc)
+                     (throw (ex-info "Error" {}))))
+                 (pbir/constantly-resolver :error "value")])
+              {}
+              [:error]
+              {:error "value"}))
+        (is (= @spy #?(:clj 2 :cljs 1)))))
 
     (testing "all options fail"
       (is (thrown-with-msg?
             #?(:clj Throwable :cljs js/Error)
             #"All paths from an OR node failed. Expected: \{:error \{}}"
             (run-graph (pci/register
-                         [(pco/resolver `error1
+                         [(pco/resolver 'error1
                             {::pco/output [:error]}
                             (fn [_ _]
                               (throw (ex-info "Error 1" {}))))
-                          (pco/resolver `error2
+                          (pco/resolver 'error2
                             {::pco/output [:error]}
                             (fn [_ _]
                               (throw (ex-info "Error 2" {}))))])
@@ -396,11 +399,11 @@
                  #?(:clj Throwable :cljs js/Error)
                  #"All paths from an OR node failed. Expected: \{:error \{}}"
                  @(run-graph-async (pci/register
-                                     [(pco/resolver `error1
+                                     [(pco/resolver 'error1
                                         {::pco/output [:error]}
                                         (fn [_ _]
                                           (throw (ex-info "Error 1" {}))))
-                                      (pco/resolver `error2
+                                      (pco/resolver 'error2
                                         {::pco/output [:error]}
                                         (fn [_ _]
                                           (throw (ex-info "Error 2" {}))))])
@@ -414,14 +417,14 @@
                (fn [{::pcp/keys [graph]} _or-node options]
                  (first (into []
                               (comp (map #(pcp/get-node graph %))
-                                    (filter #(= (::pco/op-name %) `value2))
+                                    (filter #(= (::pco/op-name %) 'value2))
                                     (map ::pcp/node-id))
                               options)))}
-              [(pco/resolver `value
+              [(pco/resolver 'value
                  {::pco/output [:value]}
                  (fn [_ _]
                    {:value 1}))
-               (pco/resolver `value2
+               (pco/resolver 'value2
                  {::pco/output [:value]}
                  (fn [_ _]
                    {:value 2}))])
@@ -431,12 +434,12 @@
 
     (testing "stats"
       (is (graph-response?
-            (pci/register [(pco/resolver `value
+            (pci/register [(pco/resolver 'value
                              {::pco/output   [:value]
                               ::pco/priority 1}
                              (fn [_ _]
                                {:value 1}))
-                           (pco/resolver `value2
+                           (pco/resolver 'value2
                              {::pco/output [:value]}
                              (fn [_ _]
                                {:value 2}))])
@@ -444,18 +447,18 @@
             [:value]
             (fn [res]
               (mcs/match?
-                {::pcr/taken-paths  [1]
-                 ::pcr/success-path 1}
+                {::pcr/taken-paths  [2]
+                 ::pcr/success-path 2}
                 (-> res meta ::pcr/run-stats ::pcr/node-run-stats (get 3)))))))
 
     (testing "standard priority"
       (is (graph-response?
             (pci/register
-              [(pco/resolver `value
+              [(pco/resolver 'value
                  {::pco/output [:value]}
                  (fn [_ _]
                    {:value 1}))
-               (pco/resolver `value2
+               (pco/resolver 'value2
                  {::pco/output   [:value]
                   ::pco/priority 1}
                  (fn [_ _]
@@ -467,18 +470,18 @@
       (testing "competing priority, look at next lower."
         (is (graph-response?
               (pci/register
-                [(pco/resolver `x
+                [(pco/resolver 'x
                    {::pco/output   [:x :y]
                     ::pco/priority 9}
                    (fn [_ _]
                      {:x 1 :y 2}))
-                 (pco/resolver `value1
+                 (pco/resolver 'value1
                    {::pco/input    [:x]
                     ::pco/output   [:value]
                     ::pco/priority 1}
                    (fn [_ _]
                      {:value 1}))
-                 (pco/resolver `value2
+                 (pco/resolver 'value2
                    {::pco/input    [:y]
                     ::pco/output   [:value]
                     ::pco/priority 2}
@@ -491,12 +494,12 @@
       (testing "distinct inputs"
         (is (graph-response?
               (pci/register
-                [(pco/resolver `value
+                [(pco/resolver 'value
                    {::pco/input  [:a]
                     ::pco/output [:value]}
                    (fn [_ _]
                      {:value 1}))
-                 (pco/resolver `value2
+                 (pco/resolver 'value2
                    {::pco/input    [:b]
                     ::pco/output   [:value]
                     ::pco/priority 1}
@@ -512,12 +515,12 @@
         (testing "complex extension"
           (is (graph-response?
                 (pci/register
-                  [(pco/resolver `value
+                  [(pco/resolver 'value
                      {::pco/input  [:a :b]
                       ::pco/output [:value]}
                      (fn [_ _]
                        {:value 1}))
-                   (pco/resolver `value2
+                   (pco/resolver 'value2
                      {::pco/input    [:c]
                       ::pco/output   [:value]
                       ::pco/priority 1}
@@ -534,12 +537,12 @@
         (testing "priority in the middle"
           (is (graph-response?
                 (pci/register
-                  [(pco/resolver `value
+                  [(pco/resolver 'value
                      {::pco/input  [:a :b]
                       ::pco/output [:value]}
                      (fn [_ _]
                        {:value 1}))
-                   (pco/resolver `value2
+                   (pco/resolver 'value2
                      {::pco/input  [:c]
                       ::pco/output [:value]}
                      (fn [_ _]
@@ -557,18 +560,18 @@
         (testing "leaf is a branch"
           (is (graph-response?
                 (pci/register
-                  [(pco/resolver `value-b1
+                  [(pco/resolver 'value-b1
                      {::pco/input  [:b]
                       ::pco/output [:a]}
                      (fn [_ _]
                        {:a "b1"}))
-                   (pco/resolver `value-b2
+                   (pco/resolver 'value-b2
                      {::pco/input    [:b]
                       ::pco/output   [:a]
                       ::pco/priority 1}
                      (fn [_ _]
                        {:a "b2"}))
-                   (pco/resolver `value-cd
+                   (pco/resolver 'value-cd
                      {::pco/input  [:c :d]
                       ::pco/output [:a]}
                      (fn [_ _]
@@ -584,11 +587,11 @@
 (deftest run-graph!-and-test
   (testing "stats"
     (is (graph-response?
-          (pci/register [(pco/resolver `value
+          (pci/register [(pco/resolver 'value
                            {::pco/output [:value]}
                            (fn [_ _]
                              {:value 1}))
-                         (pco/resolver `value2
+                         (pco/resolver 'value2
                            {::pco/output [:value2]}
                            (fn [_ _]
                              {:value2 2}))])
@@ -1296,7 +1299,7 @@
             children {1 {:child/ident :child/good}}
             good?    (fn [children] (boolean (some #{:child/good} (map :child/ident children))))
             env      (pci/register
-                       [(pco/resolver `pc
+                       [(pco/resolver 'pc
                           {::pco/input  [:parent/id]
                            ::pco/output [{:parent/children [:child/id]}]
                            ::pco/batch? true}
@@ -1305,7 +1308,7 @@
                                     (select-keys (parents id) [:parent/children]))
                               items)))
 
-                        (pco/resolver `ci
+                        (pco/resolver 'ci
                           {::pco/input  [:child/id]
                            ::pco/output [:child/ident]
                            ::pco/batch? true}
@@ -1314,7 +1317,7 @@
                                     (select-keys (children id) [:child/ident]))
                               items)))
 
-                        (pco/resolver `parent-good
+                        (pco/resolver 'parent-good
                           {::pco/input  [{:parent/children [:child/ident]}]
                            ::pco/output [:parent/good?]}
                           (fn [_ {:parent/keys [children]}] {:parent/good? (good? children)}))])]
