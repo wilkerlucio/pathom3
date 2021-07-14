@@ -319,7 +319,19 @@
                          {::pco/output [:foo]}
                          (fn [_ _] {})))
                      {}
-                     [:foo])))))
+                     [:foo])))
+
+    #?(:clj
+       (testing "async"
+         (is (thrown-with-msg? Throwable
+                               #"Required attributes missing: \[:foo] at path \[]"
+               @(run-graph-async (pci/register
+                                   (pco/resolver 'foo
+                                     {::pco/output [:foo]}
+                                     (fn [_ _] {})))
+                                 {}
+                                 [:foo])))))))
+
 
 (deftest run-graph!-final-test
   (testing "map value"

@@ -409,7 +409,8 @@
           (refs/gswap! (::pcr/batch-waiting* env) coll/vconj batch-hold)
           ; add to batch pending
           (refs/gswap! (::pcr/batch-pending* env) update (::pco/op-name batch-hold)
-                       coll/vconj batch-hold))))))
+                       coll/vconj batch-hold))
+        (p.plugin/run-with-plugins env ::pcr/wrap-run-graph-done! pcr/run-graph-done! env)))))
 
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the
