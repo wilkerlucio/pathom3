@@ -17,6 +17,7 @@
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
+    [com.wsscode.pathom3.placeholder :as pph]
     [com.wsscode.pathom3.plugin :as p.plugin]))
 
 (>def ::attribute-errors (s/map-of ::p.attr/attribute any?))
@@ -674,17 +675,43 @@
   (doseq [key (::pcp/mutations graph)]
     (invoke-mutation! env (entry-ast graph key))))
 
+(defn check-entity-requires!
+  "Verify if entity contains all required keys from graph index-ast. This is
+  shallow check (don't visit nested entities)."
+  [{::pcp/keys    [graph]
+    ::p.path/keys [path]
+    :as           env}]
+  (let [entity   (p.ent/entity env)
+        expected (zipmap
+                   (into []
+                         (comp (map :key)
+                               (remove #(pph/placeholder-key? env %)))
+                         (:children (pcp/required-ast-from-index-ast graph)))
+                   (repeat {}))
+        missing  (pfsd/missing (pfsd/data->shape-descriptor-shallow entity) expected)]
+    (if (seq missing)
+      (fail-fast env
+                 (ex-info (str
+                            "Required attributes missing: " (pr-str (vec (keys missing)))
+                            " at path " (pr-str path))
+                          {:missing missing})))))
+
+(defn run-graph-done! [env]
+  (check-entity-requires! env))
+
 (defn run-root-node!
   [{::pcp/keys [graph] :as env}]
   (if-let [root (pcp/get-root-node graph)]
     (let [{::keys [batch-hold]} (run-node! env root)]
-      (when batch-hold
+      (if batch-hold
         (if (::nested-waiting? batch-hold)
           ; add to wait
           (refs/gswap! (::batch-waiting* env) coll/vconj batch-hold)
           ; add to batch pending
           (refs/gswap! (::batch-pending* env) update (::pco/op-name batch-hold)
-                       coll/vconj batch-hold))))))
+                       coll/vconj batch-hold))
+        (p.plugin/run-with-plugins env ::wrap-run-graph-done! run-graph-done!
+          env)))))
 
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the

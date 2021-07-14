@@ -309,6 +309,16 @@
                          {::pco/output [:foo]}
                          (fn [_ _] 123)))
                      {}
+                     [:foo]))))
+
+  (testing "resolver missing response"
+    (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
+                          #"Required attributes missing: \[:foo] at path \[]"
+          (run-graph (pci/register
+                       (pco/resolver 'foo
+                         {::pco/output [:foo]}
+                         (fn [_ _] {})))
+                     {}
                      [:foo])))))
 
 (deftest run-graph!-final-test
@@ -640,44 +650,46 @@
            :total-score 30})))
 
   (testing "optional nested input"
-    (is (graph-response?
-          (pci/register
-            [(pco/resolver 'users
-               {::pco/output [{:users [:user/id]}]}
-               (fn [_ _]
-                 {:users [{:user/id 1}
-                          {:user/id 2}]}))
-             (pbir/static-attribute-map-resolver :user/id :user/score
-               {1 10
-                2 20})
-             (pco/resolver 'total-score
-               {::pco/input  [{:users [(pco/? :user/score)]}]
-                ::pco/output [:total-score]}
-               (fn [_ {:keys [users]}]
-                 {:total-score (reduce + 0 (map :user/score users))}))])
-          {}
-          [:total-score]
-          {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
-           :total-score 30}))
+    (testing "all items can resolve dependencies"
+      (is (graph-response?
+            (pci/register
+              [(pco/resolver 'users
+                 {::pco/output [{:users [:user/id]}]}
+                 (fn [_ _]
+                   {:users [{:user/id 1}
+                            {:user/id 2}]}))
+               (pbir/static-attribute-map-resolver :user/id :user/score
+                 {1 10
+                  2 20})
+               (pco/resolver 'total-score
+                 {::pco/input  [{:users [(pco/? :user/score)]}]
+                  ::pco/output [:total-score]}
+                 (fn [_ {:keys [users]}]
+                   {:total-score (reduce + 0 (map :user/score users))}))])
+            {}
+            [:total-score]
+            {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
+             :total-score 30})))
 
-    (is (graph-response?
-          (pci/register
-            [(pco/resolver 'users
-               {::pco/output [{:users [:user/id]}]}
-               (fn [_ _]
-                 {:users [{:user/id 1}
-                          {:user/id 2}]}))
-             (pbir/static-attribute-map-resolver :user/id :user/score
-               {1 10})
-             (pco/resolver 'total-score
-               {::pco/input  [{:users [(pco/? :user/score)]}]
-                ::pco/output [:total-score]}
-               (fn [_ {:keys [users]}]
-                 {:total-score (reduce + 0 (map #(or (:user/score %) 1) users))}))])
-          {}
-          [:total-score]
-          {:users       [#:user{:id 1, :score 10} #:user{:id 2}]
-           :total-score 11})))
+    (testing "entities partially fulfill the optional demand"
+      (is (graph-response?
+            (pci/register
+              [(pco/resolver 'users
+                 {::pco/output [{:users [:user/id]}]}
+                 (fn [_ _]
+                   {:users [{:user/id 1}
+                            {:user/id 2}]}))
+               (pbir/static-attribute-map-resolver :user/id :user/score
+                 {1 10})
+               (pco/resolver 'total-score
+                 {::pco/input  [{:users [(pco/? :user/score)]}]
+                  ::pco/output [:total-score]}
+                 (fn [_ {:keys [users]}]
+                   {:total-score (reduce + 0 (map #(or (:user/score %) 1) users))}))])
+            {}
+            [:total-score]
+            {:users       [#:user{:id 1, :score 10} #:user{:id 2}]
+             :total-score 11}))))
 
   (testing "empty collection is a valid input"
     (is (graph-response?
@@ -699,9 +711,10 @@
           {:users       []
            :total-score 0})))
 
-  (testing "remove collection elements that don't fulfill required input"
+  (testing "remove collection elements that don't fulfill required input in lenient mode"
     (is (graph-response?
           (pci/register
+            {:com.wsscode.pathom3.system/lenient-mode? true}
             [(pco/resolver 'users
                {::pco/output [{:users [:user/id]}]}
                (fn [_ _]

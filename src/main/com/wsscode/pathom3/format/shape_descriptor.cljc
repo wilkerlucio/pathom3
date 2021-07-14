@@ -60,6 +60,11 @@
       {}
       data)))
 
+(defn data->shape-descriptor-shallow
+  "Like data->shape-descriptor, but only at the root keys of the data."
+  [data]
+  (zipmap (keys data) (repeat {})))
+
 (>defn ast->shape-descriptor
   "Convert EQL AST to shape descriptor format."
   [ast]

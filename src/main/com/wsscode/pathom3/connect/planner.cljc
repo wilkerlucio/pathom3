@@ -846,10 +846,38 @@
 
 ; region sub-query process
 
-(defn extend-attribute-sub-query [graph attr shape]
+(>defn shape-descriptor->ast-children-optional
+  "Convert pathom output format into shape descriptor format."
+  [shape]
+  [::pfsd/shape-descriptor => vector?]
+  (into []
+        (map (fn [[k v]]
+               (if (seq v)
+                 {:type         :join
+                  :key          k
+                  :dispatch-key k
+                  :children     (shape-descriptor->ast-children-optional v)
+                  :params       {::pco/optional? true}}
+                 {:type         :prop
+                  :key          k
+                  :dispatch-key k
+                  :params       {::pco/optional? true}})))
+        shape))
+
+(>defn shape-descriptor->ast-optional
+  "Convert pathom output format into shape descriptor format."
+  [shape]
+  [::pfsd/shape-descriptor => map?]
+  {:type     :root
+   :children (shape-descriptor->ast-children-optional shape)})
+
+(defn extend-attribute-sub-query
+  [graph {::keys [optional-process?]} attr shape]
   (-> graph
       (update-in [::index-ast attr] pf.eql/merge-ast-children
-        (-> (pfsd/shape-descriptor->ast shape)
+        (-> (if optional-process?
+              (shape-descriptor->ast-optional shape)
+              (pfsd/shape-descriptor->ast shape))
             (assoc :type :prop :key attr :dispatch-key attr)))))
 
 (>defn shape-reachable?
@@ -879,6 +907,7 @@
   ; TODO this should consider the case that a few of the nodes can provide the
   ; sub-query, in this case only they should be kept in the graph, and the other
   ; options must be removed
+  (tap> ["CHECK SHAPE" shape])
   (let [checked-nodes (into []
                             (map (fn [node]
                                    (cond-> node
@@ -893,7 +922,7 @@
                 g))
             graph
             checked-nodes)
-          (extend-attribute-sub-query attr shape))
+          (extend-attribute-sub-query env attr shape))
       (-> graph
           (dissoc ::root)
           (add-unreachable-path env {attr shape})))))
@@ -941,7 +970,7 @@
 (defn extend-available-attribute-nested
   [graph {::keys [available-data] :as env} attr shape]
   (if (shape-reachable? env (get available-data attr) shape)
-    [(-> (extend-attribute-sub-query graph attr shape)
+    [(-> (extend-attribute-sub-query graph env attr shape)
          (mark-attribute-process-sub-query {:key attr :children []}))
      true]
     ; TODO maybe the sub-query fails partially, in this case making the whole
@@ -989,7 +1018,8 @@
                          (get provides attribute)
                          provides)
           graph        (compute-run-graph (-> (reset-env env)
-                                              (assoc ::p.path/path (coll/vconj path attribute))
+                                              (cond-> attribute
+                                                (assoc ::p.path/path (coll/vconj path attribute)))
                                               (inc-snapshot-depth)
                                               (assoc
                                                 :edn-query-language.ast/node ast
@@ -1091,18 +1121,19 @@
   [graph {::keys [available-data] :as env} opt-missing node-map]
   (reduce-kv
     (fn [[graph node-map] attr shape]
-      (if (contains? available-data attr)
-        (let [[graph'] (extend-available-attribute-nested graph env attr shape)]
-          [graph' node-map])
+      (let [env (assoc env ::optional-process? true)]
+        (if (contains? available-data attr)
+          (let [[graph'] (extend-available-attribute-nested graph env attr shape)]
+            [graph' node-map])
 
-        (let [graph' (compute-attribute-dependency-graph graph env attr shape)]
-          (if-let [root (::root graph')]
-            [(cond-> graph'
-               (contains? node-map attr)
-               (-> (remove-root-node-cluster [(get node-map attr)])
-                   (add-snapshot! env {::snapshot-message "Optional computation overrode the required."})))
-             (assoc node-map attr root)]
-            [(merge-unreachable graph graph') node-map]))))
+          (let [graph' (compute-attribute-dependency-graph graph env attr shape)]
+            (if-let [root (::root graph')]
+              [(cond-> graph'
+                 (contains? node-map attr)
+                 (-> (remove-root-node-cluster [(get node-map attr)])
+                     (add-snapshot! env {::snapshot-message "Optional computation overrode the required."})))
+               (assoc node-map attr root)]
+              [(merge-unreachable graph graph') node-map])))))
     [graph node-map]
     opt-missing))
 
@@ -1121,7 +1152,7 @@
   (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (::p.attr/attribute env) " dependencies: " (pr-str missing))})
         [graph' node-map] (compute-missing-chain-deps graph env missing)]
     (if (some? node-map)
-      ;; add new nodes (and maybe nested processes)
+      ;; add new optional nodes (and maybe nested processes)
       (let [[graph'' node-map-opts] (compute-missing-chain-optional-deps graph' env missing-optionals node-map)
             all-nodes (vals (merge node-map node-map-opts))]
         (-> graph''
@@ -1349,7 +1380,7 @@
       (create-root-and graph' env node-ids)
       graph')))
 
-(defn verify-index-ast
+(defn required-ast-from-index-ast
   [{::keys [index-ast]}]
   {:type     :root
    :children (->> index-ast
@@ -1365,7 +1396,7 @@
    {::keys [unreachable-paths]
     :as    graph}]
   (if (seq unreachable-paths)
-    (let [user-required (pfsd/ast->shape-descriptor (verify-index-ast graph))
+    (let [user-required (pfsd/ast->shape-descriptor (required-ast-from-index-ast graph))
           missing       (pfsd/intersection unreachable-paths user-required)]
       (if (seq missing)
         (let [path (get env ::p.path/path)]

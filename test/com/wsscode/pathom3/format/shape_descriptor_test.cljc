@@ -285,3 +285,10 @@
                                                          {:a 3 :b 4}]} {:foo {:a {}}})
                (meta))
            {:yes? true}))))
+
+(deftest data->shape-descriptor-shallow-test
+  (is (= (psd/data->shape-descriptor-shallow {:a 1})
+         {:a {}}))
+
+  (is (= (psd/data->shape-descriptor-shallow {:a {:b {:c {}}}})
+         {:a {}})))

@@ -1017,13 +1017,62 @@
                                                                           :users       {:type         :join,
                                                                                         :children     [{:type         :prop,
                                                                                                         :key          :user/score,
-                                                                                                        :dispatch-key :user/score}],
+                                                                                                        :dispatch-key :user/score
+                                                                                                        :params       {::pco/optional? true}}],
                                                                                         :key          :users,
                                                                                         :dispatch-key :users}},
                                                   :index-resolver->nodes {total-score #{1},
                                                                           users       #{3}},
                                                   :index-attrs           {:total-score #{1}, :users #{3 2}},
-                                                  :root                  3})))
+                                                  :root                  3}))
+
+    (is (= (compute-run-graph
+             (assoc
+               (pci/register
+                 [(pco/resolver 'users
+                    {::pco/output [{:users [:user/id]}]})
+                  (pco/resolver 'foo
+                    {::pco/output [{:foo [:bar]}]}
+                    (fn [_ _]
+                      {}))
+                  (pbir/static-attribute-map-resolver :user/id :user/score {})
+                  (pco/resolver 'total-score
+                    {::pco/input  [{:users [(pco/? :user/score)
+                                            {:foo [(pco/? :bar)]}]}]
+                     ::pco/output [:total-score]})])
+
+               ::eql/query [:total-score]))
+           '{:com.wsscode.pathom3.connect.planner/nodes {1 {:com.wsscode.pathom3.connect.operation/op-name total-score,
+                                                            :com.wsscode.pathom3.connect.planner/expects {:total-score {}},
+                                                            :com.wsscode.pathom3.connect.planner/input {:users {:foo {}}},
+                                                            :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                            :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                         4 {:com.wsscode.pathom3.connect.operation/op-name users,
+                                                            :com.wsscode.pathom3.connect.planner/expects {:users {}},
+                                                            :com.wsscode.pathom3.connect.planner/input {},
+                                                            :com.wsscode.pathom3.connect.planner/node-id 4,
+                                                            :com.wsscode.pathom3.connect.planner/run-next 1}},
+             :com.wsscode.pathom3.connect.planner/index-ast {:total-score {:type :prop,
+                                                                           :dispatch-key :total-score,
+                                                                           :key :total-score},
+                                                             :users {:type :join,
+                                                                     :children [{:type :join,
+                                                                                 :key :foo,
+                                                                                 :dispatch-key :foo,
+                                                                                 :children [{:type :prop,
+                                                                                             :key :bar,
+                                                                                             :dispatch-key :bar,
+                                                                                             :params {:com.wsscode.pathom3.connect.operation/optional? true}}],}
+                                                                                {:type :prop,
+                                                                                 :key :user/score,
+                                                                                 :dispatch-key :user/score,
+                                                                                 :params {:com.wsscode.pathom3.connect.operation/optional? true}}],
+                                                                     :key :users,
+                                                                     :dispatch-key :users}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {total-score #{1},
+                                                                         users #{4}},
+             :com.wsscode.pathom3.connect.planner/index-attrs {:total-score #{1}, :users #{4 2}},
+             :com.wsscode.pathom3.connect.planner/root 4})))
 
   (testing "nested dependency on available data"
     (is (= (compute-run-graph
