@@ -61,3 +61,18 @@
 
   ; check if map has meta
   (some-> response meta (contains? :com.wsscode.pathom3.connect.runner/run-stats)))
+
+(defn process-entity-errors [entity]
+  (if (scan-for-errors? entity)
+    (let [ast    (-> entity meta
+                     :com.wsscode.pathom3.connect.runner/run-stats
+                     :com.wsscode.pathom3.connect.planner/index-ast)
+          errors (into {}
+                       (keep (fn [k]
+                               (if-let [error (attribute-error entity k)]
+                                 (coll/make-map-entry k error))))
+                       (keys ast))]
+      (cond-> entity
+        (seq errors)
+        (assoc :com.wsscode.pathom3.connect.runner/attribute-errors errors)))
+    entity))

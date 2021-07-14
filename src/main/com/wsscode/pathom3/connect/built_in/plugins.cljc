@@ -12,21 +12,6 @@
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.promesa.macros :refer [clet]]))
 
-(defn process-entity-errors [entity]
-  (if (p.error/scan-for-errors? entity)
-    (let [ast    (-> entity meta
-                     :com.wsscode.pathom3.connect.runner/run-stats
-                     :com.wsscode.pathom3.connect.planner/index-ast)
-          errors (into {}
-                       (keep (fn [k]
-                               (if-let [error (p.error/attribute-error entity k)]
-                                 (coll/make-map-entry k error))))
-                       (keys ast))]
-      (cond-> entity
-        (seq errors)
-        (assoc ::pcr/attribute-errors errors)))
-    entity))
-
 (defn attribute-errors-plugin
   "This plugin makes attributes errors visible in the data."
   []
@@ -48,7 +33,7 @@
          (walk/postwalk
            (fn [x]
              (if (map? x)
-               (process-entity-errors x)
+               (p.error/process-entity-errors x)
                x))
            entity))))})
 
