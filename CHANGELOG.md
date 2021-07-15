@@ -7,6 +7,7 @@
 - Fix async runner reversing lists
 - Add `ctry` helper to handle exceptions in sync and async at same time
 - Foreign connection errors get wrapped to enrich the error context
+- Add spec for `::pci/index-source-id`
 
 ## [2021.07.10-1]
 - Add more info to pom.xml to add repository links from clojars and cljdoc
