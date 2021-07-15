@@ -212,9 +212,10 @@
                          {}
                          [:a])]
       (is (mcs/match?
-            {::pcr/attribute-errors {:a {::p.error/error-type         ::pcr/node-errors
-                                         ::p.error/node-error-details {1 {::p.error/error-type ::p.error/node-exception
-                                                                          ::p.error/exception  any?}}}}}
+            {:com.wsscode.pathom3.connect.runner/attribute-errors
+             {:a
+              {::p.error/error-type         ::p.error/node-errors,
+               ::p.error/node-error-details {1 {::p.error/exception any?}}}}}
             res))
       (is (= (-> res meta ::pcr/run-stats
                  ::pcr/node-run-stats
@@ -1297,28 +1298,20 @@
               {:id 2 :v 20}
               {:id 3 :v 300}]}))))
 
-  (comment
-    (run-graph
-      (pci/register
-        {:com.wsscode.pathom3.system/lenient-mode? true}
-        [batch-fetch-error])
-      {:id 1}
-      [:v]))
-
   (testing "errors"
-    (let [res (run-graph
-                (pci/register
-                  {:com.wsscode.pathom3.system/lenient-mode? true}
-                  [batch-fetch-error])
-                {:id 1}
-                [:v])]
-      (is (= res
-             {:id 1}))
-      ; TODO: match error
-      #_(is (= (meta res)
-               {})))
-
-    (testing "partial error"))
+    (is (graph-response?
+          (pci/register
+            {:com.wsscode.pathom3.system/lenient-mode? true}
+            [batch-fetch-error])
+          {:id 1}
+          [:v]
+          (fn [res]
+            (mcs/match?
+              {:id                                                  1,
+               :com.wsscode.pathom3.connect.runner/attribute-errors {:v {:com.wsscode.pathom3.error/error-type         :com.wsscode.pathom3.error/node-errors,
+                                                                         :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-exception,
+                                                                                                                           :com.wsscode.pathom3.error/exception  any?}}}}}
+              res)))))
 
   (testing "uses batch resolver as single resolver when running under a path that batch wont work"
     (is (graph-response?

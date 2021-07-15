@@ -827,7 +827,9 @@
           (-> ent
               (coll/merge-defaults ent')
               (vary-meta merge (meta ent'))
-              (merge (pfsd/select-shape ent' (::pcp/expects node)))))))))
+              (merge
+                (pfsd/select-shape ent' (assoc (::pcp/expects node)
+                                          ::attribute-errors {})))))))))
 
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
@@ -846,28 +848,34 @@
                              (mark-batch-errors e env batch-op batch-items)))
             finish       (time/now-ms)]
 
-        (when-not (refs/kw-identical? ::node-error responses)
-          (if (not= (count inputs) (count responses))
-            (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
+        (if (refs/kw-identical? ::node-error responses)
+          (if (:com.wsscode.pathom3.system/lenient-mode? env)
+            (doseq [{env'       ::env
+                     ::pcp/keys [node]} batch-items]
+              (run-graph-entity-done env')
+              (merge-entity-to-root-data env env' node)))
+          (do
+            (if (not= (count inputs) (count responses))
+              (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
 
-          (doseq [[{env'       ::env
-                    ::pcp/keys [node]
-                    ::keys     [node-resolver-input]
-                    :as        batch-item} response] (combine-inputs-with-responses input-groups inputs responses)]
-            (cache-batch-item batch-item batch-op response)
+            (doseq [[{env'       ::env
+                      ::pcp/keys [node]
+                      ::keys     [node-resolver-input]
+                      :as        batch-item} response] (combine-inputs-with-responses input-groups inputs responses)]
+              (cache-batch-item batch-item batch-op response)
 
-            (merge-node-stats! env' node
-              (merge {::batch-run-start-ms  start
-                      ::batch-run-finish-ms finish}
-                     (report-resolver-io-stats env' node-resolver-input response)))
+              (merge-node-stats! env' node
+                (merge {::batch-run-start-ms  start
+                        ::batch-run-finish-ms finish}
+                       (report-resolver-io-stats env' node-resolver-input response)))
 
-            (merge-resolver-response! env' response)
+              (merge-resolver-response! env' response)
 
-            (merge-node-stats! env' node {::node-run-finish-ms (time/now-ms)})
+              (merge-node-stats! env' node {::node-run-finish-ms (time/now-ms)})
 
-            (run-root-node! env')
+              (run-root-node! env')
 
-            (merge-entity-to-root-data env env' node)))))))
+              (merge-entity-to-root-data env env' node))))))))
 
 (defn run-batches-waiting! [env]
   (let [waits* (-> env ::batch-waiting*)

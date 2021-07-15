@@ -479,36 +479,47 @@
                 batch-env    (-> batch-items first ::pcr/env
                                  (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
                 start        (time/now-ms)
-                responses    (-> (pcr/invoke-resolver-with-plugins resolver batch-env inputs)
-                                 (p/catch (fn [e] (pcr/mark-batch-errors e env batch-op batch-items))))
+                responses    (-> (p/do! (pcr/invoke-resolver-with-plugins resolver batch-env inputs))
+                                 (p/catch (fn [e]
+                                            (pcr/mark-batch-errors e env batch-op batch-items))))
                 finish       (time/now-ms)]
 
-          (when-not (refs/kw-identical? ::pcr/node-error responses)
-            (if (not= (count inputs) (count responses))
-              (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
+          (if (refs/kw-identical? ::pcr/node-error responses)
+            (if (:com.wsscode.pathom3.system/lenient-mode? env)
+              (reduce-async
+                (fn [_ {env'       ::pcr/env
+                        ::pcp/keys [node]}]
+                  (p/do!
+                    (run-graph-entity-done env')
+                    (pcr/merge-entity-to-root-data env env' node)))
+                nil
+                batch-items))
+            (do
+              (if (not= (count inputs) (count responses))
+                (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
 
-            (reduce-async
-              (fn [_ [{env'       ::pcr/env
-                       ::pcp/keys [node]
-                       ::pcr/keys [node-resolver-input]
-                       :as        batch-item} response]]
-                (pcr/cache-batch-item batch-item batch-op response)
+              (reduce-async
+                (fn [_ [{env'       ::pcr/env
+                         ::pcp/keys [node]
+                         ::pcr/keys [node-resolver-input]
+                         :as        batch-item} response]]
+                  (pcr/cache-batch-item batch-item batch-op response)
 
-                (pcr/merge-node-stats! env' node
-                  (merge {::pcr/batch-run-start-ms  start
-                          ::pcr/batch-run-finish-ms finish}
-                         (pcr/report-resolver-io-stats env' node-resolver-input response)))
+                  (pcr/merge-node-stats! env' node
+                    (merge {::pcr/batch-run-start-ms  start
+                            ::pcr/batch-run-finish-ms finish}
+                           (pcr/report-resolver-io-stats env' node-resolver-input response)))
 
-                (p/do!
-                  (merge-resolver-response! env' response)
+                  (p/do!
+                    (merge-resolver-response! env' response)
 
-                  (pcr/merge-node-stats! env' node {::pcr/node-run-finish-ms (time/now-ms)})
+                    (pcr/merge-node-stats! env' node {::pcr/node-run-finish-ms (time/now-ms)})
 
-                  (run-root-node! env')
+                    (run-root-node! env')
 
-                  (pcr/merge-entity-to-root-data env env' node)))
-              nil
-              (pcr/combine-inputs-with-responses input-groups inputs responses)))))
+                    (pcr/merge-entity-to-root-data env env' node)))
+                nil
+                (pcr/combine-inputs-with-responses input-groups inputs responses))))))
       nil
       batches)))
 
