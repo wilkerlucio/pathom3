@@ -1405,7 +1405,8 @@
               (cond-> (str "Pathom can't find a path for the following elements in the query: " (pr-str (pfsd/shape-descriptor->query missing)))
                 path
                 (str " at path " (pr-str path)))
-              {::unreachable-paths missing
+              {::graph             graph
+               ::unreachable-paths missing
                ::p.path/path       path})))
         graph))
     graph))
@@ -1413,10 +1414,10 @@
 (defn verify-plan!
   "This will cause an exception to throw in case the plan can't reach some required
   attribute"
-  [{:keys [:pathom/lenient-mode?] :as env} graph]
-  (if-not lenient-mode?
-    (verify-plan!* env graph)
-    graph))
+  [{:keys [pathom/lenient-mode?] :as env} graph]
+  (if lenient-mode?
+    graph
+    (verify-plan!* env graph)))
 
 (>defn compute-run-graph
   "Generates a run plan for a given environment, the environment should contain the
