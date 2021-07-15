@@ -5,6 +5,7 @@
 - BREAKING CHANGE: Remove `remove-stats-plugin`, now must use the env flag `:com.wsscode.pathom3.connect.runner/omit-run-stats?` instead
 - Optional lenient mode via setting `:pathom/lenient-mode? true`
 - Fix async runner reversing lists
+- Add `ctry` helper to handle exceptions in sync and async at same time
 
 ## [2021.07.10-1]
 - Add more info to pom.xml to add repository links from clojars and cljdoc
