@@ -179,7 +179,8 @@
   "Returns meta data of smart map, which is the same as the meta data from context
    map used to create the smart map."
   [env]
-  (meta (p.ent/entity env)))
+  (-> env p.ent/entity meta
+      (dissoc ::pcr/run-stats)))
 
 (defn sm-env-with-meta
   "Return a new smart-map with the given meta."

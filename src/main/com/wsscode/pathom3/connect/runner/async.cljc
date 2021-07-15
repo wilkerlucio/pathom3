@@ -399,6 +399,13 @@
     nil
     (::pcp/mutations graph)))
 
+(defn run-graph-entity-done [env]
+  (p/do!
+    ; placeholders
+    (merge-resolver-response! env (pcr/placeholder-merge-entity env))
+    ; entity ready
+    (p.plugin/run-with-plugins env ::pcr/wrap-run-graph-done! pcr/run-graph-done! env)))
+
 (defn run-root-node!
   [{::pcp/keys [graph] :as env}]
   (if-let [root (pcp/get-root-node graph)]
@@ -410,7 +417,8 @@
           ; add to batch pending
           (refs/gswap! (::pcr/batch-pending* env) update (::pco/op-name batch-hold)
                        coll/vconj batch-hold))
-        (p.plugin/run-with-plugins env ::pcr/wrap-run-graph-done! pcr/run-graph-done! env)))))
+        (run-graph-entity-done env)))
+    (run-graph-entity-done env)))
 
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the
@@ -418,7 +426,7 @@
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*])
    => p/promise?]
-  (let [source-ent (p.ent/entity env)]
+  (let [env (assoc env ::pcr/source-entity (p.ent/entity env))]
     (p/do!
       ; mutations
       (process-mutations! env)
@@ -433,9 +441,6 @@
 
       ; now run the nodes
       (run-root-node! env)
-
-      ; placeholders
-      (merge-resolver-response! env (pcr/placeholder-merge-entity env source-ent))
 
       graph)))
 
@@ -520,8 +525,7 @@
 
           (when-not (p.path/root? env')
             (p.ent/swap-entity! env assoc-in (::p.path/path env')
-              (-> (p.ent/entity env')
-                  (pcr/include-meta-stats env' (::pcp/graph env')))))))
+              (p.ent/entity env')))))
       nil
       waits)))
 

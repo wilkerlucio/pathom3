@@ -10,6 +10,7 @@
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
@@ -210,7 +211,11 @@
                               (fn [_ _] {}))])
                          {}
                          [:a])]
-      (is (= res {}))
+      (is (mcs/match?
+            {::pcr/attribute-errors {:a {::p.error/error-type         ::pcr/node-errors
+                                         ::p.error/node-error-details {1 {::p.error/error-type ::p.error/node-exception
+                                                                          ::p.error/exception  any?}}}}}
+            res))
       (is (= (-> res meta ::pcr/run-stats
                  ::pcr/node-run-stats
                  (get 1)
@@ -741,7 +746,10 @@
                  {:total-score (reduce + 0 (map :user/score users))}))])
           {}
           [:total-score]
-          {:users       [#:user{:id 1, :score 10} {:user/id 2}]
+          {:users       [{:user/id 1, :user/score 10}
+                         {:user/id                                             2,
+                          :com.wsscode.pathom3.connect.runner/attribute-errors {:user/score {:com.wsscode.pathom3.error/error-type         :com.wsscode.pathom3.error/node-errors,
+                                                                                             :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-missing}}}}}],
            :total-score 10})))
 
   (testing "resolver gets only the exact shape it asked for"
@@ -1288,6 +1296,14 @@
              [{:id 1 :v 100}
               {:id 2 :v 20}
               {:id 3 :v 300}]}))))
+
+  (comment
+    (run-graph
+      (pci/register
+        {:com.wsscode.pathom3.system/lenient-mode? true}
+        [batch-fetch-error])
+      {:id 1}
+      [:v]))
 
   (testing "errors"
     (let [res (run-graph
@@ -1871,16 +1887,31 @@
                                           "c" {:children [{:name "d"}]}})])
           {:name "a"}
           [:names]
-          {:name     "a",
-           :children [{:name     "b",
-                       :children [{:name     "e",
-                                   :children [{:name     "f",
-                                               :children [{:name "g"}],
-                                               :names    ["f" "g"]}],
-                                   :names    ["e" "f" "g"]}],
-                       :names    ["b" "e" "f" "g"]}
-                      {:name "c", :children [{:name "d"}], :names ["c" "d"]}],
-           :names    ["a" "b" "e" "f" "g" "c" "d"]}))))
+          (fn [res]
+            (mcs/match?
+              {:name "a",
+               :children [{:name "b",
+                           :children [{:name "e",
+                                       :children [{:name "f",
+                                                   :children [{:name "g",
+                                                               :com.wsscode.pathom3.connect.runner/attribute-errors {:names {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
+                                                                                                                             :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-exception,
+                                                                                                                                                                               :com.wsscode.pathom3.error/exception any?}}},
+                                                                                                                     :children {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
+                                                                                                                                :com.wsscode.pathom3.error/node-error-details {2 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-missing}}}}}],
+                                                   :names ["f" "g"]}],
+                                       :names ["e" "f" "g"]}],
+                           :names ["b" "e" "f" "g"]}
+                          {:name "c",
+                           :children [{:name "d",
+                                       :com.wsscode.pathom3.connect.runner/attribute-errors {:names {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
+                                                                                                     :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-exception,
+                                                                                                                                                       :com.wsscode.pathom3.error/exception any?}}},
+                                                                                             :children {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
+                                                                                                        :com.wsscode.pathom3.error/node-error-details {2 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-missing}}}}}],
+                           :names ["c" "d"]}],
+               :names ["a" "b" "e" "f" "g" "c" "d"]}
+              res))))))
 
 (deftest run-graph!-mutations-test
   (testing "simple call"
@@ -1969,8 +2000,8 @@
                                       ::pcp/placeholders #{:>/p1}
                                       ::pcp/index-ast    {:>/p1 {:key          :>/p1
                                                                  :dispatch-key :>/p1}}}
-                ::p.ent/entity-tree* (volatile! {:foo "bar"})}
-               {})
+                ::p.ent/entity-tree* (volatile! {:foo "bar"})
+                ::pcr/source-entity  {}})
              {:>/p1 {:foo "bar"}})))
 
   (testing "override with source when params are provided"
@@ -1980,8 +2011,8 @@
                                     ::pcp/index-ast    {:>/p1 {:key          :>/p1
                                                                :dispatch-key :>/p1
                                                                :params       {:x 10}}}}
-              ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})}
-             {:z true})
+              ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})
+              ::pcr/source-entity  {:z true}})
            {:>/p1 {:z true :x 10}}))))
 
 (defn set-done [k]

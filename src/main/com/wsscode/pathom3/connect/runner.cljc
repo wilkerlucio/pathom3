@@ -14,6 +14,7 @@
     [com.wsscode.pathom3.connect.operation.protocols :as pco.prot]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
@@ -125,7 +126,7 @@
   (let [entity (p.ent/entity env)]
     (every? #(contains? entity %) (keys expects))))
 
-(declare run-node! run-graph! merge-node-stats!)
+(declare run-node! run-graph! merge-node-stats! include-meta-stats)
 
 (defn union-key-on-data? [{:keys [union-key]} m]
   (contains? m union-key))
@@ -615,14 +616,14 @@
   "Create an entity to process the placeholder demands. This consider if the placeholder
   has params, params in placeholders means that you want some specific data at that
   point."
-  [{::pcp/keys [graph]} source-ent]
+  [{::pcp/keys [graph] ::keys [source-entity]}]
   (reduce
     (fn [out ph]
       (let [data (:params (pcp/entry-ast graph ph))]
         (assoc out ph
           ; TODO maybe check for possible optimization when there are no conflicts
           ; between different placeholder levels
-          (merge source-ent data))))
+          (merge source-entity data))))
     {}
     (::pcp/placeholders graph)))
 
@@ -697,7 +698,18 @@
                           {:missing missing})))))
 
 (defn run-graph-done! [env]
-  (check-entity-requires! env))
+  (check-entity-requires! env)
+  (p.ent/swap-entity! env include-meta-stats env (::pcp/graph env))
+  (if (:com.wsscode.pathom3.system/lenient-mode? env)
+    (p.ent/swap-entity! env p.error/process-entity-errors))
+  nil)
+
+(defn run-graph-entity-done [env]
+  ; placeholders
+  (merge-resolver-response! env (placeholder-merge-entity env))
+  ; entity ready
+  (p.plugin/run-with-plugins env ::wrap-run-graph-done! run-graph-done!
+    env))
 
 (defn run-root-node!
   [{::pcp/keys [graph] :as env}]
@@ -710,8 +722,8 @@
           ; add to batch pending
           (refs/gswap! (::batch-pending* env) update (::pco/op-name batch-hold)
                        coll/vconj batch-hold))
-        (p.plugin/run-with-plugins env ::wrap-run-graph-done! run-graph-done!
-          env)))))
+        (run-graph-entity-done env)))
+    (run-graph-entity-done env)))
 
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the
@@ -719,7 +731,7 @@
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*])
    => (s/keys)]
-  (let [source-ent (p.ent/entity env)]
+  (let [env (assoc env ::source-entity (p.ent/entity env))]
     ; mutations
     (process-mutations! env)
 
@@ -733,9 +745,6 @@
 
     ; now run the nodes
     (run-root-node! env)
-
-    ; placeholders
-    (merge-resolver-response! env (placeholder-merge-entity env source-ent))
 
     graph))
 
@@ -782,7 +791,7 @@
   (doseq [{env'       ::env
            ::pcp/keys [node]} batch-items]
     (p.plugin/run-with-plugins env' ::wrap-resolver-error
-      mark-node-error env' node (ex-info "Batch error" {::batch-error? true} e)))
+      mark-node-error env' node (ex-info (str "Batch error: " (ex-message e)) {::batch-error? true} e)))
 
   ::node-error)
 
@@ -817,8 +826,8 @@
         (let [ent' (p.ent/entity env')]
           (-> ent
               (coll/merge-defaults ent')
-              (merge (pfsd/select-shape ent' (::pcp/expects node)))
-              (include-meta-stats env' (::pcp/graph env'))))))))
+              (vary-meta merge (meta ent'))
+              (merge (pfsd/select-shape ent' (::pcp/expects node)))))))))
 
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
@@ -871,8 +880,7 @@
 
       (when-not (p.path/root? env')
         (p.ent/swap-entity! env assoc-in (::p.path/path env')
-          (-> (p.ent/entity env')
-              (include-meta-stats env' (::pcp/graph env'))))))))
+          (p.ent/entity env'))))))
 
 (defn run-batches! [env]
   (run-batches-pending! env)
