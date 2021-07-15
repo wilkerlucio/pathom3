@@ -6,7 +6,7 @@
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.path :as p.path]
-    [com.wsscode.promesa.macros :refer [clet ctry]]))
+    [com.wsscode.promesa.macros :refer [clet]]))
 
 (def index-query
   [::pci/indexes])
@@ -69,13 +69,7 @@
           (pco/resolver index-source-id
             {::pco/cache?            false
              ::pco/dynamic-resolver? true}
-            (fn [env _]
-              (ctry
-                (call-foreign env foreign)
-                (catch #?(:clj Throwable :cljs :default) ex
-                  (throw (ex-info (str "Foreign " index-source-id " exception: " (ex-message ex))
-                                  {::p.path/path (::p.path/path env)}
-                                  ex)))))))
+            (fn [env _] (call-foreign env foreign))))
         (dissoc ::pci/index-source-id)
         (assoc-in [::foreign-indexes index-source-id] indexes))))
 
