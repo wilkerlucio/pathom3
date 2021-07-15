@@ -73,7 +73,9 @@
               (ctry
                 (call-foreign env foreign)
                 (catch #?(:clj Throwable :cljs :default) ex
-                  (throw (ex-info (str "Foreign " index-source-id " exception: " (ex-message ex)) {} ex)))))))
+                  (throw (ex-info (str "Foreign " index-source-id " exception: " (ex-message ex))
+                                  {::p.path/path (::p.path/path env)}
+                                  ex)))))))
         (dissoc ::pci/index-source-id)
         (assoc-in [::foreign-indexes index-source-id] indexes))))
 
