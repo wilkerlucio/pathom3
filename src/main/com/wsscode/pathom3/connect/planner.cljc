@@ -1413,7 +1413,7 @@
 (defn verify-plan!
   "This will cause an exception to throw in case the plan can't reach some required
   attribute"
-  [{:com.wsscode.pathom3.system/keys [lenient-mode?] :as env} graph]
+  [{:keys [:pathom/lenient-mode?] :as env} graph]
   (if-not lenient-mode?
     (verify-plan!* env graph)
     graph))

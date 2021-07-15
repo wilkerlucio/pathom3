@@ -204,7 +204,7 @@
   (-> (pcp/entry-ast graph k)
       (normalize-ast-recursive-query graph k)))
 
-(defn fail-fast [{:keys [com.wsscode.pathom3.system/lenient-mode?]} error]
+(defn fail-fast [{:keys [pathom/lenient-mode?]} error]
   (if-not lenient-mode? (throw error)))
 
 (>defn process-attr-subquery
@@ -700,7 +700,7 @@
 (defn run-graph-done! [env]
   (check-entity-requires! env)
   (p.ent/swap-entity! env include-meta-stats env (::pcp/graph env))
-  (if (:com.wsscode.pathom3.system/lenient-mode? env)
+  (if (:pathom/lenient-mode? env)
     (p.ent/swap-entity! env p.error/process-entity-errors))
   nil)
 
@@ -849,7 +849,7 @@
             finish       (time/now-ms)]
 
         (if (refs/kw-identical? ::node-error responses)
-          (if (:com.wsscode.pathom3.system/lenient-mode? env)
+          (if (:pathom/lenient-mode? env)
             (doseq [{env'       ::env
                      ::pcp/keys [node]} batch-items]
               (run-graph-entity-done env')

@@ -485,7 +485,7 @@
                 finish       (time/now-ms)]
 
           (if (refs/kw-identical? ::pcr/node-error responses)
-            (if (:com.wsscode.pathom3.system/lenient-mode? env)
+            (if (:pathom/lenient-mode? env)
               (reduce-async
                 (fn [_ {env'       ::pcr/env
                         ::pcp/keys [node]}]

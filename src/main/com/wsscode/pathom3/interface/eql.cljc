@@ -88,7 +88,7 @@
 
 (defn boundary-env [env input]
   (if-let [x (find input :pathom/lenient-mode?)]
-    (assoc env :com.wsscode.pathom3.system/lenient-mode? (val x))
+    (assoc env :pathom/lenient-mode? (val x))
     env))
 
 (>defn boundary-interface

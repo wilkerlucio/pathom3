@@ -13,7 +13,7 @@
 (deftest attribute-errors-plugin-test
   (let [err (ex-info "Err" {})]
     (is (= (p.eql/process
-             (-> {:com.wsscode.pathom3.system/lenient-mode? true}
+             (-> {:pathom/lenient-mode? true}
                  (pci/register
                    (pbir/constantly-fn-resolver :error (fn [_] (throw err))))
                  (p.plugin/register (pbip/attribute-errors-plugin)))
@@ -26,7 +26,7 @@
   (testing "only requested attributes show in errors"
     (let [err (ex-info "Err" {})]
       (is (= (p.eql/process
-               (-> {:com.wsscode.pathom3.system/lenient-mode? true}
+               (-> {:pathom/lenient-mode? true}
                    (pci/register [(pbir/constantly-resolver :dep 1)
                                   (pbir/single-attr-resolver :dep :error (fn [_] (throw err)))])
                    (p.plugin/register (pbip/attribute-errors-plugin)))
@@ -38,7 +38,7 @@
 
     (let [err (ex-info "Err" {})]
       (is (= (p.eql/process
-               (-> {:com.wsscode.pathom3.system/lenient-mode? true}
+               (-> {:pathom/lenient-mode? true}
                    (pci/register [(pbir/constantly-fn-resolver :error (fn [_] (throw err)))
                                   (pbir/single-attr-resolver :error :dep inc)])
                    (p.plugin/register (pbip/attribute-errors-plugin)))
@@ -52,7 +52,7 @@
   (testing "nested"
     (let [err (ex-info "Err" {})]
       (is (= (p.eql/process
-               (-> {:com.wsscode.pathom3.system/lenient-mode? true}
+               (-> {:pathom/lenient-mode? true}
                    (pci/register (pbir/constantly-fn-resolver :error (fn [_] (throw err))))
                    (p.plugin/register (pbip/attribute-errors-plugin)))
                {:foo {}}
