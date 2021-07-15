@@ -317,6 +317,16 @@
                      {}
                      [:foo]))))
 
+  (testing "Exception with details"
+    (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
+                          #"Resolver foo exception at path \[]: Error"
+          (run-graph (pci/register
+                       (pco/resolver 'foo
+                         {::pco/output [:foo]}
+                         (fn [_ _] (throw (ex-info "Error" {})))))
+                     {}
+                     [{:>/inside [:foo]}]))))
+
   (testing "resolver missing response"
     (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
                           #"Required attributes missing: \[:foo] at path \[]"
@@ -337,7 +347,6 @@
                                      (fn [_ _] {})))
                                  {}
                                  [:foo])))))))
-
 
 (deftest run-graph!-final-test
   (testing "map value"

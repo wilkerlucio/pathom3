@@ -400,6 +400,19 @@
     response
     (mark-node-error-with-plugins env node (ex-info (str "Resolver " op-name " returned an invalid response: " (pr-str response)) {:response response}))))
 
+(defn report-resolver-error
+  [{::p.path/keys [path]
+    :pathom/keys  [lenient-mode?]
+    :as           env}
+   {::pco/keys [op-name]
+    :as        node}
+   error]
+  (mark-node-error-with-plugins env node
+                                (if lenient-mode?
+                                  error
+                                  (ex-info (str "Resolver " op-name " exception at path " (pr-str path) ": " (ex-message error))
+                                           {::p.path/path path} error))))
+
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
@@ -444,7 +457,7 @@
                               (invoke-resolver-cached
                                 env cache? op-name resolver cache-store input-data params)))
                           (catch #?(:clj Throwable :cljs :default) e
-                            (mark-node-error-with-plugins env node e)))
+                            (report-resolver-error env node e)))
         finish          (time/now-ms)
         response        (validate-response! env node response)]
     (merge-node-stats! env node
