@@ -404,7 +404,7 @@
     ; placeholders
     (merge-resolver-response! env (pcr/placeholder-merge-entity env))
     ; entity ready
-    (p.plugin/run-with-plugins env ::pcr/wrap-run-graph-done! pcr/run-graph-done! env)))
+    (p.plugin/run-with-plugins env ::pcr/wrap-entity-ready! pcr/run-graph-done! env)))
 
 (defn run-root-node!
   [{::pcp/keys [graph] :as env}]

@@ -111,7 +111,7 @@
 (>def ::wrap-resolver-error fn?)
 (>def ::wrap-mutation-error fn?)
 (>def ::wrap-run-graph! fn?)
-(>def ::wrap-run-graph-done! fn?)
+(>def ::wrap-entity-ready! fn?)
 
 (>def ::process-run-start-ms number?)
 (>def ::process-run-finish-ms number?)
@@ -709,7 +709,7 @@
   ; placeholders
   (merge-resolver-response! env (placeholder-merge-entity env))
   ; entity ready
-  (p.plugin/run-with-plugins env ::wrap-run-graph-done! run-graph-done!
+  (p.plugin/run-with-plugins env ::wrap-entity-ready! run-graph-done!
     env))
 
 (defn run-root-node!
