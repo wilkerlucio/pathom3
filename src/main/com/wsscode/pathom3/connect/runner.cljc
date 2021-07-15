@@ -111,6 +111,7 @@
 (>def ::wrap-resolver-error fn?)
 (>def ::wrap-mutation-error fn?)
 (>def ::wrap-run-graph! fn?)
+(>def ::wrap-run-graph-done! fn?)
 
 (>def ::process-run-start-ms number?)
 (>def ::process-run-finish-ms number?)
