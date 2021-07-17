@@ -14,9 +14,11 @@
     [com.wsscode.pathom3.connect.operation.protocols :as pco.prot]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
+    [com.wsscode.pathom3.placeholder :as pph]
     [com.wsscode.pathom3.plugin :as p.plugin]))
 
 (>def ::attribute-errors (s/map-of ::p.attr/attribute any?))
@@ -26,11 +28,6 @@
   fn?)
 
 (>def ::batch-error? boolean?)
-
-(>def ::fail-fast?
-  "Defaults to false. When set to true, in case of exceptions in resolvers or mutations,
-  Pathom will fail immediately."
-  boolean?)
 
 (>def ::batch-hold
   "A map containing information to trigger a batch for a resolver node."
@@ -114,6 +111,7 @@
 (>def ::wrap-resolver-error fn?)
 (>def ::wrap-mutation-error fn?)
 (>def ::wrap-run-graph! fn?)
+(>def ::wrap-entity-ready! fn?)
 
 (>def ::process-run-start-ms number?)
 (>def ::process-run-finish-ms number?)
@@ -129,7 +127,7 @@
   (let [entity (p.ent/entity env)]
     (every? #(contains? entity %) (keys expects))))
 
-(declare run-node! run-graph! merge-node-stats!)
+(declare run-node! run-graph! merge-node-stats! include-meta-stats)
 
 (defn union-key-on-data? [{:keys [union-key]} m]
   (contains? m union-key))
@@ -207,8 +205,8 @@
   (-> (pcp/entry-ast graph k)
       (normalize-ast-recursive-query graph k)))
 
-(defn fail-fast [{::keys [fail-fast?]} error]
-  (if fail-fast? (throw error)))
+(defn fail-fast [{:keys [pathom/lenient-mode?]} error]
+  (if-not lenient-mode? (throw error)))
 
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
@@ -292,19 +290,21 @@
   (if node-run-stats*
     (refs/gswap! node-run-stats* update op-name coll/merge-defaults data)))
 
-(defn mark-resolver-error
-  [{::keys [node-run-stats*]}
+(defn mark-node-error
+  [{::keys [node-run-stats*] :as env}
    {::pcp/keys [node-id]}
    error]
+  (fail-fast env error)
   (if node-run-stats*
     (doto node-run-stats*
       (refs/gswap! assoc-in [node-id ::node-error] error)
-      (refs/gswap! update ::nodes-with-error coll/sconj node-id))))
+      (refs/gswap! update ::nodes-with-error coll/sconj node-id)))
+  ::node-error)
 
-(defn mark-resolver-error-with-plugins
+(defn mark-node-error-with-plugins
   [env node e]
   (p.plugin/run-with-plugins env ::wrap-resolver-error
-    mark-resolver-error env node e))
+    mark-node-error env node e))
 
 (defn choose-cache-store [env cache-store]
   (if cache-store
@@ -384,10 +384,34 @@
                  ::node-resolver-input input-data
                  ::env                 env}})
 
-(defn valid-response? [x]
+(defn valid-resolver-response? [x]
   (or (map? x)
-      (nil? x)
-      (refs/kw-identical? x ::node-error)))
+      (nil? x)))
+
+(defn special-resolver-signal? [response]
+  (or (refs/kw-identical? response ::node-error)
+      (and (map? response) (contains? response ::batch-hold))))
+
+(defn validate-response!
+  [env {::pco/keys [op-name]
+        :as        node} response]
+  (if (or (special-resolver-signal? response)
+          (valid-resolver-response? response))
+    response
+    (mark-node-error-with-plugins env node (ex-info (str "Resolver " op-name " returned an invalid response: " (pr-str response)) {:response response}))))
+
+(defn report-resolver-error
+  [{::p.path/keys [path]
+    :pathom/keys  [lenient-mode?]
+    :as           env}
+   {::pco/keys [op-name]
+    :as        node}
+   error]
+  (mark-node-error-with-plugins env node
+                                (if lenient-mode?
+                                  error
+                                  (ex-info (str "Resolver " op-name " exception at path " (pr-str path) ": " (ex-message error))
+                                           {::p.path/path path} error))))
 
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
@@ -412,7 +436,7 @@
         resolver-cache* (get env cache-store)
         _               (merge-node-stats! env node
                           {::resolver-run-start-ms (time/now-ms)})
-        result          (try
+        response        (try
                           (if-let [missing (pfsd/missing input-shape input entity)]
                             (if (missing-maybe-in-pending-batch? env input)
                               (wait-batch-response env node)
@@ -433,17 +457,14 @@
                               (invoke-resolver-cached
                                 env cache? op-name resolver cache-store input-data params)))
                           (catch #?(:clj Throwable :cljs :default) e
-                            (mark-resolver-error-with-plugins env node e)
-                            (fail-fast env e)
-                            ::node-error))
-        finish          (time/now-ms)]
-    (if-not (valid-response? result)
-      (l/warn ::invalid-resolver-response {::pco/op-name op-name :response result}))
+                            (report-resolver-error env node e)))
+        finish          (time/now-ms)
+        response        (validate-response! env node response)]
     (merge-node-stats! env node
       (cond-> {::resolver-run-finish-ms finish}
-        (not (::batch-hold result))
-        (merge (report-resolver-io-stats env input-data result))))
-    result))
+        (not (::batch-hold response))
+        (merge (report-resolver-io-stats env input-data response))))
+    response))
 
 (defn run-resolver-node!
   "This function evaluates the resolver associated with the node.
@@ -504,6 +525,17 @@
   [{::keys [node-run-stats*]} {::pcp/keys [node-id]} taken-path-id]
   (refs/gswap! node-run-stats* update-in [node-id ::taken-paths] coll/vconj taken-path-id))
 
+(defn fail-or-error [or-node errors]
+  (ex-info
+    (str "All paths from an OR node failed. Expected: " (::pcp/expects or-node) "\n"
+         (str/join "\n" (mapv ex-message errors)))
+    {:errors errors}))
+
+(defn handle-or-error [env or-node res]
+  (let [error (fail-or-error or-node (::or-option-error res))]
+    (mark-node-error-with-plugins env or-node error)
+    (fail-fast env error)))
+
 (>defn run-or-node!
   [{::pcp/keys [graph]
     ::keys     [choose-path]
@@ -514,7 +546,8 @@
   (merge-node-stats! env or-node {::node-run-start-ms (time/now-ms)})
 
   (let [res (if-not (all-requires-ready? env or-node)
-              (loop [nodes run-or]
+              (loop [nodes  run-or
+                     errors []]
                 (if (seq nodes)
                   (let [picked-node-id (choose-path env or-node nodes)
                         node-id        (if (contains? nodes picked-node-id)
@@ -526,14 +559,30 @@
                                                     :actual-used     (first nodes)})
                                            (first nodes)))]
                     (add-taken-path! env or-node node-id)
-                    (let [res (run-node! env (pcp/get-node graph node-id))]
-                      (if (::batch-hold res)
+                    (let [res (try
+                                (run-node! env (pcp/get-node graph node-id))
+                                (catch #?(:clj Throwable :cljs :default) e
+                                  {::or-option-error e}))]
+                      (cond
+                        (::batch-hold res)
                         res
+
+                        (::or-option-error res)
+                        (recur (disj nodes node-id) (conj errors (::or-option-error res)))
+
+                        :else
                         (if (all-requires-ready? env or-node)
                           (merge-node-stats! env or-node {::success-path node-id})
-                          (recur (disj nodes node-id)))))))))]
-    (if (::batch-hold res)
+                          (recur (disj nodes node-id) errors)))))
+                  {::or-option-error errors})))]
+    (cond
+      (::batch-hold res)
       res
+
+      (::or-option-error res)
+      (handle-or-error env or-node res)
+
+      :else
       (do
         (merge-node-stats! env or-node {::node-run-finish-ms (time/now-ms)})
         (run-next-node! env or-node)))))
@@ -581,14 +630,14 @@
   "Create an entity to process the placeholder demands. This consider if the placeholder
   has params, params in placeholders means that you want some specific data at that
   point."
-  [{::pcp/keys [graph]} source-ent]
+  [{::pcp/keys [graph] ::keys [source-entity]}]
   (reduce
     (fn [out ph]
       (let [data (:params (pcp/entry-ast graph ph))]
         (assoc out ph
           ; TODO maybe check for possible optimization when there are no conflicts
           ; between different placeholder levels
-          (merge source-ent data))))
+          (merge source-entity data))))
     {}
     (::pcp/placeholders graph)))
 
@@ -618,7 +667,7 @@
                        (run-foreign-mutation env ast)
                        (p.plugin/run-with-plugins env ::wrap-mutate
                          #(pco.prot/-mutate mutation %1 (:params %2)) env ast))
-                     (throw (ex-info "Mutation not found" {::pco/op-name key})))
+                     (throw (ex-info (str "Mutation " key " not found") {::pco/op-name key})))
                    (catch #?(:clj Throwable :cljs :default) e
                      (p.plugin/run-with-plugins env ::wrap-mutation-error
                        (fn [_ _ _]) env ast e)
@@ -641,17 +690,54 @@
   (doseq [key (::pcp/mutations graph)]
     (invoke-mutation! env (entry-ast graph key))))
 
+(defn check-entity-requires!
+  "Verify if entity contains all required keys from graph index-ast. This is
+  shallow check (don't visit nested entities)."
+  [{::pcp/keys    [graph]
+    ::p.path/keys [path]
+    :as           env}]
+  (let [entity   (p.ent/entity env)
+        expected (zipmap
+                   (into []
+                         (comp (map :key)
+                               (remove #(pph/placeholder-key? env %)))
+                         (:children (pcp/required-ast-from-index-ast graph)))
+                   (repeat {}))
+        missing  (pfsd/missing (pfsd/data->shape-descriptor-shallow entity) expected)]
+    (if (seq missing)
+      (fail-fast env
+                 (ex-info (str
+                            "Required attributes missing: " (pr-str (vec (keys missing)))
+                            " at path " (pr-str path))
+                          {:missing missing})))))
+
+(defn run-graph-done! [env]
+  (check-entity-requires! env)
+  (p.ent/swap-entity! env include-meta-stats env (::pcp/graph env))
+  (if (:pathom/lenient-mode? env)
+    (p.ent/swap-entity! env p.error/process-entity-errors))
+  nil)
+
+(defn run-graph-entity-done [env]
+  ; placeholders
+  (merge-resolver-response! env (placeholder-merge-entity env))
+  ; entity ready
+  (p.plugin/run-with-plugins env ::wrap-entity-ready! run-graph-done!
+    env))
+
 (defn run-root-node!
   [{::pcp/keys [graph] :as env}]
   (if-let [root (pcp/get-root-node graph)]
     (let [{::keys [batch-hold]} (run-node! env root)]
-      (when batch-hold
+      (if batch-hold
         (if (::nested-waiting? batch-hold)
           ; add to wait
           (refs/gswap! (::batch-waiting* env) coll/vconj batch-hold)
           ; add to batch pending
           (refs/gswap! (::batch-pending* env) update (::pco/op-name batch-hold)
-                       coll/vconj batch-hold))))))
+                       coll/vconj batch-hold))
+        (run-graph-entity-done env)))
+    (run-graph-entity-done env)))
 
 (>defn run-graph!*
   "Run the root node of the graph. As resolvers run, the result will be add to the
@@ -659,7 +745,7 @@
   [{::pcp/keys [graph] :as env}]
   [(s/keys :req [::pcp/graph ::p.ent/entity-tree*])
    => (s/keys)]
-  (let [source-ent (p.ent/entity env)]
+  (let [env (assoc env ::source-entity (p.ent/entity env))]
     ; mutations
     (process-mutations! env)
 
@@ -673,9 +759,6 @@
 
     ; now run the nodes
     (run-root-node! env)
-
-    ; placeholders
-    (merge-resolver-response! env (placeholder-merge-entity env source-ent))
 
     graph))
 
@@ -722,7 +805,7 @@
   (doseq [{env'       ::env
            ::pcp/keys [node]} batch-items]
     (p.plugin/run-with-plugins env' ::wrap-resolver-error
-      mark-resolver-error env' node (ex-info "Batch error" {::batch-error? true} e)))
+      mark-node-error env' node (ex-info (str "Batch error: " (ex-message e)) {::batch-error? true} e)))
 
   ::node-error)
 
@@ -757,8 +840,10 @@
         (let [ent' (p.ent/entity env')]
           (-> ent
               (coll/merge-defaults ent')
-              (merge (pfsd/select-shape ent' (::pcp/expects node)))
-              (include-meta-stats env' (::pcp/graph env'))))))))
+              (vary-meta merge (meta ent'))
+              (merge
+                (pfsd/select-shape ent' (assoc (::pcp/expects node)
+                                          ::attribute-errors {})))))))))
 
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
@@ -777,28 +862,34 @@
                              (mark-batch-errors e env batch-op batch-items)))
             finish       (time/now-ms)]
 
-        (when-not (refs/kw-identical? ::node-error responses)
-          (if (not= (count inputs) (count responses))
-            (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
+        (if (refs/kw-identical? ::node-error responses)
+          (if (:pathom/lenient-mode? env)
+            (doseq [{env'       ::env
+                     ::pcp/keys [node]} batch-items]
+              (run-graph-entity-done env')
+              (merge-entity-to-root-data env env' node)))
+          (do
+            (if (not= (count inputs) (count responses))
+              (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
 
-          (doseq [[{env'       ::env
-                    ::pcp/keys [node]
-                    ::keys     [node-resolver-input]
-                    :as        batch-item} response] (combine-inputs-with-responses input-groups inputs responses)]
-            (cache-batch-item batch-item batch-op response)
+            (doseq [[{env'       ::env
+                      ::pcp/keys [node]
+                      ::keys     [node-resolver-input]
+                      :as        batch-item} response] (combine-inputs-with-responses input-groups inputs responses)]
+              (cache-batch-item batch-item batch-op response)
 
-            (merge-node-stats! env' node
-              (merge {::batch-run-start-ms  start
-                      ::batch-run-finish-ms finish}
-                     (report-resolver-io-stats env' node-resolver-input response)))
+              (merge-node-stats! env' node
+                (merge {::batch-run-start-ms  start
+                        ::batch-run-finish-ms finish}
+                       (report-resolver-io-stats env' node-resolver-input response)))
 
-            (merge-resolver-response! env' response)
+              (merge-resolver-response! env' response)
 
-            (merge-node-stats! env' node {::node-run-finish-ms (time/now-ms)})
+              (merge-node-stats! env' node {::node-run-finish-ms (time/now-ms)})
 
-            (run-root-node! env')
+              (run-root-node! env')
 
-            (merge-entity-to-root-data env env' node)))))))
+              (merge-entity-to-root-data env env' node))))))))
 
 (defn run-batches-waiting! [env]
   (let [waits* (-> env ::batch-waiting*)
@@ -811,8 +902,7 @@
 
       (when-not (p.path/root? env')
         (p.ent/swap-entity! env assoc-in (::p.path/path env')
-          (-> (p.ent/entity env')
-              (include-meta-stats env' (::pcp/graph env'))))))))
+          (p.ent/entity env'))))))
 
 (defn run-batches! [env]
   (run-batches-pending! env)

@@ -10,6 +10,7 @@
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
@@ -20,6 +21,8 @@
     [matcher-combinators.standalone :as mcs]
     [matcher-combinators.test]
     [promesa.core :as p]))
+
+(declare thrown-with-msg?)
 
 (defn match-keys? [ks]
   (fn [m]
@@ -199,14 +202,21 @@
             {::map-container {:foo {::p.path/path [::map-container :foo]}}}))))
 
   (testing "insufficient data"
-    (let [res (run-graph (pci/register [(pco/resolver 'a {::pco/input  [:b]
-                                                          ::pco/output [:a]}
-                                          (fn [_ _] {:a "a"}))
-                                        (pco/resolver 'b {::pco/output [:b]}
-                                          (fn [_ _] {}))])
+    (let [res (run-graph (pci/register
+                           {:pathom/lenient-mode? true}
+                           [(pco/resolver 'a {::pco/input  [:b]
+                                              ::pco/output [:a]}
+                              (fn [_ _] {:a "a"}))
+                            (pco/resolver 'b {::pco/output [:b]}
+                              (fn [_ _] {}))])
                          {}
                          [:a])]
-      (is (= res {}))
+      (is (mcs/match?
+            {:com.wsscode.pathom3.connect.runner/attribute-errors
+             {:a
+              {::p.error/error-type         ::p.error/node-errors,
+               ::p.error/node-error-details {1 {::p.error/exception any?}}}}}
+            res))
       (is (= (-> res meta ::pcr/run-stats
                  ::pcr/node-run-stats
                  (get 1)
@@ -223,11 +233,12 @@
               :required  {:b {}}}))))
 
   (testing "ending values"
-    (let [res (run-graph (pci/register [(pco/resolver 'a {::pco/output [{:a [:n]}]}
-                                          (fn [_ _] {:a '({:n 1} {:n 2})}))])
-                         {}
-                         [{:a [:n]}])]
-      (is (= res {:a '({:n 1} {:n 2})}))))
+    (is (graph-response?
+          (pci/register [(pco/resolver 'a {::pco/output [{:a [:n]}]}
+                           (fn [_ _] {:a '({:n 1} {:n 2})}))])
+          {}
+          [{:a [:n]}]
+          {:a '({:n 1} {:n 2})})))
 
   (testing "processing sequence of consistent elements"
     (is (graph-response? (pci/register [geo/full-registry
@@ -295,6 +306,48 @@
                       :left      7}
                      20]}))))
 
+(deftest run-graph!-fail-cases-test
+  (testing "invalid resolver response"
+    (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
+                          #"Resolver foo returned an invalid response: 123"
+          (run-graph (pci/register
+                       (pco/resolver 'foo
+                         {::pco/output [:foo]}
+                         (fn [_ _] 123)))
+                     {}
+                     [:foo]))))
+
+  (testing "Exception with details"
+    (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
+                          #"Resolver foo exception at path \[]: Error"
+          (run-graph (pci/register
+                       (pco/resolver 'foo
+                         {::pco/output [:foo]}
+                         (fn [_ _] (throw (ex-info "Error" {})))))
+                     {}
+                     [{:>/inside [:foo]}]))))
+
+  (testing "resolver missing response"
+    (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
+                          #"Required attributes missing: \[:foo] at path \[]"
+          (run-graph (pci/register
+                       (pco/resolver 'foo
+                         {::pco/output [:foo]}
+                         (fn [_ _] {})))
+                     {}
+                     [:foo])))
+
+    #?(:clj
+       (testing "async"
+         (is (thrown-with-msg? Throwable
+                               #"Required attributes missing: \[:foo] at path \[]"
+               @(run-graph-async (pci/register
+                                   (pco/resolver 'foo
+                                     {::pco/output [:foo]}
+                                     (fn [_ _] {})))
+                                 {}
+                                 [:foo])))))))
+
 (deftest run-graph!-final-test
   (testing "map value"
     (is (graph-response? (pci/register geo/registry)
@@ -328,34 +381,71 @@
   (testing "processing OR nodes"
     (testing "return the first option that works, don't call the others"
       (let [spy (atom 0)]
-        (is (= (run-graph (pci/register [(pco/resolver `value
-                                           {::pco/output [:value]}
-                                           (fn [_ _]
-                                             (swap! spy inc)
-                                             {:value 1}))
-                                         (pco/resolver `value2
-                                           {::pco/output [:value]}
-                                           (fn [_ _]
-                                             (swap! spy inc)
-                                             {:value 2}))])
-                          {}
-                          [:value])
-               {:value #?(:clj 1 :cljs 2)}))
-        (is (= @spy 1))))
+        (is (graph-response?
+              (pci/register
+                [(pco/resolver 'value
+                   {::pco/output [:value]}
+                   (fn [_ _]
+                     (swap! spy inc)
+                     {:value 1}))
+                 (pco/resolver 'value2
+                   {::pco/output [:value]}
+                   (fn [_ _]
+                     (swap! spy inc)
+                     {:value 2}))])
+              {}
+              [:value]
+              {:value 2}))
+        (is (= @spy #?(:clj 2 :cljs 1)))))
 
     (testing "one option fail, one succeed"
       (let [spy (atom 0)]
-        (is (= (run-graph (pci/register [(pco/resolver `error-long-touch
-                                           {::pco/output   [:error]
-                                            ::pco/priority 1}
-                                           (fn [_ _]
-                                             (swap! spy inc)
-                                             (throw (ex-info "Error" {}))))
-                                         (pbir/constantly-resolver :error "value")])
-                          {}
-                          [:error])
-               {:error "value"}))
-        (is (= @spy 1))))
+        (is (graph-response?
+              (pci/register
+                [(pco/resolver 'error-long-touch
+                   {::pco/output   [:error]
+                    ::pco/priority 1}
+                   (fn [_ _]
+                     (swap! spy inc)
+                     (throw (ex-info "Error" {}))))
+                 (pbir/constantly-resolver :error "value")])
+              {}
+              [:error]
+              {:error "value"}))
+        (is (= @spy #?(:clj 2 :cljs 1)))))
+
+    (testing "all options fail"
+      (is (thrown-with-msg?
+            #?(:clj Throwable :cljs js/Error)
+            #"All paths from an OR node failed. Expected: \{:error \{}}"
+            (run-graph (pci/register
+                         [(pco/resolver 'error1
+                            {::pco/output [:error]}
+                            (fn [_ _]
+                              (throw (ex-info "Error 1" {}))))
+                          (pco/resolver 'error2
+                            {::pco/output [:error]}
+                            (fn [_ _]
+                              (throw (ex-info "Error 2" {}))))])
+                       {}
+                       [:error])))
+
+      #?(:clj
+         (testing "async"
+           (is (thrown-with-msg?
+                 #?(:clj Throwable :cljs js/Error)
+                 #"All paths from an OR node failed. Expected: \{:error \{}}"
+                 @(run-graph-async (pci/register
+                                     [(pco/resolver 'error1
+                                        {::pco/output [:error]}
+                                        (fn [_ _]
+                                          (throw (ex-info "Error 1" {}))))
+                                      (pco/resolver 'error2
+                                        {::pco/output [:error]}
+                                        (fn [_ _]
+                                          (throw (ex-info "Error 2" {}))))])
+                                   {}
+                                   [:error]))))))
 
     (testing "custom prioritization"
       (is (graph-response?
@@ -364,14 +454,14 @@
                (fn [{::pcp/keys [graph]} _or-node options]
                  (first (into []
                               (comp (map #(pcp/get-node graph %))
-                                    (filter #(= (::pco/op-name %) `value2))
+                                    (filter #(= (::pco/op-name %) 'value2))
                                     (map ::pcp/node-id))
                               options)))}
-              [(pco/resolver `value
+              [(pco/resolver 'value
                  {::pco/output [:value]}
                  (fn [_ _]
                    {:value 1}))
-               (pco/resolver `value2
+               (pco/resolver 'value2
                  {::pco/output [:value]}
                  (fn [_ _]
                    {:value 2}))])
@@ -381,12 +471,12 @@
 
     (testing "stats"
       (is (graph-response?
-            (pci/register [(pco/resolver `value
+            (pci/register [(pco/resolver 'value
                              {::pco/output   [:value]
                               ::pco/priority 1}
                              (fn [_ _]
                                {:value 1}))
-                           (pco/resolver `value2
+                           (pco/resolver 'value2
                              {::pco/output [:value]}
                              (fn [_ _]
                                {:value 2}))])
@@ -394,18 +484,18 @@
             [:value]
             (fn [res]
               (mcs/match?
-                {::pcr/taken-paths  [1]
-                 ::pcr/success-path 1}
+                {::pcr/taken-paths  [#?(:clj 2 :cljs 1)]
+                 ::pcr/success-path #?(:clj 2 :cljs 1)}
                 (-> res meta ::pcr/run-stats ::pcr/node-run-stats (get 3)))))))
 
     (testing "standard priority"
       (is (graph-response?
             (pci/register
-              [(pco/resolver `value
+              [(pco/resolver 'value
                  {::pco/output [:value]}
                  (fn [_ _]
                    {:value 1}))
-               (pco/resolver `value2
+               (pco/resolver 'value2
                  {::pco/output   [:value]
                   ::pco/priority 1}
                  (fn [_ _]
@@ -417,18 +507,18 @@
       (testing "competing priority, look at next lower."
         (is (graph-response?
               (pci/register
-                [(pco/resolver `x
+                [(pco/resolver 'x
                    {::pco/output   [:x :y]
                     ::pco/priority 9}
                    (fn [_ _]
                      {:x 1 :y 2}))
-                 (pco/resolver `value1
+                 (pco/resolver 'value1
                    {::pco/input    [:x]
                     ::pco/output   [:value]
                     ::pco/priority 1}
                    (fn [_ _]
                      {:value 1}))
-                 (pco/resolver `value2
+                 (pco/resolver 'value2
                    {::pco/input    [:y]
                     ::pco/output   [:value]
                     ::pco/priority 2}
@@ -441,12 +531,12 @@
       (testing "distinct inputs"
         (is (graph-response?
               (pci/register
-                [(pco/resolver `value
+                [(pco/resolver 'value
                    {::pco/input  [:a]
                     ::pco/output [:value]}
                    (fn [_ _]
                      {:value 1}))
-                 (pco/resolver `value2
+                 (pco/resolver 'value2
                    {::pco/input    [:b]
                     ::pco/output   [:value]
                     ::pco/priority 1}
@@ -462,12 +552,12 @@
         (testing "complex extension"
           (is (graph-response?
                 (pci/register
-                  [(pco/resolver `value
+                  [(pco/resolver 'value
                      {::pco/input  [:a :b]
                       ::pco/output [:value]}
                      (fn [_ _]
                        {:value 1}))
-                   (pco/resolver `value2
+                   (pco/resolver 'value2
                      {::pco/input    [:c]
                       ::pco/output   [:value]
                       ::pco/priority 1}
@@ -484,12 +574,12 @@
         (testing "priority in the middle"
           (is (graph-response?
                 (pci/register
-                  [(pco/resolver `value
+                  [(pco/resolver 'value
                      {::pco/input  [:a :b]
                       ::pco/output [:value]}
                      (fn [_ _]
                        {:value 1}))
-                   (pco/resolver `value2
+                   (pco/resolver 'value2
                      {::pco/input  [:c]
                       ::pco/output [:value]}
                      (fn [_ _]
@@ -507,18 +597,18 @@
         (testing "leaf is a branch"
           (is (graph-response?
                 (pci/register
-                  [(pco/resolver `value-b1
+                  [(pco/resolver 'value-b1
                      {::pco/input  [:b]
                       ::pco/output [:a]}
                      (fn [_ _]
                        {:a "b1"}))
-                   (pco/resolver `value-b2
+                   (pco/resolver 'value-b2
                      {::pco/input    [:b]
                       ::pco/output   [:a]
                       ::pco/priority 1}
                      (fn [_ _]
                        {:a "b2"}))
-                   (pco/resolver `value-cd
+                   (pco/resolver 'value-cd
                      {::pco/input  [:c :d]
                       ::pco/output [:a]}
                      (fn [_ _]
@@ -534,11 +624,11 @@
 (deftest run-graph!-and-test
   (testing "stats"
     (is (graph-response?
-          (pci/register [(pco/resolver `value
+          (pci/register [(pco/resolver 'value
                            {::pco/output [:value]}
                            (fn [_ _]
                              {:value 1}))
-                         (pco/resolver `value2
+                         (pco/resolver 'value2
                            {::pco/output [:value2]}
                            (fn [_ _]
                              {:value2 2}))])
@@ -587,44 +677,46 @@
            :total-score 30})))
 
   (testing "optional nested input"
-    (is (graph-response?
-          (pci/register
-            [(pco/resolver 'users
-               {::pco/output [{:users [:user/id]}]}
-               (fn [_ _]
-                 {:users [{:user/id 1}
-                          {:user/id 2}]}))
-             (pbir/static-attribute-map-resolver :user/id :user/score
-               {1 10
-                2 20})
-             (pco/resolver 'total-score
-               {::pco/input  [{:users [(pco/? :user/score)]}]
-                ::pco/output [:total-score]}
-               (fn [_ {:keys [users]}]
-                 {:total-score (reduce + 0 (map :user/score users))}))])
-          {}
-          [:total-score]
-          {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
-           :total-score 30}))
+    (testing "all items can resolve dependencies"
+      (is (graph-response?
+            (pci/register
+              [(pco/resolver 'users
+                 {::pco/output [{:users [:user/id]}]}
+                 (fn [_ _]
+                   {:users [{:user/id 1}
+                            {:user/id 2}]}))
+               (pbir/static-attribute-map-resolver :user/id :user/score
+                 {1 10
+                  2 20})
+               (pco/resolver 'total-score
+                 {::pco/input  [{:users [(pco/? :user/score)]}]
+                  ::pco/output [:total-score]}
+                 (fn [_ {:keys [users]}]
+                   {:total-score (reduce + 0 (map :user/score users))}))])
+            {}
+            [:total-score]
+            {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}]
+             :total-score 30})))
 
-    (is (graph-response?
-          (pci/register
-            [(pco/resolver 'users
-               {::pco/output [{:users [:user/id]}]}
-               (fn [_ _]
-                 {:users [{:user/id 1}
-                          {:user/id 2}]}))
-             (pbir/static-attribute-map-resolver :user/id :user/score
-               {1 10})
-             (pco/resolver 'total-score
-               {::pco/input  [{:users [(pco/? :user/score)]}]
-                ::pco/output [:total-score]}
-               (fn [_ {:keys [users]}]
-                 {:total-score (reduce + 0 (map #(or (:user/score %) 1) users))}))])
-          {}
-          [:total-score]
-          {:users       [#:user{:id 1, :score 10} #:user{:id 2}]
-           :total-score 11})))
+    (testing "entities partially fulfill the optional demand"
+      (is (graph-response?
+            (pci/register
+              [(pco/resolver 'users
+                 {::pco/output [{:users [:user/id]}]}
+                 (fn [_ _]
+                   {:users [{:user/id 1}
+                            {:user/id 2}]}))
+               (pbir/static-attribute-map-resolver :user/id :user/score
+                 {1 10})
+               (pco/resolver 'total-score
+                 {::pco/input  [{:users [(pco/? :user/score)]}]
+                  ::pco/output [:total-score]}
+                 (fn [_ {:keys [users]}]
+                   {:total-score (reduce + 0 (map #(or (:user/score %) 1) users))}))])
+            {}
+            [:total-score]
+            {:users       [#:user{:id 1, :score 10} #:user{:id 2}]
+             :total-score 11}))))
 
   (testing "empty collection is a valid input"
     (is (graph-response?
@@ -646,9 +738,10 @@
           {:users       []
            :total-score 0})))
 
-  (testing "remove collection elements that don't fulfill required input"
+  (testing "remove collection elements that don't fulfill required input in lenient mode"
     (is (graph-response?
           (pci/register
+            {:pathom/lenient-mode? true}
             [(pco/resolver 'users
                {::pco/output [{:users [:user/id]}]}
                (fn [_ _]
@@ -663,7 +756,10 @@
                  {:total-score (reduce + 0 (map :user/score users))}))])
           {}
           [:total-score]
-          {:users       [#:user{:id 1, :score 10} {:user/id 2}]
+          {:users       [{:user/id 1, :user/score 10}
+                         {:user/id                                             2,
+                          :com.wsscode.pathom3.connect.runner/attribute-errors {:user/score {:com.wsscode.pathom3.error/error-type         :com.wsscode.pathom3.error/node-errors,
+                                                                                             :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-missing}}}}}],
            :total-score 10})))
 
   (testing "resolver gets only the exact shape it asked for"
@@ -853,7 +949,7 @@
             #?(:clj Throwable :cljs js/Error)
             #"Fail fast"
             (run-graph
-              (pci/register {::pcr/fail-fast? true}
+              (pci/register {:pathom/lenient-mode? false}
                             (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
               {}
               [:err]))))
@@ -862,7 +958,7 @@
        (let [err (ex-info "Fail fast" {})]
          (is (thrown-with-msg? Throwable #"Fail fast"
                @(run-graph-async
-                  (pci/register {::pcr/fail-fast? true}
+                  (pci/register {:pathom/lenient-mode? false}
                                 (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
                   {}
                   [:err]))))))
@@ -873,7 +969,7 @@
             #?(:clj Throwable :cljs js/Error)
             #"Fail fast"
             (run-graph
-              (pci/register {::pcr/fail-fast? true}
+              (pci/register {:pathom/lenient-mode? false}
                             (pco/mutation 'err {} (fn [_ _] (throw err))))
               {}
               ['(err {})]))))
@@ -882,7 +978,7 @@
        (let [err (ex-info "Fail fast" {})]
          (is (thrown-with-msg? Throwable #"Fail fast"
                @(run-graph-async
-                  (pci/register {::pcr/fail-fast? true}
+                  (pci/register {:pathom/lenient-mode? false}
                                 (pco/mutation 'err {} (fn [_ _] (throw err))))
                   {}
                   ['(err {})])))))))
@@ -1212,22 +1308,19 @@
               {:id 3 :v 300}]}))))
 
   (testing "errors"
-    (let [res (run-graph
-                (pci/register
-                  [batch-fetch-error
-                   (pbir/constantly-resolver :list
-                                             [{:id 1}
-                                              {:id 2}
-                                              {:id 3}])])
-                {:id 1}
-                [:v])]
-      (is (= res
-             {:id 1}))
-      ; TODO: match error
-      #_(is (= (meta res)
-               {})))
-
-    (testing "partial error"))
+    (is (graph-response?
+          (pci/register
+            {:pathom/lenient-mode? true}
+            [batch-fetch-error])
+          {:id 1}
+          [:v]
+          (fn [res]
+            (mcs/match?
+              {:id                                                  1,
+               :com.wsscode.pathom3.connect.runner/attribute-errors {:v {:com.wsscode.pathom3.error/error-type         :com.wsscode.pathom3.error/node-errors,
+                                                                         :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-exception,
+                                                                                                                           :com.wsscode.pathom3.error/exception  any?}}}}}
+              res)))))
 
   (testing "uses batch resolver as single resolver when running under a path that batch wont work"
     (is (graph-response?
@@ -1249,7 +1342,7 @@
             children {1 {:child/ident :child/good}}
             good?    (fn [children] (boolean (some #{:child/good} (map :child/ident children))))
             env      (pci/register
-                       [(pco/resolver `pc
+                       [(pco/resolver 'pc
                           {::pco/input  [:parent/id]
                            ::pco/output [{:parent/children [:child/id]}]
                            ::pco/batch? true}
@@ -1258,7 +1351,7 @@
                                     (select-keys (parents id) [:parent/children]))
                               items)))
 
-                        (pco/resolver `ci
+                        (pco/resolver 'ci
                           {::pco/input  [:child/id]
                            ::pco/output [:child/ident]
                            ::pco/batch? true}
@@ -1267,7 +1360,7 @@
                                     (select-keys (children id) [:child/ident]))
                               items)))
 
-                        (pco/resolver `parent-good
+                        (pco/resolver 'parent-good
                           {::pco/input  [{:parent/children [:child/ident]}]
                            ::pco/output [:parent/good?]}
                           (fn [_ {:parent/keys [children]}] {:parent/good? (good? children)}))])]
@@ -1430,6 +1523,7 @@
   (testing "error"
     (is (graph-response?
           (pci/register
+            {:pathom/lenient-mode? true}
             [(pco/resolver 'a {::pco/output [:x]}
                (fn [_ _] (throw (ex-info "Err" {}))))])
           {}
@@ -1640,6 +1734,22 @@
         {:foo    "baz"
          :>/path {:foo "baz"}}))
 
+  (testing "with batch"
+    (is (graph-response? (pci/register
+                           [(pco/resolver 'batch
+                              {::pco/batch? true
+                               ::pco/input  [:x]
+                               ::pco/output [:y]}
+                              (fn [_ xs]
+                                (mapv #(array-map :y (inc (:x %))) xs)))])
+          {:x 10}
+          '[:y
+            {:>/go [:y]}]
+          {:x    10
+           :y    11
+           :>/go {:x 10
+                  :y 11}})))
+
   (testing "modified data"
     (is (graph-response? (pci/register
                            [(pbir/single-attr-resolver :x :y #(* 2 %))])
@@ -1763,6 +1873,7 @@
   (testing "recursive nested input"
     (is (graph-response?
           (pci/register
+            {:pathom/lenient-mode? true}
             [(pco/resolver 'nested-input-recursive
                {::pco/input  [:name {:children '...}]
                 ::pco/output [:names]}
@@ -1778,16 +1889,31 @@
                                           "c" {:children [{:name "d"}]}})])
           {:name "a"}
           [:names]
-          {:name     "a",
-           :children [{:name     "b",
-                       :children [{:name     "e",
-                                   :children [{:name     "f",
-                                               :children [{:name "g"}],
-                                               :names    ["f" "g"]}],
-                                   :names    ["e" "f" "g"]}],
-                       :names    ["b" "e" "f" "g"]}
-                      {:name "c", :children [{:name "d"}], :names ["c" "d"]}],
-           :names    ["a" "b" "e" "f" "g" "c" "d"]}))))
+          (fn [res]
+            (mcs/match?
+              {:name "a",
+               :children [{:name "b",
+                           :children [{:name "e",
+                                       :children [{:name "f",
+                                                   :children [{:name "g",
+                                                               :com.wsscode.pathom3.connect.runner/attribute-errors {:names {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
+                                                                                                                             :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-exception,
+                                                                                                                                                                               :com.wsscode.pathom3.error/exception any?}}},
+                                                                                                                     :children {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
+                                                                                                                                :com.wsscode.pathom3.error/node-error-details {2 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-missing}}}}}],
+                                                   :names ["f" "g"]}],
+                                       :names ["e" "f" "g"]}],
+                           :names ["b" "e" "f" "g"]}
+                          {:name "c",
+                           :children [{:name "d",
+                                       :com.wsscode.pathom3.connect.runner/attribute-errors {:names {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
+                                                                                                     :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-exception,
+                                                                                                                                                       :com.wsscode.pathom3.error/exception any?}}},
+                                                                                             :children {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
+                                                                                                        :com.wsscode.pathom3.error/node-error-details {2 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-missing}}}}}],
+                           :names ["c" "d"]}],
+               :names ["a" "b" "e" "f" "g" "c" "d"]}
+              res))))))
 
 (deftest run-graph!-mutations-test
   (testing "simple call"
@@ -1812,6 +1938,7 @@
     (let [err (ex-info "Error" {})]
       (is (graph-response?
             (pci/register
+              {:pathom/lenient-mode? true}
               [(pbir/alias-resolver :result :other)
                (pco/mutation 'call {}
                  (fn [_ _] (throw err)))])
@@ -1822,13 +1949,14 @@
   (testing "mutation not found"
     (is (graph-response?
           (pci/register
+            {:pathom/lenient-mode? true}
             [(pbir/alias-resolver :result :other)])
           {}
           '[(not-here {:this "thing"})]
           (fn [res]
             (mcs/match?
               {'not-here {::pcr/mutation-error (fn [e]
-                                                 (and (= "Mutation not found"
+                                                 (and (= "Mutation not-here not found"
                                                          (ex-message e))
                                                       (= {::pco/op-name 'not-here}
                                                          (ex-data e))))}}
@@ -1874,8 +2002,8 @@
                                       ::pcp/placeholders #{:>/p1}
                                       ::pcp/index-ast    {:>/p1 {:key          :>/p1
                                                                  :dispatch-key :>/p1}}}
-                ::p.ent/entity-tree* (volatile! {:foo "bar"})}
-               {})
+                ::p.ent/entity-tree* (volatile! {:foo "bar"})
+                ::pcr/source-entity  {}})
              {:>/p1 {:foo "bar"}})))
 
   (testing "override with source when params are provided"
@@ -1885,8 +2013,8 @@
                                     ::pcp/index-ast    {:>/p1 {:key          :>/p1
                                                                :dispatch-key :>/p1
                                                                :params       {:x 10}}}}
-              ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})}
-             {:z true})
+              ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})
+              ::pcr/source-entity  {:z true}})
            {:>/p1 {:z true :x 10}}))))
 
 (defn set-done [k]
@@ -1926,9 +2054,9 @@
                                     (fn [env ast]
                                       (try
                                         (mutation env ast)
-                                        (catch #?(:clj Throwable :cljs :default) e
+                                        (catch #?(:clj Throwable :cljs js/Error) e
                                           (reset! err* e)
-                                          (throw e)))))}))
+                                          nil))))}))
             {}
             ['(foo)]
             (fn [_]

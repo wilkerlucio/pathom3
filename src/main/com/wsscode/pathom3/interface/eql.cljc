@@ -86,6 +86,11 @@
     (env-extension source-env)
     (merge source-env env-extension)))
 
+(defn boundary-env [env input]
+  (if-let [x (find input :pathom/lenient-mode?)]
+    (assoc env :pathom/lenient-mode? (val x))
+    env))
+
 (>defn boundary-interface
   "Returns a function that wraps the environment. When exposing Pathom to some external
   system, this is the recommended way to do it. The format here makes your API compatible
@@ -107,6 +112,7 @@
       :pathom/eql
       :pathom/ast
       :pathom/entity
+      :pathom/lenient-mode?
 
   Env ext can be either a map to merge in the original env, or a function that transforms
   the env.
@@ -117,6 +123,7 @@
       ([env-extension input]
        (let [{:pathom/keys [eql entity ast] :as request} (normalize-input input)
              env'    (-> env'
+                         (boundary-env input)
                          (extend-env env-extension)
                          (assoc ::source-request request))
              entity' (or entity {})]

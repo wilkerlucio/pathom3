@@ -12,6 +12,7 @@
 (>def ::index-attributes map?)
 (>def ::index-resolvers (s/map-of ::pco/op-name ::pco/resolver))
 (>def ::index-mutations (s/map-of ::pco/op-name ::pco/mutation))
+(>def ::index-source-id symbol?)
 
 (>def ::index-oir
   "Index: Output -> Input -> Resolver"

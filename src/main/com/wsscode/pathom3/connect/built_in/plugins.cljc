@@ -1,73 +1,22 @@
 (ns com.wsscode.pathom3.connect.built-in.plugins
   (:require
-    [clojure.walk :as walk]
-    [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
-    [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.promesa.macros :refer [clet]]))
 
-(defn process-entity-errors [entity]
-  (if (p.error/scan-for-errors? entity)
-    (let [ast    (-> entity meta
-                     :com.wsscode.pathom3.connect.runner/run-stats
-                     :com.wsscode.pathom3.connect.planner/index-ast)
-          errors (into {}
-                       (keep (fn [k]
-                               (if-let [error (p.error/attribute-error entity k)]
-                                 (coll/make-map-entry k error))))
-                       (keys ast))]
-      (cond-> entity
-        (seq errors)
-        (assoc ::pcr/attribute-errors errors)))
-    entity))
+(defn ^:deprecated attribute-errors-plugin
+  "DEPRECATED: attribute errors are now built-in, you can just remove it
+  from your setup.
 
-(defn attribute-errors-plugin
-  "This plugin makes attributes errors visible in the data."
+  This plugin makes attributes errors visible in the data."
   []
   {::p.plugin/id
-   `attribute-errors-plugin
-
-   :com.wsscode.pathom3.interface.eql/wrap-process-ast
-   (fn attribute-errors-plugin-wrap-process-ast-external [process]
-     (fn attribute-errors-plugin-wrap-process-ast-internal [env ast]
-       (process
-         (update env :com.wsscode.pathom3.format.eql/map-select-include
-           coll/sconj ::pcr/attribute-errors)
-         ast)))
-
-   ::pcr/wrap-root-run-graph!
-   (fn attribute-errors-plugin-wrap-run-graph-external [run-graph!]
-     (fn attribute-errors-plugin-wrap-run-graph-internal [env ast-or-graph entity-tree*]
-       (clet [entity (run-graph! env ast-or-graph entity-tree*)]
-         (walk/postwalk
-           (fn [x]
-             (if (map? x)
-               (process-entity-errors x)
-               x))
-           entity))))})
-
-(p.plugin/defplugin ^:deprecate remove-stats-plugin
-  "DEPRECATED
-
-  This plugin is deprecated and is going to get removed, please instead use the
-  option `::pcr/omit-run-stats?` true in your env to disable run stats meta.
-
-  Remove the run stats from the result meta. Use this in production to avoid sending
-  the stats. This is important for performance and security.
-
-  "
-  {::pcr/wrap-run-graph!
-   (fn remove-stats-plugin-wrap-run-graph-external [run-graph!]
-     (fn remove-stats-plugin-wrap-run-graph-internal [env ast-or-graph entity-tree*]
-       (throw (ex-info "Plugin going to be removed, please use `::pcr/omit-run-stats?` true config instead." {}))
-       (clet [response (run-graph! env ast-or-graph entity-tree*)]
-         (vary-meta response dissoc :com.wsscode.pathom3.connect.runner/run-stats))))})
+   `attribute-errors-plugin})
 
 (p.plugin/defplugin mutation-resolve-params
   "Remove the run stats from the result meta. Use this in production to avoid sending

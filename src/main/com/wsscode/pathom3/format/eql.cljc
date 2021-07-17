@@ -224,7 +224,7 @@
                      (assoc idx key node))))
                idx
                (:children ast2))]
-    (-> (merge ast2 ast1)
+    (-> (or ast1 ast2)
         (cond->
           (seq idx')
           (assoc :children (map-children->children idx'))

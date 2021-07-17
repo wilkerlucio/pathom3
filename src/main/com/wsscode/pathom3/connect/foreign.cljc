@@ -27,9 +27,8 @@
   (coll/map-keys #(into (pop path) (cond-> % join-node next)) errors))
 
 (defn call-foreign [env foreign]
-  (let [foreign-call (compute-foreign-request env)
-        response (foreign foreign-call)]
-    response))
+  (let [foreign-call (compute-foreign-request env)]
+    (foreign foreign-call)))
 
 (pco/defresolver foreign-indexes-resolver [env _]
   {::pci/indexes

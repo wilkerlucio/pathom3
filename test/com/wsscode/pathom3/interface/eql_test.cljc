@@ -33,7 +33,9 @@
            {::geo/x 10}))
 
     (testing "when not found, key is omitted"
-      (is (= (p.eql/process (-> (pci/register geo/full-registry)
+      (is (= (p.eql/process (-> (pci/register
+                                  {:pathom/lenient-mode? true}
+                                  geo/full-registry)
                                 (p.ent/with-entity {:left 10}))
                             [::geo/top])
              {}))))
@@ -66,7 +68,8 @@
             :width 50})))
 
   (testing "process sequence"
-    (is (= (p.eql/process (-> (pci/register registry)
+    (is (= (p.eql/process (-> {:pathom/lenient-mode? true}
+                              (pci/register registry)
                               (p.ent/with-entity {::coords (list
                                                              {:x 10 :y 20}
                                                              {::geo/left 20 ::geo/width 5})}))
@@ -75,18 +78,18 @@
 
   (testing "process vector"
     (let [res (p.eql/process (-> (pci/register registry)
-                                 (p.ent/with-entity {::coords [{:x 10 :y 20}
+                                 (p.ent/with-entity {::coords [{::geo/left 20 ::geo/width 15}
                                                                {::geo/left 20 ::geo/width 5}]}))
                              [{::coords [:right]}])]
-      (is (= res {::coords [{} {:right 25}]}))
+      (is (= res {::coords [{:right 35} {:right 25}]}))
       (is (vector? (::coords res)))))
 
   (testing "process set"
     (is (= (p.eql/process (-> (pci/register registry)
-                              (p.ent/with-entity {::coords #{{:x 10 :y 20}
+                              (p.ent/with-entity {::coords #{{::geo/left 20 ::geo/width 15}
                                                              {::geo/left 20 ::geo/width 5}}}))
                           [{::coords [:right]}])
-           {::coords #{{} {:right 25}}}))))
+           {::coords #{{:right 35} {:right 25}}}))))
 
 (deftest boundary-interface-test
   (let [fi (p.eql/boundary-interface (pci/register registry))]
@@ -121,4 +124,9 @@
 
     (testing "modify env"
       (is (= (fi #(pci/register % (pbir/constantly-resolver :new "value")) [:new])
-             {:new "value"})))))
+             {:new "value"})))
+
+    (testing "loose mode"
+      (is (= (fi {:pathom/eql           [:invalid]
+                  :pathom/lenient-mode? true})
+             {})))))

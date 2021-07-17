@@ -179,7 +179,8 @@
   "Returns meta data of smart map, which is the same as the meta data from context
    map used to create the smart map."
   [env]
-  (meta (p.ent/entity env)))
+  (-> env p.ent/entity meta
+      (dissoc ::pcr/run-stats)))
 
 (defn sm-env-with-meta
   "Return a new smart-map with the given meta."
@@ -630,7 +631,8 @@
      (-> env
          (assoc ::smart-map? true)
          (coll/merge-defaults
-           (cond-> {:com.wsscode.pathom3.connect.planner/plan-cache* (atom {})}
+           (cond-> {:com.wsscode.pathom3.connect.planner/plan-cache* (atom {})
+                    :pathom/lenient-mode?                            true}
              persistent-cache?
              (assoc ::pcr/resolver-cache* (atom {}))))
          (p.ent/with-entity context)

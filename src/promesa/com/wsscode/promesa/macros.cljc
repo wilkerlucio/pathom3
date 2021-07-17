@@ -33,3 +33,28 @@
                   ~acc))))
          `(do ~@body)
          binds))))
+
+#?(:bb
+   (defmacro ctry
+     "On Babashka this macro does the same as try."
+     [& body]
+     `(try ~@body))
+
+   :clj
+   (defmacro ctry
+     "This is a helper to enable catching of both sync and async exceptions.
+
+     (ctry
+       (clet [foo (maybe-async-op)]
+         (handle-result foo))
+       (catch Throwable e
+         :error))"
+     [& body]
+     (let [[_ ex-kind ex-sym & ex-body] (last body)
+           body (butlast body)]
+       `(try
+          (let [res# (do ~@body)]
+            (if (p/promise? res#)
+              (p/catch res# (fn [~ex-sym] ~@ex-body))
+              res#))
+          (catch ~ex-kind ~ex-sym ~@ex-body)))))
