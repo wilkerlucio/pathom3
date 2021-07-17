@@ -2260,319 +2260,68 @@
                                                                                                                                 :type     :root}
                                                                               :com.wsscode.pathom3.connect.planner/input       {}
                                                                               :com.wsscode.pathom3.connect.planner/node-id     4}}
-               :com.wsscode.pathom3.connect.planner/root                  4}))))
+               :com.wsscode.pathom3.connect.planner/root                  4})))))
 
-  #_(testing "collapse dynamic dependencies when they are from the same dynamic resolver"
-      (is (= (compute-run-graph
-               {::pci/index-oir       '{:local     {{:dynamic-1 {}} #{dynamic-1->local}}
-                                        :dynamic-1 {{} #{dynamic-constant}}
-                                        :dynamic-2 {{:dynamic-1 {}} #{dynamic-1->dynamic-2}}}
-                ::pci/index-resolvers '{dynamic-constant     {::pco/op-name      dynamic-constant
-                                                              ::pco/input        []
-                                                              ::pco/output       [:dynamic-1]
-                                                              ::pco/provides     {:dynamic-1 {}}
-                                                              ::pco/dynamic-name dynamic-parser-42276}
-                                        dynamic-1->local     {::pco/op-name  dynamic-1->local
-                                                              ::pco/input    [:dynamic-1]
-                                                              ::pco/provides {:local {}}
-                                                              ::pco/output   [:local]}
-                                        dynamic-1->dynamic-2 {::pco/op-name      dynamic-1->dynamic-2
-                                                              ::pco/input        [:dynamic-1]
-                                                              ::pco/provides     {:dynamic-2 {}}
-                                                              ::pco/output       [:dynamic-2]
-                                                              ::pco/dynamic-name dynamic-parser-42276}
-                                        dynamic-parser-42276 {::pco/op-name           dynamic-parser-42276
-                                                              ::pco/cache?            false
-                                                              ::pco/dynamic-resolver? true}}
-                ::eql/query           [:local :dynamic-2]})
-             '{::pcp/nodes                 {1 {::pco/op-name          dynamic-1->local
-                                               ::pcp/node-id          1
-                                               ::pcp/expects          {:local {}}
-                                               ::pcp/input            {:dynamic-1 {}}
-                                               ::pcp/source-for-attrs #{:local}
-                                               ::pcp/node-parents     #{2}}
-                                            2 {::pco/op-name          dynamic-parser-42276
-                                               ::pcp/node-id          2
-                                               ::pcp/expects          {:dynamic-1 {}
-                                                                       :dynamic-2 {}}
-                                               ::pcp/input            {}
-                                               ::pcp/foreign-ast      {:type     :root
-                                                                       :children [{:type         :prop
-                                                                                   :dispatch-key :dynamic-1
-                                                                                   :key          :dynamic-1}
-                                                                                  {:type         :prop
-                                                                                   :dispatch-key :dynamic-2
-                                                                                   :key          :dynamic-2}]}
-                                               ::pcp/source-sym       dynamic-constant
-                                               ::pcp/source-for-attrs #{:dynamic-2
-                                                                        :dynamic-1}
-                                               ::pcp/run-next         1}}
-               ::pcp/index-resolver->nodes {dynamic-1->local     #{1}
-                                            dynamic-parser-42276 #{2}}
-               ::pcp/index-attrs           {:dynamic-2 #{2}, :dynamic-1 #{2}, :local #{1}}
-               ::pcp/index-ast             {:local     {:type         :prop,
-                                                        :dispatch-key :local,
-                                                        :key          :local},
-                                            :dynamic-2 {:type         :prop,
-                                                        :dispatch-key :dynamic-2,
-                                                        :key          :dynamic-2}}
-               ::pcp/root                  2})))
-
-  #_(testing "union queries"
-      (testing "resolver has simple output"
-        (is (= (compute-run-graph
-                 {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                               ::pco/cache?            false
-                                               ::pco/dynamic-resolver? true
-                                               ::pco/resolve           (fn [_ _])}
-                                         'a   {::pco/op-name      'a
-                                               ::pco/dynamic-name 'dyn
-                                               ::pco/output       [{:a [:b :c]}]
-                                               ::pco/provides     {:a {:b {}
-                                                                       :c {}}}
-                                               ::pco/resolve      (fn [_ _])}}
-                  ::pci/index-oir       {:a {{} #{'a}}}
-                  ::eql/query           [{:a {:b [:b]
-                                              :c [:c]}}]})
-               {::pcp/nodes                 {1 {::pco/op-name          'dyn
-                                                ::pcp/node-id          1
-                                                ::pcp/expects          {:a {:b {}
-                                                                            :c {}}}
-                                                ::pcp/input            {}
-                                                ::pcp/source-sym       'a
-                                                ::pcp/source-for-attrs #{:a}
-                                                ::pcp/foreign-ast      (eql/query->ast [{:a [:b :c]}])}}
-                ::pcp/index-resolver->nodes '{dyn #{1}}
-                ::pcp/root                  1
-                ::pcp/index-attrs           {:a #{1}}
-                ::pcp/index-ast             {:a {:type         :join,
-                                                 :dispatch-key :a,
-                                                 :key          :a,
-                                                 :query        {:b [:b], :c [:c]},
-                                                 :children     [{:type     :union,
-                                                                 :query    {:b [:b],
-                                                                            :c [:c]},
-                                                                 :children [{:type      :union-entry,
-                                                                             :union-key :b,
-                                                                             :query     [:b],
-                                                                             :children  [{:type         :prop,
-                                                                                          :dispatch-key :b,
-                                                                                          :key          :b}]}
-                                                                            {:type      :union-entry,
-                                                                             :union-key :c,
-                                                                             :query     [:c],
-                                                                             :children  [{:type         :prop,
-                                                                                          :dispatch-key :c,
-                                                                                          :key          :c}]}]}]}}})))
-
-      #_(testing "resolver has union output"
-          (is (= (compute-run-graph
-                   {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                                 ::pco/cache?            false
-                                                 ::pco/dynamic-resolver? true
-                                                 ::pco/resolve           (fn [_ _])}
-                                           'a   {::pco/op-name      'a
-                                                 ::pco/dynamic-name 'dyn
-                                                 ::pco/output       [{:a {:b [:b]
-                                                                          :c [:c]}}]
-                                                 ::pco/provides     {:a {:b           {}
-                                                                         :c           {}
-                                                                         ::pco/unions {:b {:b {}}
-                                                                                       :c {:c {}}}}}
-                                                 ::pco/resolve      (fn [_ _])}}
-                    ::pci/index-oir       {:a {#{} #{'a}}}
-                    ::eql/query           [{:a {:b [:b]
-                                                :c [:c]}}]})
-                 {::pcp/nodes                 {1 {::pco/op-name          'dyn
-                                                  ::pcp/node-id          1
-                                                  ::pcp/expects          {:a {:b {}}}
-                                                  ::pcp/input            {}
-                                                  ::pcp/source-sym       'a
-                                                  ::pcp/source-for-attrs #{:a}
-                                                  ::pcp/foreign-ast      (eql/query->ast [{:a {:b [:b]
-                                                                                               :c [:c]}}])}}
-                  ::pcp/index-resolver->nodes '{dyn #{1}}
-                  ::pcp/unreachable-paths     #{}
-                  ::pcp/root                  1
-                  ::pcp/index-attrs           {:a #{1}}}))))
-
-  #_(testing "deep nesting"
-      (is (= (compute-run-graph
-               {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                             ::pco/cache?            false
-                                             ::pco/dynamic-resolver? true
-                                             ::pco/resolve           (fn [_ _])}
-                                       'a   {::pco/op-name      'a
-                                             ::pco/dynamic-name 'dyn
-                                             ::pco/output       [{:a [{:b [:c]}]}]
-                                             ::pco/resolve      (fn [_ _])}}
-                ::pci/index-oir       {:a {{} #{'a}}}
-                ::eql/query           [{:a [{:b [:c :d]}]}]})
-             {::pcp/nodes                 {1 {::pco/op-name          'dyn
-                                              ::pcp/node-id          1
-                                              ::pcp/expects          {:a {:b {:c {}}}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-sym       'a
-                                              ::pcp/source-for-attrs #{:a}
-                                              ::pcp/foreign-ast      (eql/query->ast [{:a [{:b [:c]}]}])}}
-              ::pcp/index-resolver->nodes '{dyn #{1}}
-              ::pcp/root                  1
-              ::pcp/index-attrs           {:a #{1}}
-              ::pcp/index-ast             {:a {:type         :join,
-                                               :dispatch-key :a,
-                                               :key          :a,
-                                               :query        [{:b [:c :d]}],
-                                               :children     [{:type         :join,
-                                                               :dispatch-key :b,
-                                                               :key          :b,
-                                                               :query        [:c :d],
-                                                               :children     [{:type         :prop,
-                                                                               :dispatch-key :c,
-                                                                               :key          :c}
-                                                                              {:type         :prop,
-                                                                               :dispatch-key :d,
-                                                                               :key          :d}]}]}}}))
-
-      (testing "with dependency"
-        (is (= (compute-run-graph
-                 {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                               ::pco/cache?            false
-                                               ::pco/dynamic-resolver? true
-                                               ::pco/resolve           (fn [_ _])}
-                                         'a   {::pco/op-name      'a
-                                               ::pco/dynamic-name 'dyn
-                                               ::pco/output       [{:a [{:b [:c]}]}]
-                                               ::pco/resolve      (fn [_ _])}}
-                  ::pci/index-oir       {:a {{} #{'a}}
-                                         :d {{:c {}} #{'d}}}
-                  ::eql/query           [{:a [{:b [:d]}]}]})
-               {::pcp/nodes                 {1 {::pco/op-name          'dyn
-                                                ::pcp/node-id          1
-                                                ::pcp/expects          {:a {:b {:c {}}}}
-                                                ::pcp/input            {}
-                                                ::pcp/source-sym       'a
-                                                ::pcp/source-for-attrs #{:a}
-                                                ::pcp/foreign-ast      (eql/query->ast [{:a [{:b [:c]}]}])}}
-                ::pcp/index-resolver->nodes '{dyn #{1}}
-                ::pcp/root                  1
-                ::pcp/index-attrs           {:a #{1}}
-                ::pcp/index-ast             {:a {:type         :join,
-                                                 :dispatch-key :a,
-                                                 :key          :a,
-                                                 :query        [{:b [:d]}],
-                                                 :children     [{:type         :join,
-                                                                 :dispatch-key :b,
-                                                                 :key          :b,
-                                                                 :query        [:d],
-                                                                 :children     [{:type         :prop,
-                                                                                 :dispatch-key :d,
-                                                                                 :key          :d}]}]}}}))))
-
-  #_(testing "only returns the deps from the dynamic resolver in the child requirements"
-      (is (= (compute-run-graph
-               {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                             ::pco/cache?            false
-                                             ::pco/dynamic-resolver? true
-                                             ::pco/resolve           (fn [_ _])}
-                                       'a   {::pco/op-name      'a
-                                             ::pco/dynamic-name 'dyn
-                                             ::pco/output       [{:a [:b]}]
-                                             ::pco/resolve      (fn [_ _])}
-                                       'c   {::pco/op-name      'c
-                                             ::pco/dynamic-name 'dyn
-                                             ::pco/input        [:b]
-                                             ::pco/output       [:c]
-                                             ::pco/resolve      (fn [_ _])}}
-                ::pci/index-oir       {:a {{} #{'a}}
-                                       :c {{:b {}} #{'c}}}
-                ::eql/query           [{:a [:c]}]})
-             {::pcp/nodes                 {1 {::pco/op-name          'dyn
-                                              ::pcp/node-id          1
-                                              ::pcp/expects          {:a {:c {}}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-sym       'a
-                                              ::pcp/source-for-attrs #{:a}
-                                              ::pcp/foreign-ast      (eql/query->ast [{:a [:c]}])}}
-              ::pcp/index-resolver->nodes '{dyn #{1}}
-              ::pcp/root                  1
-              ::pcp/index-attrs           {:a #{1}}
-              ::pcp/index-ast             {:a {:type         :join,
-                                               :dispatch-key :a,
-                                               :key          :a,
-                                               :query        [:c],
-                                               :children     [{:type         :prop,
-                                                               :dispatch-key :c,
-                                                               :key          :c}]}}}))
-
-      (is (= (compute-run-graph
-               {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                             ::pco/cache?            false
-                                             ::pco/dynamic-resolver? true
-                                             ::pco/resolve           (fn [_ _])}
-                                       'a   {::pco/op-name      'a
-                                             ::pco/dynamic-name 'dyn
-                                             ::pco/output       [{:a [:b]}]
-                                             ::pco/resolve      (fn [_ _])}}
-                ::pci/index-oir       '{:a {{} #{a}}
-                                        :c {{:b {}} #{c}}
-                                        :d {{} #{c}}}
-                ::eql/query           [{:a [:c :d]}]})
-             {::pcp/nodes                 {1 {::pco/op-name          'dyn
-                                              ::pcp/node-id          1
-                                              ::pcp/expects          {:a {:b {}}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-sym       'a
-                                              ::pcp/source-for-attrs #{:a}
-                                              ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
-              ::pcp/index-resolver->nodes '{dyn #{1}}
-              ::pcp/root                  1
-              ::pcp/index-attrs           {:a #{1}}
-              ::pcp/index-ast             {:a {:type         :join,
-                                               :dispatch-key :a,
-                                               :key          :a,
-                                               :query        [:c :d],
-                                               :children     [{:type         :prop,
-                                                               :dispatch-key :c,
-                                                               :key          :c}
-                                                              {:type         :prop,
-                                                               :dispatch-key :d,
-                                                               :key          :d}]}}})))
-
-  #_(testing "indirect dependencies don't need to be in the query"
-      (is (= (compute-run-graph
-               {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                             ::pco/cache?            false
-                                             ::pco/dynamic-resolver? true
-                                             ::pco/resolve           (fn [_ _])}
-                                       'a   {::pco/op-name      'a
-                                             ::pco/dynamic-name 'dyn
-                                             ::pco/output       [{:a [:b]}]
-                                             ::pco/resolve      (fn [_ _])}}
-                ::pci/index-oir       '{:a {{} #{a}}
-                                        :c {{:b {}} #{c}}
-                                        :d {{} #{d}}
-                                        :e {{:d {}} #{a}}}
-                ::eql/query           [{:a [:c :e]}]})
-             {::pcp/nodes                 {1 {::pco/op-name          'dyn
-                                              ::pcp/node-id          1
-                                              ::pcp/expects          {:a {:b {}}}
-                                              ::pcp/input            {}
-                                              ::pcp/source-sym       'a
-                                              ::pcp/source-for-attrs #{:a}
-                                              ::pcp/foreign-ast      (eql/query->ast [{:a [:b]}])}}
-              ::pcp/index-resolver->nodes '{dyn #{1}}
-              ::pcp/root                  1
-              ::pcp/index-attrs           {:a #{1}}
-              ::pcp/index-ast             {:a {:type         :join,
-                                               :dispatch-key :a,
-                                               :key          :a,
-                                               :query        [:c :e],
-                                               :children     [{:type         :prop,
-                                                               :dispatch-key :c,
-                                                               :key          :c}
-                                                              {:type         :prop,
-                                                               :dispatch-key :e,
-                                                               :key          :e}]}}}))))
+(deftest compute-run-graph-dynamic-unions-test
+  (testing "forward union"
+    (is (= (compute-run-graph
+             {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
+                                           ::pco/cache?            false
+                                           ::pco/dynamic-resolver? true
+                                           ::pco/resolve           (fn [_ _])}
+                                     'a   {::pco/op-name      'a
+                                           ::pco/dynamic-name 'dyn
+                                           ::pco/output       [{:a [:b :c]}]
+                                           ::pco/provides     {:a {:b {}
+                                                                   :c {}}}
+                                           ::pco/resolve      (fn [_ _])}}
+              ::pci/index-oir       {:a {{} #{'a}}}
+              ::eql/query           [{:a {:b [:b]
+                                          :c [:c]}}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name   dyn,
+                                                                            :com.wsscode.pathom3.connect.planner/expects     {:a {:b {:b {}},
+                                                                                                                                  :c {:c {}}}},
+                                                                            :com.wsscode.pathom3.connect.planner/input       {},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id     1,
+                                                                            :com.wsscode.pathom3.connect.planner/foreign-ast {:type     :root,
+                                                                                                                              :children [{:type         :join,
+                                                                                                                                          :dispatch-key :a,
+                                                                                                                                          :key          :a,
+                                                                                                                                          :query        {:b [:b],
+                                                                                                                                                         :c [:c]},
+                                                                                                                                          :children     [{:type     :union,
+                                                                                                                                                          :children [{:type      :union-entry,
+                                                                                                                                                                      :union-key :b,
+                                                                                                                                                                      :children  [{:type         :prop,
+                                                                                                                                                                                   :key          :b,
+                                                                                                                                                                                   :dispatch-key :b}]}
+                                                                                                                                                                     {:type      :union-entry,
+                                                                                                                                                                      :union-key :c,
+                                                                                                                                                                      :children  [{:type         :prop,
+                                                                                                                                                                                   :key          :c,
+                                                                                                                                                                                   :dispatch-key :c}]}]}]}]}}},
+             :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :join,
+                                                                             :dispatch-key :a,
+                                                                             :key          :a,
+                                                                             :query        {:b [:b], :c [:c]},
+                                                                             :children     [{:type     :union,
+                                                                                             :query    {:b [:b],
+                                                                                                        :c [:c]},
+                                                                                             :children [{:type      :union-entry,
+                                                                                                         :union-key :b,
+                                                                                                         :query     [:b],
+                                                                                                         :children  [{:type         :prop,
+                                                                                                                      :dispatch-key :b,
+                                                                                                                      :key          :b}]}
+                                                                                                        {:type      :union-entry,
+                                                                                                         :union-key :c,
+                                                                                                         :query     [:c],
+                                                                                                         :children  [{:type         :prop,
+                                                                                                                      :dispatch-key :c,
+                                                                                                                      :key          :c}]}]}]}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{1}},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{1}},
+             :com.wsscode.pathom3.connect.planner/root                  1}))))
 
 (deftest find-run-next-descendants-test
   (testing "return the node if that's the latest"
