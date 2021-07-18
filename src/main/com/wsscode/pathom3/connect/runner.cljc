@@ -132,23 +132,12 @@
 (defn union-key-on-data? [{:keys [union-key]} m]
   (contains? m union-key))
 
-(defn pick-union-entry
-  "Check if ast children is a union type. If so, makes a decision to choose a path and
-  return that AST."
-  [ast m]
-  (if (pf.eql/union-children? ast)
-    (some (fn [ast']
-            (if (union-key-on-data? ast' m)
-              (pf.eql/union->root ast')))
-      (pf.eql/union-children ast))
-    ast))
-
 (defn process-map-subquery
   [env ast m]
   (if (and (map? m)
            (not (pco/final-value? m)))
     (let [cache-tree* (p.ent/create-entity m)
-          ast         (pick-union-entry ast m)]
+          ast         (pf.eql/pick-union-entry ast m)]
       (run-graph! env ast cache-tree*))
     m))
 

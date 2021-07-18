@@ -16,6 +16,7 @@
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
@@ -45,7 +46,7 @@
   (if (and (map? m)
            (not (pco/final-value? m)))
     (let [cache-tree* (p.ent/create-entity m)
-          ast         (pcr/pick-union-entry ast m)]
+          ast         (pf.eql/pick-union-entry ast m)]
       (run-graph! env ast cache-tree*))
     m))
 
