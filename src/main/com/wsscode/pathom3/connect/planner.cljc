@@ -907,7 +907,6 @@
   ; TODO this should consider the case that a few of the nodes can provide the
   ; sub-query, in this case only they should be kept in the graph, and the other
   ; options must be removed
-  (tap> ["CHECK SHAPE" shape])
   (let [checked-nodes (into []
                             (map (fn [node]
                                    (cond-> node
