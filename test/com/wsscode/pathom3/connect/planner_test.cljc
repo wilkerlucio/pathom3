@@ -604,7 +604,33 @@
                                                                                :com.wsscode.pathom3.connect.planner/input     {}
                                                                                :com.wsscode.pathom3.connect.planner/node-id   4
                                                                                :com.wsscode.pathom3.connect.planner/run-next  2}}
-                                                    :root                  4})))))
+                                                    :root                  4})))
+
+    (testing "nested cycles"
+      (is (thrown-with-msg?
+            #?(:clj Throwable :cljs js/Error)
+            #"Pathom can't find a path for the following elements in the query: \[:b]"
+            (compute-run-graph
+              {::resolvers [{::pco/op-name 'cycle-a
+                             ::pco/output  [:a]}
+                            {::pco/op-name 'cycle-b
+                             ::pco/input   [{:a [:b]}]
+                             ::pco/output  [:b]}]
+               ::eql/query [:b]})))
+
+      (is (thrown-with-msg?
+            #?(:clj Throwable :cljs js/Error)
+            #"Pathom can't find a path for the following elements in the query: \[:c]"
+            (compute-run-graph
+              {::resolvers [{::pco/op-name 'cycle-a
+                             ::pco/output  [:a]}
+                            {::pco/op-name 'cycle-b
+                             ::pco/input   [{:a [:c]}]
+                             ::pco/output  [:b]}
+                            {::pco/op-name 'cycle-c
+                             ::pco/input   [:b]
+                             ::pco/output  [:c]}]
+               ::eql/query [:b]}))))))
 
 (deftest compute-run-graph-nested-inputs-test
   (testing "discard non available paths on nesting"
