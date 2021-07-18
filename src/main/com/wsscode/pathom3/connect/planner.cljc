@@ -1,5 +1,6 @@
 (ns com.wsscode.pathom3.connect.planner
   (:require
+    [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [com.fulcrologic.guardrails.core :refer [>def >defn >fdef => | <- ?]]
@@ -45,6 +46,11 @@
 (>def ::attr-deps-trail
   "A set containing attributes already in consideration when computing missing dependencies."
   ::p.attr/attributes-set)
+
+(>def ::attr-resolvers-trail
+  "A set containing resolvers already in consideration for the plan, used to track cycles
+  on nested inputs"
+  (s/coll-of ::pco/op-name :kind set?))
 
 (>def ::branch-type
   "The branch type for a branch node, can be AND or OR"
@@ -883,7 +889,7 @@
 (>defn shape-reachable?
   "Given an environment, available data and shape, determines if the whole shape
   is reachable (including nested dependencies)."
-  [env available shape]
+  [{::keys [resolvers attr-resolvers-trail] :as env} available shape]
   [map? ::pfsd/shape-descriptor ::pfsd/shape-descriptor => boolean?]
   (let [missing (pfsd/missing available shape)]
     (if (seq missing)
@@ -891,6 +897,7 @@
                     (-> (reset-env env)
                         (inc-snapshot-depth)
                         (assoc
+                          ::attr-resolvers-trail (into (or attr-resolvers-trail #{}) resolvers)
                           ::available-data available
                           :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing))))]
         (every?
@@ -1214,14 +1221,24 @@
   are successfully computed, it returns the graph with the root on the node that
   fulfills the request."
   [graph
-   {::keys        [available-data]
+   {::keys        [available-data attr-resolvers-trail]
     ::p.attr/keys [attribute]
     :as           env}
    input resolvers]
-  (if (contains? input attribute)
+  (cond
+    (contains? input attribute)
     ; attribute requires itself, just stop
     graph
 
+    ; nested cycle, stop
+    (some #(contains? attr-resolvers-trail %) resolvers)
+    (let [failed (set/intersection (or attr-resolvers-trail #{}) resolvers)]
+      (println (str "WARN: Nested cycle detected for attribute " attribute " on one of these resolvers: " (pr-str failed)))
+      (add-snapshot! graph env
+                     {::snapshot-event   ::snapshot-nested-cycle-dependency
+                      ::snapshot-message (str "Nested cycle detected for attribute " attribute " on one of these resolvers: " (pr-str failed))}))
+
+    :else
     (let [missing      (pfsd/missing available-data input)
           missing-opts (resolvers-missing-optionals env resolvers)
           env          (assoc env ::input input)
@@ -1231,7 +1248,9 @@
           (let [graph-with-deps (compute-missing-chain
                                   graph'
                                   (-> env
-                                      (assoc ::recursive-joins (index-recursive-joins env resolvers))
+                                      (assoc
+                                        ::resolvers resolvers
+                                        ::recursive-joins (index-recursive-joins env resolvers))
                                       (update ::snapshot-depth #(inc (or % 0))))
                                   missing
                                   missing-opts)]
