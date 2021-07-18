@@ -14,7 +14,7 @@
 (>def ::prop->ast (s/map-of any? :edn-query-language.ast/node))
 (>def ::map-select-include ::p.attr/attributes-set)
 
-(>def ::union-entry-path
+(>def ::union-entry-key
   "When some data map contains this key, Pathom will use it to select which union path
   the processor will take."
   keyword?)
@@ -63,7 +63,7 @@
   return that AST."
   [ast m]
   (if (union-children? ast)
-    (let [meta-path (-> m meta ::union-entry-path)]
+    (let [meta-path (-> m meta ::union-entry-key)]
       (some (fn [{:keys [union-key] :as ast'}]
               (if (or (= union-key meta-path) (union-key-on-data? ast' m))
                 (union->root ast')))

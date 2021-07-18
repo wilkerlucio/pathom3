@@ -165,7 +165,7 @@
 
   (testing "via meta on data, which has higher priority than the data"
     (is (= (pf.eql/pick-union-entry (eql/query->ast1 [{:foo {:a [:x] :b [:y]}}])
-                                    ^{::pf.eql/union-entry-path :a} {:b 1})
+                                    ^{::pf.eql/union-entry-key :a} {:b 1})
            {:type :root, :union-key :a
             :children [{:type :prop, :dispatch-key :x, :key :x}]}))))
 

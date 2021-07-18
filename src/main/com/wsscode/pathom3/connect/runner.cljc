@@ -132,12 +132,19 @@
 (defn union-key-on-data? [{:keys [union-key]} m]
   (contains? m union-key))
 
+(defn process-map-subquery-data [ast m]
+  (let [{:keys [union-key] :as ast} (pf.eql/pick-union-entry ast m)
+        cache-tree* (p.ent/create-entity
+                      (cond-> m
+                        union-key
+                        (vary-meta assoc ::pf.eql/union-entry-key union-key)))]
+    [ast cache-tree*]))
+
 (defn process-map-subquery
   [env ast m]
   (if (and (map? m)
            (not (pco/final-value? m)))
-    (let [cache-tree* (p.ent/create-entity m)
-          ast         (pf.eql/pick-union-entry ast m)]
+    (let [[ast cache-tree*] (process-map-subquery-data ast m)]
       (run-graph! env ast cache-tree*))
     m))
 
