@@ -53,7 +53,7 @@
 (defn union->root
   "Convert a union entry to a root."
   [ast]
-  (-> ast (assoc :type :root) (dissoc :union-key :query)))
+  (-> ast (assoc :type :root) (dissoc :query)))
 
 (defn union-key-on-data? [{:keys [union-key]} m]
   (contains? m union-key))
