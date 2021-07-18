@@ -620,7 +620,7 @@
 
       (is (thrown-with-msg?
             #?(:clj Throwable :cljs js/Error)
-            #"Pathom can't find a path for the following elements in the query: \[:b]"
+            #"Pathom can't find a path for the following elements in the query: \[:c]"
             (compute-run-graph
               {::resolvers [{::pco/op-name 'cycle-a
                              ::pco/output  [:a]}
