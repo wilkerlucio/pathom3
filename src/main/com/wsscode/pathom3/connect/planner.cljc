@@ -1000,7 +1000,51 @@
         (:children foreign-ast)
         (assoc :children (:children foreign-ast)))))
 
-(defn compute-dynamic-nested-requirements
+(defn compute-dynamic-nested-requirements*
+  [{::p.attr/keys [attribute]
+    ::p.path/keys [path]
+    ast           :edn-query-language.ast/node
+    :as           env}
+   dynamic-name
+   available]
+  (let [graph        (compute-run-graph (-> (reset-env env)
+                                            (cond-> attribute
+                                              (assoc ::p.path/path (coll/vconj path attribute)))
+                                            (inc-snapshot-depth)
+                                            (assoc
+                                              :edn-query-language.ast/node ast
+                                              ::available-data available)))
+        root-res     (find-root-resolver-nodes graph)
+        nested-needs (transduce
+                       (map #(get-node graph %))
+                       (completing
+                         (fn [i {::keys [input expects] ::pco/keys [op-name]}]
+                           (if (= op-name dynamic-name)
+                             (pfsd/merge-shapes i expects)
+                             (pfsd/merge-shapes i input))))
+                       {}
+                       root-res)
+        ast-shape    (pfsd/ast->shape-descriptor ast)]
+    (pfsd/merge-shapes nested-needs
+                       (pfsd/intersection available ast-shape))))
+
+(defn compute-dynamic-nested-union-requirements*
+  [{ast :edn-query-language.ast/node
+    :as env}
+   dynamic-name
+   available]
+  (let [union-children (-> ast :children first :children)]
+    (into ^::pfsd/union? {}
+          (map (fn [{:keys [union-key] :as ast'}]
+                 (coll/make-map-entry
+                   union-key
+                   (compute-dynamic-nested-requirements*
+                     (assoc env :edn-query-language.ast/node ast')
+                     dynamic-name
+                     available))))
+          union-children)))
+
+(>defn compute-dynamic-nested-requirements
   "Considering the operation output, find out what a query can extend during nesting.
 
   Pathom uses it to compute the dynamic requirements to send into dynamic resolvers.
@@ -1008,35 +1052,22 @@
   This function is a useful tool for developers of custom dynamic resolvers."
   [{::p.attr/keys [attribute]
     ::pco/keys    [op-name]
-    ::p.path/keys [path]
     ast           :edn-query-language.ast/node
     :as           env}]
+  [(s/keys :req [::p.attr/attribute
+                 ::pco/op-name
+                 ::p.path/path
+                 :edn-query-language.ast/node])
+   => ::pfsd/shape-descriptor]
   (if (seq (:children ast))
     (let [{::pco/keys [dynamic-name provides]} (pci/operation-config env op-name)
           dynamic-name (or dynamic-name (::pco/dynamic-name env))
           available    (if attribute
                          (get provides attribute)
-                         provides)
-          graph        (compute-run-graph (-> (reset-env env)
-                                              (cond-> attribute
-                                                (assoc ::p.path/path (coll/vconj path attribute)))
-                                              (inc-snapshot-depth)
-                                              (assoc
-                                                :edn-query-language.ast/node ast
-                                                ::available-data available)))
-          root-res     (find-root-resolver-nodes graph)
-          nested-needs (transduce
-                         (map #(get-node graph %))
-                         (completing
-                           (fn [i {::keys [input expects] ::pco/keys [op-name]}]
-                             (if (= op-name dynamic-name)
-                               (pfsd/merge-shapes i expects)
-                               (pfsd/merge-shapes i input))))
-                         {}
-                         root-res)
-          ast-shape    (pfsd/ast->shape-descriptor ast)]
-      (pfsd/merge-shapes nested-needs
-                         (pfsd/intersection available ast-shape)))))
+                         provides)]
+      (if (-> ast :children first :type (= :union))
+        (compute-dynamic-nested-union-requirements* env dynamic-name available)
+        (compute-dynamic-nested-requirements* env dynamic-name available)))))
 
 (defn create-node-for-resolver-call
   "Create a new node representative to run a given resolver."
@@ -1067,7 +1098,7 @@
                      (let [ast' (pfsd/shape-descriptor->ast sub)]
                        [(assoc ast
                           :children (:children ast')
-                          :query (eql/ast->query ast'))])
+                          :query (pfsd/shape-descriptor->query sub))])
                      [ast])}))))
 
 (defn compute-resolver-leaf

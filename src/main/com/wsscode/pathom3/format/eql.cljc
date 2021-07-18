@@ -14,6 +14,11 @@
 (>def ::prop->ast (s/map-of any? :edn-query-language.ast/node))
 (>def ::map-select-include ::p.attr/attributes-set)
 
+(>def ::union-entry-key
+  "When some data map contains this key, Pathom will use it to select which union path
+  the processor will take."
+  keyword?)
+
 (defn query-root-properties
   "Returns a vector with the properties at the root of the query.
 
@@ -48,7 +53,7 @@
 (defn union->root
   "Convert a union entry to a root."
   [ast]
-  (-> ast (assoc :type :root) (dissoc :union-key :query)))
+  (-> ast (assoc :type :root) (dissoc :query)))
 
 (defn union-key-on-data? [{:keys [union-key]} m]
   (contains? m union-key))
@@ -58,10 +63,11 @@
   return that AST."
   [ast m]
   (if (union-children? ast)
-    (some (fn [ast']
-            (if (union-key-on-data? ast' m)
-              (union->root ast')))
-      (union-children ast))
+    (let [meta-path (-> m meta ::union-entry-key)]
+      (some (fn [{:keys [union-key] :as ast'}]
+              (if (or (= union-key meta-path) (union-key-on-data? ast' m))
+                (union->root ast')))
+        (union-children ast)))
     ast))
 
 (defn maybe-merge-union-ast

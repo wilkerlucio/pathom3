@@ -46,7 +46,27 @@
                         :dispatch-key :foo,
                         :key          :foo,
                         :children     [{:type :prop, :dispatch-key :bar, :key :bar}]}
-                       {:type :prop, :dispatch-key :baz, :key :baz}]}))))
+                       {:type :prop, :dispatch-key :baz, :key :baz}]})))
+
+  (testing "union"
+    (is (= (psd/shape-descriptor->ast
+             {:x ^::psd/union? {:a {:aa {}}
+                                :b {:bb {}}}})
+           {:type     :root,
+            :children [{:type         :join,
+                        :dispatch-key :x,
+                        :key          :x,
+                        :children     [{:type     :union,
+                                        :children [{:type      :union-entry,
+                                                    :union-key :a,
+                                                    :children  [{:type         :prop,
+                                                                 :dispatch-key :aa,
+                                                                 :key          :aa}]}
+                                                   {:type      :union-entry,
+                                                    :union-key :b,
+                                                    :children  [{:type         :prop,
+                                                                 :dispatch-key :bb,
+                                                                 :key          :bb}]}]}]}]}))))
 
 (deftest shape-descriptor->query-test
   (testing "empty query"
@@ -63,7 +83,19 @@
     (is (= (psd/shape-descriptor->query
              {:foo {:bar {}}
               :baz {}})
-           [{:foo [:bar]} :baz]))))
+           [{:foo [:bar]} :baz])))
+
+  (testing "union"
+    (is (= (psd/shape-descriptor->query
+             {:x ^::psd/union? {:a {:aa {}}
+                                :b {:bb {}}}})
+           [{:x {:a [:aa] :b [:bb]}}]))
+
+    (is (= (psd/shape-descriptor->query
+             {:x ^::psd/union? {:a {:aa {}}
+                                :b {:bb {}}
+                                :c {}}})
+           [{:x {:a [:aa] :b [:bb] :c []}}]))))
 
 (deftest data->shape-descriptor-test
   (is (= (psd/data->shape-descriptor {})

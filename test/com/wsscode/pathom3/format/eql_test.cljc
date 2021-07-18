@@ -160,7 +160,14 @@
 (deftest pick-union-entry-test
   (is (= (pf.eql/pick-union-entry (eql/query->ast1 [{:foo {:a [:x] :b [:y]}}])
                                   {:b 1})
-         {:type :root, :children [{:type :prop, :dispatch-key :y, :key :y}]})))
+         {:type :root, :union-key :b
+          :children [{:type :prop, :dispatch-key :y, :key :y}]}))
+
+  (testing "via meta on data, which has higher priority than the data"
+    (is (= (pf.eql/pick-union-entry (eql/query->ast1 [{:foo {:a [:x] :b [:y]}}])
+                                    ^{::pf.eql/union-entry-key :a} {:b 1})
+           {:type :root, :union-key :a
+            :children [{:type :prop, :dispatch-key :x, :key :x}]}))))
 
 (deftest merge-ast-children-test
   (is (= (pf.eql/merge-ast-children

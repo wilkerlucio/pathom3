@@ -88,17 +88,27 @@
   "Convert pathom output format into shape descriptor format."
   [shape]
   [::shape-descriptor => vector?]
-  (into []
-        (map (fn [[k v]]
-               (if (seq v)
-                 {:type         :join
-                  :key          k
-                  :dispatch-key k
-                  :children     (shape-descriptor->ast-children v)}
-                 {:type         :prop
-                  :key          k
-                  :dispatch-key k})))
-        shape))
+  (let [union? (-> shape meta ::union?)]
+    (if union?
+      [{:type     :union
+        :children (into []
+                        (map (fn [[uk uv]]
+                               {:type      :union-entry
+                                :union-key uk
+                                :children  (shape-descriptor->ast-children uv)}))
+                        shape)}]
+
+      (into []
+            (map (fn [[k v]]
+                   (if (seq v)
+                     {:type         :join
+                      :key          k
+                      :dispatch-key k
+                      :children     (shape-descriptor->ast-children v)}
+                     {:type         :prop
+                      :key          k
+                      :dispatch-key k})))
+            shape))))
 
 (>defn shape-descriptor->ast
   "Convert pathom output format into shape descriptor format."
@@ -111,12 +121,15 @@
   "Convert pathom output format into shape descriptor format."
   [shape]
   [::shape-descriptor => :edn-query-language.core/query]
-  (into []
-        (map (fn [[k v]]
-               (if (seq v)
-                 {k (shape-descriptor->query v)}
-                 k)))
-        shape))
+  (let [union? (-> shape meta ::union?)]
+    (into (if union?
+            {}
+            [])
+          (map (fn [[k v]]
+                 (if (or (seq v) union?)
+                   {k (shape-descriptor->query v)}
+                   k)))
+          shape)))
 
 (defn relax-empty-collections
   "This helper will remove nested requirements when data is an empty collection. This

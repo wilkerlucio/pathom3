@@ -151,6 +151,25 @@
         (is (= (p.eql/process env [{:a [:c]}])
                {:a {:c "value"}})))))
 
+  (testing "union queries"
+    (let [foreign (-> (pci/register
+                        [(pbir/global-data-resolver
+                           {:list
+                            [{:user/id 123}
+                             {:video/id 2}]})
+                         (pbir/static-attribute-map-resolver :user/id :user/name
+                           {123 "U"})
+                         (pbir/static-attribute-map-resolver :video/id :video/title
+                           {2 "V"})])
+                      (serialize-boundary))
+          env     (-> (pci/register
+                        [(pbir/constantly-resolver :y 20)
+                         (pcf/foreign-register foreign)]))]
+      (is (= (p.eql/process env [{:list
+                                  {:user/id  [:user/name]
+                                   :video/id [:video/title]}}])
+             {:list [{:user/name "U"} {:video/title "V"}]}))))
+
   #?(:clj
      (testing "async foreign"
        (let [foreign (-> (pci/register (pbir/constantly-resolver :x 10))
