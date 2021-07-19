@@ -4,6 +4,7 @@
 - BREAKING CHANGE: Strict mode by default, now errors surface quickly
 - BREAKING CHANGE: Remove `remove-stats-plugin`, now must use the env flag `:com.wsscode.pathom3.connect.runner/omit-run-stats?` instead
 - Optional lenient mode via setting `:pathom/lenient-mode? true`
+- `attribute-errors-plugin` is deprecated, when using lenient mode that behavior comes automatically
 - Fix async runner reversing lists
 - Add `ctry` helper to handle exceptions in sync and async at same time
 - Foreign connection errors get wrapped to enrich the error context
