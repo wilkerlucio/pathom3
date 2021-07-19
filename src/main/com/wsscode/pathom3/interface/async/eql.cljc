@@ -16,7 +16,7 @@
   (p/let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
           result    (pcra/run-graph! env ast ent-tree*)]
     (as-> result <>
-      (pf.eql/map-select-ast env <> ast))))
+      (pf.eql/map-select-ast (p.eql/select-ast-env env) <> ast))))
 
 (>defn process-ast
   [env ast]

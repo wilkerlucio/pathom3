@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.runner :as pcr]
@@ -10,11 +11,14 @@
     [com.wsscode.pathom3.plugin :as p.plugin]
     [edn-query-language.core :as eql]))
 
+(defn select-ast-env [{:keys [pathom/lenient-mode?] :as env}]
+  (cond-> env lenient-mode? (update ::pf.eql/map-select-include coll/sconj ::pcr/attribute-errors)))
+
 (defn process-ast* [env ast]
   (let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
         result    (pcr/run-graph! env ast ent-tree*)]
     (as-> result <>
-      (pf.eql/map-select-ast env <> ast))))
+      (pf.eql/map-select-ast (select-ast-env env) <> ast))))
 
 (>defn process-ast
   [env ast]
