@@ -1146,7 +1146,22 @@
                                                   :dispatch-key :items}},
              ::pcp/index-resolver->nodes {z #{1}, items #{2}},
              ::pcp/index-attrs           {:z #{1}, :items #{2}},
-             ::pcp/root                  2}))))
+             ::pcp/root                  2})))
+
+  (testing "nested plan failure"
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Pathom can't find a path for the following elements in the query: \[:c] at path \[:a]"
+          (compute-run-graph
+            {::resolvers [{::pco/op-name 'nested-provider
+                           ::pco/output  [{:a [:b]}]}
+                          {::pco/op-name 'nested-requires
+                           ::pco/input   [{:a [:c]}]
+                           ::pco/output  [:d]}]
+
+             :com.wsscode.pathom3.path/path []
+
+             ::eql/query [:d]})))))
 
 (deftest compute-run-graph-optional-inputs-test
   (testing "plan continues when optional thing is missing"

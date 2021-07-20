@@ -717,6 +717,13 @@
               (with-meta (meta env)))
       env))
 
+(defn push-path
+  [env {::p.attr/keys [attribute]
+        ::p.path/keys [path]}]
+  (cond-> env
+    attribute
+    (assoc ::p.path/path (coll/vconj path attribute))))
+
 (defn add-unreachable-path
   "Add attribute to unreachable list"
   [graph env path]
@@ -895,6 +902,7 @@
     (if (seq missing)
       (let [graph (compute-run-graph
                     (-> (reset-env env)
+                        (push-path env)
                         (inc-snapshot-depth)
                         (assoc
                           ::attr-resolvers-trail (into (or attr-resolvers-trail #{}) resolvers)
@@ -917,7 +925,7 @@
   (let [checked-nodes (into []
                             (map (fn [node]
                                    (cond-> node
-                                     (shape-reachable? env (-> node ::pco/provides (get attr)) shape)
+                                     (shape-reachable? (assoc env ::p.attr/attribute attr) (-> node ::pco/provides (get attr)) shape)
                                      (assoc :valid-path? true))))
                             nodes)]
     (if (some :valid-path? checked-nodes)
@@ -1007,15 +1015,12 @@
         (assoc :children (:children foreign-ast)))))
 
 (defn compute-dynamic-nested-requirements*
-  [{::p.attr/keys [attribute]
-    ::p.path/keys [path]
-    ast           :edn-query-language.ast/node
-    :as           env}
+  [{ast :edn-query-language.ast/node
+    :as env}
    dynamic-name
    available]
   (let [graph        (compute-run-graph (-> (reset-env env)
-                                            (cond-> attribute
-                                              (assoc ::p.path/path (coll/vconj path attribute)))
+                                            (push-path env)
                                             (inc-snapshot-depth)
                                             (assoc
                                               :edn-query-language.ast/node ast
