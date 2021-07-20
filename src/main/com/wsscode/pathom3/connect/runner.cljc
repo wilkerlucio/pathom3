@@ -705,7 +705,9 @@
                  (ex-info (str
                             "Required attributes missing: " (pr-str (vec (keys missing)))
                             " at path " (pr-str path))
-                          {:missing missing})))))
+                          {:missing        missing
+                           ::p.error/phase ::execute
+                           ::p.error/cause ::p.error/missing-output})))))
 
 (defn run-graph-done! [env]
   (check-entity-requires! env)

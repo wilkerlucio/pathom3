@@ -1459,9 +1459,11 @@
               (cond-> (str "Pathom can't find a path for the following elements in the query: " (pr-str (pfsd/shape-descriptor->query missing)))
                 path
                 (str " at path " (pr-str path)))
-              {::graph             graph
-               ::unreachable-paths missing
-               ::p.path/path       path})))
+              {::graph                          graph
+               ::unreachable-paths              missing
+               ::p.path/path                    path
+               :com.wsscode.pathom3.error/phase ::plan
+               :com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable})))
         graph))
     graph))
 

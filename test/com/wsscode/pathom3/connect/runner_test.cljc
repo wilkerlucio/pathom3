@@ -214,7 +214,7 @@
       (is (mcs/match?
             {:com.wsscode.pathom3.connect.runner/attribute-errors
              {:a
-              {::p.error/error-type         ::p.error/node-errors,
+              {::p.error/cause              ::p.error/node-errors,
                ::p.error/node-error-details {1 {::p.error/exception any?}}}}}
             res))
       (is (= (-> res meta ::pcr/run-stats
@@ -758,8 +758,8 @@
           [:total-score]
           {:users       [{:user/id 1, :user/score 10}
                          {:user/id                                             2,
-                          :com.wsscode.pathom3.connect.runner/attribute-errors {:user/score {:com.wsscode.pathom3.error/error-type         :com.wsscode.pathom3.error/node-errors,
-                                                                                             :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-missing}}}}}],
+                          :com.wsscode.pathom3.connect.runner/attribute-errors {:user/score {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
+                                                                                             :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause :com.wsscode.pathom3.error/attribute-missing}}}}}],
            :total-score 10})))
 
   (testing "resolver gets only the exact shape it asked for"
@@ -1317,9 +1317,9 @@
           (fn [res]
             (mcs/match?
               {:id                                                  1,
-               :com.wsscode.pathom3.connect.runner/attribute-errors {:v {:com.wsscode.pathom3.error/error-type         :com.wsscode.pathom3.error/node-errors,
-                                                                         :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-exception,
-                                                                                                                           :com.wsscode.pathom3.error/exception  any?}}}}}
+               :com.wsscode.pathom3.connect.runner/attribute-errors {:v {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
+                                                                         :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause                      :com.wsscode.pathom3.error/node-exception,
+                                                                                                                           :com.wsscode.pathom3.error/exception any?}}}}}
               res)))))
 
   (testing "uses batch resolver as single resolver when running under a path that batch wont work"
@@ -1896,21 +1896,21 @@
                            :children [{:name "e",
                                        :children [{:name "f",
                                                    :children [{:name "g",
-                                                               :com.wsscode.pathom3.connect.runner/attribute-errors {:names {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
-                                                                                                                             :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-exception,
+                                                               :com.wsscode.pathom3.connect.runner/attribute-errors {:names {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
+                                                                                                                             :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause                      :com.wsscode.pathom3.error/node-exception,
                                                                                                                                                                                :com.wsscode.pathom3.error/exception any?}}},
-                                                                                                                     :children {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
-                                                                                                                                :com.wsscode.pathom3.error/node-error-details {2 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-missing}}}}}],
+                                                                                                                     :children {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
+                                                                                                                                :com.wsscode.pathom3.error/node-error-details {2 {::p.error/cause :com.wsscode.pathom3.error/attribute-missing}}}}}],
                                                    :names ["f" "g"]}],
                                        :names ["e" "f" "g"]}],
                            :names ["b" "e" "f" "g"]}
                           {:name "c",
                            :children [{:name "d",
-                                       :com.wsscode.pathom3.connect.runner/attribute-errors {:names {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
-                                                                                                     :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-exception,
+                                       :com.wsscode.pathom3.connect.runner/attribute-errors {:names {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
+                                                                                                     :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause                      :com.wsscode.pathom3.error/node-exception,
                                                                                                                                                        :com.wsscode.pathom3.error/exception any?}}},
-                                                                                             :children {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/node-errors,
-                                                                                                        :com.wsscode.pathom3.error/node-error-details {2 {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-missing}}}}}],
+                                                                                             :children {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
+                                                                                                        :com.wsscode.pathom3.error/node-error-details {2 {::p.error/cause :com.wsscode.pathom3.error/attribute-missing}}}}}],
                            :names ["c" "d"]}],
                :names ["a" "b" "e" "f" "g" "c" "d"]}
               res))))))

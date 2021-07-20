@@ -19,7 +19,7 @@
 
   (testing "attribute not requested"
     (is (= (p.error/attribute-error {} :foo)
-           {::p.error/error-type ::p.error/attribute-not-requested})))
+           {::p.error/cause ::p.error/attribute-not-requested})))
 
   (testing "unreachable from plan"
     (is (= (let [data (p.eql/process
@@ -28,13 +28,13 @@
                           (pbir/single-attr-resolver :a :b str))
                         [:b])]
              (p.error/attribute-error data :b))
-           {::p.error/error-type ::p.error/attribute-unreachable})))
+           {::p.error/cause ::p.error/attribute-unreachable})))
 
   (testing "direct node error"
     (is (mcs/match?
-          {::p.error/error-type         ::p.error/node-errors
-           ::p.error/node-error-details {1 {::p.error/error-type ::p.error/node-exception
-                                            ::p.error/exception  (match-error "Error")}}}
+          {::p.error/cause              ::p.error/node-errors
+           ::p.error/node-error-details {1 {::p.error/cause     ::p.error/node-exception
+                                            ::p.error/exception (match-error "Error")}}}
           (let [data (p.eql/process
                        (pci/register
                          {::p.error/lenient-mode? true}
@@ -51,13 +51,13 @@
                             (fn [_ _] {})))
                         [:a])]
              (p.error/attribute-error data :a))
-           {::p.error/error-type         ::p.error/node-errors
-            ::p.error/node-error-details {1 {::p.error/error-type ::p.error/attribute-missing}}})))
+           {::p.error/cause              ::p.error/node-errors
+            ::p.error/node-error-details {1 {::p.error/cause ::p.error/attribute-missing}}})))
 
   (testing "ancestor error"
     (is (mcs/match?
-          {::p.error/error-type         ::p.error/node-errors
-           ::p.error/node-error-details {1 {::p.error/error-type        ::p.error/ancestor-error
+          {::p.error/cause              ::p.error/node-errors
+           ::p.error/node-error-details {1 {::p.error/cause             ::p.error/ancestor-error
                                             ::p.error/error-ancestor-id 2
                                             ::p.error/exception         (match-error "Error")}}}
           (let [data (p.eql/process
@@ -70,9 +70,9 @@
 
   (testing "ancestor error missing"
     (is (mcs/match?
-          {::p.error/error-type         ::p.error/node-errors
-           ::p.error/node-error-details {1 {::p.error/error-type ::p.error/node-exception
-                                            ::p.error/exception  (match-error "Insufficient data calling resolver '-unqualified/a->b--attr-transform. Missing attrs :a")}}}
+          {::p.error/cause              ::p.error/node-errors
+           ::p.error/node-error-details {1 {::p.error/cause     ::p.error/node-exception
+                                            ::p.error/exception (match-error "Insufficient data calling resolver '-unqualified/a->b--attr-transform. Missing attrs :a")}}}
           (let [data (p.eql/process
                        (pci/register
                          {::p.error/lenient-mode? true}

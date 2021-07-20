@@ -38,7 +38,7 @@
                                   geo/full-registry)
                                 (p.ent/with-entity {:left 10}))
                             [::geo/top])
-             {:com.wsscode.pathom3.connect.runner/attribute-errors {:com.wsscode.pathom3.test.geometry-resolvers/top {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-unreachable}}}))))
+             {:com.wsscode.pathom3.connect.runner/attribute-errors {:com.wsscode.pathom3.test.geometry-resolvers/top {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}}}))))
 
   (testing "reading with *"
     (is (= (-> (p.eql/process (-> (pci/register geo/full-registry)
@@ -74,7 +74,7 @@
                                                              {:x 10 :y 20}
                                                              {::geo/left 20 ::geo/width 5})}))
                           [{::coords [:right]}])
-           {::coords [{:com.wsscode.pathom3.connect.runner/attribute-errors {:right {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-unreachable}}}
+           {::coords [{:com.wsscode.pathom3.connect.runner/attribute-errors {:right {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}}}
                       {:right 25}]})))
 
   (testing "process vector"
@@ -130,4 +130,4 @@
     (testing "lenient mode"
       (is (= (fi {:pathom/eql           [:invalid]
                   :pathom/lenient-mode? true})
-             {:com.wsscode.pathom3.connect.runner/attribute-errors {:invalid {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-unreachable}}})))))
+             {:com.wsscode.pathom3.connect.runner/attribute-errors {:invalid {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}}})))))
