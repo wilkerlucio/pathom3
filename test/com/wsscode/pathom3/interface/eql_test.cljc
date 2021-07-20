@@ -34,7 +34,7 @@
 
     (testing "when not found, key is omitted"
       (is (= (p.eql/process (-> (pci/register
-                                  {:pathom/lenient-mode? true}
+                                  {:com.wsscode.pathom3.error/lenient-mode? true}
                                   geo/full-registry)
                                 (p.ent/with-entity {:left 10}))
                             [::geo/top])
@@ -68,7 +68,7 @@
             :width 50})))
 
   (testing "process sequence"
-    (is (= (p.eql/process (-> {:pathom/lenient-mode? true}
+    (is (= (p.eql/process (-> {:com.wsscode.pathom3.error/lenient-mode? true}
                               (pci/register registry)
                               (p.ent/with-entity {::coords (list
                                                              {:x 10 :y 20}
@@ -127,7 +127,7 @@
       (is (= (fi #(pci/register % (pbir/constantly-resolver :new "value")) [:new])
              {:new "value"})))
 
-    (testing "loose mode"
+    (testing "lenient mode"
       (is (= (fi {:pathom/eql           [:invalid]
                   :pathom/lenient-mode? true})
              {:com.wsscode.pathom3.connect.runner/attribute-errors {:invalid {:com.wsscode.pathom3.error/error-type :com.wsscode.pathom3.error/attribute-unreachable}}})))))

@@ -7,11 +7,17 @@
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [edn-query-language.core :as eql]))
 
-(defn select-ast-env [{:keys [pathom/lenient-mode?] :as env}]
+(>def :pathom/eql ::eql/query)
+(>def :pathom/ast :edn-query-language.ast/node)
+(>def :pathom/entity map?)
+(>def :pathom/lenient-mode? ::p.error/lenient-mode?)
+
+(defn select-ast-env [{::p.error/keys [lenient-mode?] :as env}]
   (cond-> env lenient-mode? (update ::pf.eql/map-select-include coll/sconj ::pcr/attribute-errors)))
 
 (defn process-ast* [env ast]
@@ -90,9 +96,9 @@
     (env-extension source-env)
     (merge source-env env-extension)))
 
-(defn boundary-env [env input]
-  (if-let [x (find input :pathom/lenient-mode?)]
-    (assoc env :pathom/lenient-mode? (val x))
+(defn boundary-env [env request]
+  (if-let [x (find request :pathom/lenient-mode?)]
+    (assoc env ::p.error/lenient-mode? (val x))
     env))
 
 (>defn boundary-interface

@@ -632,7 +632,7 @@
          (assoc ::smart-map? true)
          (coll/merge-defaults
            (cond-> {:com.wsscode.pathom3.connect.planner/plan-cache* (atom {})
-                    :pathom/lenient-mode?                            true}
+                    ::p.error/lenient-mode?                          true}
              persistent-cache?
              (assoc ::pcr/resolver-cache* (atom {}))))
          (p.ent/with-entity context)

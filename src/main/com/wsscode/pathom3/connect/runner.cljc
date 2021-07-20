@@ -201,7 +201,7 @@
   (-> (pcp/entry-ast graph k)
       (normalize-ast-recursive-query graph k)))
 
-(defn fail-fast [{:keys [pathom/lenient-mode?]} error]
+(defn fail-fast [{::p.error/keys [lenient-mode?]} error]
   (if-not lenient-mode? (throw error)))
 
 (>defn process-attr-subquery
@@ -397,9 +397,9 @@
     (mark-node-error-with-plugins env node (ex-info (str "Resolver " op-name " returned an invalid response: " (pr-str response)) {:response response}))))
 
 (defn report-resolver-error
-  [{::p.path/keys [path]
-    :pathom/keys  [lenient-mode?]
-    :as           env}
+  [{::p.path/keys  [path]
+    ::p.error/keys [lenient-mode?]
+    :as            env}
    {::pco/keys [op-name]
     :as        node}
    error]
@@ -710,7 +710,7 @@
 (defn run-graph-done! [env]
   (check-entity-requires! env)
   (p.ent/swap-entity! env include-meta-stats env (::pcp/graph env))
-  (if (:pathom/lenient-mode? env)
+  (if (::p.error/lenient-mode? env)
     (p.ent/swap-entity! env p.error/process-entity-errors))
   nil)
 
@@ -859,7 +859,7 @@
             finish       (time/now-ms)]
 
         (if (refs/kw-identical? ::node-error responses)
-          (if (:pathom/lenient-mode? env)
+          (if (::p.error/lenient-mode? env)
             (doseq [{env'       ::env
                      ::pcp/keys [node]} batch-items]
               (run-graph-entity-done env')

@@ -203,7 +203,7 @@
 
   (testing "insufficient data"
     (let [res (run-graph (pci/register
-                           {:pathom/lenient-mode? true}
+                           {::p.error/lenient-mode? true}
                            [(pco/resolver 'a {::pco/input  [:b]
                                               ::pco/output [:a]}
                               (fn [_ _] {:a "a"}))
@@ -741,7 +741,7 @@
   (testing "remove collection elements that don't fulfill required input in lenient mode"
     (is (graph-response?
           (pci/register
-            {:pathom/lenient-mode? true}
+            {::p.error/lenient-mode? true}
             [(pco/resolver 'users
                {::pco/output [{:users [:user/id]}]}
                (fn [_ _]
@@ -949,7 +949,7 @@
             #?(:clj Throwable :cljs js/Error)
             #"Fail fast"
             (run-graph
-              (pci/register {:pathom/lenient-mode? false}
+              (pci/register {::p.error/lenient-mode? false}
                             (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
               {}
               [:err]))))
@@ -958,7 +958,7 @@
        (let [err (ex-info "Fail fast" {})]
          (is (thrown-with-msg? Throwable #"Fail fast"
                @(run-graph-async
-                  (pci/register {:pathom/lenient-mode? false}
+                  (pci/register {::p.error/lenient-mode? false}
                                 (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
                   {}
                   [:err]))))))
@@ -969,7 +969,7 @@
             #?(:clj Throwable :cljs js/Error)
             #"Fail fast"
             (run-graph
-              (pci/register {:pathom/lenient-mode? false}
+              (pci/register {::p.error/lenient-mode? false}
                             (pco/mutation 'err {} (fn [_ _] (throw err))))
               {}
               ['(err {})]))))
@@ -978,7 +978,7 @@
        (let [err (ex-info "Fail fast" {})]
          (is (thrown-with-msg? Throwable #"Fail fast"
                @(run-graph-async
-                  (pci/register {:pathom/lenient-mode? false}
+                  (pci/register {::p.error/lenient-mode? false}
                                 (pco/mutation 'err {} (fn [_ _] (throw err))))
                   {}
                   ['(err {})])))))))
@@ -1310,7 +1310,7 @@
   (testing "errors"
     (is (graph-response?
           (pci/register
-            {:pathom/lenient-mode? true}
+            {::p.error/lenient-mode? true}
             [batch-fetch-error])
           {:id 1}
           [:v]
@@ -1523,7 +1523,7 @@
   (testing "error"
     (is (graph-response?
           (pci/register
-            {:pathom/lenient-mode? true}
+            {::p.error/lenient-mode? true}
             [(pco/resolver 'a {::pco/output [:x]}
                (fn [_ _] (throw (ex-info "Err" {}))))])
           {}
@@ -1873,7 +1873,7 @@
   (testing "recursive nested input"
     (is (graph-response?
           (pci/register
-            {:pathom/lenient-mode? true}
+            {::p.error/lenient-mode? true}
             [(pco/resolver 'nested-input-recursive
                {::pco/input  [:name {:children '...}]
                 ::pco/output [:names]}
@@ -1938,7 +1938,7 @@
     (let [err (ex-info "Error" {})]
       (is (graph-response?
             (pci/register
-              {:pathom/lenient-mode? true}
+              {::p.error/lenient-mode? true}
               [(pbir/alias-resolver :result :other)
                (pco/mutation 'call {}
                  (fn [_ _] (throw err)))])
@@ -1949,7 +1949,7 @@
   (testing "mutation not found"
     (is (graph-response?
           (pci/register
-            {:pathom/lenient-mode? true}
+            {::p.error/lenient-mode? true}
             [(pbir/alias-resolver :result :other)])
           {}
           '[(not-here {:this "thing"})]

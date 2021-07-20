@@ -4,6 +4,9 @@
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.planner :as pcp]))
 
+(>def ::lenient-mode? boolean?)
+
+
 (>def ::error-type
   #{::attribute-unreachable
     ::attribute-not-requested
