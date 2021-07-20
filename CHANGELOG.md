@@ -1,6 +1,6 @@
 # Changelog
 
-## [Next]
+## [2021.07.19]
 - BREAKING CHANGE: Strict mode by default, now errors surface quickly
 - BREAKING CHANGE: Remove `remove-stats-plugin`, now must use the env flag `:com.wsscode.pathom3.connect.runner/omit-run-stats?` instead
 - Optional lenient mode via setting `:com.wsscode.pathom3.error/lenient-mode? true` on env
