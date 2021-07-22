@@ -1065,11 +1065,11 @@
     ::pco/keys    [op-name]
     ast           :edn-query-language.ast/node
     :as           env}]
-  [(s/keys :req [::p.attr/attribute
-                 ::pco/op-name
-                 ::p.path/path
-                 :edn-query-language.ast/node])
-   => ::pfsd/shape-descriptor]
+  [(s/keys :req [::pco/op-name
+                 :edn-query-language.ast/node]
+           :opt [::p.attr/attribute
+                 ::p.path/path])
+   => (? ::pfsd/shape-descriptor)]
   (if (seq (:children ast))
     (let [{::pco/keys [dynamic-name provides]} (pci/operation-config env op-name)
           dynamic-name (or dynamic-name (::pco/dynamic-name env))

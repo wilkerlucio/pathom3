@@ -120,7 +120,8 @@
 (>defn shape-descriptor->query
   "Convert pathom output format into shape descriptor format."
   [shape]
-  [::shape-descriptor => :edn-query-language.core/query]
+  [::shape-descriptor => (s/or :eql :edn-query-language.core/query
+                               :union map?)]
   (let [union? (-> shape meta ::union?)]
     (into (if union?
             {}
