@@ -11,6 +11,8 @@
 - Foreign connection errors get wrapped to enrich the error context
 - Add spec for `::pci/index-source-id`
 - Detect cycles in nested inputs to prevent stack overflow at planner
+- Support foreign unions
+- Entities can decide union path via `::pf.eql/union-entry-key`
 
 ## [2021.07.10-1-alpha]
 - Add more info to pom.xml to add repository links from clojars and cljdoc
