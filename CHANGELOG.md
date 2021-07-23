@@ -1,6 +1,6 @@
 # Changelog
 
-## [Next]
+## [2021.07.23]
 - Add `p.eql/process-one` and `p.a.eql/process-one` helpers
 
 ## [2021.07.19-alpha]
