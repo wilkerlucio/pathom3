@@ -92,6 +92,15 @@
                           [{::coords [:right]}])
            {::coords #{{:right 35} {:right 25}}}))))
 
+(deftest process-one-test
+  (is (= (p.eql/process-one (pci/register registry) {:left 10 :right 30} :width)
+         20))
+
+  (is (= (p.eql/process-one (pci/register geo/full-registry)
+                            {:left 10 :top 5}
+                            {::geo/turn-point [:right]})
+         {:right 10})))
+
 (deftest boundary-interface-test
   (let [fi (p.eql/boundary-interface (pci/register registry))]
     (testing "call with just tx"

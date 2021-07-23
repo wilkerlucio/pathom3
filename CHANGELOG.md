@@ -1,5 +1,8 @@
 # Changelog
 
+## [Next]
+- Add `p.eql/process-one` and `p.a.eql/process-one` helpers
+
 ## [2021.07.19-alpha]
 - BREAKING CHANGE: Strict mode by default, now errors surface quickly
 - BREAKING CHANGE: Remove `remove-stats-plugin`, now must use the env flag `:com.wsscode.pathom3.connect.runner/omit-run-stats?` instead

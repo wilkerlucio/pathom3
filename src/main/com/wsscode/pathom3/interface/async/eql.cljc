@@ -1,5 +1,6 @@
 (ns com.wsscode.pathom3.interface.async.eql
   (:require
+    [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -60,6 +61,44 @@
                       (assoc ::pcr/root-query tx)
                       (p.ent/with-entity entity))
                   (eql/query->ast tx)))))
+
+(>defn process-one
+  "Similar to process, but returns a single value instead of a map.
+
+  This is a convenience method to read a single attribute.
+
+  Simplest usage:
+  ```clojure
+  (p.eql/process-one env :foo)
+  ```
+
+  Same as process, you can send initial data:
+  ```clojure
+  (p.eql/process-one env {:data \"here\"} :foo)
+  ```
+
+  You can also use joins and param expressions:
+  ```clojure
+  (p.eql/process-one env {:join [:sub-query]})
+  (p.eql/process-one env '(:param {:expr \"sion\"}))
+  ```
+  "
+  ([env attr]
+   [(s/keys)
+    (s/or :prop ::eql/property
+          :join ::eql/join
+          :param ::eql/param-expr)
+    => any?]
+   (process-one env {} attr))
+  ([env entity attr]
+   [(s/keys)
+    map?
+    (s/or :prop ::eql/property
+          :join ::eql/join
+          :param ::eql/param-expr)
+    => any?]
+   (p/let [response (process env entity [attr])]
+     (val (first response)))))
 
 (>defn boundary-interface
   "Returns a function that wraps the environment. When exposing Pathom to some external
