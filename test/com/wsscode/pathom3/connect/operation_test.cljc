@@ -43,6 +43,25 @@
               ::pco/provides {:foo {}}
               ::pco/requires {}}))))
 
+  (testing "validate inferred"
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Input of resolver foo destructuring requires attributes \":foo\" that are not present at the input definition."
+          (pco/resolver 'foo
+            {::pco/input          []
+             ::pco/inferred-input [:foo]})))
+
+    (is (= (pco/operation-config
+             (pco/resolver 'foo
+               {::pco/input                                 []
+                ::pco/inferred-input                        [:foo]
+                ::pco/disable-validate-input-destructuring? true}))
+           '{:com.wsscode.pathom3.connect.operation/input                                 [],
+             :com.wsscode.pathom3.connect.operation/inferred-input                        [:foo],
+             :com.wsscode.pathom3.connect.operation/disable-validate-input-destructuring? true,
+             :com.wsscode.pathom3.connect.operation/op-name                               foo,
+             :com.wsscode.pathom3.connect.operation/requires                              {}})))
+
   (testing "validates configuration map"
     (try
       (pco/resolver 'foo {::pco/input #{:invalid}} (fn [_ _] {:sample "bar"}))

@@ -173,33 +173,37 @@
    [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve ::transform])
           :resolver ::resolver)
     => ::resolver]
-   (when-not (s/valid? (s/keys) config)
-     (s/explain (s/keys) config)
-     (throw (ex-info (str "Invalid config on resolver " name)
-                     {:explain-data (s/explain-data (s/keys) config)})))
+   (let [config (if (resolver? config)
+                  config
+                  (cond-> config transform transform))]
+     (when-not (s/valid? (s/keys) config)
+       (s/explain (s/keys) config)
+       (throw (ex-info (str "Invalid config on resolver " name)
+                       {:explain-data (s/explain-data (s/keys) config)})))
 
-   (if-let [missing (input-destructure-missing config)]
-     (throw (ex-info
-              (str "Input of resolver " op-name " destructuring requires attributes \"" (str/join "," missing) "\" that are not present at the input definition.")
-              {::input          input
-               ::inferred-input inferred-input})))
+     (if-not (::disable-validate-input-destructuring? config)
+       (if-let [missing (input-destructure-missing config)]
+         (throw (ex-info
+                  (str "Input of resolver " op-name " destructuring requires attributes \"" (str/join "," missing) "\" that are not present at the input definition.")
+                  {::input          input
+                   ::inferred-input inferred-input}))))
 
-   (if (resolver? config)
-     config
-     (let [{::keys [resolve output] :as config} (cond-> config transform transform)
-           defaults (if output
-                      {::input    []
-                       ::provides (pfsd/query->shape-descriptor output)}
-                      {})
+     (if (resolver? config)
+       config
+       (let [{::keys [resolve output]} config
+             defaults (if output
+                        {::input    []
+                         ::provides (pfsd/query->shape-descriptor output)}
+                        {})
 
-           {::keys [input] :as config'}
-           (-> (merge defaults config)
-               (dissoc ::resolve ::transform))
+             {::keys [input] :as config'}
+             (-> (merge defaults config)
+                 (dissoc ::resolve ::transform))
 
-           config'  (cond-> config'
-                      input
-                      (merge (describe-input input)))]
-       (->Resolver config' (or resolve (fn [_ _])))))))
+             config'  (cond-> config'
+                        input
+                        (merge (describe-input input)))]
+         (->Resolver config' (or resolve (fn [_ _]))))))))
 
 (>defn mutation
   "Helper to create a mutation. A mutation must have a name and the mutate function.

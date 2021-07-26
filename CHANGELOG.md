@@ -1,5 +1,9 @@
 # Changelog
 
+## [Next]
+- Support disable input destructuring validation on `pco/resolver`
+- Run `::pco/transform` before running the resolver validations
+
 ## [2021.07.23]
 - Add `p.eql/process-one` and `p.a.eql/process-one` helpers
 
