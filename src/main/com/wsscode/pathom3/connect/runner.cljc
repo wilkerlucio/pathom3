@@ -119,6 +119,11 @@
 
 (>def ::node-run-return (? (s/keys :opt [::batch-hold])))
 
+(>def ::node-done?
+  "Flag to mark a node is finished running and should be skipped. Only applicable
+  for resolver nodes."
+  boolean?)
+
 (>defn all-requires-ready?
   "Check if all requirements from the node are present in the current entity."
   [env {::pcp/keys [expects]}]
@@ -279,6 +284,11 @@
   (if node-run-stats*
     (refs/gswap! node-run-stats* update node-id coll/merge-defaults data)))
 
+(defn resolver-already-ran?
+  [{::keys [node-run-stats*]}
+   {::pcp/keys [node-id]}]
+  (some-> node-run-stats* deref (get node-id) ::node-done?))
+
 (defn merge-mutation-stats!
   [{::keys [node-run-stats*]}
    {::pco/keys [op-name]}
@@ -294,6 +304,7 @@
   (if node-run-stats*
     (doto node-run-stats*
       (refs/gswap! assoc-in [node-id ::node-error] error)
+      (refs/gswap! assoc-in [node-id ::node-done?] true)
       (refs/gswap! update ::nodes-with-error coll/sconj node-id)))
   ::node-error)
 
@@ -316,12 +327,14 @@
   [{::keys [omit-run-stats-resolver-io?]} input-data result]
   (if omit-run-stats-resolver-io?
     {::node-resolver-input-shape  (pfsd/data->shape-descriptor input-data)
-     ::node-resolver-output-shape (pfsd/data->shape-descriptor result)}
+     ::node-resolver-output-shape (pfsd/data->shape-descriptor result)
+     ::node-done?                 true}
 
     {::node-resolver-input  input-data
      ::node-resolver-output (if (::batch-hold result)
                               ::batch-hold
-                              result)}))
+                              result)
+     ::node-done?           true}))
 
 (defn missing-maybe-in-pending-batch?
   [{::p.path/keys [path] :as env} input]
@@ -468,7 +481,7 @@
   First it checks if the expected results from the resolver are already available. In
   case they are, the resolver call is skipped."
   [env node]
-  (if (all-requires-ready? env node)
+  (if (or (resolver-already-ran? env node) (all-requires-ready? env node))
     (run-next-node! env node)
     (let [_ (merge-node-stats! env node {::node-run-start-ms (time/now-ms)})
           {::keys [batch-hold] :as response}

@@ -243,7 +243,7 @@
   First it checks if the expected results from the resolver are already available. In
   case they are, the resolver call is skipped."
   [env node]
-  (if (pcr/all-requires-ready? env node)
+  (if (or (pcr/resolver-already-ran? env node) (pcr/all-requires-ready? env node))
     (run-next-node! env node)
     (p/let [_ (pcr/merge-node-stats! env node {::pcr/node-run-start-ms (time/now-ms)})
             env' (assoc env ::pcp/node node)

@@ -1055,6 +1055,38 @@
             {:id 2 :v 20}
             {:id 3 :v 30}]})))
 
+  (testing "bug report - infinite loop when batch has cache disabled and misses output"
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Required attributes missing: \[:name] at path \[]"
+          (run-graph
+            (pci/register
+              [(pco/resolver 'batch-no-cache
+                 {::pco/batch? true
+                  ::pco/cache? false
+                  ::pco/input  [:id]
+                  ::pco/output [:name]}
+                 (fn [_ input]
+                   input))])
+            {:id 1}
+            [:name])))
+
+    #?(:clj
+       (is (thrown-with-msg?
+             #?(:clj Throwable :cljs :default)
+             #"Required attributes missing: \[:name] at path \[]"
+             @(run-graph-async
+                (pci/register
+                  [(pco/resolver 'batch-no-cache
+                     {::pco/batch? true
+                      ::pco/cache? false
+                      ::pco/input  [:id]
+                      ::pco/output [:name]}
+                     (fn [_ input]
+                       input))])
+                {:id 1}
+                [:name])))))
+
   (testing "distinct inputs"
     (is (graph-response?
           (pci/register
@@ -1335,6 +1367,36 @@
            #{{:id 1 :v 10}
              {:id 2 :v 20}
              {:id 3 :v 30}}})))
+
+  (comment
+    (let [parents  {1 {:parent/children [{:child/id 1}]}}
+          children {1 {:child/ident :child/good}}
+          good?    (fn [children] (boolean (some #{:child/good} (map :child/ident children))))
+          env      (pci/register
+                     [(pco/resolver 'pc
+                        {::pco/input  [:parent/id]
+                         ::pco/output [{:parent/children [:child/id]}]
+                         ::pco/batch? true}
+                        (fn [_ items]
+                          (mapv (fn [{:parent/keys [id]}]
+                                  (select-keys (parents id) [:parent/children]))
+                            items)))
+
+                      (pco/resolver 'ci
+                        {::pco/input  [:child/id]
+                         ::pco/output [:child/ident]
+                         ::pco/batch? true}
+                        (fn [_ items]
+                          (mapv (fn [{:child/keys [id]}]
+                                  (select-keys (children id) [:child/ident]))
+                            items)))
+
+                      (pco/resolver 'parent-good
+                        {::pco/input  [{:parent/children [:child/ident]}]
+                         ::pco/output [:parent/good?]}
+                        (fn [_ {:parent/keys [children]}] {:parent/good? (good? children)}))])]
+      (run-graph env
+        {:parent/id 1} [:parent/good?])))
 
   (testing "bug reports"
     (testing "issue-31 nested batching, actual problem - waiting running multiple times"
