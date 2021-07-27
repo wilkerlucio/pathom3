@@ -1,7 +1,7 @@
 # Changelog
 
 ## [Next]
-- Support disable input destructuring validation on `pco/resolver`
+- Support disable input destructuring validation on `pco/resolver` with the flag `::pco/disable-validate-input-destructuring?`
 - Run `::pco/transform` before running the resolver validations
 - Fixed bug when combining batch + disabled cache + missing outputs doing infinite loops
 
