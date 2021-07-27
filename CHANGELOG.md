@@ -1,11 +1,11 @@
 # Changelog
 
-## [2021.07.27]
+## [2021.07.27-alpha]
 - Support disable input destructuring validation on `pco/resolver` with the flag `::pco/disable-validate-input-destructuring?`
 - Run `::pco/transform` before running the resolver validations
 - Fixed bug when combining batch + disabled cache + missing outputs doing infinite loops
 
-## [2021.07.23]
+## [2021.07.23-alpha]
 - Add `p.eql/process-one` and `p.a.eql/process-one` helpers
 
 ## [2021.07.19-alpha]
