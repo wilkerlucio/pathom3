@@ -3,6 +3,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.coll :as coll]
+    [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.planner :as pcp]))
 
 (>def ::phase keyword?)
@@ -25,7 +26,10 @@
 (>def ::lenient-mode? boolean?)
 
 (defn attribute-node-error
-  [{:com.wsscode.pathom3.connect.runner/keys [node-run-stats] :as graph} node-id]
+  [{:com.wsscode.pathom3.connect.runner/keys [node-run-stats]
+    ::p.attr/keys                            [attribute]
+    ::pcp/keys                               [index-ast]
+    :as                                      graph} node-id]
   (let [{:com.wsscode.pathom3.connect.runner/keys [node-error node-run-finish-ms]} (get node-run-stats node-id)]
     (cond
       node-error
@@ -35,9 +39,10 @@
          ::exception node-error})
 
       node-run-finish-ms
-      (coll/make-map-entry
-        node-id
-        {::cause ::attribute-missing})
+      (if-not (get-in index-ast [attribute :params :com.wsscode.pathom3.connect.operation/optional?])
+        (coll/make-map-entry
+          node-id
+          {::cause ::attribute-missing}))
 
       :else
       (if-let [[node-id' error] (->> (pcp/node-ancestors graph node-id)
@@ -60,8 +65,11 @@
           (-> response meta :com.wsscode.pathom3.connect.runner/run-stats)]
       (if (contains? index-ast attribute)
         (if-let [nodes (get index-attrs attribute)]
-          {::cause              ::node-errors
-           ::node-error-details (into {} (keep #(attribute-node-error run-stats %)) nodes)}
+          (let [run-stats (assoc run-stats ::p.attr/attribute attribute)
+                errors    (into {} (keep #(attribute-node-error run-stats %)) nodes)]
+            (if (seq errors)
+              {::cause              ::node-errors
+               ::node-error-details errors}))
           {::cause ::attribute-unreachable})
         {::cause ::attribute-not-requested}))))
 

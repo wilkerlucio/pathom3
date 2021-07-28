@@ -52,7 +52,18 @@
                         [:a])]
              (p.error/attribute-error data :a))
            {::p.error/cause              ::p.error/node-errors
-            ::p.error/node-error-details {1 {::p.error/cause ::p.error/attribute-missing}}})))
+            ::p.error/node-error-details {1 {::p.error/cause ::p.error/attribute-missing}}}))
+
+    (testing "not a problem if attribute is optional"
+      (is (= (let [data (p.eql/process
+                          (pci/register
+                            {::p.error/lenient-mode? true}
+                            (pco/resolver 'a
+                              {::pco/output [:a]}
+                              (fn [_ _] {})))
+                          [(pco/? :a)])]
+               (p.error/attribute-error data :a))
+             nil))))
 
   (testing "ancestor error"
     (is (mcs/match?
