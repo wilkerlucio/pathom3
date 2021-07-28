@@ -1,5 +1,8 @@
 # Changelog
 
+## [Next]
+- Fix lenient mode optional inputs, it was marking errors when it shouldn't
+
 ## [2021.07.27-alpha]
 - Support disable input destructuring validation on `pco/resolver` with the flag `::pco/disable-validate-input-destructuring?`
 - Run `::pco/transform` before running the resolver validations
