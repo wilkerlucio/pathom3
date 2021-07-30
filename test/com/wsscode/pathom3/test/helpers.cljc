@@ -10,5 +10,4 @@
 
 (defn match-error [error-msg-regex]
   (fn [value]
-    (tap> ["V" value error-msg-regex])
     (re-find error-msg-regex (ex-message value))))
