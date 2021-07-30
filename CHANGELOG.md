@@ -1,6 +1,6 @@
 # Changelog
 
-## [Next]
+## [2021.07.30-alpha]
 - Fix lenient mode optional inputs, it was marking errors when it shouldn't
 
 ## [2021.07.27-alpha]
