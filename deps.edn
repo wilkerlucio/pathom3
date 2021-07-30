@@ -25,6 +25,7 @@
   :test-deps
   {:extra-paths ["test"]
    :extra-deps  {nubank/matcher-combinators {:mvn/version "3.1.4"}
+                 check/check                {:mvn/version "0.2.0"}
                  meander/epsilon            {:mvn/version "0.0.602"}
                  org.clojure/test.check     {:mvn/version "1.1.0"}
                  com.wsscode/transito       {:git/url "https://github.com/wilkerlucio/transito"

@@ -25,6 +25,9 @@
 
 (>def ::lenient-mode? boolean?)
 
+(defn- optional? [index-ast attribute]
+  (get-in index-ast [attribute :params :com.wsscode.pathom3.connect.operation/optional?]))
+
 (defn attribute-node-error
   [{:com.wsscode.pathom3.connect.runner/keys [node-run-stats]
     ::p.attr/keys                            [attribute]
@@ -39,7 +42,7 @@
          ::exception node-error})
 
       node-run-finish-ms
-      (if-not (get-in index-ast [attribute :params :com.wsscode.pathom3.connect.operation/optional?])
+      (if-not (optional? index-ast attribute)
         (coll/make-map-entry
           node-id
           {::cause ::attribute-missing}))
@@ -70,7 +73,8 @@
             (if (seq errors)
               {::cause              ::node-errors
                ::node-error-details errors}))
-          {::cause ::attribute-unreachable})
+          (if-not (optional? index-ast attribute)
+            {::cause ::attribute-unreachable}))
         {::cause ::attribute-not-requested}))))
 
 (defn scan-for-errors? [response]
