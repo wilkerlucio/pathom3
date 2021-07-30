@@ -7,3 +7,7 @@
         (swap! calls conj args)
         return)
       {:calls calls})))
+
+(defn match-error [error-msg-regex]
+  (fn [value]
+    (re-find error-msg-regex (ex-message value))))

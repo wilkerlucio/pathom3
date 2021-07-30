@@ -1,5 +1,6 @@
 (ns com.wsscode.pathom3.connect.runner-test
   (:require
+    [check.core :refer [check]]
     [clojure.spec.alpha :as s]
     [clojure.test :refer [deftest is are run-tests testing]]
     [com.wsscode.pathom3.cache :as p.cache]
@@ -15,6 +16,7 @@
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
+    [com.wsscode.pathom3.test.helpers :as th]
     [com.wsscode.promesa.macros :refer [clet]]
     [edn-query-language.core :as eql]
     [matcher-combinators.matchers :as m]
@@ -22,7 +24,7 @@
     [matcher-combinators.test]
     [promesa.core :as p]))
 
-(declare thrown-with-msg?)
+(declare thrown-with-msg? =>)
 
 (defn match-keys? [ks]
   (fn [m]
@@ -306,47 +308,120 @@
                       :left      7}
                      20]}))))
 
+
 (deftest run-graph!-fail-cases-test
-  (testing "invalid resolver response"
-    (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
-                          #"Resolver foo returned an invalid response: 123"
-          (run-graph (pci/register
-                       (pco/resolver 'foo
-                         {::pco/output [:foo]}
-                         (fn [_ _] 123)))
-                     {}
-                     [:foo]))))
+  (testing "strict mode"
+    (testing "invalid resolver response"
+      (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
+                            #"Resolver foo returned an invalid response: 123"
+            (run-graph (pci/register
+                         (pco/resolver 'foo
+                           {::pco/output [:foo]}
+                           (fn [_ _] 123)))
+                       {}
+                       [:foo]))))
 
-  (testing "Exception with details"
-    (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
-                          #"Resolver foo exception at path \[]: Error"
-          (run-graph (pci/register
-                       (pco/resolver 'foo
-                         {::pco/output [:foo]}
-                         (fn [_ _] (throw (ex-info "Error" {})))))
-                     {}
-                     [{:>/inside [:foo]}]))))
+    (testing "Exception with details"
+      (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
+                            #"Resolver foo exception at path \[]: Error"
+            (run-graph (pci/register
+                         (pco/resolver 'foo
+                           {::pco/output [:foo]}
+                           (fn [_ _] (throw (ex-info "Error" {})))))
+                       {}
+                       [{:>/inside [:foo]}]))))
 
-  (testing "resolver missing response"
-    (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
-                          #"Required attributes missing: \[:foo] at path \[]"
-          (run-graph (pci/register
-                       (pco/resolver 'foo
-                         {::pco/output [:foo]}
-                         (fn [_ _] {})))
-                     {}
-                     [:foo])))
+    (testing "optionals"
+      (testing "not on index"
+        (is (graph-response? {} {} [(pco/? :foo)] {})))
 
-    #?(:clj
-       (testing "async"
-         (is (thrown-with-msg? Throwable
-                               #"Required attributes missing: \[:foo] at path \[]"
-               @(run-graph-async (pci/register
-                                   (pco/resolver 'foo
-                                     {::pco/output [:foo]}
-                                     (fn [_ _] {})))
-                                 {}
-                                 [:foo])))))))
+      (testing "unreachable"
+        (is (graph-response?
+              (pci/register (pbir/alias-resolver :a :foo))
+              {}
+              [(pco/? :foo)] {})))
+
+      (testing "error"
+        (is (thrown-with-msg?
+              #?(:clj Throwable :cljs :default)
+              #"error"
+              (run-graph
+                (pci/register (pbir/constantly-fn-resolver :err (fn [_] (throw (ex-info "error" {})))))
+                {}
+                [(pco/? :err)])))))
+
+    (testing "resolver missing response"
+      (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
+                            #"Required attributes missing: \[:foo] at path \[]"
+            (run-graph (pci/register
+                         (pco/resolver 'foo
+                           {::pco/output [:foo]}
+                           (fn [_ _] {})))
+                       {}
+                       [:foo])))
+
+      #?(:clj
+         (testing "async"
+           (is (thrown-with-msg? Throwable
+                                 #"Required attributes missing: \[:foo] at path \[]"
+                 @(run-graph-async (pci/register
+                                     (pco/resolver 'foo
+                                       {::pco/output [:foo]}
+                                       (fn [_ _] {})))
+                                   {}
+                                   [:foo]))))))
+
+    (testing "mutations"
+      (let [err (ex-info "Fail fast" {})]
+        (is (thrown-with-msg?
+              #?(:clj Throwable :cljs js/Error)
+              #"Fail fast"
+              (run-graph
+                (pci/register {::p.error/lenient-mode? false}
+                              (pco/mutation 'err {} (fn [_ _] (throw err))))
+                {}
+                ['(err {})]))))
+
+      #?(:clj
+         (let [err (ex-info "Fail fast" {})]
+           (is (thrown-with-msg? Throwable #"Fail fast"
+                 @(run-graph-async
+                    (pci/register {::p.error/lenient-mode? false}
+                                  (pco/mutation 'err {} (fn [_ _] (throw err))))
+                    {}
+                    ['(err {})])))))))
+
+  (testing "lenient mode"
+    (testing "optionals"
+      (testing "not an index"
+        (is (graph-response? {::p.error/lenient-mode? true}
+              {}
+              [(pco/? :foo)]
+              {})))
+
+      (testing "unreachable"
+        (is (graph-response?
+              (pci/register (pbir/alias-resolver :a :foo))
+              {}
+              [(pco/? :foo)]
+              {})))
+
+      (testing "error"
+        (check
+          (run-graph
+            (pci/register
+              {::p.error/lenient-mode? true}
+              (pbir/constantly-fn-resolver :err (fn [_] (throw (ex-info "error" {})))))
+            {}
+            [(pco/? :err)])
+          => {::pcr/attribute-errors
+              {:err
+               {::p.error/cause
+                ::p.error/node-errors
+
+                ::p.error/node-error-details
+                {1 {::p.error/cause     ::p.error/node-exception
+                    ::p.error/exception (th/match-error #"error")}}}}})))))
 
 (deftest run-graph!-final-test
   (testing "map value"
@@ -941,47 +1016,6 @@
             [:foo]
             {:y   42
              :foo 42})))))
-
-(deftest run-graph!-fail-fast-test
-  (testing "fail fast resolver"
-    (let [err (ex-info "Fail fast" {})]
-      (is (thrown-with-msg?
-            #?(:clj Throwable :cljs js/Error)
-            #"Fail fast"
-            (run-graph
-              (pci/register {::p.error/lenient-mode? false}
-                            (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
-              {}
-              [:err]))))
-
-    #?(:clj
-       (let [err (ex-info "Fail fast" {})]
-         (is (thrown-with-msg? Throwable #"Fail fast"
-               @(run-graph-async
-                  (pci/register {::p.error/lenient-mode? false}
-                                (pbir/constantly-fn-resolver :err (fn [_] (throw err))))
-                  {}
-                  [:err]))))))
-
-  (testing "fail fast mutation"
-    (let [err (ex-info "Fail fast" {})]
-      (is (thrown-with-msg?
-            #?(:clj Throwable :cljs js/Error)
-            #"Fail fast"
-            (run-graph
-              (pci/register {::p.error/lenient-mode? false}
-                            (pco/mutation 'err {} (fn [_ _] (throw err))))
-              {}
-              ['(err {})]))))
-
-    #?(:clj
-       (let [err (ex-info "Fail fast" {})]
-         (is (thrown-with-msg? Throwable #"Fail fast"
-               @(run-graph-async
-                  (pci/register {::p.error/lenient-mode? false}
-                                (pco/mutation 'err {} (fn [_ _] (throw err))))
-                  {}
-                  ['(err {})])))))))
 
 (defn batchfy
   "Convert a resolver in a batch version of it."
