@@ -35,7 +35,7 @@
 
 (>def ::available-data
   "An shape descriptor declaring which data is already available when the planner starts."
-  ::pfsd/shape-descriptor)
+  (? ::pfsd/shape-descriptor))
 
 (>def ::node-parents
   "A set of node-ids containing the direct parents of the current node.
@@ -211,8 +211,10 @@
   "Get the node plus the resolver config, when the node has an op-name. If node is
   not a resolver not it returns nil."
   [graph env node-id]
-  (let [node (get-node graph node-id)]
-    (if-let [config (some->> node ::pco/op-name (pci/resolver-config env))]
+  (let [node      (get-node graph node-id)
+        node-name (or (::source-op-name node)
+                      (::pco/op-name node))]
+    (if-let [config (some->> node-name (pci/resolver-config env))]
       (merge node config))))
 
 (defn assoc-node
@@ -918,7 +920,8 @@
       true)))
 
 (defn compute-attribute-nested-input-require [graph env attr shape nodes]
-  (add-snapshot! graph env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))})
+  (add-snapshot! graph env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))
+                            ::highlight-nodes  (into #{} (map ::node-id) nodes)})
   ; TODO this should consider the case that a few of the nodes can provide the
   ; sub-query, in this case only they should be kept in the graph, and the other
   ; options must be removed
@@ -1103,7 +1106,11 @@
       (assoc ::params ast-params)
 
       dynamic?
-      (assoc ::foreign-ast
+      (assoc
+        ::source-op-name
+        op-name
+
+        ::foreign-ast
         {:type     :root
          :children (if sub
                      (let [ast' (pfsd/shape-descriptor->ast sub)]

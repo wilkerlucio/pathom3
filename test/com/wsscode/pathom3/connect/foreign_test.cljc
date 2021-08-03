@@ -149,7 +149,28 @@
                           [(pbir/alias-resolver :b :c)
                            (pcf/foreign-register foreign)]))]
         (is (= (p.eql/process env [{:a [:c]}])
-               {:a {:c "value"}})))))
+               {:a {:c "value"}}))))
+
+    (testing "nested inputs"
+      (let [foreign (-> (pci/register
+                          (pco/resolver 'n
+                            {::pco/output [{:a [:b]}]}
+                            (fn [_ _] {:a [{:b 1}
+                                           {:b 2}
+                                           {:b 3}]})))
+                        (serialize-boundary))
+            env     (-> (pci/register
+                          [(pco/resolver 'sum
+                             {::pco/input
+                              [{:a [:b]}]
+
+                              ::pco/output
+                              [:total]}
+                             (fn [_ {:keys [a]}]
+                               {:total (transduce (map :b) + 0 a)}))
+                           (pcf/foreign-register foreign)]))]
+        (is (= (p.eql/process env [:total])
+               {:total 6})))))
 
   (testing "union queries"
     (let [foreign (-> (pci/register
