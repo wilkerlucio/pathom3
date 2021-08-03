@@ -664,6 +664,7 @@
         (update-node target-node-id nil combine-expects source-node)
         (update-node target-node-id nil combine-inputs source-node)
         (update-node target-node-id nil combine-foreign-ast source-node)
+        (update-node target-node-id nil dissoc ::source-op-name)
         (transfer-node-indexes target-node-id source-node-id)
         (remove-node-edges source-node-id)
         (remove-node source-node-id))))
@@ -1668,6 +1669,7 @@
             (set-node-run-next node-id (::run-next next))
             (set-node-expects node-id (::expects next))
             (assoc-node node-id ::foreign-ast (::foreign-ast next))
+            (update-node node-id nil dissoc ::source-op-name)
             (remove-node run-next))
         env
         node-id)

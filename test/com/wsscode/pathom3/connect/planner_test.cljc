@@ -1731,11 +1731,12 @@
               ::pcp/available-data  {:db/id {}}
               ::eql/query           [:release/script]})
 
-           {::pcp/nodes                 {1 {::pco/op-name     'dynamic-resolver
-                                            ::pcp/node-id     1
-                                            ::pcp/expects     {:release/script {}}
-                                            ::pcp/input       {:db/id {}}
-                                            ::pcp/foreign-ast (eql/query->ast [:release/script])}}
+           {::pcp/nodes                 {1 {::pco/op-name        'dynamic-resolver
+                                            ::pcp/source-op-name 'dynamic-resolver
+                                            ::pcp/node-id        1
+                                            ::pcp/expects        {:release/script {}}
+                                            ::pcp/input          {:db/id {}}
+                                            ::pcp/foreign-ast    (eql/query->ast [:release/script])}}
             ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
             ::pcp/root                  1
             ::pcp/index-attrs           {:release/script #{1}}
@@ -1763,6 +1764,7 @@
                 ::eql/query           [:a]})
 
              '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name   dynamic-resolver
+                                                                               ::pcp/source-op-name                             a
                                                                                :com.wsscode.pathom3.connect.planner/expects     {:a {}}
                                                                                :com.wsscode.pathom3.connect.planner/input       {}
                                                                                :com.wsscode.pathom3.connect.planner/node-id     1
@@ -1788,16 +1790,17 @@
                 ::pcp/available-data  {:db/id {}}
                 ::eql/query           [(list :release/script {:foo "bar"})]})
 
-             {::pcp/nodes                 {1 {::pco/op-name     'dynamic-resolver
-                                              ::pcp/node-id     1
-                                              ::pcp/expects     {:release/script {}}
-                                              ::pcp/input       {:db/id {}}
-                                              ::pcp/params      {:foo "bar"}
-                                              ::pcp/foreign-ast {:children [{:dispatch-key :release/script
-                                                                             :key          :release/script
-                                                                             :params       {:foo "bar"}
-                                                                             :type         :prop}]
-                                                                 :type     :root}}}
+             {::pcp/nodes                 {1 {::pco/op-name        'dynamic-resolver
+                                              ::pcp/node-id        1
+                                              ::pcp/source-op-name 'dynamic-resolver
+                                              ::pcp/expects        {:release/script {}}
+                                              ::pcp/input          {:db/id {}}
+                                              ::pcp/params         {:foo "bar"}
+                                              ::pcp/foreign-ast    {:children [{:dispatch-key :release/script
+                                                                                :key          :release/script
+                                                                                :params       {:foo "bar"}
+                                                                                :type         :prop}]
+                                                                    :type     :root}}}
               ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
               ::pcp/root                  1
               ::pcp/index-attrs           {:release/script #{1}}
@@ -2170,11 +2173,12 @@
                                            ::pco/resolve      (fn [_ _])}}
               ::pci/index-oir       {:a {{} #{'a}}}
               ::eql/query           [{:a [:b]}]})
-           {::pcp/nodes                 {1 {::pco/op-name     'dyn
-                                            ::pcp/node-id     1
-                                            ::pcp/expects     {:a {:b {}}}
-                                            ::pcp/input       {}
-                                            ::pcp/foreign-ast (eql/query->ast [{:a [:b]}])}}
+           {::pcp/nodes                 {1 {::pco/op-name        'dyn
+                                            ::pcp/node-id        1
+                                            ::pcp/expects        {:a {:b {}}}
+                                            ::pcp/input          {}
+                                            ::pcp/source-op-name 'a
+                                            ::pcp/foreign-ast    (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
             ::pcp/root                  1
             ::pcp/index-attrs           {:a #{1}}
@@ -2201,11 +2205,12 @@
                                       ::pco/input   [:b]
                                       ::pco/output  [:c]}]
               ::eql/query           [{:a [:c]}]})
-           {::pcp/nodes                 {2 {::pco/op-name     'dyn
-                                            ::pcp/node-id     2
-                                            ::pcp/expects     {:a {:b {}}}
-                                            ::pcp/input       {}
-                                            ::pcp/foreign-ast (eql/query->ast [{:a [:b]}])}}
+           {::pcp/nodes                 {2 {::pco/op-name        'dyn
+                                            ::pcp/source-op-name 'a
+                                            ::pcp/node-id        2
+                                            ::pcp/expects        {:a {:b {}}}
+                                            ::pcp/input          {}
+                                            ::pcp/foreign-ast    (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{2}}
             ::pcp/root                  2
             ::pcp/index-attrs           {:a #{2}}
@@ -2235,6 +2240,7 @@
                                      :c {{:b {}} #{'c}}}
               ::eql/query           [{:a [:c]}]})
            {::pcp/nodes                 {2 {::pco/op-name     'dyn
+                                            ::pcp/source-op-name 'a
                                             ::pcp/node-id     2
                                             ::pcp/expects     {:a {:c {}}}
                                             ::pcp/input       {}
@@ -2286,6 +2292,7 @@
                :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{4}}
                :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{4}}
                :com.wsscode.pathom3.connect.planner/nodes                 {4 {:com.wsscode.pathom3.connect.operation/op-name   dyn
+                                                                              ::pcp/source-op-name a
                                                                               :com.wsscode.pathom3.connect.planner/expects     {:a {:b {}
                                                                                                                                     :c {}}}
                                                                               :com.wsscode.pathom3.connect.planner/foreign-ast {:children [{:children     [{:dispatch-key :c
@@ -2321,6 +2328,7 @@
               ::eql/query           [{:a {:b [:b]
                                           :c [:c]}}]})
            '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name   dyn,
+                                                                            ::pcp/source-op-name a
                                                                             :com.wsscode.pathom3.connect.planner/expects     {:a {:b {:b {}},
                                                                                                                                   :c {:c {}}}},
                                                                             :com.wsscode.pathom3.connect.planner/input       {},
