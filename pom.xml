@@ -4,7 +4,7 @@
   <packaging>jar</packaging>
   <groupId>com.wsscode</groupId>
   <artifactId>pathom3</artifactId>
-  <version>2021.07.27-alpha</version>
+  <version>2021.07.30-alpha</version>
   <name>pathom3</name>
   <description>Logic programming though semantic attributes.</description>
   <url>https://github.com/wilkerlucio/pathom3</url>
@@ -18,7 +18,7 @@
     <url>https://github.com/wilkerlucio/pathom3</url>
     <connection>scm:git:git://github.com/wilkerlucio/pathom3.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/wilkerlucio/pathom3.git</developerConnection>
-    <tag>v2021.07.27-alpha</tag>
+    <tag>v2021.07.30-alpha</tag>
   </scm>
   <dependencies>
     <dependency>
