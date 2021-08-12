@@ -175,7 +175,7 @@
 
 (>def ::plan-cache*
   "Atom containing the cache atom to support cached planning."
-  refs/atom?)
+  p.cache/cache-store?)
 
 (>def ::snapshots*
   "Atom to store each step of the planning process"

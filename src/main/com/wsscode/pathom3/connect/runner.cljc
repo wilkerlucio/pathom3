@@ -75,7 +75,7 @@
 
 (>def ::nodes-with-error ::pcp/node-id-set)
 
-(>def ::resolver-cache* any?)
+(>def ::resolver-cache* p.cache/cache-store?)
 (>def ::resolver-run-duration-ms number?)
 (>def ::resolver-run-start-ms number?)
 (>def ::resolver-run-finish-ms number?)
