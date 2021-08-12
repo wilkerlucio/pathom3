@@ -102,7 +102,7 @@
           :param ::eql/param-expr)
     => any?]
    (let [response (process env entity [attr])]
-     (val (first response)))))
+     (some-> response first val))))
 
 (>defn satisfy
   "Works like process, but none of the original entity data is filtered out."

@@ -98,7 +98,7 @@
           :param ::eql/param-expr)
     => any?]
    (p/let [response (process env entity [attr])]
-     (val (first response)))))
+     (some-> response first val))))
 
 (>defn boundary-interface
   "Returns a function that wraps the environment. When exposing Pathom to some external
