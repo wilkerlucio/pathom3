@@ -1,5 +1,8 @@
 # Changelog
 
+## [2021.08.12-alpha]
+- Fix cache store specs
+
 ## [2021.07.30-alpha]
 - Fix lenient mode optional inputs, it was marking errors when it shouldn't
 
