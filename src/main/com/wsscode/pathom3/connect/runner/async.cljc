@@ -54,8 +54,15 @@
     s
     (-> (reduce-async
           (fn [[seq idx] entry]
-            (p/let [sub-res (process-map-subquery (p.path/append-path env idx) ast entry)]
-              [(conj seq sub-res)
+            (p/let [sub-res (p.plugin/run-with-plugins env
+                              ::pcr/wrap-process-sequence-item
+                              process-map-subquery
+                              (p.path/append-path env idx)
+                              ast
+                              entry)]
+              [(cond-> seq
+                 sub-res
+                 (conj sub-res))
                (inc idx)]))
           [(empty s) 0]
           (cond-> s

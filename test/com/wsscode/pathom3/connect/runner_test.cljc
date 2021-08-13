@@ -4,6 +4,7 @@
     [clojure.spec.alpha :as s]
     [clojure.test :refer [deftest is are run-tests testing]]
     [com.wsscode.pathom3.cache :as p.cache]
+    [com.wsscode.pathom3.connect.built-in.plugins :as pbip]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
@@ -2080,6 +2081,21 @@
           {}
           [:foo]
           {:foo "bar"}))))
+
+(deftest run-graph!-wrap-process-sequence-item-test
+  (testing "filter out error items"
+    (is (graph-response?
+          (-> (pci/register
+                [(pbir/global-data-resolver {:items [{:x "a"}
+                                                     {:x "b"
+                                                      :y "y"}
+                                                     {:y "xx"}
+                                                     {:x "c"
+                                                      :y "y2"}]})])
+              (p.plugin/register (pbip/filtered-sequence-items-plugin)))
+          {}
+          [^::pbip/remove-error-items {:items [:x :y]}]
+          {:items [{:x "b", :y "y"} {:x "c", :y "y2"}]}))))
 
 #?(:clj
    (deftest run-graph!-async-tests

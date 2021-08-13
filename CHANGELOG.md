@@ -1,7 +1,9 @@
 # Changelog
 
-## [2021.08.12-alpha]
+## [next]
 - Fix cache store specs
+- Add `::pcr/wrap-process-sequence-item` plugin entry point
+- Add `filtered-sequence-items-plugin` new built-in plugin
 
 ## [2021.07.30-alpha]
 - Fix lenient mode optional inputs, it was marking errors when it shouldn't

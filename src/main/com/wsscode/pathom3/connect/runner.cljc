@@ -159,7 +159,10 @@
     s
     (into
       (empty s)
-      (map-indexed #(process-map-subquery (p.path/append-path env %) ast %2))
+      (keep-indexed #(p.plugin/run-with-plugins env
+                       ::wrap-process-sequence-item
+                       process-map-subquery
+                       (p.path/append-path env %) ast %2))
       (cond-> s
         (coll/coll-append-at-head? s)
         reverse))))
