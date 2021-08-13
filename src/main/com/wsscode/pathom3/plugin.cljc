@@ -35,8 +35,9 @@
 
 (defn compile-env-extensions
   [env plugin-type f]
-  (let [plugins (get-in env [::plugin-actions plugin-type])]
-    (compile-extensions f plugins)))
+  (if-let [plugins (get-in env [::plugin-actions plugin-type])]
+    (compile-extensions f plugins)
+    f))
 
 (defn build-plugin-actions [{::keys [plugin-order index-plugins] :as env} k]
   (assoc-in env [::plugin-actions k]
