@@ -859,14 +859,25 @@
                 (pfsd/select-shape ent' (assoc (::pcp/expects node)
                                           ::attribute-errors {})))))))))
 
+(defn batch-dynamic-input-key [{::keys     [node-resolver-input]
+                                ::pcp/keys [node]}]
+  {::node-resolver-input node-resolver-input
+   ::pcp/foreign-ast     (::pcp/foreign-ast node)})
+
+(defn batch-group-input-groups [resolver batch-items]
+  (let [{::pco/keys [dynamic-resolver?]} (pco/operation-config resolver)]
+    (if dynamic-resolver?
+      (group-by batch-dynamic-input-key batch-items)
+      (group-by ::node-resolver-input batch-items))))
+
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
     (vreset! batches* {})
     (doseq [[batch-op batch-items] batches]
-      (let [input-groups (group-by ::node-resolver-input batch-items)
+      (let [resolver     (pci/resolver env batch-op)
+            input-groups (batch-group-input-groups resolver batch-items)
             inputs       (keys input-groups)
-            resolver     (pci/resolver env batch-op)
             batch-env    (-> batch-items first ::env
                              (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
             start        (time/now-ms)

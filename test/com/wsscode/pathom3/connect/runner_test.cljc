@@ -146,6 +146,90 @@
        {:items [{:id 1} {:id 2} {:id 3}]}
        [{:items [:x]}])))
 
+; region helpers
+
+(defn batchfy
+  "Convert a resolver in a batch version of it."
+  [resolver]
+  (-> resolver
+      (pco/update-config #(assoc % ::pco/batch? true))
+      (update :resolve
+        (fn [resolve]
+          (fn [env inputs]
+            (mapv #(resolve env %) inputs))))))
+
+(pco/defresolver batch-param [env items]
+  {::pco/input  [:id]
+   ::pco/output [:v]
+   ::pco/batch? true}
+  (let [m (-> (pco/params env) :multiplier (or 10))]
+    (mapv #(hash-map :v (* m (:id %))) items)))
+
+(pco/defresolver batch-fetch-error []
+  {::pco/input  [:id]
+   ::pco/output [:v]
+   ::pco/batch? true}
+  (throw (ex-info "Batch error" {})))
+
+(pco/defresolver batch-fetch-nested [items]
+  {::pco/input  [:id]
+   ::pco/output [{:n [:pre-id]}]
+   ::pco/batch? true}
+  (mapv #(hash-map :n {:pre-id (* 10 (:id %))}) items))
+
+(pco/defresolver batch-pre-id [items]
+  {::pco/input  [:pre-id]
+   ::pco/output [:id]
+   ::pco/batch? true}
+  (mapv #(hash-map :id (inc (:pre-id %))) items))
+
+(pco/defresolver pre-idc [items]
+  {::pco/input  [:id]
+   ::pco/output [:v]
+   ::pco/batch? true}
+  (mapv #(hash-map :v (* 10 (:id %))) items))
+
+(defrecord CustomCacheType [atom]
+  p.cache/CacheStore
+  (-cache-lookup-or-miss [_ cache-key f]
+                         (let [cache @atom]
+                           (if-let [entry (find cache cache-key)]
+                             (val entry)
+                             (let [res (f)]
+                               (swap! atom assoc cache-key res)
+                               res))))
+
+  (-cache-find [_ cache-key]
+               (find @atom cache-key)))
+
+(defn custom-cache [data]
+  (->CustomCacheType (atom data)))
+
+(def mock-todos-db
+  [{::todo-message "Write demo on params"
+    ::todo-done?   true}
+   {::todo-message "Pathom in Rust"
+    ::todo-done?   false}])
+
+(defn filter-params-match [env coll]
+  (let [params     (pco/params env)
+        param-keys (keys params)]
+    (if (seq params)
+      (filter
+        #(= params
+            (select-keys % param-keys))
+        coll)
+      coll)))
+
+(pco/defresolver todos-resolver [env _]
+  {::pco/output
+   [{::todos
+     [::todo-message
+      ::todo-done?]}]}
+  {::todos (filter-params-match env mock-todos-db)})
+
+; endregion
+
 (deftest run-graph!-test
   (is (graph-response? (pci/register geo/registry)
         {::geo/left 10 ::geo/width 30}
@@ -308,7 +392,6 @@
                       ::geo/left 7
                       :left      7}
                      20]}))))
-
 
 (deftest run-graph!-fail-cases-test
   (testing "strict mode"
@@ -1018,63 +1101,6 @@
             {:y   42
              :foo 42})))))
 
-(defn batchfy
-  "Convert a resolver in a batch version of it."
-  [resolver]
-  (-> resolver
-      (pco/update-config #(assoc % ::pco/batch? true))
-      (update :resolve
-        (fn [resolve]
-          (fn [env inputs]
-            (mapv #(resolve env %) inputs))))))
-
-(pco/defresolver batch-param [env items]
-  {::pco/input  [:id]
-   ::pco/output [:v]
-   ::pco/batch? true}
-  (let [m (-> (pco/params env) :multiplier (or 10))]
-    (mapv #(hash-map :v (* m (:id %))) items)))
-
-(pco/defresolver batch-fetch-error []
-  {::pco/input  [:id]
-   ::pco/output [:v]
-   ::pco/batch? true}
-  (throw (ex-info "Batch error" {})))
-
-(pco/defresolver batch-fetch-nested [items]
-  {::pco/input  [:id]
-   ::pco/output [{:n [:pre-id]}]
-   ::pco/batch? true}
-  (mapv #(hash-map :n {:pre-id (* 10 (:id %))}) items))
-
-(pco/defresolver batch-pre-id [items]
-  {::pco/input  [:pre-id]
-   ::pco/output [:id]
-   ::pco/batch? true}
-  (mapv #(hash-map :id (inc (:pre-id %))) items))
-
-(pco/defresolver pre-idc [items]
-  {::pco/input  [:id]
-   ::pco/output [:v]
-   ::pco/batch? true}
-  (mapv #(hash-map :v (* 10 (:id %))) items))
-
-(defrecord CustomCacheType [atom]
-  p.cache/CacheStore
-  (-cache-lookup-or-miss [_ cache-key f]
-                         (let [cache @atom]
-                           (if-let [entry (find cache cache-key)]
-                             (val entry)
-                             (let [res (f)]
-                               (swap! atom assoc cache-key res)
-                               res))))
-
-  (-cache-find [_ cache-key]
-               (find @atom cache-key)))
-
-(defn custom-cache [data]
-  (->CustomCacheType (atom data)))
-
 (deftest run-graph!-batch-test
   (testing "simple batching"
     (is (graph-response?
@@ -1403,36 +1429,6 @@
              {:id 2 :v 20}
              {:id 3 :v 30}}})))
 
-  (comment
-    (let [parents  {1 {:parent/children [{:child/id 1}]}}
-          children {1 {:child/ident :child/good}}
-          good?    (fn [children] (boolean (some #{:child/good} (map :child/ident children))))
-          env      (pci/register
-                     [(pco/resolver 'pc
-                        {::pco/input  [:parent/id]
-                         ::pco/output [{:parent/children [:child/id]}]
-                         ::pco/batch? true}
-                        (fn [_ items]
-                          (mapv (fn [{:parent/keys [id]}]
-                                  (select-keys (parents id) [:parent/children]))
-                            items)))
-
-                      (pco/resolver 'ci
-                        {::pco/input  [:child/id]
-                         ::pco/output [:child/ident]
-                         ::pco/batch? true}
-                        (fn [_ items]
-                          (mapv (fn [{:child/keys [id]}]
-                                  (select-keys (children id) [:child/ident]))
-                            items)))
-
-                      (pco/resolver 'parent-good
-                        {::pco/input  [{:parent/children [:child/ident]}]
-                         ::pco/output [:parent/good?]}
-                        (fn [_ {:parent/keys [children]}] {:parent/good? (good? children)}))])]
-      (run-graph env
-        {:parent/id 1} [:parent/good?])))
-
   (testing "bug reports"
     (testing "issue-31 nested batching, actual problem - waiting running multiple times"
       (let [parents  {1 {:parent/children [{:child/id 1}]}}
@@ -1562,18 +1558,61 @@
                                             :entity/pkey-expr           "something"}]}))])]
         (is (graph-response? env {:query/args []}
               [:entity.metric.query.response/unformatted-metric-honey]
-              {:query/args [],
-               :portfolioKey "p",
-               :appKey "a",
-               :entities [#:entity{:friendlyName "a",
-                                   :friendlyName-plural "as",
-                                   :parameters [],
-                                   :id "something",
-                                   :pkey-expr "something"}],
-               :entity "something",
-               :ont/attribute-sql-projection "blah",
-               :ont/events-withs-fn "event-withs-fn",
+              {:query/args                                            [],
+               :portfolioKey                                          "p",
+               :appKey                                                "a",
+               :entities                                              [#:entity{:friendlyName        "a",
+                                                                                :friendlyName-plural "as",
+                                                                                :parameters          [],
+                                                                                :id                  "something",
+                                                                                :pkey-expr           "something"}],
+               :entity                                                "something",
+               :ont/attribute-sql-projection                          "blah",
+               :ont/events-withs-fn                                   "event-withs-fn",
                :entity.metric.query.response/unformatted-metric-honey "something"}))))))
+
+(deftest run-graph!-batch-dynamic-resolvers
+  (testing "dynamic resolver batching"
+    (is (graph-response?
+          (pci/register
+            [(pco/resolver 'dynamic
+               {::pco/dynamic-resolver? true
+                ::pco/batch?            true
+                ::pco/cache?            false}
+               (fn [_ inputs]
+                 (mapv
+                   (fn [{::pcr/keys [node-resolver-input]
+                         ::pcp/keys [foreign-ast]}]
+                     {:b foreign-ast
+                      :c node-resolver-input})
+                   inputs)))
+             (pco/resolver 'dyn-entry
+               {::pco/input        [:a]
+                ::pco/output       [:b]
+                ::pco/dynamic-name 'dynamic})
+             (pco/resolver 'dyn-entry2
+               {::pco/input        [:a]
+                ::pco/output       [:c]
+                ::pco/dynamic-name 'dynamic})])
+          {:list
+           [{:a 1}
+            {:a 2
+             :c 10}
+            {:a 3}]}
+          [{:list [:b :c]}]
+          {:list [{:a 1,
+                   :b {:type     :root,
+                       :children [{:type :prop, :dispatch-key :b, :key :b}
+                                  {:type :prop, :dispatch-key :c, :key :c}]},
+                   :c {:a 1}}
+                  {:a 2,
+                   :c 10,
+                   :b {:type :root, :children [{:type :prop, :dispatch-key :b, :key :b}]}}
+                  {:a 3,
+                   :b {:type     :root,
+                       :children [{:type :prop, :dispatch-key :b, :key :b}
+                                  {:type :prop, :dispatch-key :c, :key :c}]},
+                   :c {:a 3}}]}))))
 
 (deftest run-graph!-run-stats
   (is (graph-response?
@@ -1690,29 +1729,6 @@
                                                         ::pcr/node-run-start-ms
                                                         ::pcr/node-run-finish-ms])}}
              (-> % meta ::pcr/run-stats))))))
-
-(def mock-todos-db
-  [{::todo-message "Write demo on params"
-    ::todo-done?   true}
-   {::todo-message "Pathom in Rust"
-    ::todo-done?   false}])
-
-(defn filter-params-match [env coll]
-  (let [params     (pco/params env)
-        param-keys (keys params)]
-    (if (seq params)
-      (filter
-        #(= params
-            (select-keys % param-keys))
-        coll)
-      coll)))
-
-(pco/defresolver todos-resolver [env _]
-  {::pco/output
-   [{::todos
-     [::todo-message
-      ::todo-done?]}]}
-  {::todos (filter-params-match env mock-todos-db)})
 
 (deftest run-graph!-params-test
   (is (graph-response?

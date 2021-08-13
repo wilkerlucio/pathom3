@@ -479,9 +479,9 @@
 
     (reduce-async
       (fn [_ [batch-op batch-items]]
-        (p/let [input-groups (group-by ::pcr/node-resolver-input batch-items)
+        (p/let [resolver     (pci/resolver env batch-op)
+                input-groups (pcr/batch-group-input-groups resolver batch-items)
                 inputs       (keys input-groups)
-                resolver     (pci/resolver env batch-op)
                 batch-env    (-> batch-items first ::pcr/env
                                  (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
                 start        (time/now-ms)
