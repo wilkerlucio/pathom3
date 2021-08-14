@@ -666,12 +666,15 @@
   [env {:keys [key] :as ast}]
   (let [ast      (cond-> ast (not (:children ast)) (dissoc :children))
         mutation (pci/mutation env key)
-        foreign  (pci/resolver env (-> mutation pco/operation-config ::pco/dynamic-name))
+        {::pco/keys [dynamic-name]} (pco/operation-config mutation)
+        foreign  (pci/resolver env dynamic-name)
+        {::pco/keys [batch?]} (pco/operation-config foreign)
         ast      (pcp/promote-foreign-ast-children ast)]
     (-> (pco.prot/-resolve
           foreign
-          (assoc env ::pcp/node {::pcp/foreign-ast {:type :root :children [ast]}})
-          {})
+          env
+          (cond-> {::pcp/foreign-ast {:type :root :children [ast]}}
+            batch? vector))
         (get key))))
 
 (defn invoke-mutation!

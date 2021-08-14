@@ -35,9 +35,8 @@
   [{::pcp/keys [node]}]
   {:pathom/ast (::pcp/foreign-ast node)})
 
-(defn call-foreign-mutation [foreign env]
-  (let [foreign-call (compute-foreign-mutation env)]
-    (foreign foreign-call)))
+(defn call-foreign-mutation [foreign {::pcp/keys [foreign-ast]}]
+  (foreign {:pathom/ast foreign-ast}))
 
 (defn call-foreign-query [foreign inputs]
   (clet [foreign-call (compute-foreign-request inputs)
@@ -47,9 +46,9 @@
       (map #(get result (foreign-indexed-key %)))
       (range (count inputs)))))
 
-(defn call-foreign [foreign env inputs]
-  (if (-> env ::pcp/node ::pcp/foreign-ast :children first :type (= :call))
-    (call-foreign-mutation foreign env)
+(defn call-foreign [foreign inputs]
+  (if (-> inputs first ::pcp/foreign-ast :children first :type (= :call))
+    (call-foreign-mutation foreign (first inputs))
     (call-foreign-query foreign inputs)))
 
 (pco/defresolver foreign-indexes-resolver [env _]
@@ -92,8 +91,8 @@
             {::pco/cache?            false
              ::pco/batch?            true
              ::pco/dynamic-resolver? true}
-            (fn [env inputs]
-              (call-foreign foreign env inputs))))
+            (fn [_env inputs]
+              (call-foreign foreign inputs))))
         (dissoc ::pci/index-source-id)
         (assoc-in [::foreign-indexes index-source-id] indexes))))
 

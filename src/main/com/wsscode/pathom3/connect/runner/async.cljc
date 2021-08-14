@@ -366,6 +366,20 @@
     ::pcp/node-or
     (run-or-node! env node)))
 
+(defn run-foreign-mutation
+  [env {:keys [key] :as ast}]
+  (let [ast      (cond-> ast (not (:children ast)) (dissoc :children))
+        mutation (pci/mutation env key)
+        {::pco/keys [dynamic-name batch?]} (pco/operation-config mutation)
+        foreign  (pci/resolver env dynamic-name)
+        ast      (pcp/promote-foreign-ast-children ast)]
+    (p/let [res (pco.prot/-resolve
+                  foreign
+                  env
+                  (cond-> {::pcp/foreign-ast {:type :root :children [ast]}}
+                    batch? vector))]
+      (get res key))))
+
 (defn invoke-mutation!
   "Run mutation from AST."
   [env {:keys [key] :as ast}]
@@ -376,8 +390,10 @@
                       ::pcr/mutation-run-start-ms start})
           result   (-> (p/do!
                          (if mutation
-                           (p.plugin/run-with-plugins env ::pcr/wrap-mutate
-                             #(pco.prot/-mutate mutation %1 (:params %2)) env ast)
+                           (if (-> mutation pco/operation-config ::pco/dynamic-name)
+                             (run-foreign-mutation env ast)
+                             (p.plugin/run-with-plugins env ::pcr/wrap-mutate
+                               #(pco.prot/-mutate mutation %1 (:params %2)) env ast))
                            (throw (ex-info (str "Mutation " key " not found") {::pco/op-name key}))))
                        (p/catch
                          (fn [e]

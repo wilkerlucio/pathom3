@@ -1,12 +1,13 @@
 # Changelog
 
-## [next]
+## [2021.07.30-alpha]
 - Fix cache store specs
 - Add `::pcr/wrap-process-sequence-item` plugin entry point
 - Add `filtered-sequence-items-plugin` new built-in plugin
 - Batch support for dynamic resolvers
 - Batch support on foreign requests
-- Dynamic resolvers always get rich inputs with input data and foreign ast
+- BREAKING CHANGE: Dynamic resolvers always get rich inputs with input data and foreign ast
+- Dynamic mutations also go as input parts with params 
 
 ## [2021.07.30-alpha]
 - Fix lenient mode optional inputs, it was marking errors when it shouldn't

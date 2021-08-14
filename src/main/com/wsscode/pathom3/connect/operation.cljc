@@ -161,16 +161,16 @@
   Returns an instance of the Resolver type.
   "
   ([op-name config]
-   [::op-name (s/keys :opt [::output ::params]) => ::resolver]
+   [::op-name (s/keys :opt [::input ::output ::params]) => ::resolver]
    (resolver (-> config
                  (coll/merge-defaults {::op-name op-name}))))
   ([op-name config resolve]
-   [::op-name (s/keys :opt [::output ::params]) ::resolve => ::resolver]
+   [::op-name (s/keys :opt [::input ::output ::params]) ::resolve => ::resolver]
    (resolver (-> config
                  (coll/merge-defaults {::op-name op-name})
                  (assoc ::resolve resolve))))
   ([{::keys [transform op-name inferred-input input] :as config}]
-   [(s/or :map (s/keys :req [::op-name] :opt [::output ::resolve ::transform])
+   [(s/or :map (s/keys :req [::op-name] :opt [::input ::output ::resolve ::transform])
           :resolver ::resolver)
     => ::resolver]
    (let [config (if (resolver? config)
@@ -221,6 +221,10 @@
 
   Returns an instance of the Mutation type.
   "
+  ([op-name config]
+   [::op-name (s/keys :opt [::output ::params]) => ::mutation]
+   (mutation (-> config
+                 (coll/merge-defaults {::op-name op-name}))))
   ([op-name config mutate]
    [::op-name (s/keys :opt [::output ::params]) ::mutate => ::mutation]
    (mutation (-> config

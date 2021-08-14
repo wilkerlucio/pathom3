@@ -1598,26 +1598,25 @@
                           {:type :prop, :dispatch-key :c, :key :c}]},
            :c {:a 1}}))))
 
-(comment
-  (run-graph
-    (pci/register
-      [(pco/resolver 'dynamic
-         {::pco/dynamic-resolver? true
-          ::pco/cache?            false}
-         (fn [_ {::pcr/keys [node-resolver-input]
-                 ::pcp/keys [foreign-ast]}]
-           {:b foreign-ast
-            :c node-resolver-input}))
-       (pco/resolver 'dyn-entry
-         {::pco/input        [:a]
-          ::pco/output       [:b]
-          ::pco/dynamic-name 'dynamic})
-       (pco/resolver 'dyn-entry2
-         {::pco/input        [:a]
-          ::pco/output       [:c]
-          ::pco/dynamic-name 'dynamic})])
-    {:a 1}
-    [:b :c]))
+(deftest run-graph!-dynamic-mutation-test
+  (testing "dynamic resolver"
+    (is (graph-response?
+          (pci/register
+            [(pco/resolver 'dynamic
+               {::pco/dynamic-resolver? true
+                ::pco/cache?            false}
+               (fn [_ input]
+                 {'dyn-mutation input}))
+             (pco/mutation 'dyn-mutation
+               {::pco/dynamic-name 'dynamic})])
+          {}
+          [(list 'dyn-mutation {:foo "bar"})]
+          '{dyn-mutation {:com.wsscode.pathom3.connect.planner/foreign-ast
+                          {:type     :root,
+                           :children [{:dispatch-key dyn-mutation,
+                                       :key          dyn-mutation,
+                                       :params       {:foo "bar"},
+                                       :type         :call}]}}}))))
 
 (deftest run-graph!-batch-dynamic-resolvers-test
   (testing "dynamic resolver batching"
