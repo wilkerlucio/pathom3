@@ -1,6 +1,6 @@
 # Changelog
 
-## [2021.07.30-alpha]
+## [2021.08.14-alpha]
 - Fix cache store specs
 - Add `::pcr/wrap-process-sequence-item` plugin entry point
 - Add `filtered-sequence-items-plugin` new built-in plugin
