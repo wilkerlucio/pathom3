@@ -4,31 +4,53 @@
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
-    [com.wsscode.pathom3.entity-tree :as p.ent]
-    [com.wsscode.pathom3.path :as p.path]
+    [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.promesa.macros :refer [clet]]))
 
 (def index-query
   [::pci/indexes])
 
-(defn compute-foreign-input [{::pcp/keys [node] :as env}]
-  (let [input  (::pcp/input node)
-        entity (p.ent/entity env)]
-    (select-keys entity (keys input))))
+(defn foreign-indexed-key [i]
+  (keyword ">" (str "foreign-" i)))
 
 (defn compute-foreign-request
-  [{::pcp/keys [node] :as env}]
-  {:pathom/ast    (::pcp/foreign-ast node)
-   :pathom/entity (compute-foreign-input env)})
+  [inputs]
+  (let [ph-requests (into []
+                          (map-indexed
+                            (fn [i {::pcp/keys [foreign-ast]
+                                    ::pcr/keys [node-resolver-input]}]
+                              (let [k (foreign-indexed-key i)]
+                                (cond-> {:type         :join
+                                         :key          k
+                                         :dispatch-key k
+                                         :children     (:children foreign-ast)}
+                                  (seq node-resolver-input)
+                                  (assoc :params node-resolver-input)))))
+                          inputs)
+        ast         {:type     :root
+                     :children ph-requests}]
+    {:pathom/ast ast}))
 
-(defn internalize-foreign-errors
-  [{::p.path/keys [path]
-    ::keys        [join-node]} errors]
-  (coll/map-keys #(into (pop path) (cond-> % join-node next)) errors))
+(defn compute-foreign-mutation
+  [{::pcp/keys [node]}]
+  {:pathom/ast (::pcp/foreign-ast node)})
 
-(defn call-foreign [env foreign]
-  (let [foreign-call (compute-foreign-request env)]
+(defn call-foreign-mutation [foreign env]
+  (let [foreign-call (compute-foreign-mutation env)]
     (foreign foreign-call)))
+
+(defn call-foreign-query [foreign inputs]
+  (clet [foreign-call (compute-foreign-request inputs)
+         result       (foreign foreign-call)]
+    (into
+      []
+      (map #(get result (foreign-indexed-key %)))
+      (range (count inputs)))))
+
+(defn call-foreign [foreign env inputs]
+  (if (-> env ::pcp/node ::pcp/foreign-ast :children first :type (= :call))
+    (call-foreign-mutation foreign env)
+    (call-foreign-query foreign inputs)))
 
 (pco/defresolver foreign-indexes-resolver [env _]
   {::pci/indexes
@@ -68,8 +90,10 @@
         (assoc-in [::pci/index-resolvers index-source-id]
           (pco/resolver index-source-id
             {::pco/cache?            false
+             ::pco/batch?            true
              ::pco/dynamic-resolver? true}
-            (fn [env _] (call-foreign env foreign))))
+            (fn [env inputs]
+              (call-foreign foreign env inputs))))
         (dissoc ::pci/index-source-id)
         (assoc-in [::foreign-indexes index-source-id] indexes))))
 

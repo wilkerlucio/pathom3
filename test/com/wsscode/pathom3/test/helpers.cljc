@@ -8,6 +8,14 @@
         return)
       {:calls calls})))
 
+(defn spy-fn [f]
+  (let [calls (atom [])]
+    (with-meta
+      (fn [& args]
+        (swap! calls conj args)
+        (apply f args))
+      {:calls calls})))
+
 (defn match-error [error-msg-regex]
   (fn [value]
     (re-find error-msg-regex (ex-message value))))
