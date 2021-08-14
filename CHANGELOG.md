@@ -6,6 +6,7 @@
 - Add `filtered-sequence-items-plugin` new built-in plugin
 - Batch support for dynamic resolvers
 - Batch support on foreign requests
+- Dynamic resolvers always get rich inputs with input data and foreign ast
 
 ## [2021.07.30-alpha]
 - Fix lenient mode optional inputs, it was marking errors when it shouldn't

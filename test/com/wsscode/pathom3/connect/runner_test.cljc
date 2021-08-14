@@ -1571,7 +1571,55 @@
                :ont/events-withs-fn                                   "event-withs-fn",
                :entity.metric.query.response/unformatted-metric-honey "something"}))))))
 
-(deftest run-graph!-batch-dynamic-resolvers
+(deftest run-graph!-dynamic-resolvers-test
+  (testing "dynamic resolver"
+    (is (graph-response?
+          (pci/register
+            [(pco/resolver 'dynamic
+               {::pco/dynamic-resolver? true
+                ::pco/cache?            false}
+               (fn [_ {::pcr/keys [node-resolver-input]
+                       ::pcp/keys [foreign-ast]}]
+                 {:b foreign-ast
+                  :c node-resolver-input}))
+             (pco/resolver 'dyn-entry
+               {::pco/input        [:a]
+                ::pco/output       [:b]
+                ::pco/dynamic-name 'dynamic})
+             (pco/resolver 'dyn-entry2
+               {::pco/input        [:a]
+                ::pco/output       [:c]
+                ::pco/dynamic-name 'dynamic})])
+          {:a 1}
+          [:b :c]
+          {:a 1,
+           :b {:type :root,
+               :children [{:type :prop, :dispatch-key :b, :key :b}
+                          {:type :prop, :dispatch-key :c, :key :c}]},
+           :c {:a 1}}))))
+
+(comment
+  (run-graph
+    (pci/register
+      [(pco/resolver 'dynamic
+         {::pco/dynamic-resolver? true
+          ::pco/cache?            false}
+         (fn [_ {::pcr/keys [node-resolver-input]
+                 ::pcp/keys [foreign-ast]}]
+           {:b foreign-ast
+            :c node-resolver-input}))
+       (pco/resolver 'dyn-entry
+         {::pco/input        [:a]
+          ::pco/output       [:b]
+          ::pco/dynamic-name 'dynamic})
+       (pco/resolver 'dyn-entry2
+         {::pco/input        [:a]
+          ::pco/output       [:c]
+          ::pco/dynamic-name 'dynamic})])
+    {:a 1}
+    [:b :c]))
+
+(deftest run-graph!-batch-dynamic-resolvers-test
   (testing "dynamic resolver batching"
     (is (graph-response?
           (pci/register

@@ -425,6 +425,13 @@
                                   (ex-info (str "Resolver " op-name " exception at path " (pr-str path) ": " (ex-message error))
                                            {::p.path/path path} error))))
 
+(defn enhance-dynamic-input
+  [{::pco/keys [dynamic-resolver?]} node input-data]
+  (if dynamic-resolver?
+    {::node-resolver-input input-data
+     ::pcp/foreign-ast     (::pcp/foreign-ast node)}
+    input-data))
+
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
@@ -438,11 +445,13 @@
     :as        node}]
   (let [resolver        (pci/resolver env op-name)
         {::pco/keys [op-name batch? cache? cache-store optionals]
-         :or        {cache? true}} (pco/operation-config resolver)
+         :or        {cache? true}
+         :as        r-config} (pco/operation-config resolver)
         env             (assoc env ::pcp/node node)
         entity          (p.ent/entity env)
         input-data      (pfsd/select-shape-filtering entity (pfsd/merge-shapes input optionals) input)
         input-shape     (pfsd/data->shape-descriptor input-data)
+        input-data      (enhance-dynamic-input r-config node input-data)
         params          (pco/params env)
         cache-store     (choose-cache-store env cache-store)
         resolver-cache* (get env cache-store)
@@ -859,16 +868,8 @@
                 (pfsd/select-shape ent' (assoc (::pcp/expects node)
                                           ::attribute-errors {})))))))))
 
-(defn batch-dynamic-input-key [{::keys     [node-resolver-input]
-                                ::pcp/keys [node]}]
-  {::node-resolver-input node-resolver-input
-   ::pcp/foreign-ast     (::pcp/foreign-ast node)})
-
-(defn batch-group-input-groups [resolver batch-items]
-  (let [{::pco/keys [dynamic-resolver?]} (pco/operation-config resolver)]
-    (if dynamic-resolver?
-      (group-by batch-dynamic-input-key batch-items)
-      (group-by ::node-resolver-input batch-items))))
+(defn batch-group-input-groups [batch-items]
+  (group-by ::node-resolver-input batch-items))
 
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
@@ -876,7 +877,7 @@
     (vreset! batches* {})
     (doseq [[batch-op batch-items] batches]
       (let [resolver     (pci/resolver env batch-op)
-            input-groups (batch-group-input-groups resolver batch-items)
+            input-groups (batch-group-input-groups batch-items)
             inputs       (keys input-groups)
             batch-env    (-> batch-items first ::env
                              (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))

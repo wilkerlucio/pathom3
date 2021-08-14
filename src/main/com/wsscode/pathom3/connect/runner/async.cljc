@@ -202,11 +202,13 @@
     :as        node}]
   (let [resolver        (pci/resolver env op-name)
         {::pco/keys [op-name batch? cache? cache-store optionals]
-         :or        {cache? true}} (pco/operation-config resolver)
+         :or        {cache? true}
+         :as        r-config} (pco/operation-config resolver)
         env             (assoc env ::pcp/node node)
         entity          (p.ent/entity env)
         input-data      (pfsd/select-shape-filtering entity (pfsd/merge-shapes input optionals) input)
         input-shape     (pfsd/data->shape-descriptor input-data)
+        input-data      (pcr/enhance-dynamic-input r-config node input-data)
         params          (pco/params env)
         cache-store     (pcr/choose-cache-store env cache-store)
         resolver-cache* (get env cache-store)
@@ -480,7 +482,7 @@
     (reduce-async
       (fn [_ [batch-op batch-items]]
         (p/let [resolver     (pci/resolver env batch-op)
-                input-groups (pcr/batch-group-input-groups resolver batch-items)
+                input-groups (pcr/batch-group-input-groups batch-items)
                 inputs       (keys input-groups)
                 batch-env    (-> batch-items first ::pcr/env
                                  (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
