@@ -212,6 +212,13 @@
       (is (= (p.eql/process env ['(doit {})])
              {'doit {:done true}}))))
 
+  #?(:clj
+     (let [foreign (-> (pci/register (pco/mutation 'doit {::pco/output [:done]} (fn [_ _] {:done true})))
+                       (serialize-boundary))
+           env     (-> (pci/register (pcf/foreign-register foreign)))]
+       (is (= @(p.a.eql/process env ['(doit {})])
+              {'doit {:done true}}))))
+
   (testing "mutation query going over"
     (testing "attribute directly in mutation output"
       (let [foreign (-> (pci/register

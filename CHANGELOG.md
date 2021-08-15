@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Fix foreign mutation on async runner
+
 ## [2021.08.14-alpha]
 - Fix cache store specs
 - Add `::pcr/wrap-process-sequence-item` plugin entry point

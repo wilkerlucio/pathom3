@@ -370,8 +370,9 @@
   [env {:keys [key] :as ast}]
   (let [ast      (cond-> ast (not (:children ast)) (dissoc :children))
         mutation (pci/mutation env key)
-        {::pco/keys [dynamic-name batch?]} (pco/operation-config mutation)
+        {::pco/keys [dynamic-name]} (pco/operation-config mutation)
         foreign  (pci/resolver env dynamic-name)
+        {::pco/keys [batch?]} (pco/operation-config foreign)
         ast      (pcp/promote-foreign-ast-children ast)]
     (p/let [res (pco.prot/-resolve
                   foreign
