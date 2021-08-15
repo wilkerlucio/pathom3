@@ -427,7 +427,8 @@
 (defn run-graph-entity-done [env]
   (p/do!
     ; placeholders
-    (merge-resolver-response! env (pcr/placeholder-merge-entity env))
+    (if (-> env ::pcp/graph ::pcp/placeholders)
+      (merge-resolver-response! env (pcr/placeholder-merge-entity env)))
     ; entity ready
     (p.plugin/run-with-plugins env ::pcr/wrap-entity-ready! pcr/run-graph-done! env)))
 
@@ -485,11 +486,15 @@
                       finish-plan (time/now-ms)]
                   (assoc plan
                     ::pcr/compute-plan-run-start-ms start-plan
-                    ::pcr/compute-plan-run-finish-ms finish-plan)))]
-    (run-graph!*
-      (assoc env
-        ::pcp/graph graph
-        ::p.ent/entity-tree* entity-tree*))))
+                    ::pcr/compute-plan-run-finish-ms finish-plan)))
+        env   (assoc env
+                ::pcp/graph graph
+                ::p.ent/entity-tree* entity-tree*)]
+    (if (pcr/runnable-graph? graph)
+      (run-graph!* env)
+      (do
+        (run-graph-entity-done env)
+        graph))))
 
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::pcr/batch-pending*)

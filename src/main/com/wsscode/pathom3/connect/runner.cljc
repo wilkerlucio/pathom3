@@ -746,7 +746,8 @@
 
 (defn run-graph-entity-done [env]
   ; placeholders
-  (merge-resolver-response! env (placeholder-merge-entity env))
+  (if (-> env ::pcp/graph ::pcp/placeholders)
+    (merge-resolver-response! env (placeholder-merge-entity env)))
   ; entity ready
   (p.plugin/run-with-plugins env ::wrap-entity-ready! run-graph-done!
     env))
@@ -788,6 +789,16 @@
 
     graph))
 
+(defn runnable-graph?
+  "Quick check to see if the graph has something to run. In the false case we can skip the
+  running section."
+  [graph]
+  (or (seq (::pcp/nodes graph))
+      (::pcp/mutations graph)
+      (::pcp/nested-process graph)
+      (::pcp/idents graph)
+      (::pcp/placeholders graph)))
+
 (defn plan-and-run!
   [env ast-or-graph entity-tree*]
   #_; keep commented for description, but don't want to validate this fn on runtime
@@ -804,11 +815,15 @@
                       finish-plan (time/now-ms)]
                   (assoc plan
                     ::compute-plan-run-start-ms start-plan
-                    ::compute-plan-run-finish-ms finish-plan)))]
-    (run-graph!*
-      (assoc env
-        ::pcp/graph graph
-        ::p.ent/entity-tree* entity-tree*))))
+                    ::compute-plan-run-finish-ms finish-plan)))
+        env (assoc env
+              ::pcp/graph graph
+              ::p.ent/entity-tree* entity-tree*)]
+    (if (runnable-graph? graph)
+      (run-graph!* env)
+      (do
+        (run-graph-entity-done env)
+        graph))))
 
 (defn assoc-end-plan-stats [env plan]
   (assoc plan
