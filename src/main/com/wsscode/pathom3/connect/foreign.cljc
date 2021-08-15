@@ -65,6 +65,7 @@
 (defn remove-foreign-indexes [indexes]
   (-> indexes
       (update ::pci/index-resolvers dissoc `foreign-indexes-resolver)
+      (update ::pci/index-mutations dissoc 'com.wsscode.pathom.viz.ws-connector.pathom3/request-snapshots)
       (update ::pci/index-attributes dissoc ::pci/indexes)
       (update ::pci/index-oir dissoc ::pci/indexes)
       (update-in [::pci/index-io #{}] dissoc ::pci/indexes)))

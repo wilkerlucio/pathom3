@@ -2,6 +2,7 @@
 
 ## [NEXT]
 - Fix foreign mutation on async runner
+- Remove viz request snapshots to allow multiple connectors on the same meshed graph
 
 ## [2021.08.14-alpha]
 - Fix cache store specs
