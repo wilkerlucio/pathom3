@@ -899,7 +899,11 @@
 (>defn shape-reachable?
   "Given an environment, available data and shape, determines if the whole shape
   is reachable (including nested dependencies)."
-  [{::keys [resolvers attr-resolvers-trail] :as env} available shape]
+  [{::keys [resolvers attr-resolvers-trail]
+    :com.wsscode.pathom3.error/keys [lenient-mode?]
+    :as env}
+   available
+   shape]
   [map? ::pfsd/shape-descriptor ::pfsd/shape-descriptor => boolean?]
   (let [missing (pfsd/missing available shape)]
     (if (seq missing)
@@ -910,7 +914,8 @@
                         (assoc
                           ::attr-resolvers-trail (into (or attr-resolvers-trail #{}) resolvers)
                           ::available-data available
-                          :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing))))]
+                          :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing)
+                          :com.wsscode.pathom3.error/lenient-mode? lenient-mode?)))]
         (every?
           (fn [[attr sub]]
             (if-let [nodes-subs (node-attribute-provides graph env attr)]
