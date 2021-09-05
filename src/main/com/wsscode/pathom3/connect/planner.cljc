@@ -925,6 +925,16 @@
           shape))
       true)))
 
+(>defn shape-statically-unreachable?
+  "Given an environment, available data and shape, determines if the whole shape
+  is statically unreachable (including nested dependencies)."
+  [env available shape]
+  [map? ::pfsd/shape-descriptor ::pfsd/shape-descriptor => boolean?]
+  (when (seq available)
+    (not (shape-reachable? (assoc env :com.wsscode.pathom3.error/lenient-mode? true)
+           available
+           shape))))
+
 (defn compute-attribute-nested-input-require [graph env attr shape nodes]
   (add-snapshot! graph env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))
                             ::highlight-nodes  (into #{} (map ::node-id) nodes)})
@@ -1096,34 +1106,36 @@
     ::pco/keys    [op-name]
     ast           :edn-query-language.ast/node
     :as           env}]
-  (let [ast-params (:params ast)
-        config     (pci/resolver-config env op-name)
-        op-name'   (or (::pco/dynamic-name config) op-name)
-        dynamic?   (pci/dynamic-resolver? env op-name')
-        sub        (if dynamic? (compute-dynamic-nested-requirements env))
-        requires   {attribute (or sub {})}]
-    (cond->
-      (new-node env
-                {::pco/op-name op-name'
-                 ::expects     requires
-                 ::input       input})
+  (let [{:keys [::pco/provides] :as config} (pci/resolver-config env op-name)
+        resolver-provided-shape             (get provides (:key ast))
+        ast-required-shape                  (pfsd/ast->shape-descriptor ast)]
+    (when-not (shape-statically-unreachable? env resolver-provided-shape ast-required-shape)
+      (let [ast-params (:params ast)
+            op-name'   (or (::pco/dynamic-name config) op-name)
+            dynamic?   (pci/dynamic-resolver? env op-name')
+            sub        (if dynamic? (compute-dynamic-nested-requirements env))
+            requires   {attribute (or sub {})}]
+        (cond-> (new-node env
+                  {::pco/op-name op-name'
+                   ::expects     requires
+                   ::input       input})
 
-      (seq ast-params)
-      (assoc ::params ast-params)
+          (seq ast-params)
+          (assoc ::params ast-params)
 
-      dynamic?
-      (assoc
-        ::source-op-name
-        op-name
+          dynamic?
+          (assoc
+           ::source-op-name
+           op-name
 
-        ::foreign-ast
-        {:type     :root
-         :children (if sub
-                     (let [ast' (pfsd/shape-descriptor->ast sub)]
-                       [(assoc ast
-                          :children (:children ast')
-                          :query (pfsd/shape-descriptor->query sub))])
-                     [ast])}))))
+           ::foreign-ast
+           {:type     :root
+            :children (if sub
+                        (let [ast' (pfsd/shape-descriptor->ast sub)]
+                          [(assoc ast
+                             :children (:children ast')
+                             :query (pfsd/shape-descriptor->query sub))])
+                        [ast])}))))))
 
 (defn compute-resolver-leaf
   "For a set of resolvers (the R part of OIR index), create one OR node that branches
@@ -1131,7 +1143,7 @@
   [graph {::keys [input] :as env} resolvers]
   (let [resolver-nodes (into
                          (list)
-                         (map #(create-node-for-resolver-call (assoc env ::pco/op-name %)))
+                         (keep #(create-node-for-resolver-call (assoc env ::pco/op-name %)))
                          resolvers)]
     (if (seq resolver-nodes)
       (-> (reduce #(-> %
