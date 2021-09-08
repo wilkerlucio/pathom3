@@ -2205,15 +2205,15 @@
                                       ::pco/input   [:b]
                                       ::pco/output  [:c]}]
               ::eql/query           [{:a [:c]}]})
-           {::pcp/nodes                 {2 {::pco/op-name        'dyn
+           {::pcp/nodes                 {3 {::pco/op-name        'dyn
                                             ::pcp/source-op-name 'a
-                                            ::pcp/node-id        2
+                                            ::pcp/node-id        3
                                             ::pcp/expects        {:a {:b {}}}
                                             ::pcp/input          {}
                                             ::pcp/foreign-ast    (eql/query->ast [{:a [:b]}])}}
-            ::pcp/index-resolver->nodes '{dyn #{2}}
-            ::pcp/root                  2
-            ::pcp/index-attrs           {:a #{2}}
+            ::pcp/index-resolver->nodes '{dyn #{3}}
+            ::pcp/root                  3
+            ::pcp/index-attrs           {:a #{3}}
             ::pcp/index-ast             {:a {:type         :join,
                                              :dispatch-key :a,
                                              :key          :a,
@@ -2239,15 +2239,15 @@
               ::pci/index-oir       {:a {{} #{'a}}
                                      :c {{:b {}} #{'c}}}
               ::eql/query           [{:a [:c]}]})
-           {::pcp/nodes                 {2 {::pco/op-name     'dyn
+           {::pcp/nodes                 {3 {::pco/op-name     'dyn
                                             ::pcp/source-op-name 'a
-                                            ::pcp/node-id     2
+                                            ::pcp/node-id     3
                                             ::pcp/expects     {:a {:c {}}}
                                             ::pcp/input       {}
                                             ::pcp/foreign-ast (eql/query->ast [{:a [:c]}])}}
-            ::pcp/index-resolver->nodes '{dyn #{2}}
-            ::pcp/root                  2
-            ::pcp/index-attrs           {:a #{2}}
+            ::pcp/index-resolver->nodes '{dyn #{3}}
+            ::pcp/root                  3
+            ::pcp/index-attrs           {:a #{3}}
             ::pcp/index-ast             {:a {:type         :join,
                                              :dispatch-key :a,
                                              :key          :a,
@@ -2289,9 +2289,9 @@
                                                                                :query        [:c
                                                                                               :d]
                                                                                :type         :join}}
-               :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{4}}
-               :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{4}}
-               :com.wsscode.pathom3.connect.planner/nodes                 {4 {:com.wsscode.pathom3.connect.operation/op-name   dyn
+               :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{7}}
+               :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{7}}
+               :com.wsscode.pathom3.connect.planner/nodes                 {7 {:com.wsscode.pathom3.connect.operation/op-name   dyn
                                                                               ::pcp/source-op-name a
                                                                               :com.wsscode.pathom3.connect.planner/expects     {:a {:b {}
                                                                                                                                     :c {}}}
@@ -2308,8 +2308,8 @@
                                                                                                                                             :type         :join}]
                                                                                                                                 :type     :root}
                                                                               :com.wsscode.pathom3.connect.planner/input       {}
-                                                                              :com.wsscode.pathom3.connect.planner/node-id     4}}
-               :com.wsscode.pathom3.connect.planner/root                  4})))))
+                                                                              :com.wsscode.pathom3.connect.planner/node-id     7}}
+               :com.wsscode.pathom3.connect.planner/root                  7})))))
 
 (deftest compute-run-graph-dynamic-unions-test
   (testing "forward union"
