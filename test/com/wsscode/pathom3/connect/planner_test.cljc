@@ -398,12 +398,16 @@
                                            3 {::pcp/expects {:container {}}
                                               ::pcp/node-id 3
                                               ::pcp/run-or  #{1 2}}}
-              ::pcp/index-ast             {:container {:type :prop :dispatch-key :container :key :container}}
+                ::pcp/index-ast             {:container {:type :join
+                                                         :dispatch-key :container
+                                                         :key :container
+                                                         :query [:item-1]
+                                                         :children [{:type :prop :dispatch-key :item-1 :key :item-1}]}}
               ::pcp/index-resolver->nodes {'nested-1-resolver #{2} 'nested-2-resolver #{1}}
               ::pcp/index-attrs           {:container #{1 2}}
               ::pcp/root                  3}
              (compute-run-graph
-              {::eql/query [:container]
+              {::eql/query [{:container [:item-1]}]
                ::resolvers '[{::pco/op-name nested-1-resolver
                               ::pco/output  [:container]}
                              {::pco/op-name nested-2-resolver
