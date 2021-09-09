@@ -750,7 +750,7 @@
 
       (is (thrown-with-msg?
             #?(:clj Throwable :cljs js/Error)
-            #"Pathom can't find a path for the following elements in the query: \[:c]"
+            #"Pathom can't find a path for the following elements in the query: \[:b]"
             (compute-run-graph
               {::resolvers [{::pco/op-name 'cycle-a
                              ::pco/output  [:a]}
@@ -1280,7 +1280,7 @@
   (testing "nested plan failure"
     (is (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
-          #"Pathom can't find a path for the following elements in the query: \[:c] at path \[:a]"
+          #"Pathom can't find a path for the following elements in the query: \[:d] at path \[]"
           (compute-run-graph
             {::resolvers [{::pco/op-name 'nested-provider
                            ::pco/output  [{:a [:b]}]}
