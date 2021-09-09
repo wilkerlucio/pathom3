@@ -1021,7 +1021,7 @@
           (graph-response?
             (pci/register
               [(pco/resolver 'users
-                 {::pco/output [{:main-db {:users [:user/id]}}]}
+                 {::pco/output [{:main-db [{:users [:user/id]}]}]}
                  (fn [_ _]
                    {:main-db
                     {:users [{:user/id 1}
