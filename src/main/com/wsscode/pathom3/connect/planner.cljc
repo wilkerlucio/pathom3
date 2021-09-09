@@ -899,11 +899,7 @@
 (>defn shape-reachable?
   "Given an environment, available data and shape, determines if the whole shape
   is reachable (including nested dependencies)."
-  [{::keys [resolvers attr-resolvers-trail]
-    :com.wsscode.pathom3.error/keys [lenient-mode?]
-    :as env}
-   available
-   shape]
+  [{::keys [resolvers attr-resolvers-trail] :as env} available shape]
   [map? ::pfsd/shape-descriptor ::pfsd/shape-descriptor => boolean?]
   (let [missing (pfsd/missing available shape)]
     (if (seq missing)
@@ -914,8 +910,8 @@
                         (assoc
                           ::attr-resolvers-trail (into (or attr-resolvers-trail #{}) resolvers)
                           ::available-data available
-                          :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing)
-                          :com.wsscode.pathom3.error/lenient-mode? lenient-mode?)))]
+                          :com.wsscode.pathom3.error/lenient-mode? true
+                          :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing))))]
         (every?
           (fn [[attr sub]]
             (if-let [nodes-subs (node-attribute-provides graph env attr)]
@@ -925,15 +921,6 @@
           shape))
       true)))
 
-(>defn shape-statically-unreachable?
-  "Given an environment, available data and shape, determines if the whole shape
-  is statically unreachable (including nested dependencies)."
-  [env available shape]
-  [map? ::pfsd/shape-descriptor ::pfsd/shape-descriptor => boolean?]
-  (when (seq available)
-    (not (shape-reachable? (assoc env :com.wsscode.pathom3.error/lenient-mode? true)
-           available
-           shape))))
 
 (defn compute-attribute-nested-input-require [graph env attr shape nodes]
   (add-snapshot! graph env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))
@@ -1109,7 +1096,8 @@
   (let [{:keys [::pco/provides] :as config} (pci/resolver-config env op-name)
         resolver-provided-shape             (get provides (:key ast))
         ast-required-shape                  (pfsd/ast->shape-descriptor ast)]
-    (when-not (shape-statically-unreachable? env resolver-provided-shape ast-required-shape)
+    (when (or (not (seq resolver-provided-shape))
+              (shape-reachable? env resolver-provided-shape ast-required-shape))
       (let [ast-params (:params ast)
             op-name'   (or (::pco/dynamic-name config) op-name)
             dynamic?   (pci/dynamic-resolver? env op-name')
