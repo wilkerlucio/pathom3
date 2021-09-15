@@ -66,6 +66,9 @@
   [data]
   (zipmap (keys data) (repeat {})))
 
+(defn shape-params [shape-value params]
+  (vary-meta shape-value assoc ::params params))
+
 (>defn ast->shape-descriptor
   "Convert EQL AST to shape descriptor format."
   [ast]
@@ -77,7 +80,7 @@
           (reduce merge-shapes m unions))
         (assoc m key (cond-> (ast->shape-descriptor node)
                        (seq params)
-                       (vary-meta assoc ::params params)))))
+                       (shape-params params)))))
     {}
     (:children ast)))
 
