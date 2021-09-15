@@ -21,7 +21,8 @@
   ([a b]
    (cond
      (and (map? a) (map? b))
-     (merge-with merge-shapes a b)
+     (with-meta (merge-with merge-shapes a b)
+       (merge (meta a) (meta b)))
 
      (map? a) a
      (map? b) b
