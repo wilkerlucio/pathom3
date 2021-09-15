@@ -2367,7 +2367,56 @@
                                                                                                                                 :type     :root}
                                                                               :com.wsscode.pathom3.connect.planner/input       {}
                                                                               :com.wsscode.pathom3.connect.planner/node-id     4}}
-               :com.wsscode.pathom3.connect.planner/root                  4})))))
+               :com.wsscode.pathom3.connect.planner/root                  4})))
+
+    (testing "forward nested inputs"
+      (is (= (compute-run-graph
+               {::dynamics  {'dyn [{::pco/op-name
+                                    'line-items
+
+                                    ::pco/output
+                                    [{:order/line-items
+                                      [:line-item/id
+                                       :line-item/quantity
+                                       :line-item/title
+                                       :line-item/price-total]}]}]}
+                ::resolvers [{::pco/op-name 'total
+                              ::pco/input   [{:order/line-items
+                                              [:line-item/price-total]}]
+                              ::pco/output  [:order/items-total]}]
+                ::eql/query [:order/items-total]})
+             '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    total,
+                                                                              :com.wsscode.pathom3.connect.planner/expects      {:order/items-total {}},
+                                                                              :com.wsscode.pathom3.connect.planner/input        {:order/line-items {:line-item/price-total {}}},
+                                                                              :com.wsscode.pathom3.connect.planner/node-id      1,
+                                                                              :com.wsscode.pathom3.connect.planner/node-parents #{2}},
+                                                                           2 {:com.wsscode.pathom3.connect.operation/op-name      dyn,
+                                                                              :com.wsscode.pathom3.connect.planner/expects        {:order/line-items {:line-item/price-total {}}},
+                                                                              :com.wsscode.pathom3.connect.planner/input          {},
+                                                                              :com.wsscode.pathom3.connect.planner/node-id        2,
+                                                                              :com.wsscode.pathom3.connect.planner/source-op-name line-items,
+                                                                              :com.wsscode.pathom3.connect.planner/foreign-ast    {:type     :root,
+                                                                                                                                   :children [{:type         :join,
+                                                                                                                                               :key          :order/line-items,
+                                                                                                                                               :dispatch-key :order/line-items
+                                                                                                                                               :query        [:line-item/price-total]
+                                                                                                                                               :children     [{:type         :prop
+                                                                                                                                                               :key          :line-item/price-total
+                                                                                                                                                               :dispatch-key :line-item/price-total}]}]},
+                                                                              :com.wsscode.pathom3.connect.planner/run-next       1}},
+               :com.wsscode.pathom3.connect.planner/index-ast             {:order/items-total {:type         :prop,
+                                                                                               :dispatch-key :order/items-total,
+                                                                                               :key          :order/items-total},
+                                                                           :order/line-items  {:type         :join,
+                                                                                               :children     [{:type         :prop,
+                                                                                                               :key          :line-item/price-total,
+                                                                                                               :dispatch-key :line-item/price-total}],
+                                                                                               :key          :order/line-items,
+                                                                                               :dispatch-key :order/line-items}},
+               :com.wsscode.pathom3.connect.planner/index-resolver->nodes {total #{1}, dyn #{2}},
+               :com.wsscode.pathom3.connect.planner/index-attrs           {:order/items-total #{1},
+                                                                           :order/line-items  #{2}},
+               :com.wsscode.pathom3.connect.planner/root                  2})))))
 
 (deftest compute-run-graph-dynamic-unions-test
   (testing "forward union"

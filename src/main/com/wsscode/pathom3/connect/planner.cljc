@@ -956,9 +956,7 @@
                          (update ::attr-deps-trail coll/sconj (::p.attr/attribute env))
                          (assoc
                            :edn-query-language.ast/node
-                           {:type         :prop
-                            :key          attr
-                            :dispatch-key attr}))))]
+                           (first (pfsd/shape-descriptor->ast-children {attr shape}))))))]
     (if (::root graph')
       (let [nodes
             (->> (get-in graph' [::index-attrs attr])

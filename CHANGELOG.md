@@ -4,6 +4,7 @@
 - Fix foreign mutation on async runner
 - Remove viz request snapshots to allow multiple connectors on the same meshed graph
 - Fix the flow of params on foreign-ast
+- Fix nested dependency process
 
 ## [2021.08.14-alpha]
 - Fix cache store specs
