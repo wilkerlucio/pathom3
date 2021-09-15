@@ -1096,7 +1096,9 @@
         op-name'   (or (::pco/dynamic-name config) op-name)
         dynamic?   (pci/dynamic-resolver? env op-name')
         sub        (if dynamic? (compute-dynamic-nested-requirements env))
-        requires   {attribute (or sub {})}]
+        requires   {attribute (cond-> (or sub {})
+                                (seq ast-params)
+                                (pfsd/shape-params ast-params))}]
     (cond->
       (new-node env
                 {::pco/op-name op-name'
