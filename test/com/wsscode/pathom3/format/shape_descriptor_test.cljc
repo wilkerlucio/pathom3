@@ -1,7 +1,8 @@
 (ns com.wsscode.pathom3.format.shape-descriptor-test
   (:require
     [clojure.test :refer [deftest is are run-tests testing]]
-    [com.wsscode.pathom3.format.shape-descriptor :as psd]))
+    [com.wsscode.pathom3.format.shape-descriptor :as psd]
+    [com.wsscode.pathom3.test.helpers :as h]))
 
 (deftest query->shape-descriptor-test
   (testing "empty query"
@@ -23,7 +24,13 @@
   (testing "combining union queries"
     (is (= (psd/query->shape-descriptor
              [{:foo {:a [:x] :b [:y]}}])
-           {:foo {:x {} :y {}}}))))
+           {:foo {:x {} :y {}}})))
+
+  (testing "retain params"
+    (is (= (-> (psd/query->shape-descriptor
+                 [{:a [(list :b {:p "v"})]}])
+               (h/expose-meta))
+           {:a {:b {::h/meta {::psd/params {:p "v"}}}}}))))
 
 (deftest shape-descriptor->ast-test
   (testing "empty query"
@@ -66,7 +73,17 @@
                                                     :union-key :b,
                                                     :children  [{:type         :prop,
                                                                  :dispatch-key :bb,
-                                                                 :key          :bb}]}]}]}]}))))
+                                                                 :key          :bb}]}]}]}]})))
+
+  (testing "retain params"
+    (is (= (-> (psd/query->shape-descriptor
+                 [{:a [(list :b {:p "v"})]}])
+               (psd/shape-descriptor->ast))
+           {:type :root,
+            :children [{:type :join,
+                        :key :a,
+                        :dispatch-key :a,
+                        :children [{:type :prop, :key :b, :dispatch-key :b, :params {:p "v"}}]}]}))))
 
 (deftest shape-descriptor->query-test
   (testing "empty query"
@@ -95,7 +112,13 @@
              {:x ^::psd/union? {:a {:aa {}}
                                 :b {:bb {}}
                                 :c {}}})
-           [{:x {:a [:aa] :b [:bb] :c []}}]))))
+           [{:x {:a [:aa] :b [:bb] :c []}}])))
+
+  (testing "retain params"
+    (is (= (-> (psd/query->shape-descriptor
+                 [{:a [(list :b {:p "v"})]}])
+               (psd/shape-descriptor->query))
+           [{:a [(list :b {:p "v"})]}]))))
 
 (deftest data->shape-descriptor-test
   (is (= (psd/data->shape-descriptor {})
@@ -204,6 +227,11 @@
 
   (is (= (psd/intersection {:a {}} {:a {}})
          {:a {}}))
+
+  (testing "params"
+    (is (= (-> (psd/intersection {:a ^{::psd/params {:p "v"}} {}} {:a {}})
+               (h/expose-meta))
+           {:a {::h/meta {::psd/params {:p "v"}}}})))
 
   (testing "nested"
     (is (= (psd/intersection {:a {:b {}}} {:a {}})
