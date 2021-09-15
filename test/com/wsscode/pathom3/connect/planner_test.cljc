@@ -1781,34 +1781,92 @@
 
     (testing "retain params"
       (is (= (compute-run-graph
-               {::pci/index-resolvers {'dynamic-resolver
-                                       {::pco/op-name           'dynamic-resolver
-                                        ::pco/cache?            false
-                                        ::pco/dynamic-resolver? true
-                                        ::pco/resolve           (fn [_ _])}}
-                ::pci/index-oir       {:release/script {{:db/id {}} #{'dynamic-resolver}}}
-                ::pcp/available-data  {:db/id {}}
-                ::eql/query           [(list :release/script {:foo "bar"})]})
+               {::dynamics  {'dyn [{::pco/op-name 'a
+                                    ::pco/output  [:a]}]}
+                ::eql/query [(list :a {:b "c"})]})
 
-             {::pcp/nodes                 {1 {::pco/op-name        'dynamic-resolver
-                                              ::pcp/node-id        1
-                                              ::pcp/source-op-name 'dynamic-resolver
-                                              ::pcp/expects        {:release/script {}}
-                                              ::pcp/input          {:db/id {}}
-                                              ::pcp/params         {:foo "bar"}
-                                              ::pcp/foreign-ast    {:children [{:dispatch-key :release/script
-                                                                                :key          :release/script
-                                                                                :params       {:foo "bar"}
-                                                                                :type         :prop}]
-                                                                    :type     :root}}}
-              ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
-              ::pcp/root                  1
-              ::pcp/index-attrs           {:release/script #{1}}
+             '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name      dyn,
+                                                                              :com.wsscode.pathom3.connect.planner/expects        {:a {}},
+                                                                              :com.wsscode.pathom3.connect.planner/input          {},
+                                                                              :com.wsscode.pathom3.connect.planner/node-id        1,
+                                                                              :com.wsscode.pathom3.connect.planner/params         {:b "c"},
+                                                                              :com.wsscode.pathom3.connect.planner/source-op-name a,
+                                                                              :com.wsscode.pathom3.connect.planner/foreign-ast    {:type     :root,
+                                                                                                                                   :children [{:type         :prop,
+                                                                                                                                               :dispatch-key :a,
+                                                                                                                                               :key          :a,
+                                                                                                                                               :params       {:b "c"}}]}}},
+               :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :prop,
+                                                                               :dispatch-key :a,
+                                                                               :key          :a,
+                                                                               :params       {:b "c"}}},
+               :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{1}},
+               :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{1}},
+               :com.wsscode.pathom3.connect.planner/root                  1}))
 
-              ::pcp/index-ast             {:release/script {:type         :prop,
-                                                            :dispatch-key :release/script,
-                                                            :key          :release/script
-                                                            :params       {:foo "bar"}}}}))))
+      (testing "nested params"
+        (is (= (compute-run-graph
+                 {::dynamics  {'dyn [{::pco/op-name 'a
+                                      ::pco/output  [{:a [:b]}]}]}
+                  ::eql/query [{:a [(list :b {:p "v"})]}]})
+               '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name      dyn,
+                                                                                :com.wsscode.pathom3.connect.planner/expects        {:a {:b {}}},
+                                                                                :com.wsscode.pathom3.connect.planner/input          {},
+                                                                                :com.wsscode.pathom3.connect.planner/node-id        1,
+                                                                                :com.wsscode.pathom3.connect.planner/source-op-name a,
+                                                                                :com.wsscode.pathom3.connect.planner/foreign-ast    {:type     :root,
+                                                                                                                                     :children [{:type         :join,
+                                                                                                                                                 :dispatch-key :a,
+                                                                                                                                                 :key          :a,
+                                                                                                                                                 :query        [(:b {:p "v"})],
+                                                                                                                                                 :children     [{:type         :prop,
+                                                                                                                                                                 :key          :b,
+                                                                                                                                                                 :dispatch-key :b
+                                                                                                                                                                 :params       {:p "v"}}]}]}}},
+                 :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :join,
+                                                                                 :dispatch-key :a,
+                                                                                 :key          :a,
+                                                                                 :query        [(:b {:p "v"})],
+                                                                                 :children     [{:type         :prop,
+                                                                                                 :dispatch-key :b,
+                                                                                                 :key          :b,
+                                                                                                 :params       {:p "v"}}]}},
+                 :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{1}},
+                 :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{1}},
+                 :com.wsscode.pathom3.connect.planner/root                  1}))
+
+        (is (= (compute-run-graph
+                 {::dynamics  {'dyn [{::pco/op-name 'a
+                                      ::pco/output  [{:a [:b]}]}
+                                     {::pco/op-name 'c
+                                      ::pco/input   [:b]
+                                      ::pco/output  [:c]}]}
+                  ::eql/query [{:a [(list :c {:p "v"})]}]})
+               '{:com.wsscode.pathom3.connect.planner/nodes                 {2 {:com.wsscode.pathom3.connect.operation/op-name      dyn,
+                                                                                :com.wsscode.pathom3.connect.planner/expects        {:a {:c {}}},
+                                                                                :com.wsscode.pathom3.connect.planner/input          {},
+                                                                                :com.wsscode.pathom3.connect.planner/node-id        2,
+                                                                                :com.wsscode.pathom3.connect.planner/source-op-name a,
+                                                                                :com.wsscode.pathom3.connect.planner/foreign-ast    {:type     :root,
+                                                                                                                                     :children [{:type         :join,
+                                                                                                                                                 :dispatch-key :a,
+                                                                                                                                                 :key          :a,
+                                                                                                                                                 :query        [(:c {:p "v"})],
+                                                                                                                                                 :children     [{:type         :prop,
+                                                                                                                                                                 :key          :c,
+                                                                                                                                                                 :dispatch-key :c
+                                                                                                                                                                 :params       {:p "v"}}]}]}}},
+                 :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :join,
+                                                                                 :dispatch-key :a,
+                                                                                 :key          :a,
+                                                                                 :query        [(:c {:p "v"})],
+                                                                                 :children     [{:type         :prop,
+                                                                                                 :dispatch-key :c,
+                                                                                                 :key          :c,
+                                                                                                 :params       {:p "v"}}]}},
+                 :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{2}},
+                 :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{2}},
+                 :com.wsscode.pathom3.connect.planner/root                  2})))))
 
   (testing "optimize multiple calls"
     (is (= (compute-run-graph

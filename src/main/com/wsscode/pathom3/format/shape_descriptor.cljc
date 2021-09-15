@@ -21,7 +21,8 @@
   ([a b]
    (cond
      (and (map? a) (map? b))
-     (merge-with merge-shapes a b)
+     (with-meta (merge-with merge-shapes a b)
+       (merge (meta a) (meta b)))
 
      (map? a) a
      (map? b) b
@@ -65,16 +66,21 @@
   [data]
   (zipmap (keys data) (repeat {})))
 
+(defn shape-params [shape-value params]
+  (vary-meta shape-value assoc ::params params))
+
 (>defn ast->shape-descriptor
   "Convert EQL AST to shape descriptor format."
   [ast]
   [:edn-query-language.ast/node => ::shape-descriptor]
   (reduce
-    (fn [m {:keys [key type children] :as node}]
+    (fn [m {:keys [key type children params] :as node}]
       (if (refs/kw-identical? :union type)
         (let [unions (into [] (map ast->shape-descriptor) children)]
           (reduce merge-shapes m unions))
-        (assoc m key (ast->shape-descriptor node))))
+        (assoc m key (cond-> (ast->shape-descriptor node)
+                       (seq params)
+                       (shape-params params)))))
     {}
     (:children ast)))
 
@@ -100,14 +106,17 @@
 
       (into []
             (map (fn [[k v]]
-                   (if (seq v)
-                     {:type         :join
-                      :key          k
-                      :dispatch-key k
-                      :children     (shape-descriptor->ast-children v)}
-                     {:type         :prop
-                      :key          k
-                      :dispatch-key k})))
+                   (let [params (-> v meta ::params)]
+                     (cond-> {:type         :prop
+                              :key          k
+                              :dispatch-key k}
+                       (seq v)
+                       (assoc
+                         :type :join
+                         :children (shape-descriptor->ast-children v))
+
+                       (seq params)
+                       (assoc :params params)))))
             shape))))
 
 (>defn shape-descriptor->ast
@@ -127,9 +136,12 @@
             {}
             [])
           (map (fn [[k v]]
-                 (if (or (seq v) union?)
-                   {k (shape-descriptor->query v)}
-                   k)))
+                 (let [params (-> v meta ::params)]
+                   (cond-> (if (or (seq v) union?)
+                             {k (shape-descriptor->query v)}
+                             k)
+                     (seq params)
+                     (list params)))))
           shape)))
 
 (defn relax-empty-collections
@@ -208,13 +220,14 @@
   (reduce-kv
     (fn [out k sub]
       (if-let [x (find s2 k)]
-        (let [v (val x)]
+        (let [v    (val x)
+              meta (merge (meta sub) (meta v))]
           (if (and (seq sub) (seq v))
             (let [sub-inter (intersection sub v)]
               (if (seq sub-inter)
-                (assoc out k sub-inter)
-                (assoc out k {})))
-            (assoc out k {})))
+                (assoc out k (with-meta sub-inter meta))
+                (assoc out k (with-meta {} meta))))
+            (assoc out k (with-meta {} meta))))
         out))
     (or (empty s1) {})
     s1))

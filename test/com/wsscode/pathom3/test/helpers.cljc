@@ -1,4 +1,6 @@
-(ns com.wsscode.pathom3.test.helpers)
+(ns com.wsscode.pathom3.test.helpers
+  (:require
+    [clojure.walk :as walk]))
 
 (defn spy [{:keys [return]}]
   (let [calls (atom [])]
@@ -19,3 +21,12 @@
 (defn match-error [error-msg-regex]
   (fn [value]
     (re-find error-msg-regex (ex-message value))))
+
+(defn expose-meta [x]
+  (walk/postwalk
+    (fn [x]
+      (if (and (map? x)
+               (seq (meta x)))
+        (assoc x ::meta (meta x))
+        x))
+    x))
