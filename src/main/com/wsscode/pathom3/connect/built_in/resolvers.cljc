@@ -69,7 +69,9 @@
   ([attribute value]
    (let [resolver-name (attr->sym attribute "const")]
      (pco/resolver resolver-name
-       {::pco/output [attribute]
+       {::pco/output (if (coll? value)
+                       (pf.eql/data->query {attribute value})
+                       [attribute])
         ::pco/cache? false}
        (fn [_ _] {attribute value})))))
 

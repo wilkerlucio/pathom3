@@ -12,7 +12,17 @@
 
 (deftest constantly-resolver-test
   (is (= ((pbir/constantly-resolver :foo "bar"))
-         {:foo "bar"})))
+         {:foo "bar"}))
+
+  (testing "output inference"
+    (is (= (-> (pco/operation-config (pbir/constantly-resolver :foo {:bar "baz"}))
+               ::pco/output)
+           [{:foo [:bar]}]))
+
+    (is (= (-> (pco/operation-config (pbir/constantly-resolver :foo [{:bar "baz"}
+                                                                     {:other "ble"}]))
+               ::pco/output)
+           [{:foo [:bar :other]}]))))
 
 (deftest constantly-fn-resolver-test
   (is (= ((pbir/constantly-fn-resolver :foo (fn [_] "bar")))
