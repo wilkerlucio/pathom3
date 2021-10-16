@@ -6,6 +6,7 @@
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
+    [com.wsscode.pathom3.connect.runner.parallel :as pcrc]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.interface.eql :as p.eql]
@@ -15,7 +16,9 @@
 
 (defn process-ast* [env ast]
   (p/let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
-          result    (pcra/run-graph! env ast ent-tree*)]
+          result    (if (::parallel? env)
+                      (pcrc/run-graph! env ast ent-tree*)
+                      (pcra/run-graph! env ast ent-tree*))]
     (as-> result <>
       (pf.eql/map-select-ast (p.eql/select-ast-env env) <> ast))))
 

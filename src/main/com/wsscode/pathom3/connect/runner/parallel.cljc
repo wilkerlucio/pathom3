@@ -1,7 +1,8 @@
-(ns com.wsscode.pathom3.connect.runner.concurrent
+(ns com.wsscode.pathom3.connect.runner.parallel
   "WARN: this part of the library is under experimentation process, the design, interface
   and performance characteristics might change."
   (:require
+    [clojure.core.async :as async :refer [go-loop <! put!]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
@@ -19,12 +20,15 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
-    [com.wsscode.promesa.macros :refer [clet]]
     [promesa.core :as p]))
 
 (>def ::env (s/or :env (s/keys) :env-promise p/promise?))
+(>def ::batch-hold-delay-ms nat-int?)
+(>def ::batch-hold-flush-threshold nat-int?)
 
-(declare run-node! run-graph!)
+(declare run-node! run-graph!
+         run-graph-entity-done
+         run-root-node!)
 
 (defn- reduce-async [f init coll]
   (reduce
@@ -52,23 +56,21 @@
   [env ast s]
   (if (pco/final-value? s)
     s
-    (-> (reduce-async
-          (fn [[seq idx] entry]
-            (p/let [sub-res (p.plugin/run-with-plugins env
-                              ::pcr/wrap-process-sequence-item
-                              process-map-subquery
-                              (p.path/append-path env idx)
-                              ast
-                              entry)]
-              [(cond-> seq
-                 sub-res
-                 (conj sub-res))
-               (inc idx)]))
-          [(empty s) 0]
-          (cond-> s
-            (coll/coll-append-at-head? s)
-            reverse))
-        (p/then first))))
+    (p/let [results
+            (p/all
+              (into []
+                    (map-indexed
+                      (fn [idx entry]
+                        (p.plugin/run-with-plugins env
+                          ::pcr/wrap-process-sequence-item
+                          process-map-subquery
+                          (p.path/append-path env idx)
+                          ast
+                          entry)))
+                    s))]
+      (cond-> (into (empty s) (filter some?) results)
+        (coll/coll-append-at-head? s)
+        reverse))))
 
 (defn process-map-container-subquery
   "Build a new map where the values are replaced with the map process of the subquery."
@@ -131,7 +133,7 @@
   [env response]
   (if (map? response)
     (p/let [new-data (merge-entity-data env (p.ent/entity env) response)]
-      (p.ent/reset-entity! env new-data)
+      (p.ent/swap-entity! env coll/deep-merge new-data)
       env)
     env))
 
@@ -171,23 +173,101 @@
       (catch #?(:clj Throwable :cljs :default) e
         (p/rejected e)))))
 
-(defn- invoke-resolver-cached-batch
-  [env cache? op-name resolver cache-store input-data params]
-  (pcr/warn-batch-unsupported env op-name)
-  (if cache?
-    (p.cache/cached cache-store env
-      [op-name input-data params]
-      #(try
-         (clet [res (pcr/invoke-resolver-with-plugins resolver env [input-data])]
-           (first res))
-         (catch #?(:clj Throwable :cljs :default) e
-           (p/rejected e))))
+(>defn delayed-process
+  ([f debounce-window-ms]
+   [fn? ::batch-hold-delay-ms => any?]
+   (delayed-process f debounce-window-ms nil))
+  ([f debounce-window-ms flush-threshold]
+   [fn? ::batch-hold-delay-ms (? ::batch-hold-flush-threshold) => any?]
+   (let [income (async/chan 1024)]
+     (go-loop [buffer (list)]
+       (if (seq buffer)
+         (if (and flush-threshold (>= (count buffer) flush-threshold))
+           ; threshold flush
+           (do
+             (f (reverse buffer))
+             (recur (list)))
+           ; timer flush
+           (let [timer (async/timeout debounce-window-ms)
+                 [val port] (async/alts! [income timer] :priority true)]
+             (if (= port timer)
+               (do
+                 (f (reverse buffer))
+                 (recur (list)))
+               (recur (conj buffer val)))))
+         (when-let [item (<! income)]
+           ; wait for input
+           (recur (conj buffer item)))))
+     income)))
 
-    (try
-      (clet [res (pcr/invoke-resolver-with-plugins resolver env [input-data])]
-        (first res))
-      (catch #?(:clj Throwable :cljs :default) e
-        (p/rejected e)))))
+(comment
+  (def x (delayed-process clojure.pprint/pprint 100))
+  (def c (atom 0))
+  (dotimes [_ 10]
+    (put! x (swap! c inc))
+    (async/<!! (async/timeout (rand-int 200)))))
+
+(defn run-async-batches! [env batch-items]
+  (p/let [batch-op     (-> batch-items first ::pco/op-name)
+          resolver     (pci/resolver env batch-op)
+          input-groups (pcr/batch-group-input-groups batch-items)
+          inputs       (keys input-groups)
+          batch-env    (-> batch-items first ::pcr/env
+                           (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
+          start        (time/now-ms)
+          responses    (-> (p/do! (pcr/invoke-resolver-with-plugins resolver batch-env inputs))
+                           (p/catch (fn [e]
+                                      (pcr/mark-batch-errors e env batch-op batch-items))))
+          finish       (time/now-ms)]
+
+    (when-not (refs/kw-identical? ::pcr/node-error responses)
+      (if (not= (count inputs) (count responses))
+        (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
+
+      (tap> ["COMB" (pcr/combine-inputs-with-responses input-groups inputs responses)])
+
+      (doseq [[{env'       ::pcr/env
+                ::keys     [batch-response-promise]
+                ::pcp/keys [node]
+                ::pcr/keys [node-resolver-input]
+                :as        batch-item} response]
+              (pcr/combine-inputs-with-responses input-groups inputs responses)]
+        (pcr/cache-batch-item batch-item batch-op response)
+
+        (pcr/merge-node-stats! env' node
+          (merge {::pcr/batch-run-start-ms  start
+                  ::pcr/batch-run-finish-ms finish}
+                 (pcr/report-resolver-io-stats env' node-resolver-input response)))
+
+        (p/resolve! batch-response-promise response)))))
+
+(defn create-batch-processor
+  [{::keys [batch-hold-delay-ms
+            batch-hold-flush-threshold]
+    :as    env}]
+  (delayed-process #(run-async-batches! env %)
+                   batch-hold-delay-ms
+                   batch-hold-flush-threshold))
+
+(defn get-batch-process
+  [{::keys [async-batches*] :as env} op-name]
+  (-> (swap! async-batches*
+        (fn [batches]
+          (if (contains? batches op-name)
+            batches
+            (assoc batches op-name
+              (create-batch-processor env)))))
+      (get op-name)))
+
+(defn invoke-async-batch
+  [env cache? op-name node cache-store input-data]
+  (let [process  (get-batch-process env op-name)
+        response (p/deferred)]
+    (put! process
+          (-> (pcr/batch-hold-token env cache? op-name node cache-store input-data)
+              ::pcr/batch-hold
+              (assoc ::batch-response-promise response)))
+    response))
 
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
@@ -225,10 +305,8 @@
                                 batch?
                                 (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
                                   (val x)
-                                  (if (::pcr/unsupported-batch? env)
-                                    (invoke-resolver-cached-batch
-                                      env cache? op-name resolver cache-store input-data params)
-                                    (pcr/batch-hold-token env cache? op-name node cache-store input-data)))
+                                  (invoke-async-batch
+                                    env cache? op-name node cache-store input-data))
 
                                 :else
                                 (invoke-resolver-cached
@@ -254,13 +332,10 @@
   [env node]
   (if (or (pcr/resolver-already-ran? env node) (pcr/all-requires-ready? env node))
     (run-next-node! env node)
-    (p/let [_ (pcr/merge-node-stats! env node {::pcr/node-run-start-ms (time/now-ms)})
-            env' (assoc env ::pcp/node node)
-            {::pcr/keys [batch-hold] :as response}
-            (invoke-resolver-from-node env' node)]
+    (p/let [_        (pcr/merge-node-stats! env node {::pcr/node-run-start-ms (time/now-ms)})
+            env'     (assoc env ::pcp/node node)
+            response (invoke-resolver-from-node env' node)]
       (cond
-        batch-hold response
-
         (not (refs/kw-identical? ::pcr/node-error response))
         (p/do!
           (merge-resolver-response! env response)
@@ -333,19 +408,9 @@
   (p/do!
     (pcr/merge-node-stats! env and-node {::pcr/node-run-start-ms (time/now-ms)})
 
-    (p/let [res
-            (p/loop [xs run-and]
-              (if xs
-                (p/let [node-id  (first xs)
-                        node-res (run-node! env (pcp/get-node graph node-id))]
-                  (if (::pcr/batch-hold node-res)
-                    node-res
-                    (p/recur (next xs))))))]
-      (if (::pcr/batch-hold res)
-        res
-        (do
-          (pcr/merge-node-stats! env and-node {::pcr/node-run-finish-ms (time/now-ms)})
-          (run-next-node! env and-node))))))
+    (p/all (mapv #(run-node! env (pcp/get-node graph %)) run-and))
+    (pcr/merge-node-stats! env and-node {::pcr/node-run-finish-ms (time/now-ms)})
+    (run-next-node! env and-node)))
 
 (>defn run-node!
   "Run a node from the compute graph. This will start the processing on the sent node
@@ -435,15 +500,9 @@
 (defn run-root-node!
   [{::pcp/keys [graph] :as env}]
   (if-let [root (pcp/get-root-node graph)]
-    (p/let [{::pcr/keys [batch-hold]} (run-node! env root)]
-      (if batch-hold
-        (if (::pcr/nested-waiting? batch-hold)
-          ; add to wait
-          (refs/gswap! (::pcr/batch-waiting* env) coll/vconj batch-hold)
-          ; add to batch pending
-          (refs/gswap! (::pcr/batch-pending* env) update (::pco/op-name batch-hold)
-                       coll/vconj batch-hold))
-        (run-graph-entity-done env)))
+    (p/do!
+      (run-node! env root)
+      (run-graph-entity-done env))
     (run-graph-entity-done env)))
 
 (>defn run-graph!*
@@ -496,95 +555,12 @@
         (run-graph-entity-done env)
         graph))))
 
-(defn run-batches-pending! [env]
-  (let [batches* (-> env ::pcr/batch-pending*)
-        batches  @batches*]
-    (reset! batches* {})
-
-    (reduce-async
-      (fn [_ [batch-op batch-items]]
-        (p/let [resolver     (pci/resolver env batch-op)
-                input-groups (pcr/batch-group-input-groups batch-items)
-                inputs       (keys input-groups)
-                batch-env    (-> batch-items first ::pcr/env
-                                 (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
-                start        (time/now-ms)
-                responses    (-> (p/do! (pcr/invoke-resolver-with-plugins resolver batch-env inputs))
-                                 (p/catch (fn [e]
-                                            (pcr/mark-batch-errors e env batch-op batch-items))))
-                finish       (time/now-ms)]
-
-          (if (refs/kw-identical? ::pcr/node-error responses)
-            (if (:com.wsscode.pathom3.error/lenient-mode? env)
-              (reduce-async
-                (fn [_ {env'       ::pcr/env
-                        ::pcp/keys [node]}]
-                  (p/do!
-                    (run-graph-entity-done env')
-                    (pcr/merge-entity-to-root-data env env' node)))
-                nil
-                batch-items))
-            (do
-              (if (not= (count inputs) (count responses))
-                (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
-
-              (reduce-async
-                (fn [_ [{env'       ::pcr/env
-                         ::pcp/keys [node]
-                         ::pcr/keys [node-resolver-input]
-                         :as        batch-item} response]]
-                  (pcr/cache-batch-item batch-item batch-op response)
-
-                  (pcr/merge-node-stats! env' node
-                    (merge {::pcr/batch-run-start-ms  start
-                            ::pcr/batch-run-finish-ms finish}
-                           (pcr/report-resolver-io-stats env' node-resolver-input response)))
-
-                  (p/do!
-                    (merge-resolver-response! env' response)
-
-                    (pcr/merge-node-stats! env' node {::pcr/node-run-finish-ms (time/now-ms)})
-
-                    (run-root-node! env')
-
-                    (pcr/merge-entity-to-root-data env env' node)))
-                nil
-                (pcr/combine-inputs-with-responses input-groups inputs responses))))))
-      nil
-      batches)))
-
-(defn run-batches-waiting! [env]
-  (let [waits* (-> env ::pcr/batch-waiting*)
-        waits  @waits*]
-    (reset! waits* [])
-    (reduce-async
-      (fn [_ {env' ::pcr/env}]
-        (p.ent/reset-entity! env' (get-in (p.ent/entity env) (::p.path/path env')))
-
-        (p/do!
-          (run-root-node! env')
-
-          (when-not (p.path/root? env')
-            (p.ent/swap-entity! env assoc-in (::p.path/path env')
-              (p.ent/entity env')))))
-      nil
-      waits)))
-
-(defn run-batches! [env]
-  (p/do!
-    (run-batches-pending! env)
-    (run-batches-waiting! env)))
-
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]
-  (p/let [env  (pcr/setup-runner-env env entity-tree* atom)
+  (p/let [env  (-> (pcr/setup-runner-env env entity-tree* atom)
+                   (coll/merge-defaults {::batch-hold-delay-ms 5
+                                         ::async-batches*      (atom {})}))
           plan (plan-and-run! env ast-or-graph entity-tree*)]
-
-    ; run batches on root path only
-    (when (p.path/root? env)
-      (p/loop [_ (p/resolved nil)]
-        (when (seq @(::pcr/batch-pending* env))
-          (p/recur (run-batches! env)))))
 
     ; return result with run stats in meta
     (-> (p.ent/entity env)
@@ -599,4 +575,7 @@
          :graph ::pcp/graph) ::p.ent/entity-tree*
    => p/promise?]
   (p/let [env env]
-    (pcr/run-graph-with-plugins (assoc env ::async-runner? true) ast-or-graph entity-tree* run-graph-impl!)))
+    (pcr/run-graph-with-plugins
+      (assoc env ::async-runner? true)
+      ast-or-graph
+      entity-tree* run-graph-impl!)))
