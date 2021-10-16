@@ -224,8 +224,6 @@
       (if (not= (count inputs) (count responses))
         (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
 
-      (tap> ["COMB" (pcr/combine-inputs-with-responses input-groups inputs responses)])
-
       (doseq [[{env'       ::pcr/env
                 ::keys     [batch-response-promise]
                 ::pcp/keys [node]
@@ -295,12 +293,10 @@
         _               (pcr/merge-node-stats! env node
                           {::pcr/resolver-run-start-ms (time/now-ms)})
         response        (-> (if-let [missing (pfsd/missing input-shape input entity)]
-                              (if (pcr/missing-maybe-in-pending-batch? env input)
-                                (pcr/wait-batch-response env node)
-                                (p/rejected (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
-                                                     {:required  input
-                                                      :available input-shape
-                                                      :missing   missing})))
+                              (p/rejected (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
+                                                   {:required  input
+                                                    :available input-shape
+                                                    :missing   missing}))
                               (cond
                                 batch?
                                 (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
