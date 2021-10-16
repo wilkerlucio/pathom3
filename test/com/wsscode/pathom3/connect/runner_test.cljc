@@ -11,6 +11,7 @@
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
+    [com.wsscode.pathom3.connect.runner.parallel :as pcrc]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
@@ -120,6 +121,12 @@
   (let [ast (eql/query->ast query)]
     (pcra/run-graph! env ast (p.ent/create-entity tree))))
 
+(defn run-graph-parallel [env tree query]
+  (let [ast (eql/query->ast query)]
+    (p/timeout
+      (pcrc/run-graph! env ast (p.ent/create-entity tree))
+      3000)))
+
 (defn coords-resolver [c]
   (pco/resolver 'coords-resolver {::pco/output [::coords]}
     (fn [_ _] {::coords c})))
@@ -130,11 +137,15 @@
   (if (fn? expected)
     #_{:clj-kondo/ignore [:single-logical-operand]}
     (let [sync          (expected (run-graph env tree query))
-          async #?(:clj (expected @(run-graph-async env tree query)) :cljs true)]
+          async #?(:clj (expected @(run-graph-async env tree query))
+                   :cljs true)]
       (and sync
            async))
     (= (run-graph env tree query)
        #?(:clj (let [res @(run-graph-async env tree query)]
+                 ;(println res)
+                 res))
+       #?(:clj (let [res @(run-graph-parallel env tree query)]
                  ;(println res)
                  res))
        expected)))
@@ -555,7 +566,7 @@
               {}
               [:value]
               {:value 2}))
-        (is (= @spy #?(:clj 2 :cljs 1)))))
+        (is (= @spy #?(:clj 3 :cljs 1)))))
 
     (testing "one option fail, one succeed"
       (let [spy (atom 0)]
@@ -571,7 +582,7 @@
               {}
               [:error]
               {:error "value"}))
-        (is (= @spy #?(:clj 2 :cljs 1)))))
+        (is (= @spy #?(:clj 3 :cljs 1)))))
 
     (testing "all options fail"
       (is (thrown-with-msg?

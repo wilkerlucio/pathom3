@@ -340,19 +340,22 @@
      ::node-done?           true}))
 
 (defn missing-maybe-in-pending-batch?
+  "Check if there is any pending batching in the sub-path of the current input.
+
+  During the serial execution, a nested input process may be halted waiting to run
+  after the all entities pass. In this case we need to also halt the execution to wait
+  for that dependent input batch to run before moving on to process this node."
   [{::p.path/keys [path] :as env} input]
   (let [nested-inputs (coll/filter-vals seq input)]
     (if (seq nested-inputs)
-      (let [pending-nested?
-            (->> env ::batch-pending* deref vals
-                 (into [] cat)
-                 (map (comp
-                        #(subvec % (count path))
-                        ::p.path/path ::env))
-                 (some
-                   (fn [path']
-                     (contains? nested-inputs (first path')))))]
-        pending-nested?)
+      (->> env ::batch-pending* deref vals
+           (into [] cat)
+           (map (comp
+                  #(subvec % (count path))
+                  ::p.path/path ::env))
+           (some
+             (fn [path']
+               (contains? nested-inputs (first path')))))
       false)))
 
 (defn wait-batch-response [env node]
