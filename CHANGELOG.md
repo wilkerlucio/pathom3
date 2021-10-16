@@ -6,6 +6,7 @@
 - Fix the flow of params on foreign-ast
 - Fix nested dependency process
 - Infer output shape in constantly resolver
+- Parallel processor ð
 
 ## [2021.08.14-alpha]
 - Fix cache store specs
