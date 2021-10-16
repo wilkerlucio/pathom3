@@ -7,7 +7,7 @@
                  com.fulcrologic.guardrails.core/>defn   clojure.core/defn
                  potemkin.collections/def-map-type       clojure.core/deftype
                  promesa.core/let                        clojure.core/let
-                 promesa.core/loop                       clojure.core/loop}
+                 promesa.core/loop                       clojure.core/let}
  :linters       {:unsorted-required-namespaces {:level :off}
                  :invalid-arity                {:level :error}
                  :missing-else-branch          {:level :off}
