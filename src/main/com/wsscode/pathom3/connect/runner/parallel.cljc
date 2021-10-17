@@ -205,7 +205,7 @@
   (def c (atom 0))
   (dotimes [_ 10]
     (put! x (swap! c inc))
-    (async/<!! (async/timeout (rand-int 200)))))
+    @(p/delay (rand-int 200))))
 
 (defn run-async-batches! [env batch-items]
   (p/let [batch-op     (-> batch-items first ::pco/op-name)
