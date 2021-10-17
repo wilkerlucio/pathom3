@@ -289,35 +289,33 @@
         input-data      (pcr/enhance-dynamic-input r-config node input-data)
         params          (pco/params env)
         cache-store     (pcr/choose-cache-store env cache-store)
-        resolver-cache* (get env cache-store)
-        _               (pcr/merge-node-stats! env node
-                          {::pcr/resolver-run-start-ms (time/now-ms)})
-        response        (-> (if-let [missing (pfsd/missing input-shape input entity)]
-                              (p/rejected (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
-                                                   {:required  input
-                                                    :available input-shape
-                                                    :missing   missing}))
-                              (cond
-                                batch?
-                                (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
-                                  (val x)
-                                  (invoke-async-batch
-                                    env cache? op-name node cache-store input-data))
+        resolver-cache* (get env cache-store)]
+    (pcr/merge-node-stats! env node
+      {::pcr/resolver-run-start-ms (time/now-ms)})
+    (p/let [response (-> (if-let [missing (pfsd/missing input-shape input entity)]
+                           (p/rejected (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
+                                                {:required  input
+                                                 :available input-shape
+                                                 :missing   missing}))
+                           (cond
+                             batch?
+                             (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
+                               (val x)
+                               (invoke-async-batch
+                                 env cache? op-name node cache-store input-data))
 
-                                :else
-                                (invoke-resolver-cached
-                                  env cache? op-name resolver cache-store input-data params)))
-                            (p/catch
-                              (fn [error]
-                                (pcr/mark-node-error-with-plugins env node error)
-                                ::pcr/node-error)))]
-    (p/let [response response
+                             :else
+                             (invoke-resolver-cached
+                               env cache? op-name resolver cache-store input-data params)))
+                         (p/catch
+                           (fn [error]
+                             (pcr/mark-node-error-with-plugins env node error)
+                             ::pcr/node-error)))
             response (pcr/validate-response! env node response)]
       (let [finish (time/now-ms)]
         (pcr/merge-node-stats! env node
-          (cond-> {::pcr/resolver-run-finish-ms finish}
-            (not (::pcr/batch-hold response))
-            (merge (pcr/report-resolver-io-stats env input-data response)))))
+          (-> {::pcr/resolver-run-finish-ms finish}
+              (merge (pcr/report-resolver-io-stats env input-data response)))))
       response)))
 
 (defn run-resolver-node!
