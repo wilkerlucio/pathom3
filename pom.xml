@@ -6,7 +6,7 @@
   <artifactId>pathom3</artifactId>
   <version>2021.10.19-alpha</version>
   <name>pathom3</name>
-  <description>Logic programming though semantic attributes.</description>
+  <description>Logic programming via semantic attributes.</description>
   <url>https://github.com/wilkerlucio/pathom3</url>
   <licenses>
     <license>
