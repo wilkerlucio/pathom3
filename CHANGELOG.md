@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2021.10.19-alpha]
 - Fix foreign mutation on async runner
 - Remove viz request snapshots to allow multiple connectors on the same meshed graph
 - Fix the flow of params on foreign-ast
