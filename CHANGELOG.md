@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2021.10.20-alpha]
 - Add optimizations to OR branches that are sub-paths of each other
 - Support new `::pco/cache-key` setting for custom cache keys at resolver level
 
