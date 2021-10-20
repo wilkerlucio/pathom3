@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Add optimizations to OR branches that are sub-paths of each other
+
 ## [2021.10.19-alpha]
 - Fix foreign mutation on async runner
 - Remove viz request snapshots to allow multiple connectors on the same meshed graph

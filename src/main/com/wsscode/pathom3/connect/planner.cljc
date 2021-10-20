@@ -398,21 +398,40 @@
       (let [n (get-node graph nid)]
         (cond
           (contains? (::run-and n) node-id)
-          (update-node graph nid ::run-and disj node-id)
+          (-> g
+              (update-node nid ::run-and disj node-id)
+              (remove-node-parent node-id nid))
 
           (contains? (::run-or n) node-id)
-          (update-node graph nid ::run-or disj node-id)
+          (-> g
+              (update-node nid ::run-or disj node-id)
+              (remove-node-parent node-id nid))
+
+          (= (::run-next n) node-id)
+          (-> g
+              (set-node-run-next nid nil)
+              (remove-node-parent node-id nid))
 
           :else
           g)))
     graph
     node-parents))
 
+(defn remove-run-next-edge [graph node-id]
+  (let [{::keys [run-next]} (get-node graph node-id)]
+    (if run-next
+      (-> graph
+          (remove-node-parent run-next node-id)
+          (set-node-run-next node-id nil))
+      graph)))
+
 (defn remove-node-edges
   "Remove all node connections. This disconnect the nodes from parents and run-next."
   [graph node-id]
-  ;; TODO disconnect run-next
-  (remove-from-parent-branches graph node-id))
+  (let [node (get-node graph node-id)]
+    (-> graph
+        (remove-from-parent-branches node)
+        (remove-run-next-edge node-id))))
 
 (defn disj-rem [m k item]
   (let [new-val (disj (get m k) item)]
@@ -443,7 +462,7 @@
 
 (defn remove-node
   "Remove a node from the graph. In case of resolver nodes it also removes them
-  from the ::index-syms and after node references."
+  from the ::index-syms, the index-attrs and after node references."
   [graph node-id]
   (let [{::keys [run-next node-parents] :as node} (get-node graph node-id)]
     (assert (if node-parents
@@ -639,9 +658,14 @@
   [graph env node-id]
   [::graph map? ::node-id => ::graph]
   (let [node           (get-node graph node-id)
-        target-node-id (and (= 1 (count (::run-and node)))
-                            (not (::run-next node))
-                            (first (::run-and node)))]
+        target-node-id (and (not (::run-next node))
+                            (or
+                              (and
+                                (= 1 (count (::run-and node)))
+                                (first (::run-and node)))
+                              (and
+                                (= 1 (count (::run-or node)))
+                                (first (::run-or node)))))]
     (if target-node-id
       (-> graph
           (add-snapshot! env {::snapshot-message "Simplifying branch with single element"
@@ -1595,41 +1619,21 @@
 (defn optimize-AND-resolvers-pass
   "This pass will collapse the same resolver node branches. This also do a local optimization
   on AND's and OR's sub-nodes. This is important to simplify the pass to merge OR nodes."
-  [graph env sibling-ids parent-id]
-  (loop [graph graph
-         [pivot & node-ids] sibling-ids]
-    (if pivot
-      (cond
-        (get-node graph pivot ::pco/op-name)
-        (let [[graph' node-ids'] (optimize-AND-resolver-siblings graph env parent-id pivot node-ids)]
-          (recur graph' node-ids'))
+  [graph env parent-id]
+  (let [{::keys [run-and]} (get-node graph parent-id)]
+    (loop [graph graph
+           [pivot & node-ids] run-and]
+      (if pivot
+        (cond
+          (get-node graph pivot ::pco/op-name)
+          (let [[graph' node-ids'] (optimize-AND-resolver-siblings graph env parent-id pivot node-ids)]
+            (recur graph' node-ids'))
 
-        :else
-        (recur
-          (optimize-node graph env pivot)
-          node-ids))
-      graph)))
-
-(defn optimize-AND-ORs [graph _env sibling-ids _parent-id]
-  (let [or-nodes (into []
-                       (keep
-                         #(let [node (get-node graph %)]
-                            (if (::run-or node) node)))
-                       sibling-ids)]
-    (if (> (count or-nodes) 1)
-      (loop [graph graph
-             [pivot & other-nodes] or-nodes]
-        (reduce
-          (fn [graph or-node]
-            ; TODO need more checks
-            (if (= (count (::run-or pivot))
-                   (count (::run-or or-node)))
-              ; TODO need to figure how to merge the nodes
-              graph
-              graph))
-          graph
-          other-nodes))
-      graph)))
+          :else
+          (recur
+            (optimize-node graph env pivot)
+            node-ids))
+        graph))))
 
 (defn optimize-branch-items [graph env branch-node-id]
   (let [branches (node-branches (get-node graph branch-node-id))]
@@ -1641,15 +1645,74 @@
 
 (defn optimize-AND-branches
   [graph env node-id]
-  (let [{::keys [run-and]} (get-node graph node-id)]
-    (-> graph
-        (optimize-branch-items env node-id)
-        (optimize-AND-resolvers-pass env run-and node-id)
-        ;(optimize-AND-ORs env run-and node-id)
-        (simplify-branch-node env node-id))))
+  (-> graph
+      (optimize-branch-items env node-id)
+      (optimize-AND-resolvers-pass env node-id)
+      (simplify-branch-node env node-id)))
+
+(defn sub-sequence? [seq-a seq-b]
+  (->> (map #(= % %2) seq-a seq-b)
+       (every? true?)))
+
+(defn matching-chains? [chain-a chain-b]
+  (sub-sequence?
+    (map ::pco/op-name chain-a)
+    (map ::pco/op-name chain-b)))
+
+(defn merge-sibling-or-sub-chains [graph env [chain & other-chains]]
+  (reduce
+    (fn [graph chain']
+      (reduce
+        (fn [graph [{target-node-id ::node-id}
+                    {source-node-id ::node-id}]]
+          (-> graph
+              (add-snapshot! env {::snapshot-message "Merge sibling resolvers from same OR sub-path"
+                                  ::highlight-nodes  #{target-node-id source-node-id}})
+              (merge-sibling-resolver-node target-node-id source-node-id)))
+        graph
+        (mapv vector chain chain')))
+    graph
+    other-chains))
+
+(defn optimize-OR-sub-paths
+  "This function looks to match branches of the OR node that are
+  sub-paths of each other. In this case we can merge those chains
+  and return the number of branches in the OR node.
+
+  At this moment this fn only deals with paths that have only resolvers,
+  it may look for paths with sub-branches in the future."
+  [graph env node-id]
+  (let [{::keys [run-or]} (get-node graph node-id)
+        resolver-chains
+        (into #{}
+              (keep
+                (fn [node-id]
+                  (let [chain (find-run-next-descendants graph
+                                                         {::node-id node-id})]
+                    (if (every? ::pco/op-name chain)
+                      chain))))
+              run-or)]
+    (loop [graph graph
+           [pivot & chains] resolver-chains]
+      (if pivot
+        (let [[graph' chains']
+              (let [matching-chains (into #{}
+                                          (filter #(matching-chains? % pivot))
+                                          chains)
+                    merge-chains    (->> (conj matching-chains pivot)
+                                         (sort-by count #(compare %2 %)))
+                    graph'          (cond-> graph
+                                      (seq matching-chains)
+                                      (merge-sibling-or-sub-chains env merge-chains))]
+                [graph' (into #{} (remove matching-chains) chains)])]
+          (recur graph' chains'))
+        graph))))
 
 (defn optimize-OR-branches [graph env node-id]
-  (optimize-branch-items graph env node-id))
+  (-> graph
+      (optimize-branch-items env node-id)
+      (optimize-OR-sub-paths env node-id)
+      (simplify-branch-node env node-id)))
 
 (defn optimize-dynamic-resolver-chain?
   [graph {::pco/keys [op-name] ::keys [run-next]}]

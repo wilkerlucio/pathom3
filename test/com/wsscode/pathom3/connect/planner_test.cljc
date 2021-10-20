@@ -3202,6 +3202,68 @@
                                          :b #{1}}
                  :root                  1})))
 
+(deftest optimize-OR-subpaths-test
+  (is (= (pcp/optimize-OR-sub-paths
+           '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    a,
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:a {}},
+                                                                            :com.wsscode.pathom3.connect.planner/input        {},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      1,
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                                         2 {:com.wsscode.pathom3.connect.operation/op-name    b,
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:a {}},
+                                                                            :com.wsscode.pathom3.connect.planner/input        {:b {}},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      2,
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{3}},
+                                                                         3 {:com.wsscode.pathom3.connect.operation/op-name    a,
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:b {}},
+                                                                            :com.wsscode.pathom3.connect.planner/input        {},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      3,
+                                                                            :com.wsscode.pathom3.connect.planner/run-next     2,
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                                         4 {:com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id 4,
+                                                                            :com.wsscode.pathom3.connect.planner/run-or  #{1
+                                                                                                                           3}}},
+             :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :prop,
+                                                                             :dispatch-key :a,
+                                                                             :key          :a}},
+             :com.wsscode.pathom3.connect.planner/source-ast            {:type     :root,
+                                                                         :children [{:type         :prop,
+                                                                                     :dispatch-key :a,
+                                                                                     :key          :a}]},
+             :com.wsscode.pathom3.connect.planner/available-data        nil,
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1 3}, b #{2}},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{1 2}, :b #{3}},
+             :com.wsscode.pathom3.connect.planner/root                  4}
+           {}
+           4)
+         '{:com.wsscode.pathom3.connect.planner/nodes                 {2 {:com.wsscode.pathom3.connect.operation/op-name    b,
+                                                                          :com.wsscode.pathom3.connect.planner/expects      {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input        {:b {}},
+                                                                          :com.wsscode.pathom3.connect.planner/node-id      2,
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents #{3}},
+                                                                       3 {:com.wsscode.pathom3.connect.operation/op-name    a,
+                                                                          :com.wsscode.pathom3.connect.planner/expects      {:a {}
+                                                                                                                             :b {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input        {},
+                                                                          :com.wsscode.pathom3.connect.planner/node-id      3,
+                                                                          :com.wsscode.pathom3.connect.planner/run-next     2,
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                                       4 {:com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/node-id 4,
+                                                                          :com.wsscode.pathom3.connect.planner/run-or  #{3}}},
+           :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :prop,
+                                                                           :dispatch-key :a,
+                                                                           :key          :a}},
+           :com.wsscode.pathom3.connect.planner/source-ast            {:type     :root,
+                                                                       :children [{:type         :prop,
+                                                                                   :dispatch-key :a,
+                                                                                   :key          :a}]},
+           :com.wsscode.pathom3.connect.planner/available-data        nil,
+           :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{3}, b #{2}},
+           :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{3 2}, :b #{3}},
+           :com.wsscode.pathom3.connect.planner/root                  4})))
+
 (deftest simplify-branch-test
   (is (= (pcp/simplify-branch-node
            '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    dynamic-resolver,
@@ -3219,6 +3281,56 @@
                                                                              :com.wsscode.pathom3.connect.planner/node-parents #{3}},
                                                                           3 #:com.wsscode.pathom3.connect.planner{:node-id 3,
                                                                                                                   :run-and #{1}}},
+                                                  :index-ast             {:a {:type         :prop,
+                                                                              :dispatch-key :a,
+                                                                              :key          :a},
+                                                                          :b {:type         :prop,
+                                                                              :dispatch-key :b,
+                                                                              :key          :b}},
+                                                  :index-resolver->nodes {dynamic-resolver #{1}},
+                                                  :index-attrs           {:a #{1}, :b #{1}},
+                                                  :root                  3}
+           {}
+           3)
+         '#::pcp{:nodes                 {1 {::pco/op-name     dynamic-resolver,
+                                            ::pcp/expects     {:a {}
+                                                               :b {}}
+                                            ::pcp/input       {},
+                                            ::pcp/node-id     1,
+                                            ::pcp/foreign-ast {:type     :root,
+                                                               :children [{:type         :prop,
+                                                                           :dispatch-key :a,
+                                                                           :key          :a}
+                                                                          {:type         :prop,
+                                                                           :dispatch-key :b,
+                                                                           :key          :b}]},}},
+                 :index-ast             {:a {:type         :prop,
+                                             :dispatch-key :a,
+                                             :key          :a},
+                                         :b {:type         :prop,
+                                             :dispatch-key :b,
+                                             :key          :b}},
+                 :index-resolver->nodes {dynamic-resolver #{1}},
+                 :index-attrs           {:a #{1},
+                                         :b #{1}},
+                 :root                  1}))
+
+  (is (= (pcp/simplify-branch-node
+           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    dynamic-resolver,
+                                                                             :com.wsscode.pathom3.connect.planner/expects      {:a {},
+                                                                                                                                :b {}},
+                                                                             :com.wsscode.pathom3.connect.planner/input        {},
+                                                                             :com.wsscode.pathom3.connect.planner/node-id      1,
+                                                                             :com.wsscode.pathom3.connect.planner/foreign-ast  {:type     :root,
+                                                                                                                                :children [{:type         :prop,
+                                                                                                                                            :dispatch-key :a,
+                                                                                                                                            :key          :a}
+                                                                                                                                           {:type         :prop,
+                                                                                                                                            :dispatch-key :b,
+                                                                                                                                            :key          :b}]},
+                                                                             :com.wsscode.pathom3.connect.planner/node-parents #{3}},
+                                                                          3 #:com.wsscode.pathom3.connect.planner{:node-id 3,
+                                                                                                                  :run-or  #{1}}},
                                                   :index-ast             {:a {:type         :prop,
                                                                               :dispatch-key :a,
                                                                               :key          :a},
@@ -3356,3 +3468,44 @@
          {::pcp/nodes       {1 {::pcp/expects {:a {}
                                                :b {}}}}
           ::pcp/index-attrs {}})))
+
+(deftest remove-node-edges-test
+  (is (= (pcp/remove-node-edges
+           {::pcp/nodes {1 {::pcp/node-id 1
+                            ::pcp/run-and #{2}}
+                         2 {::pcp/node-id 2
+                            ::pcp/node-parents #{1}}}}
+           2)
+         {::pcp/nodes {1 {::pcp/node-id 1
+                          ::pcp/run-and #{}}
+                       2 {::pcp/node-id 2}}}))
+
+  (is (= (pcp/remove-node-edges
+           {::pcp/nodes {1 {::pcp/node-id 1
+                            ::pcp/run-and #{2}}
+                         2 {::pcp/node-id 2
+                            ::pcp/node-parents #{1 3}}
+                         3 {::pcp/node-id 3
+                            ::pcp/run-next 2}}}
+           2)
+         {::pcp/nodes {1 {::pcp/node-id 1
+                          ::pcp/run-and #{}}
+                       2 {::pcp/node-id 2}
+                       3 {::pcp/node-id 3}}}))
+
+  (is (= (pcp/remove-node-edges
+           {::pcp/nodes {1 {::pcp/node-id 1
+                            ::pcp/run-and #{2}}
+                         2 {::pcp/node-id 2
+                            ::pcp/node-parents #{1 3}
+                            ::pcp/run-next 4}
+                         3 {::pcp/node-id 3
+                            ::pcp/run-next 2}
+                         4 {::pcp/node-id 4
+                            ::pcp/node-parents #{2}}}}
+           2)
+         {::pcp/nodes {1 {::pcp/node-id 1
+                          ::pcp/run-and #{}}
+                       2 {::pcp/node-id 2}
+                       3 {::pcp/node-id 3}
+                       4 {::pcp/node-id 4}}})))
