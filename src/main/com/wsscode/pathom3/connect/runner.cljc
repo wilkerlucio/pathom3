@@ -366,11 +366,17 @@
 (defn invoke-resolver-with-plugins [resolver env input-data]
   (p.plugin/run-with-plugins env ::wrap-resolve #(pco.prot/-resolve resolver % %2) env input-data))
 
+(defn cache-key [env input-data op-name params]
+  (let [{::pco/keys [cache-key]} (pci/resolver-config env op-name)]
+    (if cache-key
+      (cache-key env input-data)
+      [op-name input-data params])))
+
 (defn- invoke-resolver-cached
   [env cache? op-name resolver cache-store input-data params]
   (if cache?
     (p.cache/cached cache-store env
-      [op-name input-data params]
+      (cache-key env input-data op-name params)
       #(invoke-resolver-with-plugins resolver env input-data))
 
     (invoke-resolver-with-plugins resolver env input-data)))
@@ -385,7 +391,7 @@
   (warn-batch-unsupported env op-name)
   (if cache?
     (p.cache/cached cache-store env
-      [op-name input-data params]
+      (cache-key env input-data op-name params)
       #(first (invoke-resolver-with-plugins resolver env [input-data])))
 
     (first (invoke-resolver-with-plugins resolver env [input-data]))))
@@ -862,7 +868,7 @@
    response]
   (if cache?
     (p.cache/cached cache-store env'
-      [batch-op node-resolver-input (pco/params batch-item)]
+      (cache-key env' node-resolver-input batch-op (pco/params batch-item))
       (fn [] response))))
 
 (defn combine-inputs-with-responses

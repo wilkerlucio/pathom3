@@ -162,7 +162,7 @@
   [env cache? op-name resolver cache-store input-data params]
   (if cache?
     (p.cache/cached cache-store env
-      [op-name input-data params]
+      (pcr/cache-key env input-data op-name params)
       #(try
          (pcr/invoke-resolver-with-plugins resolver env input-data)
          (catch #?(:clj Throwable :cljs :default) e

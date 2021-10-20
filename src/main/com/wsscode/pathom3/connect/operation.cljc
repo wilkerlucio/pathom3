@@ -33,6 +33,7 @@
 (>def ::docstring string?)
 (>def ::cache? boolean?)
 (>def ::cache-store keyword?)
+(>def ::cache-key fn?)
 (>def ::batch? boolean?)
 (>def ::priority int?)
 (>def ::resolve fn?)

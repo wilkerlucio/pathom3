@@ -1409,6 +1409,45 @@
             {:list
              [{:id 1 :v 100}
               {:id 2 :v 20}
+              {:id 3 :v 300}]})))
+
+    (testing "custom cache key"
+      (is (graph-response?
+            (pci/register
+              {::pcr/resolver-cache*
+               (volatile!
+                 {1 {:v 100}
+                  3 {:v 300}})}
+              [(-> (pbir/single-attr-resolver :id :v #(* 10 %))
+                   (pco/update-config assoc ::pco/cache-key
+                                      (fn [_ {:keys [id]}] id)))])
+            {:list
+             [{:id 1}
+              {:id 2}
+              {:id 3}]}
+            [{:list [:v]}]
+            {:list
+             [{:id 1 :v 100}
+              {:id 2 :v 20}
+              {:id 3 :v 300}]}))
+
+      (is (graph-response?
+            (pci/register
+              {::pcr/resolver-cache*
+               (custom-cache
+                 {1 {:v 100}
+                  3 {:v 300}})}
+              [(-> (pbir/single-attr-resolver :id :v #(* 10 %))
+                   (pco/update-config assoc ::pco/cache-key
+                                      (fn [_ {:keys [id]}] id)))])
+            {:list
+             [{:id 1}
+              {:id 2}
+              {:id 3}]}
+            [{:list [:v]}]
+            {:list
+             [{:id 1 :v 100}
+              {:id 2 :v 20}
               {:id 3 :v 300}]}))))
 
   (testing "errors"
@@ -1834,7 +1873,7 @@
         (is (= @cache*
                '{[-unqualified/x->y--attr-transform {:x 10} {:foo "bar"}] {:y 20}}))))
 
-    (testing "custom cache key"
+    (testing "custom cache store"
       (let [cache*    (atom {})
             my-cache* (atom {})]
         (is (graph-response?
@@ -1851,7 +1890,24 @@
         (is (= @cache*
                '{}))
         (is (= @my-cache*
-               '{[-unqualified/x->y--attr-transform {:x 10} {}] {:y 20}})))))
+               '{[-unqualified/x->y--attr-transform {:x 10} {}] {:y 20}}))))
+
+    (testing "custom cache key"
+      (let [cache* (atom {1 {:v 100}})]
+        (is (graph-response?
+              (pci/register
+                {::pcr/resolver-cache* cache*}
+                [(-> (pbir/single-attr-resolver :id :v #(* 10 %))
+                     (pco/update-config assoc ::pco/cache-key
+                                        (fn [_ {:keys [id]}] id)))])
+              {:items [{:id 1}
+                       {:id 2}]}
+              [{:items [:v]}]
+              {:items [{:id 1 :v 100}
+                       {:id 2 :v 20}]}))
+        (is (= @cache*
+               '{1 {:v 100}
+                 2 {:v 20}})))))
 
   (testing "cache hit"
     (is (graph-response?

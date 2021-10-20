@@ -2,6 +2,7 @@
 
 ## [NEXT]
 - Add optimizations to OR branches that are sub-paths of each other
+- Support new `::pco/cache-key` setting for custom cache keys at resolver level
 
 ## [2021.10.19-alpha]
 - Fix foreign mutation on async runner
