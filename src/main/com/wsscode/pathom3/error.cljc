@@ -4,7 +4,8 @@
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.attribute :as p.attr]
-    [com.wsscode.pathom3.connect.planner :as pcp]))
+    [com.wsscode.pathom3.connect.planner :as pcp]
+    [com.wsscode.pathom3.plugin :as p.plugin]))
 
 (>def ::phase keyword?)
 
@@ -86,14 +87,15 @@
   ; check if map has meta
   (some-> response meta (contains? :com.wsscode.pathom3.connect.runner/run-stats)))
 
-(defn process-entity-errors [entity]
+(defn process-entity-errors [env entity]
   (if (scan-for-errors? entity)
     (let [ast    (-> entity meta
                      :com.wsscode.pathom3.connect.runner/run-stats
                      :com.wsscode.pathom3.connect.planner/index-ast)
           errors (into {}
                        (keep (fn [k]
-                               (if-let [error (attribute-error entity k)]
+                               (if-let [error (p.plugin/run-with-plugins env ::wrap-attribute-error
+                                                attribute-error entity k)]
                                  (coll/make-map-entry k error))))
                        (keys ast))]
       (cond-> entity

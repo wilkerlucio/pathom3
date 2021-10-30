@@ -750,7 +750,7 @@
   (check-entity-requires! env)
   (p.ent/swap-entity! env include-meta-stats env (::pcp/graph env))
   (if (::p.error/lenient-mode? env)
-    (p.ent/swap-entity! env p.error/process-entity-errors))
+    (p.ent/swap-entity! env #(p.error/process-entity-errors env %)))
   nil)
 
 (defn run-graph-entity-done [env]
