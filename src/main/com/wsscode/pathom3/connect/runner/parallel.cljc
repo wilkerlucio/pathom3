@@ -570,6 +570,6 @@
    => p/promise?]
   (p/let [env env]
     (pcr/run-graph-with-plugins
-      (assoc env ::async-runner? true)
+      (assoc env :com.wsscode.pathom3.connect.runner.async/async-runner? true)
       ast-or-graph
       entity-tree* run-graph-impl!)))
