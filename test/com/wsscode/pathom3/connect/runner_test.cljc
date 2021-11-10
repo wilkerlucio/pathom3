@@ -1219,7 +1219,17 @@
           {:list
            [{:id 1 :v 100}
             {:id 2 :v 200}
-            {:id 3 :v 300}]})))
+            {:id 3 :v 300}]}))
+
+    (testing "different parameters get thrown in different calls"
+      (is (graph-response?
+            (pci/register [batch-param])
+            {:path1 {:id 1}
+             :path2 {:id 2}}
+            '[{:path1 [(:v {:multiplier 100})]}
+              {:path2 [(:v {:multiplier 30})]}]
+            {:path1 {:id 1 :v 100}
+             :path2 {:id 2 :v 60}}))))
 
   (testing "run stats"
     (is (some? (-> (run-graph

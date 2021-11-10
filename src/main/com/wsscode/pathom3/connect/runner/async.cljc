@@ -228,7 +228,7 @@
                                   (if (::pcr/unsupported-batch? env)
                                     (invoke-resolver-cached-batch
                                       env cache? op-name resolver cache-store input-data params)
-                                    (pcr/batch-hold-token env cache? op-name node cache-store input-data)))
+                                    (pcr/batch-hold-token env cache? op-name node cache-store input-data params)))
 
                                 :else
                                 (invoke-resolver-cached
@@ -441,7 +441,8 @@
           ; add to wait
           (refs/gswap! (::pcr/batch-waiting* env) coll/vconj batch-hold)
           ; add to batch pending
-          (refs/gswap! (::pcr/batch-pending* env) update (::pco/op-name batch-hold)
+          (refs/gswap! (::pcr/batch-pending* env) update
+                       (select-keys batch-hold [::pco/op-name ::pcp/params])
                        coll/vconj batch-hold))
         (run-graph-entity-done env)))
     (run-graph-entity-done env)))
@@ -502,7 +503,7 @@
     (reset! batches* {})
 
     (reduce-async
-      (fn [_ [batch-op batch-items]]
+      (fn [_ [{batch-op ::pco/op-name} batch-items]]
         (p/let [resolver     (pci/resolver env batch-op)
                 input-groups (pcr/batch-group-input-groups batch-items)
                 inputs       (keys input-groups)

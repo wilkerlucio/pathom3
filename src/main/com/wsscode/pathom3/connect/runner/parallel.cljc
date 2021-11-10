@@ -248,21 +248,22 @@
                    batch-hold-flush-threshold))
 
 (defn get-batch-process
-  [{::keys [async-batches*] :as env} op-name]
+  [{::keys [async-batches*] :as env} batch-split]
   (-> (swap! async-batches*
         (fn [batches]
-          (if (contains? batches op-name)
+          (if (contains? batches batch-split)
             batches
-            (assoc batches op-name
+            (assoc batches batch-split
               (create-batch-processor env)))))
-      (get op-name)))
+      (get batch-split)))
 
 (defn invoke-async-batch
-  [env cache? op-name node cache-store input-data]
-  (let [process  (get-batch-process env op-name)
+  [env cache? op-name node cache-store input-data params]
+  (let [process  (get-batch-process env {::pco/op-name op-name
+                                         ::pcp/params  params})
         response (p/deferred)]
     (put! process
-          (-> (pcr/batch-hold-token env cache? op-name node cache-store input-data)
+          (-> (pcr/batch-hold-token env cache? op-name node cache-store input-data params)
               ::pcr/batch-hold
               (assoc ::batch-response-promise response)))
     response))
@@ -302,7 +303,7 @@
                              (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
                                (val x)
                                (invoke-async-batch
-                                 env cache? op-name node cache-store input-data))
+                                 env cache? op-name node cache-store input-data params))
 
                              :else
                              (invoke-resolver-cached
