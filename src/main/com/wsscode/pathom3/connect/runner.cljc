@@ -397,11 +397,12 @@
     (first (invoke-resolver-with-plugins resolver env [input-data]))))
 
 (defn batch-hold-token
-  [env cache? op-name node cache-store input-data]
+  [env cache? op-name node cache-store input-data params]
   {::batch-hold {::pco/op-name         op-name
                  ::pcp/node            node
                  ::pco/cache?          cache?
                  ::pco/cache-store     cache-store
+                 ::pcp/params          params
                  ::node-resolver-input input-data
                  ::env                 env}})
 
@@ -481,7 +482,7 @@
                                 (if (::unsupported-batch? env)
                                   (invoke-resolver-cached-batch
                                     env cache? op-name resolver cache-store input-data params)
-                                  (batch-hold-token env cache? op-name node cache-store input-data)))
+                                  (batch-hold-token env cache? op-name node cache-store input-data params)))
 
                               :else
                               (invoke-resolver-cached
@@ -770,7 +771,8 @@
           ; add to wait
           (refs/gswap! (::batch-waiting* env) coll/vconj batch-hold)
           ; add to batch pending
-          (refs/gswap! (::batch-pending* env) update (::pco/op-name batch-hold)
+          (refs/gswap! (::batch-pending* env) update
+                       (select-keys batch-hold [::pco/op-name ::pcp/params])
                        coll/vconj batch-hold))
         (run-graph-entity-done env)))
     (run-graph-entity-done env)))
@@ -902,7 +904,7 @@
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
     (vreset! batches* {})
-    (doseq [[batch-op batch-items] batches]
+    (doseq [[{batch-op ::pco/op-name} batch-items] batches]
       (let [resolver     (pci/resolver env batch-op)
             input-groups (batch-group-input-groups batch-items)
             inputs       (keys input-groups)
