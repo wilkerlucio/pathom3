@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2021.11.16-alpha]
 - Add extension point `::p.error/wrap-attribute-error`
 - Fix batch calls with distinct parameters
 - Add `pco/final-value` helper to mark a value as final
