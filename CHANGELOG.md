@@ -3,6 +3,7 @@
 ## [NEXT]
 - Add extension point `::p.error/wrap-attribute-error`
 - Fix batch calls with distinct parameters
+- Add `pco/final-value` helper to mark a value as final
 
 ## [2021.10.20-alpha]
 - Add optimizations to OR branches that are sub-paths of each other

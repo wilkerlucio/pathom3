@@ -550,6 +550,20 @@
   [mutation f]
   (update mutation :mutate f))
 
+(defn final-value
+  "Makes a value final. This will add some meta-data to a collection or a map to
+  flag it as final. Data marked as final will make Pathom skip sub-processing it.
+
+  Example:
+
+      (pco/defresolver complex-done-list []
+        {:dont-process (pco/final-value [{:a 1} {:a 2} ...])})
+
+  Note that in this case, a query like `[{:dont-process [:a :b]}]` won't even try
+  to process `:b`, the vector value will be returned as-is."
+  [x]
+  (vary-meta x assoc ::final true))
+
 (defn final-value? [x]
   (some-> x meta ::final true?))
 

@@ -635,3 +635,9 @@
   (is (= (pco/describe-input [:foo {(pco/? :baz) [:x :y]}])
          {::pco/requires  {:foo {}}
           ::pco/optionals {:baz {:x {} :y {}}}})))
+
+(deftest final-value-test
+  (is (pco/final-value?
+        (pco/final-value {})))
+
+  (is (not (pco/final-value? {}))))
