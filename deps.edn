@@ -2,7 +2,7 @@
  ["src/main" "src/promesa" "resources"]
 
  :deps
- {com.fulcrologic/guardrails {:mvn/version "1.1.4"}
+ {com.fulcrologic/guardrails {:mvn/version "1.1.10"}
   org.clojure/core.async     {:mvn/version "1.3.610"}
   com.wsscode/cljc-misc      {:mvn/version "2021.10.16"}
   com.wsscode/log            {:git/url "https://github.com/wilkerlucio/log"
@@ -16,24 +16,26 @@
  :aliases
  {:provided
   {:extra-deps {org.clojure/clojure       {:mvn/version "1.11.0-alpha2"}
-                org.clojure/clojurescript {:mvn/version "1.10.764"}
-                org.clojure/core.async    {:mvn/version "1.3.610"}}}
+                org.clojure/clojurescript {:mvn/version "1.10.891"}
+                org.clojure/core.async    {:mvn/version "1.5.640"}}}
 
   :demos
-  {:extra-paths ["src/demos"]}
+  {:extra-paths ["src/demos"]
+   :extra-deps  {meander/epsilon {:mvn/version "0.0.602"}}}
 
   :test-deps
   {:extra-paths ["test"]
-   :extra-deps  {nubank/matcher-combinators {:mvn/version "3.1.4"}
+   :extra-deps  {nubank/matcher-combinators {:mvn/version "3.3.1"}
                  check/check                {:mvn/version "0.2.0"}
-                 meander/epsilon            {:mvn/version "0.0.602"}
+                 meander/epsilon            {:mvn/version "0.0.650"}
+                 tortue/spy                 {:mvn/version "2.9.0"}
                  org.clojure/test.check     {:mvn/version "1.1.0"}
                  com.wsscode/transito       {:git/url "https://github.com/wilkerlucio/transito"
                                              :sha     "7119312488e8e8eac0262b86b0c74f6d940de78e"}}}
 
   :tasks
   {:extra-paths ["src/tasks"]
-   :extra-deps  {babashka/babashka {:mvn/version "0.4.6"}}}
+   :extra-deps  {babashka/babashka {:mvn/version "0.6.5"}}}
 
   :test
   {:extra-paths ["test"]
@@ -43,7 +45,7 @@
 
   :test-cljs
   {:extra-paths ["test"]
-   :extra-deps  {thheller/shadow-cljs {:mvn/version "2.11.9"}}}
+   :extra-deps  {thheller/shadow-cljs {:mvn/version "2.16.7"}}}
 
   :jar
   {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.1.250"}}
