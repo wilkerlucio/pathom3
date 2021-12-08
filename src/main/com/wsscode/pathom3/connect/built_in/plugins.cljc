@@ -1,10 +1,13 @@
 (ns com.wsscode.pathom3.connect.built-in.plugins
   (:require
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.wsscode.log :as l]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
+    [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.connect.runner.async :as pcra]
+    [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
@@ -54,3 +57,29 @@
                     (-> ast :meta ::remove-error-items))
               nil
               (throw e))))))}))
+
+(defn dev-linter
+  "This plugin adds linting features to help developers find sources of issues while
+  Pathom runs its system.
+
+  Checks done:
+
+  - Verify if all the output that comes out of the resolver is declared in the resolver
+    output. This means the user missed some attribute declaration in the resolver output
+    and that may cause inconsistent behavior on planning/running."
+  []
+  {::p.plugin/id
+   `dev-linter
+
+   ::pcr/wrap-resolve
+   (fn [resolve]
+     (fn [env input]
+       (clet [{::pco/keys [provides op-name]} (pci/resolver-config env (-> env ::pcp/node ::pco/op-name))
+              res              (resolve env input)
+              unexpected-shape (pfsd/difference (pfsd/data->shape-descriptor res) provides)]
+         (if (seq unexpected-shape)
+           (l/warn ::undeclared-output
+                   {::pco/op-name      op-name
+                    ::pco/provides     provides
+                    ::unexpected-shape unexpected-shape}))
+         res)))})

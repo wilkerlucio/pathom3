@@ -1,12 +1,17 @@
 (ns com.wsscode.pathom3.connect.built-in.plugins-test
   (:require
+    [check.core :refer [check]]
     [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.log :as l]
     [com.wsscode.pathom3.connect.built-in.plugins :as pbip]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.interface.eql :as p.eql]
-    [com.wsscode.pathom3.plugin :as p.plugin]))
+    [com.wsscode.pathom3.plugin :as p.plugin]
+    [spy.core :as spy]))
+
+(declare =>)
 
 (deftest mutation-resolve-params-test
   (is (= (p.eql/process
@@ -56,3 +61,40 @@
                                                            :y "y2"}]})])
                    (p.plugin/register (pbip/filtered-sequence-items-plugin {::pbip/apply-everywhere? true})))
                [{:items [:x :y]}])))))
+
+(deftest dev-linter-test
+  (testing "simple extra key"
+    (binding [l/*active-logger* (spy/spy)]
+      (p.eql/process
+        (-> (pci/register
+              [(pco/resolver 'x
+                 {::pco/output [:x]}
+                 (fn [_ _] {:x 10 :y 20}))])
+            (p.plugin/register (pbip/dev-linter)))
+        [:x])
+      (check
+        (=> [[{:com.wsscode.pathom3.connect.operation/provides {:x {}},
+               :com.wsscode.log/event                          :com.wsscode.pathom3.connect.built-in.plugins/undeclared-output,
+               :com.wsscode.log/timestamp                      inst?,
+               :com.wsscode.pathom3.connect.operation/op-name  'x,
+               :com.wsscode.log/level                          :com.wsscode.log/level-warn,
+               ::pbip/unexpected-shape                         {:y {}}}]]
+            (spy/calls l/*active-logger*)))))
+
+  (testing "on nested inputs"
+    (binding [l/*active-logger* (spy/spy)]
+      (p.eql/process
+        (-> (pci/register
+              [(pco/resolver 'x
+                 {::pco/output [{:x [:y]}]}
+                 (fn [_ _] {:x {:y 20 :z 30}}))])
+            (p.plugin/register (pbip/dev-linter)))
+        [:x])
+      (check
+        (=> [[{:com.wsscode.pathom3.connect.operation/provides {:x {}},
+               :com.wsscode.log/event                          :com.wsscode.pathom3.connect.built-in.plugins/undeclared-output,
+               :com.wsscode.log/timestamp                      inst?,
+               :com.wsscode.pathom3.connect.operation/op-name  'x,
+               :com.wsscode.log/level                          :com.wsscode.log/level-warn,
+               ::pbip/unexpected-shape                         {:x {:z {}}}}]]
+            (spy/calls l/*active-logger*))))))

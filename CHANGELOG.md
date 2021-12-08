@@ -1,5 +1,8 @@
 # Changelog
 
+## [Next]
+- Add `pbip/dev-linter` to help find errors in operation definitions
+
 ## [2021.11.16-alpha]
 - Add extension point `::p.error/wrap-attribute-error`
 - Fix batch calls with distinct parameters
