@@ -136,11 +136,10 @@
 (defn graph-response? [env tree query expected]
   (if (fn? expected)
     #_{:clj-kondo/ignore [:single-logical-operand]}
-    (let [sync          (expected (run-graph env tree query))
-          async #?(:clj (expected @(run-graph-async env tree query)) :cljs true)
-          ;parallel #?(:clj (expected @(run-graph-parallel env tree query)) :cljs true)
-          ]
-      (and sync async #_parallel))
+    (let [sync             (expected (run-graph env tree query))
+          async #?(:clj    (expected @(run-graph-async env tree query)) :cljs true)
+          parallel #?(:clj (expected @(run-graph-parallel env tree query)) :cljs true)]
+      (and sync async parallel))
     (= (run-graph env tree query)
        #?(:clj (let [res @(run-graph-async env tree query)]
                  ;(println res)

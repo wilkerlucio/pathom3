@@ -3,6 +3,7 @@
 ## [Next]
 - Add `pbip/dev-linter` to help find errors in operation definitions
 - Improve performance on input shape check
+- Fix error handling for batch resolvers on parallel processor
 
 ## [2021.11.16-alpha]
 - Add extension point `::p.error/wrap-attribute-error`

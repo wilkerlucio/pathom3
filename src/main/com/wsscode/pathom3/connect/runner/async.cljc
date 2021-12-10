@@ -511,6 +511,7 @@
                 start        (time/now-ms)
                 responses    (-> (p/do! (pcr/invoke-resolver-with-plugins resolver batch-env inputs))
                                  (p/catch (fn [e]
+                                            (pcr/fail-fast env e)
                                             (pcr/mark-batch-errors e env batch-op batch-items))))
                 finish       (time/now-ms)]
 

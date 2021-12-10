@@ -849,14 +849,14 @@
     (not omit-run-stats?)
     (vary-meta assoc ::run-stats (assoc-end-plan-stats env plan))))
 
-(defn mark-batch-errors [e env batch-op batch-items]
+(defn mark-batch-errors [error env batch-op batch-items]
   (p.plugin/run-with-plugins env ::wrap-batch-resolver-error
-    (fn [_ _ _]) env [batch-op batch-items] e)
+    (fn [_ _ _]) env [batch-op batch-items] error)
 
   (doseq [{env'       ::env
            ::pcp/keys [node]} batch-items]
     (p.plugin/run-with-plugins env' ::wrap-resolver-error
-      mark-node-error env' node (ex-info (str "Batch error: " (ex-message e)) {::batch-error? true} e)))
+      mark-node-error env' node (ex-info (str "Batch error: " (ex-message error)) {::batch-error? true} error)))
 
   ::node-error)
 
@@ -913,6 +913,7 @@
             responses    (try
                            (invoke-resolver-with-plugins resolver batch-env inputs)
                            (catch #?(:clj Throwable :cljs :default) e
+                             (fail-fast env e)
                              (mark-batch-errors e env batch-op batch-items)))
             finish       (time/now-ms)]
 

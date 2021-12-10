@@ -217,27 +217,35 @@
           start        (time/now-ms)
           responses    (-> (p/do! (pcr/invoke-resolver-with-plugins resolver batch-env inputs))
                            (p/catch (fn [e]
-                                      (pcr/mark-batch-errors e env batch-op batch-items))))
+                                      (try
+                                        (pcr/mark-batch-errors e env batch-op batch-items)
+                                        (catch Throwable _ nil))
+                                      {::pcr/node-error e})))
           finish       (time/now-ms)]
 
-    (when-not (refs/kw-identical? ::pcr/node-error responses)
-      (if (not= (count inputs) (count responses))
-        (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
+    (if-let [err (::pcr/node-error responses)]
+      (doseq [{::keys [batch-response-promise]}
+              (into [] cat (vals input-groups))]
+        (p/reject! batch-response-promise err))
 
-      (doseq [[{env'       ::pcr/env
-                ::keys     [batch-response-promise]
-                ::pcp/keys [node]
-                ::pcr/keys [node-resolver-input]
-                :as        batch-item} response]
-              (pcr/combine-inputs-with-responses input-groups inputs responses)]
-        (pcr/cache-batch-item batch-item batch-op response)
+      (do
+        (if (not= (count inputs) (count responses))
+          (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {})))
 
-        (pcr/merge-node-stats! env' node
-          (merge {::pcr/batch-run-start-ms  start
-                  ::pcr/batch-run-finish-ms finish}
-                 (pcr/report-resolver-io-stats env' node-resolver-input response)))
+        (doseq [[{env'       ::pcr/env
+                  ::keys     [batch-response-promise]
+                  ::pcp/keys [node]
+                  ::pcr/keys [node-resolver-input]
+                  :as        batch-item} response]
+                (pcr/combine-inputs-with-responses input-groups inputs responses)]
+          (pcr/cache-batch-item batch-item batch-op response)
 
-        (p/resolve! batch-response-promise response)))))
+          (pcr/merge-node-stats! env' node
+            (merge {::pcr/batch-run-start-ms  start
+                    ::pcr/batch-run-finish-ms finish}
+                   (pcr/report-resolver-io-stats env' node-resolver-input response)))
+
+          (p/resolve! batch-response-promise response))))))
 
 (defn create-batch-processor
   [{::keys [batch-hold-delay-ms
