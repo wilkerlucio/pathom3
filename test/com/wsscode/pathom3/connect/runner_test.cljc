@@ -137,10 +137,10 @@
   (if (fn? expected)
     #_{:clj-kondo/ignore [:single-logical-operand]}
     (let [sync          (expected (run-graph env tree query))
-          async #?(:clj (expected @(run-graph-async env tree query))
-                   :cljs true)]
-      (and sync
-           async))
+          async #?(:clj (expected @(run-graph-async env tree query)) :cljs true)
+          ;parallel #?(:clj (expected @(run-graph-parallel env tree query)) :cljs true)
+          ]
+      (and sync async #_parallel))
     (= (run-graph env tree query)
        #?(:clj (let [res @(run-graph-async env tree query)]
                  ;(println res)
@@ -908,28 +908,26 @@
           {:users       []
            :total-score 0})))
 
-  (testing "remove collection elements that don't fulfill required input in lenient mode"
+  (testing "using optional on aggregation"
     (is (graph-response?
           (pci/register
-            {::p.error/lenient-mode? true}
             [(pco/resolver 'users
                {::pco/output [{:users [:user/id]}]}
                (fn [_ _]
-                 {:users [{:user/id 1}
-                          {:user/id 2}]}))
+                 {:users
+                  [{:user/id 1}
+                   {:user/id 2}]}))
              (pbir/static-attribute-map-resolver :user/id :user/score
                {1 10})
              (pco/resolver 'total-score
-               {::pco/input  [{:users [:user/score]}]
+               {::pco/input  [{:users [(pco/? :user/score)]}]
                 ::pco/output [:total-score]}
                (fn [_ {:keys [users]}]
-                 {:total-score (reduce + 0 (map :user/score users))}))])
+                 {:total-score (reduce + 0 (keep :user/score users))}))])
           {}
           [:total-score]
           {:users       [{:user/id 1, :user/score 10}
-                         {:user/id                                             2,
-                          :com.wsscode.pathom3.connect.runner/attribute-errors {:user/score {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
-                                                                                             :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause :com.wsscode.pathom3.error/attribute-missing}}}}}],
+                         {:user/id 2,}],
            :total-score 10})))
 
   (testing "resolver gets only the exact shape it asked for"

@@ -208,6 +208,46 @@
                          {:foo {:bar []}})
            nil))))
 
+(deftest missing-from-data-test
+  (is (= (pfsd/missing-from-data {} {})
+         nil))
+
+  (is (= (pfsd/missing-from-data {} {:foo {}})
+         {:foo {}}))
+
+  (is (= (pfsd/missing-from-data {} {:foo {:bar {}}})
+         {:foo {:bar {}}}))
+
+  (is (= (pfsd/missing-from-data {:foo "bar"} {})
+         nil))
+
+  (is (= (pfsd/missing-from-data {:foo "bar"} {:foo {}})
+         nil))
+
+  (is (= (pfsd/missing-from-data {:foo "bar"} {:foo {} :bar {}})
+         {:bar {}}))
+
+  (is (= (pfsd/missing-from-data {:foo {:bar "bar"}} {:foo {:bar {}}})
+         nil))
+
+  (is (= (pfsd/missing-from-data {:foo {}} {:foo {:bar {}}})
+         {:foo {:bar {}}}))
+
+  (is (= (pfsd/missing-from-data {:foo {:bar {}}} {:foo {:bar {} :baz {}}})
+         {:foo {:baz {}}}))
+
+  (testing "handling collections"
+    (is (= (pfsd/missing-from-data {:foo [{:bar "bar"}]} {:foo {:bar {}}})
+           nil))
+
+    (is (= (pfsd/missing-from-data {:foo [{:bar "bar"}]} {:foo {:bar {} :baz {}}})
+           {:foo {:baz {}}}))
+
+    (is (= (pfsd/missing-from-data {:foo [{:bar "bar"}
+                                          {:bar "bar" :baz "other"}]}
+                                   {:foo {:bar {} :baz {}}})
+           {:foo {:baz {}}}))))
+
 (deftest difference-test
   (is (= (pfsd/difference {} {})
          {}))
