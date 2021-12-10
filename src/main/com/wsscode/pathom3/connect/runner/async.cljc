@@ -207,19 +207,18 @@
         env             (assoc env ::pcp/node node)
         entity          (p.ent/entity env)
         input-data      (pfsd/select-shape-filtering entity (pfsd/merge-shapes input optionals) input)
-        input-shape     (pfsd/data->shape-descriptor input-data)
         input-data      (pcr/enhance-dynamic-input r-config node input-data)
         params          (pco/params env)
         cache-store     (pcr/choose-cache-store env cache-store)
         resolver-cache* (get env cache-store)
         _               (pcr/merge-node-stats! env node
                           {::pcr/resolver-run-start-ms (time/now-ms)})
-        response        (-> (if-let [missing (pfsd/missing input-shape input entity)]
+        response        (-> (if-let [missing (pfsd/missing-from-data entity input)]
                               (if (pcr/missing-maybe-in-pending-batch? env input)
                                 (pcr/wait-batch-response env node)
                                 (p/rejected (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
                                                      {:required  input
-                                                      :available input-shape
+                                                      :available (pfsd/data->shape-descriptor input-data)
                                                       :missing   missing})))
                               (cond
                                 batch?
