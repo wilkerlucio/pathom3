@@ -1,6 +1,6 @@
 # Changelog
 
-## [Next]
+## [2021.12.10-alpha]
 - Add `pbip/dev-linter` to help find errors in operation definitions
 - Improve performance on input shape check
 - Fix error handling for batch resolvers on parallel processor
