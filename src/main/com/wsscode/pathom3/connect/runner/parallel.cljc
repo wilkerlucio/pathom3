@@ -219,7 +219,7 @@
                            (p/catch (fn [e]
                                       (try
                                         (pcr/mark-batch-errors e env batch-op batch-items)
-                                        (catch Throwable _ nil))
+                                        (catch #?(:clj Throwable :cljs :default) _ nil))
                                       {::pcr/node-error e})))
           finish       (time/now-ms)]
 
