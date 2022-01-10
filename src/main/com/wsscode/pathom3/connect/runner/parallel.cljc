@@ -48,7 +48,7 @@
   [env ast m]
   (if (and (map? m)
            (not (pco/final-value? m)))
-    (let [[ast cache-tree*] (pcr/process-map-subquery-data ast m)]
+    (if-let [[ast cache-tree*] (pcr/process-map-subquery-data ast m)]
       (run-graph! env ast cache-tree*))
     m))
 
