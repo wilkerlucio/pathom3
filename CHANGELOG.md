@@ -3,6 +3,7 @@
 ## [2022.01.09-alpha]
 - Fix `Throwable` warning on CLJS in parallel parser
 - Fix `log` source to avoid `*file*` warning
+- Improve optimization for single item branch, now support moving run-next to the childs edge
 
 ## [2021.12.10-alpha]
 - Add `pbip/dev-linter` to help find errors in operation definitions
