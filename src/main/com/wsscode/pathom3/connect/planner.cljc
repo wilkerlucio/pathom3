@@ -184,7 +184,7 @@
 ; endregion
 
 (declare add-snapshot! compute-run-graph compute-run-graph* compute-attribute-graph
-         optimize-graph optimize-node remove-node-expects-index-attrs)
+         optimize-graph optimize-node remove-node-expects-index-attrs find-leaf-node)
 
 ; region node helpers
 
@@ -649,6 +649,15 @@
       :else
       graph)))
 
+(defn move-run-next-to-edge
+  "Find the node at the end of chain from target-node-id and move node-to-move-id
+  as the next of that"
+  [graph target-node-id node-to-move-id]
+  (let [leaf (find-leaf-node graph (get-node graph target-node-id))]
+    (-> graph
+        (remove-from-parent-branches (get-node graph node-to-move-id))
+        (set-node-run-next (::node-id leaf) node-to-move-id))))
+
 (>defn simplify-branch-node
   "When a branch node contains a single branch out, remove the AND node and put that
   single item in place.
@@ -658,19 +667,21 @@
   [graph env node-id]
   [::graph map? ::node-id => ::graph]
   (let [node           (get-node graph node-id)
-        target-node-id (and (not (::run-next node))
-                            (or
-                              (and
-                                (= 1 (count (::run-and node)))
-                                (first (::run-and node)))
-                              (and
-                                (= 1 (count (::run-or node)))
-                                (first (::run-or node)))))]
+        target-node-id (or
+                         (and
+                           (= 1 (count (::run-and node)))
+                           (first (::run-and node)))
+                         (and
+                           (= 1 (count (::run-or node)))
+                           (first (::run-or node))))]
     (if target-node-id
       (-> graph
           (add-snapshot! env {::snapshot-message "Simplifying branch with single element"
                               ::highlight-nodes  #{node-id target-node-id}
                               ::highlight-styles {node-id 1}})
+          (cond->
+            (::run-next node)
+            (move-run-next-to-edge target-node-id (::run-next node)))
           (transfer-node-parents target-node-id node-id)
           (remove-node-edges node-id)
           (remove-node node-id)
