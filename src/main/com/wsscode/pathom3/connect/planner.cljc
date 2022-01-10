@@ -686,7 +686,8 @@
           (remove-node-edges node-id)
           (remove-node node-id)
           (add-snapshot! env {::snapshot-message "Simplification done"
-                              ::highlight-nodes  #{target-node-id}}))
+                              ::highlight-nodes  #{target-node-id}})
+          (optimize-node env target-node-id))
       graph)))
 
 (defn merge-sibling-resolver-node
