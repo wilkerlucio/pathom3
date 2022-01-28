@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2022.01.28-alpha]
 - Improve optimization for single item branch, now support moving run-next to the child's edge
 - On union process, in case the item doesn't match any branch its turned into nil (and removed in case of union sequences)
 - Fix bug when checking for entity required data, OR cases could trigger a false positive
