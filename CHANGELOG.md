@@ -3,6 +3,7 @@
 ## [NEXT]
 - Improve optimization for single item branch, now support moving run-next to the child's edge
 - On union process, in case the item doesn't match any branch its turned into nil (and removed in case of union sequences)
+- Fix bug when checking for entity required data, OR cases could trigger a false positive
 
 ## [2022.01.09-alpha]
 - Fix `Throwable` warning on CLJS in parallel parser
