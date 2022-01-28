@@ -11,7 +11,7 @@
          Resolver))))
 
 (defn restored-handler [_ _]
-  (throw (ex-info "This operation came serialized via network, it doesn't have an implementation." {})))
+  (throw (ex-info "This operation came serialized via transit, it doesn't have an implementation." {})))
 
 (def read-handlers
   {"pathom3/Resolver" (t/read-handler #(-> % (assoc ::pco/resolve restored-handler) pco/resolver))
