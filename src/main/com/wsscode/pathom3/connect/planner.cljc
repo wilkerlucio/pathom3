@@ -1478,16 +1478,24 @@
       (create-root-and graph' env node-ids)
       graph')))
 
+(def keep-required-transducer
+  (comp
+    (remove (comp ::pco/optional? :params))
+    (remove (comp #{'...} :query))
+    (remove (comp #{'*} :key))
+    (remove (comp int? :query))))
+
 (defn required-ast-from-index-ast
   [{::keys [index-ast]}]
   {:type     :root
    :children (->> index-ast
                   (vals)
-                  (into []
-                        (comp
-                          (remove (comp ::pco/optional? :params))
-                          (remove (comp #{'...} :query))
-                          (remove (comp int? :query)))))})
+                  (into [] keep-required-transducer))})
+
+(defn required-ast-from-source-ast
+  [{::keys [source-ast]}]
+  (update source-ast :children
+    #(into (with-meta [] (meta %)) keep-required-transducer %)))
 
 (defn verify-plan!*
   [env

@@ -463,7 +463,86 @@
                                        {::pco/output [:foo]}
                                        (fn [_ _] {})))
                                    {}
-                                   [:foo]))))))
+                                   [:foo])))))
+
+      (testing "bug report #120"
+        (comment
+          @(run-graph-parallel (pci/register [(pco/resolver 'dashboard-chartObjects-1
+                                            {::pco/input  [:portfolioKey :appKey :data-source/friendlyName]
+                                             ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
+                                            (fn [_ input]
+                                              (println "dashboard-chartObjects-1" input)
+                                              {:dashboard {:dashboard/chartObjects []}}))
+
+                                          (pco/resolver 'dashboard-chartObjects-2
+                                            {::pco/input  [:portfolioKey :appKey {:data-sources [:data-source/friendlyName]}]
+                                             ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
+                                            (fn [_ _]
+                                              (println "dashboard-chartObjects-2")
+                                              {:dashboard {:dashboard/chartObjects []}}))
+
+                                          (pco/resolver 'data-source
+                                            {::pco/input  [:portfolioKey :appKey]
+                                             ::pco/output [:appName :platform]}
+                                            (fn [_ _]
+                                              {:appName nil :platform nil}))
+
+                                          (pco/resolver 'data-sources
+                                            {::pco/input       [:portfolioKey]
+                                             ::pco/output      [{:data-sources [:portfolioKey :appKey :appName :platform]}]
+                                             ::pco/cache-store :thirty-sec-ttl-cache*}
+                                            (fn [_ _]
+                                              {:data-sources []}))
+
+                                          (pco/resolver 'data-source-friendlyName
+                                            {::pco/input  [:appName]
+                                             ::pco/output [:data-source/friendlyName]}
+                                            (fn [_ _]
+                                              {:data-source/friendlyName "appName"}))])
+            {:portfolioKey "portfolioKey", :appKey "appKey"}
+            [{:dashboard [:dashboard/chartObjects]}]))
+
+        (is
+          (graph-response? (pci/register [(pco/resolver 'dashboard-chartObjects-1
+                                            {::pco/input  [:portfolioKey :appKey :data-source/friendlyName]
+                                             ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
+                                            (fn [_ input]
+                                              (println "dashboard-chartObjects-1" input)
+                                              {:dashboard {:dashboard/chartObjects []}}))
+
+                                          (pco/resolver 'dashboard-chartObjects-2
+                                            {::pco/input  [:portfolioKey :appKey {:data-sources [:data-source/friendlyName]}]
+                                             ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
+                                            (fn [_ _]
+                                              (println "dashboard-chartObjects-2")
+                                              {:dashboard {:dashboard/chartObjects []}}))
+
+                                          (pco/resolver 'data-source
+                                            {::pco/input  [:portfolioKey :appKey]
+                                             ::pco/output [:appName :platform]}
+                                            (fn [_ _]
+                                              {:appName nil :platform nil}))
+
+                                          (pco/resolver 'data-sources
+                                            {::pco/input       [:portfolioKey]
+                                             ::pco/output      [{:data-sources [:portfolioKey :appKey :appName :platform]}]
+                                             ::pco/cache-store :thirty-sec-ttl-cache*}
+                                            (fn [_ _]
+                                              {:data-sources []}))
+
+                                          (pco/resolver 'data-source-friendlyName
+                                            {::pco/input  [:appName]
+                                             ::pco/output [:data-source/friendlyName]}
+                                            (fn [_ _]
+                                              {:data-source/friendlyName "appName"}))])
+            {:portfolioKey "portfolioKey", :appKey "appKey"}
+            [{:dashboard [:dashboard/chartObjects]}]
+            {:portfolioKey "portfolioKey",
+             :appKey "appKey",
+             :appName nil,
+             :platform nil,
+             :data-source/friendlyName "appName",
+             :dashboard {:dashboard/chartObjects []}}))))
 
     (testing "mutations"
       (let [err (ex-info "Fail fast" {})]

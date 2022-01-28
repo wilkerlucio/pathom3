@@ -734,7 +734,7 @@
                    (into []
                          (comp (map :key)
                                (remove #(pph/placeholder-key? env %)))
-                         (:children (pcp/required-ast-from-index-ast graph)))
+                         (:children (pcp/required-ast-from-source-ast graph)))
                    (repeat {}))
         missing  (pfsd/missing (pfsd/data->shape-descriptor-shallow entity) expected)]
     (if (seq missing)
