@@ -470,15 +470,13 @@
           (graph-response? (pci/register [(pco/resolver 'dashboard-chartObjects-1
                                             {::pco/input  [:portfolioKey :appKey :data-source/friendlyName]
                                              ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
-                                            (fn [_ input]
-                                              (println "dashboard-chartObjects-1" input)
+                                            (fn [_ _]
                                               {:dashboard {:dashboard/chartObjects []}}))
 
                                           (pco/resolver 'dashboard-chartObjects-2
                                             {::pco/input  [:portfolioKey :appKey {:data-sources [:data-source/friendlyName]}]
                                              ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
                                             (fn [_ _]
-                                              (println "dashboard-chartObjects-2")
                                               {:dashboard {:dashboard/chartObjects []}}))
 
                                           (pco/resolver 'data-source
