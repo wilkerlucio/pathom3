@@ -301,10 +301,13 @@
     (pcr/merge-node-stats! env node
       {::pcr/resolver-run-start-ms (time/now-ms)})
     (p/let [response (-> (if-let [missing (pfsd/missing-from-data entity input)]
-                           (p/rejected (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
-                                                {:required  input
-                                                 :available (pfsd/data->shape-descriptor input-data)
-                                                 :missing   missing}))
+                           (pcr/report-resolver-error
+                             (assoc env :com.wsscode.pathom3.error/lenient-mode? true)
+                             node
+                             (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
+                                      {:required  input
+                                       :available (pfsd/data->shape-descriptor input-data)
+                                       :missing   missing}))
                            (cond
                              batch?
                              (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]

@@ -1179,7 +1179,29 @@
             {}
             [:foo]
             {:y   42
-             :foo 42})))))
+             :foo 42}))))
+
+  (testing "bug report #126"
+    (is
+      (graph-response? (pci/register [(pco/resolver 'bar
+                                        {::pco/input  [::email]
+                                         ::pco/output [::bar]}
+                                        (fn [_ _] nil))
+
+                                      (pco/resolver 'id
+                                        {::pco/input  [::bar]
+                                         ::pco/output [::id]}
+                                        (fn [_ _] nil))
+
+                                      (pco/resolver 'display-name
+                                        {::pco/input  [::id]
+                                         ::pco/output [::display-name]}
+                                        (fn [_ _]
+                                          {::display-name "Octocat"}))])
+        {::email "bar@acme.com"}
+        [::email
+         (pco/? ::display-name)]
+        {::email "bar@acme.com"}))))
 
 (deftest run-graph!-batch-test
   (testing "simple batching"
