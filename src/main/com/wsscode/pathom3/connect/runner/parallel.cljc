@@ -317,8 +317,7 @@
                                env cache? op-name resolver cache-store input-data params)))
                          (p/catch
                            (fn [error]
-                             (pcr/mark-node-error-with-plugins env node error)
-                             ::pcr/node-error)))
+                             (pcr/report-resolver-error env node error))))
             response (pcr/validate-response! env node response)]
       (let [finish (time/now-ms)]
         (pcr/merge-node-stats! env node

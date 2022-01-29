@@ -470,10 +470,11 @@
                           (if-let [missing (pfsd/missing-from-data entity input)]
                             (if (missing-maybe-in-pending-batch? env input)
                               (wait-batch-response env node)
-                              (throw (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
-                                              {:required  input
-                                               :available (pfsd/data->shape-descriptor input-data)
-                                               :missing   missing})))
+                              (report-resolver-error env node
+                                                     (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
+                                                              {:required  input
+                                                               :available (pfsd/data->shape-descriptor input-data)
+                                                               :missing   missing})))
                             (cond
                               batch?
                               (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
