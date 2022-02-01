@@ -121,11 +121,13 @@
 (defn describe-input*
   [ast path outs* opt-parent?]
   (doseq [{:keys [key params] :as node} (:children ast)]
-    (let [opt? (or opt-parent? (::optional? params))]
+    (let [entry (cond-> {}
+                  (seq params)
+                  (with-meta {::pfsd/params params}))
+          opt?  (or opt-parent? (::optional? params))]
       (if opt?
-        (vswap! outs* assoc-in (concat [::optionals] path [key])
-                (with-meta {} (if (::optional? params) {::pfsd/params {::optional? true}} {})))
-        (vswap! outs* assoc-in (concat [::requires] path [key]) {}))
+        (vswap! outs* assoc-in (concat [::optionals] path [key]) entry)
+        (vswap! outs* assoc-in (concat [::requires] path [key]) entry))
       (describe-input* node (conj path key) outs* opt?))))
 
 (defn describe-input [input]
