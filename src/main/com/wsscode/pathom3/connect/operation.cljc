@@ -123,7 +123,8 @@
   (doseq [{:keys [key params] :as node} (:children ast)]
     (let [opt? (or opt-parent? (::optional? params))]
       (if opt?
-        (vswap! outs* assoc-in (concat [::optionals] path [key]) {})
+        (vswap! outs* assoc-in (concat [::optionals] path [key])
+                (with-meta {} (if (::optional? params) {::pfsd/params {::optional? true}} {})))
         (vswap! outs* assoc-in (concat [::requires] path [key]) {}))
       (describe-input* node (conj path key) outs* opt?))))
 

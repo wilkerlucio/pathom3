@@ -1121,7 +1121,20 @@
             [{:main-db [:total-score]}]
             {:main-db
              {:users       [#:user{:id 1, :score 10} #:user{:id 2, :score 20}],
-              :total-score 30}})))))
+              :total-score 30}}))))
+
+  (testing "repro-127"
+    (is (graph-response?
+          (pci/register (pco/resolver 'parent-type
+                          {::pco/input  [{:parent [(pco/? :id)]}]
+                           ::pco/output [:parent-type]}
+                          (fn [_ _] {:parent-type "foo"})))
+          {:items [{:parent {:id 1}}
+                   {:parent {:other.id 3}}]}
+          [{:items
+            [:parent-type]}]
+          {:items [{:parent {:id 1}, :parent-type "foo"}
+                   {:parent {:other.id 3}, :parent-type "foo"}]}))))
 
 (deftest run-graph!-optional-inputs-test
   (testing "data from resolvers"

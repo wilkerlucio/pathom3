@@ -3,7 +3,9 @@
     #?(:clj [clojure.spec.alpha :as s])
     [clojure.test :refer [deftest is are run-tests testing]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
-    [com.wsscode.pathom3.connect.operation :as pco]))
+    [com.wsscode.pathom3.connect.operation :as pco]
+    [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [com.wsscode.pathom3.test.helpers :as h]))
 
 (deftest resolver-test
   (testing "creating resolvers"
@@ -616,25 +618,29 @@
            ::pco/op-name  -unqualified/foo--const,
            :extra         "data"})))
 
+(defn describe-input [input]
+  (h/expose-meta (pco/describe-input input)))
+
 (deftest describe-input-test
-  (is (= (pco/describe-input [])
+  (is (= (describe-input [])
          {::pco/requires {}}))
 
-  (is (= (pco/describe-input [:foo])
+  (is (= (describe-input [:foo])
          {::pco/requires {:foo {}}}))
 
-  (is (= (pco/describe-input [:foo (pco/? :bar)])
+  (is (= (describe-input [:foo (pco/? :bar)])
          {::pco/requires  {:foo {}}
-          ::pco/optionals {:bar {}}}))
+          ::pco/optionals {:bar {::h/meta {::pfsd/params {::pco/optional? true}}}}}))
 
-  (is (= (pco/describe-input [:foo {:baz [:x (pco/? :y)]}])
+  (is (= (describe-input [:foo {:baz [:x (pco/? :y)]}])
          {::pco/requires  {:foo {}
                            :baz {:x {}}}
-          ::pco/optionals {:baz {:y {}}}}))
+          ::pco/optionals {:baz {:y {::h/meta {::pfsd/params {::pco/optional? true}}}}}}))
 
-  (is (= (pco/describe-input [:foo {(pco/? :baz) [:x :y]}])
+  (is (= (describe-input [:foo {(pco/? :baz) [:x :y]}])
          {::pco/requires  {:foo {}}
-          ::pco/optionals {:baz {:x {} :y {}}}})))
+          ::pco/optionals {:baz {:x {} :y {}
+                                 ::h/meta {::pfsd/params {::pco/optional? true}}}}})))
 
 (deftest final-value-test
   (is (pco/final-value?

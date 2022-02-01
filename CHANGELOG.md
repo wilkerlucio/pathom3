@@ -1,7 +1,8 @@
 # Changelog
 
 ## [NEXT]
-- Fix error trigger when a dependency of some optional attribute fails
+- Fix error trigger when a dependency of some optional attribute fails (bug #126)
+- Fix planning errors on optional nested inputs (bug #127)
 
 ## [2022.01.28-alpha]
 - Improve optimization for single item branch, now support moving run-next to the child's edge
