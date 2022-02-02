@@ -1504,7 +1504,6 @@
   (if (seq unreachable-paths)
     (let [user-required (pfsd/ast->shape-descriptor (required-ast-from-index-ast graph))
           missing       (pfsd/intersection unreachable-paths user-required)]
-      (tap> ["a" graph env user-required])
       (if (seq missing)
         (let [path (get env ::p.path/path)]
           (throw
