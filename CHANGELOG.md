@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2022.02.01-alpha]
 - Fix error trigger when a dependency of some optional attribute fails (bug #126)
 - Fix planning errors on optional nested inputs (bug #127)
 
