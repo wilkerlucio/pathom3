@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2022.02.01-1-alpha]
 - Remove debugging tap
 
 ## [2022.02.01-alpha]
