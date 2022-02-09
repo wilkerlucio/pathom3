@@ -1671,7 +1671,7 @@
       (simplify-branch-node env node-id)))
 
 (defn sub-sequence? [seq-a seq-b]
-  (->> (map #(= % %2) seq-a seq-b)
+  (->> (map = seq-a seq-b)
        (every? true?)))
 
 (defn matching-chains? [chain-a chain-b]
