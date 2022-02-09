@@ -7,7 +7,7 @@
   com.wsscode/cljc-misc      {:mvn/version "2022.01.28"}
   com.wsscode/log            {:git/url "https://github.com/wilkerlucio/log"
                               :sha     "325675d8d2871e74e789e836713ea769139e9c61"}
-  funcool/promesa            {:mvn/version "6.0.2"}
+  funcool/promesa            {:mvn/version "6.1.431"}
   edn-query-language/eql     {:mvn/version "2021.02.28"}
   potemkin/potemkin          {:mvn/version "0.4.5"}
   com.cognitect/transit-clj  {:mvn/version "1.0.324"}

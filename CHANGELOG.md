@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Bumped Promesa to 6.1.431
+
 ## [2022.02.01-1-alpha]
 - Remove debugging tap
 
