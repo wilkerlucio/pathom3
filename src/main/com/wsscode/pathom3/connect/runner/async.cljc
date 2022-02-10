@@ -19,7 +19,7 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
-    [com.wsscode.promesa.macros :refer [clet]]
+    [com.wsscode.promesa.macros :refer [clet ctry]]
     [promesa.core :as p]))
 
 (>def ::env (s/or :env (s/keys) :env-promise p/promise?))
@@ -492,11 +492,15 @@
         env   (assoc env
                 ::pcp/graph graph
                 ::p.ent/entity-tree* entity-tree*)]
-    (if (pcr/runnable-graph? graph)
-      (run-graph!* env)
-      (do
-        (run-graph-entity-done env)
-        env))))
+    (ctry
+      (if (pcr/runnable-graph? graph)
+        (run-graph!* env)
+        (do
+          (run-graph-entity-done env)
+          env))
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (ex-info (str "Graph execution failed: " (ex-message e))
+                        env e))))))
 
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::pcr/batch-pending*)
@@ -582,16 +586,21 @@
   [env ast-or-graph entity-tree*]
   (p/let [env (pcr/setup-runner-env env entity-tree* atom)
           env (plan-and-run! env ast-or-graph entity-tree*)]
+    (ctry
+      (p/do!
+        ; run batches on root path only
+        (when (p.path/root? env)
+          (p/loop [_ (p/resolved nil)]
+            (when (seq @(::pcr/batch-pending* env))
+              (p/recur (run-batches! env)))))
 
-    ; run batches on root path only
-    (when (p.path/root? env)
-      (p/loop [_ (p/resolved nil)]
-        (when (seq @(::pcr/batch-pending* env))
-          (p/recur (run-batches! env)))))
+        ; return result with run stats in meta
+        (-> (p.ent/entity env)
+            (pcr/include-meta-stats env)))
 
-    ; return result with run stats in meta
-    (-> (p.ent/entity env)
-        (pcr/include-meta-stats env))))
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (ex-info (str "Graph execution failed: " (ex-message e))
+                        env e))))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST

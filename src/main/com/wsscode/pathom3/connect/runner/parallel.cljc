@@ -20,6 +20,7 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.promesa.macros :refer [ctry]]
     [promesa.core :as p]))
 
 (>def ::env (s/or :env (s/keys) :env-promise p/promise?))
@@ -553,11 +554,15 @@
         env   (assoc env
                 ::pcp/graph graph
                 ::p.ent/entity-tree* entity-tree*)]
-    (if (pcr/runnable-graph? graph)
-      (run-graph!* env)
-      (do
-        (run-graph-entity-done env)
-        env))))
+    (ctry
+      (if (pcr/runnable-graph? graph)
+        (run-graph!* env)
+        (do
+          (run-graph-entity-done env)
+          env))
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (ex-info (str "Graph execution failed: " (ex-message e))
+                        env e))))))
 
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]

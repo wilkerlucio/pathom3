@@ -19,7 +19,7 @@
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
     [com.wsscode.pathom3.test.helpers :as th]
-    [com.wsscode.promesa.macros :refer [clet]]
+    [com.wsscode.promesa.macros :refer [clet ctry]]
     [edn-query-language.core :as eql]
     [matcher-combinators.matchers :as m]
     [matcher-combinators.standalone :as mcs]
@@ -148,6 +148,27 @@
                  ;(println res)
                  res))
        expected)))
+
+(def all-runners [run-graph #?@(:clj [run-graph-async run-graph-parallel])])
+
+(defn check-all-runners [env entity tx expected]
+  (doseq [runner all-runners]
+    (testing (str runner)
+      (check (=> expected
+                 (clet [res (runner env entity tx)]
+                   (if (p/promise? res)
+                     @res res)))))))
+
+(defn check-all-runners-ex [env entity tx expected]
+  (doseq [runner all-runners]
+    (testing (str runner)
+      (check (=> expected
+                 (let [res (ctry
+                             (runner env entity tx)
+                             (catch #?(:clj Throwable :cljs :default) e
+                               (ex-data e)))]
+                   (if (p/promise? res)
+                     @res res)))))))
 
 (comment
   (time
@@ -403,6 +424,20 @@
                       :left      7}
                      20]}))))
 
+(comment
+  (check-all-runners-ex
+    (pci/register
+      [(pco/resolver 'bar
+         {::pco/output [:bar]}
+         (fn [_ _] {:bar "x"}))
+       (pco/resolver 'foo
+         {::pco/input  [:bar]
+          ::pco/output [:foo]}
+         (fn [_ _] (throw (ex-info "Error" {}))))])
+    {}
+    [:foo]
+    {:a 1}))
+
 (deftest run-graph!-fail-cases-test
   (testing "strict mode"
     (testing "invalid resolver response"
@@ -424,6 +459,44 @@
                            (fn [_ _] (throw (ex-info "Error" {})))))
                        {}
                        [{:>/inside [:foo]}]))))
+
+    (testing "Exception during run includes graph"
+      (check-all-runners-ex
+        (pci/register
+          [(pco/resolver 'bar
+             {::pco/output [:bar]}
+             (fn [_ _] {:bar "x"}))
+           (pco/resolver 'foo
+             {::pco/input  [:bar]
+              ::pco/output [:foo]}
+             (fn [_ _] (throw (ex-info "Error" {}))))])
+        {}
+        [:foo]
+        '{:com.wsscode.pathom3.connect.planner/graph
+          {:com.wsscode.pathom3.connect.planner/source-ast
+           {:children [{:key :foo, :type :prop, :dispatch-key :foo}],
+            :type     :root},
+           :com.wsscode.pathom3.connect.planner/index-attrs
+           {:bar #{2}, :foo #{1}},
+           :com.wsscode.pathom3.connect.planner/root           2,
+           :com.wsscode.pathom3.connect.planner/available-data {},
+           :com.wsscode.pathom3.connect.planner/index-ast
+           {:foo {:key :foo, :type :prop, :dispatch-key :foo}},
+           :com.wsscode.pathom3.connect.planner/index-resolver->nodes
+           {bar #{2}, foo #{1}},
+           :com.wsscode.pathom3.connect.planner/nodes
+           {1
+            {:com.wsscode.pathom3.connect.operation/op-name    foo,
+             :com.wsscode.pathom3.connect.planner/expects      {:foo {}},
+             :com.wsscode.pathom3.connect.planner/input        {:bar {}},
+             :com.wsscode.pathom3.connect.planner/node-id      1,
+             :com.wsscode.pathom3.connect.planner/node-parents #{2}},
+            2
+            {:com.wsscode.pathom3.connect.operation/op-name bar,
+             :com.wsscode.pathom3.connect.planner/expects   {:bar {}},
+             :com.wsscode.pathom3.connect.planner/input     {},
+             :com.wsscode.pathom3.connect.planner/run-next  1,
+             :com.wsscode.pathom3.connect.planner/node-id   2}}}}))
 
     (testing "optionals"
       (testing "not on index"

@@ -832,11 +832,15 @@
         env   (assoc env
                 ::pcp/graph graph
                 ::p.ent/entity-tree* entity-tree*)]
-    (if (runnable-graph? graph)
-      (run-graph!* env)
-      (do
-        (run-graph-entity-done env)
-        env))))
+    (try
+      (if (runnable-graph? graph)
+        (run-graph!* env)
+        (do
+          (run-graph-entity-done env)
+          env))
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (ex-info (str "Graph execution failed: " (ex-message e))
+                        env e))))))
 
 (defn assoc-end-plan-stats [{::pcp/keys [graph] :as env}]
   (assoc graph
@@ -985,14 +989,18 @@
   (let [env (-> (setup-runner-env env entity-tree* volatile!)
                 (plan-and-run! ast-or-graph entity-tree*))]
 
-    ; run batches on root path only
-    (when (p.path/root? env)
-      (while (seq @(::batch-pending* env))
-        (run-batches! env)))
+    (try
+      ; run batches on root path only
+      (when (p.path/root? env)
+        (while (seq @(::batch-pending* env))
+          (run-batches! env)))
 
-    ; return result with run stats in meta
-    (-> (p.ent/entity env)
-        (include-meta-stats env))))
+      ; return result with run stats in meta
+      (-> (p.ent/entity env)
+          (include-meta-stats env))
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (ex-info (str "Graph execution failed: " (ex-message e))
+                        env e))))))
 
 (defn run-graph-with-plugins [env ast-or-graph entity-tree* impl!]
   (if (p.path/root? env)
