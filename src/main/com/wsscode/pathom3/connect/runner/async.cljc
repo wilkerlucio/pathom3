@@ -470,7 +470,7 @@
       ; now run the nodes
       (run-root-node! env)
 
-      graph)))
+      env)))
 
 (defn plan-and-run!
   [env ast-or-graph entity-tree*]
@@ -496,7 +496,7 @@
       (run-graph!* env)
       (do
         (run-graph-entity-done env)
-        graph))))
+        env))))
 
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::pcr/batch-pending*)
@@ -580,8 +580,8 @@
 
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]
-  (p/let [env  (pcr/setup-runner-env env entity-tree* atom)
-          plan (plan-and-run! env ast-or-graph entity-tree*)]
+  (p/let [env (pcr/setup-runner-env env entity-tree* atom)
+          env (plan-and-run! env ast-or-graph entity-tree*)]
 
     ; run batches on root path only
     (when (p.path/root? env)
@@ -591,7 +591,7 @@
 
     ; return result with run stats in meta
     (-> (p.ent/entity env)
-        (pcr/include-meta-stats env plan))))
+        (pcr/include-meta-stats env))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST

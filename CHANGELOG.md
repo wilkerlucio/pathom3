@@ -2,6 +2,7 @@
 
 ## [NEXT]
 - Bumped Promesa to 6.1.431
+- INTERNAL BREAK: the internal `plan-and-run!` from all runners now return env instead of the graph plan
 
 ## [2022.02.01-1-alpha]
 - Remove debugging tap

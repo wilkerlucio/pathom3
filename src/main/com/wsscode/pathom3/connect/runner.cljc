@@ -751,7 +751,7 @@
 
 (defn run-graph-done! [env]
   (check-entity-requires! env)
-  (p.ent/swap-entity! env include-meta-stats env (::pcp/graph env))
+  (p.ent/swap-entity! env include-meta-stats env)
   (if (::p.error/lenient-mode? env)
     (p.ent/swap-entity! env #(p.error/process-entity-errors env %)))
   nil)
@@ -800,7 +800,7 @@
     ; now run the nodes
     (run-root-node! env)
 
-    graph))
+    env))
 
 (defn runnable-graph?
   "Quick check to see if the graph has something to run. In the false case we can skip the
@@ -829,17 +829,17 @@
                   (assoc plan
                     ::compute-plan-run-start-ms start-plan
                     ::compute-plan-run-finish-ms finish-plan)))
-        env (assoc env
-              ::pcp/graph graph
-              ::p.ent/entity-tree* entity-tree*)]
+        env   (assoc env
+                ::pcp/graph graph
+                ::p.ent/entity-tree* entity-tree*)]
     (if (runnable-graph? graph)
       (run-graph!* env)
       (do
         (run-graph-entity-done env)
-        graph))))
+        env))))
 
-(defn assoc-end-plan-stats [env plan]
-  (assoc plan
+(defn assoc-end-plan-stats [{::pcp/keys [graph] :as env}]
+  (assoc graph
     ::graph-run-start-ms (::graph-run-start-ms env)
     ::graph-run-finish-ms (time/now-ms)
     ::node-run-stats (some-> env ::node-run-stats* deref)))
@@ -847,10 +847,10 @@
 (defn include-meta-stats
   [result {::keys [omit-run-stats?]
            :or    {omit-run-stats? false}
-           :as    env} plan]
+           :as    env}]
   (cond-> result
     (not omit-run-stats?)
-    (vary-meta assoc ::run-stats (assoc-end-plan-stats env plan))))
+    (vary-meta assoc ::run-stats (assoc-end-plan-stats env))))
 
 (defn mark-batch-errors [error env batch-op batch-items]
   (p.plugin/run-with-plugins env ::wrap-batch-resolver-error
@@ -982,8 +982,8 @@
 
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]
-  (let [env  (setup-runner-env env entity-tree* volatile!)
-        plan (plan-and-run! env ast-or-graph entity-tree*)]
+  (let [env (-> (setup-runner-env env entity-tree* volatile!)
+                (plan-and-run! ast-or-graph entity-tree*))]
 
     ; run batches on root path only
     (when (p.path/root? env)
@@ -992,7 +992,7 @@
 
     ; return result with run stats in meta
     (-> (p.ent/entity env)
-        (include-meta-stats env plan))))
+        (include-meta-stats env))))
 
 (defn run-graph-with-plugins [env ast-or-graph entity-tree* impl!]
   (if (p.path/root? env)
