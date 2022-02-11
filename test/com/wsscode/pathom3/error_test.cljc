@@ -34,7 +34,7 @@
     (is (mcs/match?
           {::p.error/cause              ::p.error/node-errors
            ::p.error/node-error-details {1 {::p.error/cause     ::p.error/node-exception
-                                            ::p.error/exception (match-error "Error")}}}
+                                            ::p.error/exception {:com.wsscode.pathom3.error/error-message "Error"}}}}
           (let [data (p.eql/process
                        (pci/register
                          {::p.error/lenient-mode? true}
@@ -70,7 +70,7 @@
           {::p.error/cause              ::p.error/node-errors
            ::p.error/node-error-details {1 {::p.error/cause             ::p.error/ancestor-error
                                             ::p.error/error-ancestor-id 2
-                                            ::p.error/exception         (match-error "Error")}}}
+                                            ::p.error/exception         {:com.wsscode.pathom3.error/error-message "Error"}}}}
           (let [data (p.eql/process
                        (pci/register
                          {::p.error/lenient-mode? true}
@@ -83,7 +83,7 @@
     (is (mcs/match?
           {::p.error/cause              ::p.error/node-errors
            ::p.error/node-error-details {1 {::p.error/cause     ::p.error/node-exception
-                                            ::p.error/exception (match-error "Insufficient data calling resolver '-unqualified/a->b--attr-transform. Missing attrs :a")}}}
+                                            ::p.error/exception {:com.wsscode.pathom3.error/error-message "Insufficient data calling resolver '-unqualified/a->b--attr-transform. Missing attrs :a"}}}}
           (let [data (p.eql/process
                        (pci/register
                          {::p.error/lenient-mode? true}

@@ -138,4 +138,5 @@
     (if (some-> env :com.wsscode.pathom3.connect.runner/processor-error?)
       (datafy-processor-error* env)
       {::error-message (ex-message err)
+       ::error-data    (ex-data err)
        ::error-stack   (error-stack err)})))

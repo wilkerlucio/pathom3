@@ -303,12 +303,12 @@
   [{::keys [node-run-stats*] :as env}
    {::pcp/keys [node-id]}
    error]
-  (fail-fast env error)
   (if node-run-stats*
     (doto node-run-stats*
-      (refs/gswap! assoc-in [node-id ::node-error] error)
+      (refs/gswap! assoc-in [node-id ::node-error] (p.error/datafy-processor-error error))
       (refs/gswap! assoc-in [node-id ::node-done?] true)
       (refs/gswap! update ::nodes-with-error coll/sconj node-id)))
+  (fail-fast env error)
   ::node-error)
 
 (defn mark-node-error-with-plugins
@@ -827,6 +827,7 @@
         (str "Graph execution failed: " (ex-message err))
         (assoc env'
           ::p.error/error-message (ex-message err)
+          ::p.error/error-data (ex-data err)
           ::p.error/error-stack (p.error/error-stack err)
           ::processor-error? true)
         err))))

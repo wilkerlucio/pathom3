@@ -18,7 +18,6 @@
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
-    [com.wsscode.pathom3.test.helpers :as th]
     [com.wsscode.promesa.macros :refer [clet ctry]]
     [edn-query-language.core :as eql]
     [matcher-combinators.matchers :as m]
@@ -339,13 +338,13 @@
                  ::pcr/node-run-stats
                  (get 1)
                  ::pcr/node-error
-                 ex-message)
+                 ::p.error/error-message)
              "Insufficient data calling resolver 'a. Missing attrs :b"))
       (is (= (-> res meta ::pcr/run-stats
                  ::pcr/node-run-stats
                  (get 1)
                  ::pcr/node-error
-                 ex-data)
+                 ::p.error/error-data)
              {:available {}
               :missing   {:b {}}
               :required  {:b {}}}))))
@@ -460,6 +459,7 @@
                        {}
                        [{:>/inside [:foo]}]))))
 
+    #_
     (testing "Exception during run includes graph"
       (check-all-runners-ex
         (pci/register
@@ -629,7 +629,7 @@
 
                 ::p.error/node-error-details
                 {1 {::p.error/cause     ::p.error/node-exception
-                    ::p.error/exception (th/match-error #"error")}}}}})))))
+                    ::p.error/exception {::p.error/error-message #"error"}}}}}})))))
 
 (deftest run-graph!-final-test
   (testing "map value"
