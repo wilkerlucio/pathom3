@@ -168,16 +168,19 @@
   [env] [map? => fn?]
   (let [env' (pci/register env pcf/foreign-indexes-resolver)]
     (fn boundary-interface-internal
-      ([env-extension input]
-       (let [{:pathom/keys [eql entity ast] :as request} (normalize-input input)
+      ([env-extension request]
+       (let [{:pathom/keys [eql entity ast] :as request'} (normalize-input request)
              env'    (-> env'
-                         (boundary-env input)
+                         (boundary-env request)
                          (extend-env env-extension)
-                         (assoc ::source-request request))
+                         (assoc ::source-request request'))
              entity' (or entity {})]
 
-         (if ast
-           (process-ast (p.ent/with-entity env' entity') ast)
-           (process env' entity' (or eql (:pathom/tx request))))))
-      ([input]
-       (boundary-interface-internal nil input)))))
+         (try
+           (if ast
+             (process-ast (p.ent/with-entity env' entity') ast)
+             (process env' entity' (or eql (:pathom/tx request'))))
+           (catch #?(:clj Throwable :cljs :default) err
+             (p.error/datafy-processor-error err)))))
+      ([request]
+       (boundary-interface-internal nil request)))))

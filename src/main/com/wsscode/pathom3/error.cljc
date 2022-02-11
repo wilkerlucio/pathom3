@@ -102,3 +102,20 @@
         (seq errors)
         (assoc :com.wsscode.pathom3.connect.runner/attribute-errors errors)))
     entity))
+
+(defn datafy-processor-error* [env]
+  (-> env
+      (select-keys [::error-message
+                    ::pcp/graph
+                    :com.wsscode.pathom3.connect.runner/processor-error-parent-env
+                    :com.wsscode.pathom3.entity-tree/entity-tree
+                    :com.wsscode.pathom3.path/path])
+      (coll/update-if
+        :com.wsscode.pathom3.connect.runner/processor-error-parent-env
+        datafy-processor-error*)))
+
+(defn datafy-processor-error [^Throwable err]
+  (let [env (ex-data err)]
+    (if (some-> env :com.wsscode.pathom3.connect.runner/processor-error?)
+      (datafy-processor-error* env)
+      {:err err})))
