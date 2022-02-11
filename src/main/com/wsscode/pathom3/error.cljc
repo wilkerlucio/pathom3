@@ -137,5 +137,5 @@
   (let [env (ex-data err)]
     (if (some-> env :com.wsscode.pathom3.connect.runner/processor-error?)
       (datafy-processor-error* env)
-      {:err err} ; TODO FIX ME
-      )))
+      {::error-message (ex-message err)
+       ::error-stack   (error-stack err)})))
