@@ -8,6 +8,7 @@
     [com.wsscode.pathom3.connect.runner.async :as pcra]
     [com.wsscode.pathom3.connect.runner.parallel :as pcrc]
     [com.wsscode.pathom3.entity-tree :as p.ent]
+    [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
@@ -133,18 +134,19 @@
   (let [env' (p/let [env env] (pci/register env pcf/foreign-indexes-resolver))]
     (fn boundary-interface-internal
       ([env-extension input]
-       (p/let [{:pathom/keys [eql entity ast] :as request} (p.eql/normalize-input input)
-               ; ensure if it's a promise it gets resolved
-               env'          env'
-               env-extension env-extension
-               env'          (-> env'
-                                 (p.eql/boundary-env input)
-                                 (p.eql/extend-env env-extension)
-                                 (assoc ::source-request request))
-               entity'       (or entity {})]
+       (-> (p/let [{:pathom/keys [eql entity ast] :as request} (p.eql/normalize-input input)
+                   ; ensure if it's a promise it gets resolved
+                   env'          env'
+                   env-extension env-extension
+                   env'          (-> env'
+                                     (p.eql/boundary-env input)
+                                     (p.eql/extend-env env-extension)
+                                     (assoc ::source-request request))
+                   entity'       (or entity {})]
 
-         (if ast
-           (process-ast (p.ent/with-entity env' entity') ast)
-           (process env' entity' (or eql (:pathom/tx request))))))
+             (if ast
+               (process-ast (p.ent/with-entity env' entity') ast)
+               (process env' entity' (or eql (:pathom/tx request)))))
+           (p/catch p.error/datafy-processor-error)))
       ([input]
        (boundary-interface-internal nil input)))))
