@@ -125,7 +125,8 @@
       (select-keys [::error-message
                     ::error-stack
                     ::pcp/graph
-                    :com.wsscode.pathom3.connect.runner/processor-error-parent-env
+                    :com.wsscode.pathom3.connect.runner/processor-error?
+                    ;:com.wsscode.pathom3.connect.runner/processor-error-parent-env
                     :com.wsscode.pathom3.entity-tree/entity-tree
                     :com.wsscode.pathom3.path/path])
       (coll/update-if
@@ -136,4 +137,5 @@
   (let [env (ex-data err)]
     (if (some-> env :com.wsscode.pathom3.connect.runner/processor-error?)
       (datafy-processor-error* env)
-      {:err err})))
+      {:err err} ; TODO FIX ME
+      )))

@@ -233,38 +233,7 @@
 
       (testing "nested error"
         (check
-          (=> {:com.wsscode.pathom3.connect.runner/processor-error-parent-env
-               {:com.wsscode.pathom3.connect.planner/graph
-                {:com.wsscode.pathom3.connect.planner/source-ast
-                 {:children
-                  [{:children [{:key :error, :type :prop, :dispatch-key :error}],
-                    :key :foo,
-                    :type :join,
-                    :dispatch-key :foo,
-                    :query [:error]}],
-                  :type :root},
-                 :com.wsscode.pathom3.connect.planner/nested-process #{:foo},
-                 :com.wsscode.pathom3.connect.runner/compute-plan-run-finish-ms
-                 number?,
-                 :com.wsscode.pathom3.connect.runner/graph-run-finish-ms
-                 number?,
-                 :com.wsscode.pathom3.connect.runner/compute-plan-run-start-ms
-                 number?,
-                 :com.wsscode.pathom3.connect.planner/available-data {:foo {:x {}}},
-                 :com.wsscode.pathom3.connect.runner/node-run-stats {},
-                 :com.wsscode.pathom3.connect.planner/index-ast
-                 {:foo
-                  {:children [{:key :error, :type :prop, :dispatch-key :error}],
-                   :key :foo,
-                   :type :join,
-                   :dispatch-key :foo,
-                   :query [:error]}},
-                 :com.wsscode.pathom3.connect.runner/graph-run-start-ms
-                 number?,
-                 :com.wsscode.pathom3.connect.planner/nodes {}},
-                :com.wsscode.pathom3.path/path [],
-                :com.wsscode.pathom3.entity-tree/entity-tree {:foo {:x 10}}},
-               :com.wsscode.pathom3.connect.planner/graph
+          (=> {:com.wsscode.pathom3.connect.planner/graph
                {:com.wsscode.pathom3.connect.planner/source-ast
                 {:children [{:key :error, :type :prop, :dispatch-key :error}],
                  :key :foo,
