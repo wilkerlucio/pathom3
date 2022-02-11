@@ -132,7 +132,7 @@
   (let [entity (p.ent/entity env)]
     (every? #(contains? entity %) (keys expects))))
 
-(declare run-node! run-graph! merge-node-stats! include-meta-stats)
+(declare run-node! run-graph! merge-node-stats! include-meta-stats assoc-end-plan-stats)
 
 (defn union-key-on-data? [{:keys [union-key]} m]
   (contains? m union-key))
@@ -812,8 +812,21 @@
       (::pcp/idents graph)
       (::pcp/placeholders graph)))
 
+(defn processor-error? [err]
+  (some-> (ex-data err) ::processor-error?))
+
 (defn processor-exception [env err]
-  (ex-info (str "Graph execution failed: " (ex-message err)) env err))
+  (let [env' (assoc env
+               ::p.error/error-message (ex-message err)
+               ::pcp/graph (assoc-end-plan-stats env)
+               ::p.ent/entity-tree (some-> env ::p.ent/entity-tree* deref)
+               ::processor-error? true)]
+    (if (processor-error? err)
+      (ex-info (ex-message err)
+               (-> (ex-data err)
+                   (assoc ::processor-error-parent-env env')))
+      (ex-info (str "Graph execution failed: " (ex-message err))
+               env' err))))
 
 (defn plan-and-run!
   [env ast-or-graph entity-tree*]
