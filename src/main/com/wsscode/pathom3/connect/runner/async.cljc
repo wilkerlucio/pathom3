@@ -499,8 +499,7 @@
           (run-graph-entity-done env)
           env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (ex-info (str "Graph execution failed: " (ex-message e))
-                        env e))))))
+        (throw (pcr/processor-exception env e))))))
 
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::pcr/batch-pending*)
@@ -599,8 +598,7 @@
             (pcr/include-meta-stats env)))
 
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (ex-info (str "Graph execution failed: " (ex-message e))
-                        env e))))))
+        (throw (pcr/processor-exception env e))))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST

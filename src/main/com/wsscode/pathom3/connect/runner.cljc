@@ -812,6 +812,9 @@
       (::pcp/idents graph)
       (::pcp/placeholders graph)))
 
+(defn processor-exception [env err]
+  (ex-info (str "Graph execution failed: " (ex-message err)) env err))
+
 (defn plan-and-run!
   [env ast-or-graph entity-tree*]
   #_; keep commented for description, but don't want to validate this fn on runtime
@@ -839,8 +842,7 @@
           (run-graph-entity-done env)
           env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (ex-info (str "Graph execution failed: " (ex-message e))
-                        env e))))))
+        (throw (processor-exception env e))))))
 
 (defn assoc-end-plan-stats [{::pcp/keys [graph] :as env}]
   (assoc graph
@@ -999,8 +1001,7 @@
       (-> (p.ent/entity env)
           (include-meta-stats env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (ex-info (str "Graph execution failed: " (ex-message e))
-                        env e))))))
+        (throw (processor-exception env e))))))
 
 (defn run-graph-with-plugins [env ast-or-graph entity-tree* impl!]
   (if (p.path/root? env)
