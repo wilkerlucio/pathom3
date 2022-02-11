@@ -146,6 +146,7 @@
     (testing "error reporting"
       (check (=>
                {:com.wsscode.pathom3.error/error-message     "Resolver error exception at path []: Err",
+                :com.wsscode.pathom3.error/error-stack       #"Resolver error exception"
                 :com.wsscode.pathom3.connect.planner/graph   {:com.wsscode.pathom3.connect.planner/source-ast                {:type     :root,
                                                                                                                               :children [{:type         :prop,
                                                                                                                                           :dispatch-key :error,
@@ -180,6 +181,7 @@
       (testing "partial success"
         (check (=>
                  {:com.wsscode.pathom3.error/error-message     "Resolver error exception at path []: Err",
+                  :com.wsscode.pathom3.error/error-stack       #"Resolver error exception"
                   :com.wsscode.pathom3.connect.planner/graph   {:com.wsscode.pathom3.connect.planner/source-ast                {:type     :root,
                                                                                                                                 :children [{:type         :prop,
                                                                                                                                             :dispatch-key :error,
@@ -261,8 +263,6 @@
                  number?,
                  :com.wsscode.pathom3.connect.planner/nodes {}},
                 :com.wsscode.pathom3.path/path [],
-                :com.wsscode.pathom3.error/error-message
-                "Graph execution failed: Resolver error exception at path [:foo]: Err",
                 :com.wsscode.pathom3.entity-tree/entity-tree {:foo {:x 10}}},
                :com.wsscode.pathom3.connect.planner/graph
                {:com.wsscode.pathom3.connect.planner/source-ast
@@ -295,12 +295,14 @@
                 :com.wsscode.pathom3.connect.planner/nodes
                 {1
                  {:com.wsscode.pathom3.connect.operation/op-name 'error,
-                  :com.wsscode.pathom3.connect.planner/expects {:error {}},
-                  :com.wsscode.pathom3.connect.planner/input {},
-                  :com.wsscode.pathom3.connect.planner/node-id 1}}},
-               :com.wsscode.pathom3.path/path [:foo],
+                  :com.wsscode.pathom3.connect.planner/expects   {:error {}},
+                  :com.wsscode.pathom3.connect.planner/input     {},
+                  :com.wsscode.pathom3.connect.planner/node-id   1}}},
+               :com.wsscode.pathom3.path/path               [:foo],
                :com.wsscode.pathom3.error/error-message
                "Resolver error exception at path [:foo]: Err",
+               :com.wsscode.pathom3.error/error-stack
+               #"Resolver error exception"
                :com.wsscode.pathom3.entity-tree/entity-tree {:x 10}}
               (run-boundary-interface
                 (pci/register

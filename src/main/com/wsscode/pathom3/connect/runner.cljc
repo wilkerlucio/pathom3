@@ -817,16 +817,19 @@
 
 (defn processor-exception [env err]
   (let [env' (assoc env
-               ::p.error/error-message (ex-message err)
                ::pcp/graph (assoc-end-plan-stats env)
-               ::p.ent/entity-tree (some-> env ::p.ent/entity-tree* deref)
-               ::processor-error? true)]
+               ::p.ent/entity-tree (some-> env ::p.ent/entity-tree* deref))]
     (if (processor-error? err)
       (ex-info (ex-message err)
                (-> (ex-data err)
                    (assoc ::processor-error-parent-env env')))
-      (ex-info (str "Graph execution failed: " (ex-message err))
-               env' err))))
+      (ex-info
+        (str "Graph execution failed: " (ex-message err))
+        (assoc env'
+          ::p.error/error-message (ex-message err)
+          ::p.error/error-stack (p.error/error-stack err)
+          ::processor-error? true)
+        err))))
 
 (defn plan-and-run!
   [env ast-or-graph entity-tree*]
