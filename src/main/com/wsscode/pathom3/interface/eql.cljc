@@ -125,7 +125,9 @@
   (if (vector? input)
     {:pathom/eql    input
      :pathom/entity {}}
-    input))
+    (cond->> input
+      (:pathom/lenient-mode? input)
+      (merge {:pathom/include-stats? true}))))
 
 (>defn extend-env
   [source-env env-extension]
