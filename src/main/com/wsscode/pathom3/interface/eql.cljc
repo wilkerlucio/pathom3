@@ -160,6 +160,7 @@
       :pathom/eql
       :pathom/ast
       :pathom/entity
+      :pathom/include-stats?
       :pathom/lenient-mode?
 
   Env ext can be either a map to merge in the original env, or a function that transforms
@@ -169,11 +170,14 @@
   (let [env' (pci/register env pcf/foreign-indexes-resolver)]
     (fn boundary-interface-internal
       ([env-extension request]
-       (let [{:pathom/keys [eql entity ast] :as request'} (normalize-input request)
+       (let [{:pathom/keys [eql entity ast include-stats?] :as request'}
+             (normalize-input request)
              env'    (-> env'
                          (boundary-env request)
                          (extend-env env-extension)
-                         (assoc ::source-request request'))
+                         (assoc
+                           ::source-request request'
+                           ::pcr/omit-run-stats? (not include-stats?)))
              entity' (or entity {})]
 
          (try

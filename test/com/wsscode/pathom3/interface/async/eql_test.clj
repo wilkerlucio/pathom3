@@ -189,3 +189,23 @@
                      (throw (ex-info "Err" {}))))])
               {:pathom/eql    [{:foo [:error]}]
                :pathom/entity {:foo {:x 10}}}))))))
+
+(deftest boundary-interface-include-stats-test
+  (testing "omit stats by default"
+    (is (nil?
+          (-> (run-boundary-interface
+                (pci/register
+                  [(pbir/constantly-resolver :a 10)])
+                {:pathom/eql [:a]})
+              meta
+              :com.wsscode.pathom3.connect.runner/run-stats))))
+
+  (testing "include when requested"
+    (is (some?
+          (-> (run-boundary-interface
+                (pci/register
+                  [(pbir/constantly-resolver :a 10)])
+                {:pathom/eql            [:a]
+                 :pathom/include-stats? true})
+              meta
+              :com.wsscode.pathom3.connect.runner/run-stats)))))

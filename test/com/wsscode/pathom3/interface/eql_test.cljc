@@ -286,3 +286,23 @@
       (is (= (fi {:pathom/eql           [:invalid]
                   :pathom/lenient-mode? true})
              {:com.wsscode.pathom3.connect.runner/attribute-errors {:invalid {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}}})))))
+
+(deftest boundary-interface-include-stats-test
+  (testing "omit stats by default"
+    (is (nil?
+          (-> (run-boundary-interface
+                (pci/register
+                  [(pbir/constantly-resolver :a 10)])
+                {:pathom/eql [:a]})
+              meta
+              :com.wsscode.pathom3.connect.runner/run-stats))))
+
+  (testing "include when requested"
+    (is (some?
+          (-> (run-boundary-interface
+                (pci/register
+                  [(pbir/constantly-resolver :a 10)])
+                {:pathom/eql            [:a]
+                 :pathom/include-stats? true})
+              meta
+              :com.wsscode.pathom3.connect.runner/run-stats)))))
