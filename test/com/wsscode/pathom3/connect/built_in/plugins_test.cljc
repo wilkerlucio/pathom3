@@ -62,6 +62,16 @@
                    (p.plugin/register (pbip/filtered-sequence-items-plugin {::pbip/apply-everywhere? true})))
                [{:items [:x :y]}])))))
 
+(deftest env-wrap-plugin-test
+  (is (= (-> (pci/register
+               (pco/resolver 'env-data
+                 {::pco/output [:env-value]}
+                 (fn [{:keys [data]} _]
+                   {:env-value data})))
+             (p.plugin/register (pbip/env-wrap-plugin #(assoc % :data "bar")))
+             (p.eql/process [:env-value]))
+         {:env-value "bar"})))
+
 (deftest dev-linter-test
   (testing "simple extra key"
     (binding [l/*active-logger* (spy/spy)]

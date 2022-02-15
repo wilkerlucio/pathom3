@@ -58,6 +58,23 @@
               nil
               (throw e))))))}))
 
+(defn env-wrap-plugin
+  "Plugin to help extend the environment with something dynamic. This will run once
+  around the whole request.
+
+      (p.plugin/register (pbip/env-modify-plugin #(assoc % :data \"bar\")))"
+  [env-modifier]
+  {::p.plugin/id
+   `env-wrap-plugin
+
+   ::pcr/wrap-root-run-graph!
+   (fn track-request-root-run-external [process]
+     (fn track-request-root-run-internal [env ast entity*]
+       (process
+         (env-modifier env)
+         ast
+         entity*)))})
+
 (defn dev-linter
   "This plugin adds linting features to help developers find sources of issues while
   Pathom runs its system.
