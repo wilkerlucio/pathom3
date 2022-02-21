@@ -8,7 +8,7 @@ jobs:
     steps:
       - uses: DeLaGuardo/setup-clj-kondo@master
         with:
-          version: '2021.04.23'
+          version: '2022.02.09'
 
       - uses: DeLaGuardo/setup-clojure@master
         with:
