@@ -132,7 +132,7 @@
   (let [entity (p.ent/entity env)]
     (every? #(contains? entity %) (keys expects))))
 
-(declare run-node! run-graph! merge-node-stats! include-meta-stats)
+(declare run-node! run-graph! merge-node-stats! include-meta-stats assoc-end-plan-stats)
 
 (defn union-key-on-data? [{:keys [union-key]} m]
   (contains? m union-key))
@@ -303,12 +303,12 @@
   [{::keys [node-run-stats*] :as env}
    {::pcp/keys [node-id]}
    error]
-  (fail-fast env error)
   (if node-run-stats*
     (doto node-run-stats*
-      (refs/gswap! assoc-in [node-id ::node-error] error)
+      (refs/gswap! assoc-in [node-id ::node-error] (p.error/datafy-processor-error error))
       (refs/gswap! assoc-in [node-id ::node-done?] true)
       (refs/gswap! update ::nodes-with-error coll/sconj node-id)))
+  (fail-fast env error)
   ::node-error)
 
 (defn mark-node-error-with-plugins
@@ -812,6 +812,26 @@
       (::pcp/idents graph)
       (::pcp/placeholders graph)))
 
+(defn processor-error? [err]
+  (some-> (ex-data err) ::processor-error?))
+
+(defn processor-exception [env err]
+  (let [env' (assoc env
+               ::pcp/graph (assoc-end-plan-stats env)
+               ::p.ent/entity-tree (some-> env ::p.ent/entity-tree* deref))]
+    (if (processor-error? err)
+      (ex-info (ex-message err)
+               (-> (ex-data err)
+                   (assoc ::processor-error-parent-env env')))
+      (ex-info
+        (str "Graph execution failed: " (ex-message err))
+        (assoc env'
+          ::p.error/error-message (ex-message err)
+          ::p.error/error-data (ex-data err)
+          ::p.error/error-stack (p.error/error-stack err)
+          ::processor-error? true)
+        err))))
+
 (defn plan-and-run!
   [env ast-or-graph entity-tree*]
   #_; keep commented for description, but don't want to validate this fn on runtime
@@ -839,8 +859,7 @@
           (run-graph-entity-done env)
           env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (ex-info (str "Graph execution failed: " (ex-message e))
-                        env e))))))
+        (throw (processor-exception env e))))))
 
 (defn assoc-end-plan-stats [{::pcp/keys [graph] :as env}]
   (assoc graph
@@ -999,8 +1018,7 @@
       (-> (p.ent/entity env)
           (include-meta-stats env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (ex-info (str "Graph execution failed: " (ex-message e))
-                        env e))))))
+        (throw (processor-exception env e))))))
 
 (defn run-graph-with-plugins [env ast-or-graph entity-tree* impl!]
   (if (p.path/root? env)

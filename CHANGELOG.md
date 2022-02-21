@@ -1,9 +1,12 @@
 # Changelog
 
 ## [NEXT]
-- Bumped Promesa to 6.1.431
+- Bumped Promesa to 6.1.436
 - INTERNAL BREAK: the internal `plan-and-run!` from all runners now return env instead of the graph plan
 - Runner exceptions now return a wrapped error that includes environment data
+- Boundary interface errors are always data
+- Boundary interface omit stats by default, open with the :pathom/include-stats? flag on the request
+- Add `pbip/env-wrap-plugin`
 
 ## [2022.02.01-1-alpha]
 - Remove debugging tap

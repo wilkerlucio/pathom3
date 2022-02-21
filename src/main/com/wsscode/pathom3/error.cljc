@@ -5,7 +5,13 @@
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.planner :as pcp]
-    [com.wsscode.pathom3.plugin :as p.plugin]))
+    [com.wsscode.pathom3.plugin :as p.plugin]
+    #?(:cljs [goog.object :as gobj]))
+  #?(:clj
+     (:import
+       (java.io
+         PrintWriter
+         StringWriter))))
 
 (>def ::phase keyword?)
 
@@ -102,3 +108,35 @@
         (seq errors)
         (assoc :com.wsscode.pathom3.connect.runner/attribute-errors errors)))
     entity))
+
+#?(:clj
+   (defn error-stack [^Throwable err]
+     (let [sw (StringWriter.)
+           pw (PrintWriter. sw)]
+       (.printStackTrace err pw)
+       (.toString sw)))
+
+   :cljs
+   (defn error-stack [err]
+     (gobj/get err "stack")))
+
+(defn datafy-processor-error* [env]
+  (-> env
+      (select-keys [::error-message
+                    ::error-stack
+                    ::pcp/graph
+                    :com.wsscode.pathom3.connect.runner/processor-error?
+                    ;:com.wsscode.pathom3.connect.runner/processor-error-parent-env
+                    :com.wsscode.pathom3.entity-tree/entity-tree
+                    :com.wsscode.pathom3.path/path])
+      (coll/update-if
+        :com.wsscode.pathom3.connect.runner/processor-error-parent-env
+        datafy-processor-error*)))
+
+(defn datafy-processor-error [^Throwable err]
+  (let [env (ex-data err)]
+    (if (some-> env :com.wsscode.pathom3.connect.runner/processor-error?)
+      (datafy-processor-error* env)
+      {::error-message (ex-message err)
+       ::error-data    (ex-data err)
+       ::error-stack   (error-stack err)})))

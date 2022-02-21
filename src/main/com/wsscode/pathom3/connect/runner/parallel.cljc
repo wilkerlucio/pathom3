@@ -561,8 +561,7 @@
           (run-graph-entity-done env)
           env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (ex-info (str "Graph execution failed: " (ex-message e))
-                        env e))))))
+        (throw (pcr/processor-exception env e))))))
 
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]

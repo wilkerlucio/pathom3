@@ -125,7 +125,9 @@
   (if (vector? input)
     {:pathom/eql    input
      :pathom/entity {}}
-    input))
+    (cond->> input
+      (:pathom/lenient-mode? input)
+      (merge {:pathom/include-stats? true}))))
 
 (>defn extend-env
   [source-env env-extension]
@@ -160,6 +162,7 @@
       :pathom/eql
       :pathom/ast
       :pathom/entity
+      :pathom/include-stats?
       :pathom/lenient-mode?
 
   Env ext can be either a map to merge in the original env, or a function that transforms
@@ -168,16 +171,22 @@
   [env] [map? => fn?]
   (let [env' (pci/register env pcf/foreign-indexes-resolver)]
     (fn boundary-interface-internal
-      ([env-extension input]
-       (let [{:pathom/keys [eql entity ast] :as request} (normalize-input input)
+      ([env-extension request]
+       (let [{:pathom/keys [eql entity ast include-stats?] :as request'}
+             (normalize-input request)
              env'    (-> env'
-                         (boundary-env input)
+                         (boundary-env request)
                          (extend-env env-extension)
-                         (assoc ::source-request request))
+                         (assoc
+                           ::source-request request'
+                           ::pcr/omit-run-stats? (not include-stats?)))
              entity' (or entity {})]
 
-         (if ast
-           (process-ast (p.ent/with-entity env' entity') ast)
-           (process env' entity' (or eql (:pathom/tx request))))))
-      ([input]
-       (boundary-interface-internal nil input)))))
+         (try
+           (if ast
+             (process-ast (p.ent/with-entity env' entity') ast)
+             (process env' entity' (or eql (:pathom/tx request'))))
+           (catch #?(:clj Throwable :cljs :default) err
+             (p.error/datafy-processor-error err)))))
+      ([request]
+       (boundary-interface-internal nil request)))))
