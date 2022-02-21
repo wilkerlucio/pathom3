@@ -1,7 +1,7 @@
 # Changelog
 
 ## [NEXT]
-- Bumped Promesa to 6.1.431
+- Bumped Promesa to 6.1.436
 - INTERNAL BREAK: the internal `plan-and-run!` from all runners now return env instead of the graph plan
 - Runner exceptions now return a wrapped error that includes environment data
 - Boundary interface errors are always data
