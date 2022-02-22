@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2022.02.21-alpha]
 - Bumped Promesa to 6.1.436
 - INTERNAL BREAK: the internal `plan-and-run!` from all runners now return env instead of the graph plan
 - Runner exceptions now return a wrapped error that includes environment data
