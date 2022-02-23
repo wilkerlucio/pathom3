@@ -4,7 +4,7 @@
   <packaging>jar</packaging>
   <groupId>com.wsscode</groupId>
   <artifactId>pathom3</artifactId>
-  <version>2022.02.14-alpha-SNAPSHOT</version>
+  <version>2022.02.21-alpha</version>
   <name>pathom3</name>
   <description>Logic programming via semantic attributes.</description>
   <url>https://github.com/wilkerlucio/pathom3</url>
@@ -18,7 +18,7 @@
     <url>https://github.com/wilkerlucio/pathom3</url>
     <connection>scm:git:git://github.com/wilkerlucio/pathom3.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/wilkerlucio/pathom3.git</developerConnection>
-    <tag>v2022.02.14-alpha-SNAPSHOT</tag>
+    <tag>v2022.02.21-alpha</tag>
   </scm>
   <dependencies>
     <dependency>
@@ -49,7 +49,7 @@
     <dependency>
       <groupId>funcool</groupId>
       <artifactId>promesa</artifactId>
-      <version>6.1.431</version>
+      <version>6.1.436</version>
     </dependency>
     <dependency>
       <groupId>com.wsscode</groupId>
