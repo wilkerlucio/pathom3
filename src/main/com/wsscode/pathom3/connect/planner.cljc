@@ -965,9 +965,6 @@
 (defn compute-attribute-nested-input-require [graph env attr shape nodes]
   (add-snapshot! graph env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))
                             ::highlight-nodes  (into #{} (map ::node-id) nodes)})
-  ; TODO this should consider the case that a few of the nodes can provide the
-  ; sub-query, in this case only they should be kept in the graph, and the other
-  ; options must be removed
   (let [checked-nodes (into []
                             (map (fn [node]
                                    (cond-> node
