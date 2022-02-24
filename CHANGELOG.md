@@ -2,6 +2,7 @@
 
 ## [2022.02.24-alpha]
 - Add `pf.eql/seq-data->query` to find shape of a combined collection
+- Computation of `::pcp/expects` on static resolvers now includes data about nested expectations
 
 ## [2022.02.21-alpha]
 - Bumped Promesa to 6.1.436

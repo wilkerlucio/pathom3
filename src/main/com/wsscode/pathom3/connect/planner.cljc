@@ -1129,7 +1129,10 @@
         config     (pci/resolver-config env op-name)
         op-name'   (or (::pco/dynamic-name config) op-name)
         dynamic?   (pci/dynamic-resolver? env op-name')
-        sub        (if dynamic? (compute-dynamic-nested-requirements env))
+        sub        (if dynamic?
+                     (compute-dynamic-nested-requirements env)
+                     (let [ast-shape (pfsd/ast->shape-descriptor ast)]
+                       (pfsd/intersection ast-shape (get (::pco/provides config) attribute))))
         requires   {attribute (cond-> (or sub {})
                                 (seq ast-params)
                                 (pfsd/shape-params ast-params))}]

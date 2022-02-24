@@ -1,8 +1,7 @@
 (ns com.wsscode.pathom3.connect.planner-test
   (:require
-    [clojure.test :refer [deftest is are run-tests testing]]
+    [clojure.test :refer [deftest is testing]]
     [com.wsscode.misc.coll :as coll]
-    ;[com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -205,7 +204,51 @@
                                           :b {:type         :prop,
                                               :dispatch-key :b,
                                               :key          :b}}
-             ::pcp/root                  3}))))
+             ::pcp/root                  3})))
+
+  (testing "expectation for nested needs"
+    (is (= (compute-run-graph
+             {::resolvers [{::pco/op-name 'a
+                            ::pco/output  [{:a [:b :c]}]}]
+              ::eql/query [{:a [:b]}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                                            :com.wsscode.pathom3.connect.planner/expects   {:a {:b {}}},
+                                                                            :com.wsscode.pathom3.connect.planner/input     {},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id   1}},
+             :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :join,
+                                                                             :dispatch-key :a,
+                                                                             :key          :a,
+                                                                             :query        [:b],
+                                                                             :children     [{:type         :prop,
+                                                                                             :dispatch-key :b,
+                                                                                             :key          :b}]}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{1}},
+             :com.wsscode.pathom3.connect.planner/root                  1}))
+
+    (is (= (compute-run-graph
+             {::resolvers [{::pco/op-name 'a
+                            ::pco/output  [{:a [:b :c]}]}
+                           {::pco/op-name 'd
+                            ::pco/output [:d]}]
+              ::eql/query [{:a [:b :d]}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes {1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                            :com.wsscode.pathom3.connect.planner/expects {:a {:b {}}},
+                                                            :com.wsscode.pathom3.connect.planner/input {},
+                                                            :com.wsscode.pathom3.connect.planner/node-id 1}},
+             :com.wsscode.pathom3.connect.planner/index-ast {:a {:type :join,
+                                                                 :dispatch-key :a,
+                                                                 :key :a,
+                                                                 :query [:b :d],
+                                                                 :children [{:type :prop,
+                                                                             :dispatch-key :b,
+                                                                             :key :b}
+                                                                            {:type :prop,
+                                                                             :dispatch-key :d,
+                                                                             :key :d}]}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
+             :com.wsscode.pathom3.connect.planner/index-attrs {:a #{1}},
+             :com.wsscode.pathom3.connect.planner/root 1}))))
 
 (deftest compute-run-graph-no-path-test
   (testing "no path"
@@ -705,7 +748,7 @@
                                                                                               :com.wsscode.pathom3.connect.planner/node-id      1,
                                                                                               :com.wsscode.pathom3.connect.planner/node-parents #{5}},
                                                                           4                  {:com.wsscode.pathom3.connect.operation/op-name    a3,
-                                                                                              :com.wsscode.pathom3.connect.planner/expects      {:a {}},
+                                                                                              :com.wsscode.pathom3.connect.planner/expects      {:a {:b {}}},
                                                                                               :com.wsscode.pathom3.connect.planner/input        {},
                                                                                               :com.wsscode.pathom3.connect.planner/node-id      4,
                                                                                               :com.wsscode.pathom3.connect.planner/node-parents #{5}},
@@ -1128,7 +1171,7 @@
                                              ::pcp/node-id      1,
                                              ::pcp/node-parents #{2}},
                                           2 {::pco/op-name  items,
-                                             ::pcp/expects  {:items {}},
+                                             ::pcp/expects  {:items {:b {}}},
                                              ::pcp/input    {},
                                              ::pcp/node-id  2,
                                              ::pcp/run-next 1}},
