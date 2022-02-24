@@ -1118,6 +1118,33 @@
         (compute-dynamic-nested-union-requirements* env dynamic-name available)
         (compute-dynamic-nested-requirements* env dynamic-name available)))))
 
+(defn compute-nested-requirements
+  [{::keys        [available-data]
+    ::p.attr/keys [attribute]
+    ::pco/keys    [op-name]
+    ast           :edn-query-language.ast/node
+    :as           env}]
+  (let [config      (pci/resolver-config env op-name)
+        provide-sub (get (::pco/provides config) attribute)
+        graph       (compute-run-graph (-> (reset-env env)
+                                           (push-path env)
+                                           (inc-snapshot-depth)
+                                           (assoc
+                                             :com.wsscode.pathom3.error/lenient-mode? true
+                                             :edn-query-language.ast/node ast
+                                             ::available-data (pfsd/merge-shapes available-data provide-sub))))
+        root-res    (find-root-resolver-nodes graph)
+        root-inputs (transduce
+                      (map #(get-node graph %))
+                      (completing
+                        (fn [i {::keys [input]}]
+                          (pfsd/merge-shapes i input)))
+                      {}
+                      root-res)
+        ast-shape   (pfsd/ast->shape-descriptor ast)]
+    (pfsd/intersection (pfsd/merge-shapes ast-shape root-inputs)
+                       provide-sub)))
+
 (defn create-node-for-resolver-call
   "Create a new node representative to run a given resolver."
   [{::keys        [input]
@@ -1125,17 +1152,21 @@
     ::pco/keys    [op-name]
     ast           :edn-query-language.ast/node
     :as           env}]
-  (let [ast-params (:params ast)
-        config     (pci/resolver-config env op-name)
-        op-name'   (or (::pco/dynamic-name config) op-name)
-        dynamic?   (pci/dynamic-resolver? env op-name')
-        sub        (if dynamic?
-                     (compute-dynamic-nested-requirements env)
-                     (let [ast-shape (pfsd/ast->shape-descriptor ast)]
-                       (pfsd/intersection ast-shape (get (::pco/provides config) attribute))))
-        requires   {attribute (cond-> (or sub {})
-                                (seq ast-params)
-                                (pfsd/shape-params ast-params))}]
+  (let [ast-params  (:params ast)
+        config      (pci/resolver-config env op-name)
+        op-name'    (or (::pco/dynamic-name config) op-name)
+        dynamic?    (pci/dynamic-resolver? env op-name')
+        provide-sub (get (::pco/provides config) attribute)
+        sub         (cond
+                      dynamic?
+                      (compute-dynamic-nested-requirements env)
+
+                      (and (seq provide-sub) (seq (:children ast)))
+                      (compute-nested-requirements env))
+        requires    {attribute (cond-> (or sub {})
+                                 (seq ast-params)
+                                 (pfsd/shape-params ast-params))}]
+
     (cond->
       (new-node env
                 {::pco/op-name op-name'
@@ -1528,7 +1559,10 @@
   [{:com.wsscode.pathom3.error/keys [lenient-mode?]
     :as                             env} graph]
   (if lenient-mode?
-    graph
+    (try
+      (verify-plan!* env graph)
+      (catch #?(:clj Throwable :cljs :default) _
+        (assoc graph ::verification-failed? true)))
     (verify-plan!* env graph)))
 
 (>defn compute-run-graph

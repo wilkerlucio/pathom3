@@ -1,5 +1,6 @@
 (ns com.wsscode.pathom3.connect.planner-test
   (:require
+    [check.core :refer [check =>]]
     [clojure.test :refer [deftest is testing]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
@@ -207,48 +208,31 @@
              ::pcp/root                  3})))
 
   (testing "expectation for nested needs"
-    (is (= (compute-run-graph
-             {::resolvers [{::pco/op-name 'a
-                            ::pco/output  [{:a [:b :c]}]}]
-              ::eql/query [{:a [:b]}]})
-           '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name a,
-                                                                            :com.wsscode.pathom3.connect.planner/expects   {:a {:b {}}},
-                                                                            :com.wsscode.pathom3.connect.planner/input     {},
-                                                                            :com.wsscode.pathom3.connect.planner/node-id   1}},
-             :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :join,
-                                                                             :dispatch-key :a,
-                                                                             :key          :a,
-                                                                             :query        [:b],
-                                                                             :children     [{:type         :prop,
-                                                                                             :dispatch-key :b,
-                                                                                             :key          :b}]}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
-             :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{1}},
-             :com.wsscode.pathom3.connect.planner/root                  1}))
+    (testing "exposed required sub query"
+      (check (=> {::pcp/nodes {1 {::pcp/expects {:a {:b {}}}}}}
+                 (compute-run-graph
+                   {::resolvers [{::pco/op-name 'a
+                                  ::pco/output  [{:a [:b :c]}]}]
+                    ::eql/query [{:a [:b]}]}))))
 
-    (is (= (compute-run-graph
-             {::resolvers [{::pco/op-name 'a
-                            ::pco/output  [{:a [:b :c]}]}
-                           {::pco/op-name 'd
-                            ::pco/output [:d]}]
-              ::eql/query [{:a [:b :d]}]})
-           '{:com.wsscode.pathom3.connect.planner/nodes {1 {:com.wsscode.pathom3.connect.operation/op-name a,
-                                                            :com.wsscode.pathom3.connect.planner/expects {:a {:b {}}},
-                                                            :com.wsscode.pathom3.connect.planner/input {},
-                                                            :com.wsscode.pathom3.connect.planner/node-id 1}},
-             :com.wsscode.pathom3.connect.planner/index-ast {:a {:type :join,
-                                                                 :dispatch-key :a,
-                                                                 :key :a,
-                                                                 :query [:b :d],
-                                                                 :children [{:type :prop,
-                                                                             :dispatch-key :b,
-                                                                             :key :b}
-                                                                            {:type :prop,
-                                                                             :dispatch-key :d,
-                                                                             :key :d}]}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
-             :com.wsscode.pathom3.connect.planner/index-attrs {:a #{1}},
-             :com.wsscode.pathom3.connect.planner/root 1}))))
+    (testing "filters only parts included on the resolver provides"
+      (check (=> {::pcp/nodes {2 {::pcp/expects {:a {:b {}}}}}}
+                 (compute-run-graph
+                   {::resolvers [{::pco/op-name 'a
+                                  ::pco/output  [{:a [:b :c]}]}
+                                 {::pco/op-name 'd
+                                  ::pco/output  [:d]}]
+                    ::eql/query [{:a [:b :d]}]}))))
+
+    (testing "add expects on implicit dependency"
+      (check (=> {::pcp/nodes {2 {::pcp/expects {:a {:b {}}}}}}
+                 (compute-run-graph
+                   {::resolvers [{::pco/op-name 'a
+                                  ::pco/output  [{:a [:b :c]}]}
+                                 {::pco/op-name 'd
+                                  ::pco/input   [:b]
+                                  ::pco/output  [:d]}]
+                    ::eql/query [{:a [:d]}]}))))))
 
 (deftest compute-run-graph-no-path-test
   (testing "no path"
@@ -385,32 +369,37 @@
              {::pci/index-oir         '{}
               ::eql/query             [:a]
               ::p.error/lenient-mode? true})
-           {::pcp/nodes             {}
-            ::pcp/unreachable-paths {:a {}}
-            ::pcp/index-ast         {:a {:dispatch-key :a
-                                         :key          :a
-                                         :type         :prop}}}))
+           {:com.wsscode.pathom3.connect.planner/index-ast            {:a {:dispatch-key :a
+                                                                           :key          :a
+                                                                           :type         :prop}}
+            :com.wsscode.pathom3.connect.planner/nodes                {}
+            :com.wsscode.pathom3.connect.planner/unreachable-paths    {:a {}}
+            :com.wsscode.pathom3.connect.planner/verification-failed? true}))
 
     (testing "broken chain"
       (is (= (compute-run-graph
                {::pci/index-oir         '{:b {{:a {}} #{b}}}
                 ::eql/query             [:b]
                 ::p.error/lenient-mode? true})
-             '#::pcp{:nodes             {}
-                     :unreachable-paths {:b {}, :a {}}
-                     :index-ast         {:b {:dispatch-key :b
-                                             :key          :b
-                                             :type         :prop}}}))
+             '{:com.wsscode.pathom3.connect.planner/index-ast            {:b {:dispatch-key :b
+                                                                              :key          :b
+                                                                              :type         :prop}}
+               :com.wsscode.pathom3.connect.planner/nodes                {}
+               :com.wsscode.pathom3.connect.planner/unreachable-paths    {:a {}
+                                                                          :b {}}
+               :com.wsscode.pathom3.connect.planner/verification-failed? true}))
 
       (is (= (compute-run-graph
                {::pci/index-oir         '{:b {{:a {}} #{b1 b}}}
                 ::eql/query             [:b]
                 ::p.error/lenient-mode? true})
-             '#::pcp{:nodes             {}
-                     :unreachable-paths {:a {} :b {}}
-                     :index-ast         {:b {:dispatch-key :b
-                                             :key          :b
-                                             :type         :prop}}}))
+             '{:com.wsscode.pathom3.connect.planner/index-ast            {:b {:dispatch-key :b
+                                                                              :key          :b
+                                                                              :type         :prop}}
+               :com.wsscode.pathom3.connect.planner/nodes                {}
+               :com.wsscode.pathom3.connect.planner/unreachable-paths    {:a {}
+                                                                          :b {}}
+               :com.wsscode.pathom3.connect.planner/verification-failed? true}))
 
       (is (= (compute-run-graph
                {::resolvers             [{::pco/op-name 'a
@@ -421,11 +410,13 @@
                 ::eql/query             [:b]
                 ::out                   {::pcp/unreachable-paths {:a {}}}
                 ::p.error/lenient-mode? true})
-             '#::pcp{:nodes             {}
-                     :unreachable-paths {:a {} :b {}}
-                     :index-ast         {:b {:dispatch-key :b
-                                             :key          :b
-                                             :type         :prop}}}))
+             '{:com.wsscode.pathom3.connect.planner/index-ast            {:b {:dispatch-key :b
+                                                                              :key          :b
+                                                                              :type         :prop}}
+               :com.wsscode.pathom3.connect.planner/nodes                {}
+               :com.wsscode.pathom3.connect.planner/unreachable-paths    {:a {}
+                                                                          :b {}}
+               :com.wsscode.pathom3.connect.planner/verification-failed? true}))
 
       (is (= (compute-run-graph
                {::resolvers             [{::pco/op-name 'b
@@ -436,11 +427,14 @@
                                           ::pco/output  [:c]}]
                 ::eql/query             [:c]
                 ::p.error/lenient-mode? true})
-             '#::pcp{:nodes             {}
-                     :unreachable-paths {:a {} :b {} :c {}}
-                     :index-ast         {:c {:dispatch-key :c
-                                             :key          :c
-                                             :type         :prop}}}))
+             '{:com.wsscode.pathom3.connect.planner/index-ast            {:c {:dispatch-key :c
+                                                                              :key          :c
+                                                                              :type         :prop}}
+               :com.wsscode.pathom3.connect.planner/nodes                {}
+               :com.wsscode.pathom3.connect.planner/unreachable-paths    {:a {}
+                                                                          :b {}
+                                                                          :c {}}
+               :com.wsscode.pathom3.connect.planner/verification-failed? true}))
 
       (is (= (compute-run-graph
                {::resolvers             [{::pco/op-name 'b
@@ -453,11 +447,14 @@
                                           ::pco/output  [:c]}]
                 ::eql/query             [:c]
                 ::p.error/lenient-mode? true})
-             '#::pcp{:nodes             {}
-                     :unreachable-paths {:c {}, :b {}, :a {}}
-                     :index-ast         {:c {:dispatch-key :c
-                                             :key          :c
-                                             :type         :prop}}})))))
+             '{:com.wsscode.pathom3.connect.planner/index-ast            {:c {:dispatch-key :c
+                                                                              :key          :c
+                                                                              :type         :prop}}
+               :com.wsscode.pathom3.connect.planner/nodes                {}
+               :com.wsscode.pathom3.connect.planner/unreachable-paths    {:a {}
+                                                                          :b {}
+                                                                          :c {}}
+               :com.wsscode.pathom3.connect.planner/verification-failed? true})))))
 
 (deftest compute-run-graph-mutations-test
   (is (= (compute-run-graph
@@ -588,11 +585,13 @@
                                         ::pco/output  [:b]}]
               ::eql/query             [:a]
               ::p.error/lenient-mode? true})
-           '#::pcp{:nodes             {},
-                   :unreachable-paths {:b {}, :a {}},
-                   :index-ast         {:a {:type         :prop,
-                                           :dispatch-key :a,
-                                           :key          :a}}}))
+           '{:com.wsscode.pathom3.connect.planner/index-ast            {:a {:dispatch-key :a
+                                                                            :key          :a
+                                                                            :type         :prop}}
+             :com.wsscode.pathom3.connect.planner/nodes                {}
+             :com.wsscode.pathom3.connect.planner/unreachable-paths    {:a {}
+                                                                        :b {}}
+             :com.wsscode.pathom3.connect.planner/verification-failed? true}))
 
     (is (= (compute-run-graph
              {::resolvers             [{::pco/op-name 'a
@@ -606,11 +605,14 @@
                                         ::pco/output  [:c]}]
               ::eql/query             [:a]
               ::p.error/lenient-mode? true})
-           '#::pcp{:nodes             {}
-                   :unreachable-paths {:c {}, :b {}, :a {}}
-                   :index-ast         {:a {:type         :prop,
-                                           :dispatch-key :a,
-                                           :key          :a}}}))
+           '{:com.wsscode.pathom3.connect.planner/index-ast            {:a {:dispatch-key :a
+                                                                            :key          :a
+                                                                            :type         :prop}}
+             :com.wsscode.pathom3.connect.planner/nodes                {}
+             :com.wsscode.pathom3.connect.planner/unreachable-paths    {:a {}
+                                                                        :b {}
+                                                                        :c {}}
+             :com.wsscode.pathom3.connect.planner/verification-failed? true}))
 
     (testing "partial cycle"
       (is (= (compute-run-graph
@@ -686,12 +688,13 @@
                                             {::pco/op-name users
                                              ::pco/output  [{:users [:user/id]}]}]
                   ::p.error/lenient-mode? true}))
-           '{::pcp/nodes             {}
-             ::pcp/unreachable-paths {:scores-sum {}
-                                      :users      {:user/score {}}}
-             ::pcp/index-ast         {:scores-sum {:type         :prop,
-                                                   :dispatch-key :scores-sum,
-                                                   :key          :scores-sum}}})))
+           '{:com.wsscode.pathom3.connect.planner/index-ast            {:scores-sum {:dispatch-key :scores-sum
+                                                                                     :key          :scores-sum
+                                                                                     :type         :prop}}
+             :com.wsscode.pathom3.connect.planner/nodes                {}
+             :com.wsscode.pathom3.connect.planner/unreachable-paths    {:scores-sum {}
+                                                                        :users      {:user/score {}}}
+             :com.wsscode.pathom3.connect.planner/verification-failed? true})))
 
   (testing "allow possible path"
     (is (= (compute-run-graph
@@ -705,29 +708,30 @@
                                              ::pco/input   [:user/id]
                                              ::pco/output  [:user/score]}]
                   ::p.error/lenient-mode? true}))
-           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
-                                                                             :com.wsscode.pathom3.connect.planner/node-id      1,
-                                                                             :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}},
-                                                                             :com.wsscode.pathom3.connect.planner/input        {:users #:user{:score {}}},
-                                                                             :com.wsscode.pathom3.connect.planner/node-parents #{2},},
-                                                                          2 {:com.wsscode.pathom3.connect.operation/op-name users,
-                                                                             :com.wsscode.pathom3.connect.planner/node-id   2,
-                                                                             :com.wsscode.pathom3.connect.planner/expects   {:users {}},
-                                                                             :com.wsscode.pathom3.connect.planner/input     {},
-                                                                             :com.wsscode.pathom3.connect.planner/run-next  1}},
-                                                  :index-ast             {:scores-sum {:type         :prop,
-                                                                                       :dispatch-key :scores-sum,
-                                                                                       :key          :scores-sum},
-                                                                          :users      {:type         :join,
-                                                                                       :children     [{:type         :prop,
-                                                                                                       :key          :user/score,
-                                                                                                       :dispatch-key :user/score}],
-                                                                                       :key          :users,
-                                                                                       :dispatch-key :users}},
-                                                  :index-resolver->nodes {scores-sum #{1},
-                                                                          users      #{2}},
-                                                  :index-attrs           {:scores-sum #{1}, :users #{2}},
-                                                  :root                  2})))
+           '{:com.wsscode.pathom3.connect.planner/index-ast             {:scores-sum {:dispatch-key :scores-sum
+                                                                                      :key          :scores-sum
+                                                                                      :type         :prop}
+                                                                         :users      {:children     [{:dispatch-key :user/score
+                                                                                                      :key          :user/score
+                                                                                                      :type         :prop}]
+                                                                                      :dispatch-key :users
+                                                                                      :key          :users
+                                                                                      :type         :join}}
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:scores-sum #{1}
+                                                                         :users      #{3}}
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {scores-sum #{1}
+                                                                         users      #{3}}
+             :com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    scores-sum
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}}
+                                                                            :com.wsscode.pathom3.connect.planner/input        {:users {:user/score {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      1
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{3}}
+                                                                         3 {:com.wsscode.pathom3.connect.operation/op-name users
+                                                                            :com.wsscode.pathom3.connect.planner/expects   {:users {:user/id {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/input     {}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id   3
+                                                                            :com.wsscode.pathom3.connect.planner/run-next  1}}
+             :com.wsscode.pathom3.connect.planner/root                  3})))
 
   (testing "mark bad paths regarding nested inputs"
     (is (= (compute-run-graph
@@ -742,49 +746,52 @@
                                          ::pco/input   [{:a [:b]}]
                                          ::pco/output  [:z]}]
               ::p.error/lenient-mode? true})
-           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1                  {:com.wsscode.pathom3.connect.operation/op-name    z,
-                                                                                              :com.wsscode.pathom3.connect.planner/expects      {:z {}},
-                                                                                              :com.wsscode.pathom3.connect.planner/input        {:a {:b {}}},
-                                                                                              :com.wsscode.pathom3.connect.planner/node-id      1,
-                                                                                              :com.wsscode.pathom3.connect.planner/node-parents #{5}},
-                                                                          4                  {:com.wsscode.pathom3.connect.operation/op-name    a3,
-                                                                                              :com.wsscode.pathom3.connect.planner/expects      {:a {:b {}}},
-                                                                                              :com.wsscode.pathom3.connect.planner/input        {},
-                                                                                              :com.wsscode.pathom3.connect.planner/node-id      4,
-                                                                                              :com.wsscode.pathom3.connect.planner/node-parents #{5}},
-                                                                          #?(:clj 3 :cljs 2) {:com.wsscode.pathom3.connect.operation/op-name     a1,
-                                                                                              :com.wsscode.pathom3.connect.planner/expects       {:a {}},
-                                                                                              :com.wsscode.pathom3.connect.planner/input         {},
-                                                                                              :com.wsscode.pathom3.connect.planner/node-id       #?(:clj 3 :cljs 2),
-                                                                                              :com.wsscode.pathom3.connect.planner/node-parents  #{5},
-                                                                                              :com.wsscode.pathom3.connect.planner/invalid-node? true},
-                                                                          #?(:clj 2 :cljs 3) {:com.wsscode.pathom3.connect.operation/op-name     a2,
-                                                                                              :com.wsscode.pathom3.connect.planner/expects       {:a {}},
-                                                                                              :com.wsscode.pathom3.connect.planner/input         {},
-                                                                                              :com.wsscode.pathom3.connect.planner/node-id       #?(:clj 2 :cljs 3),
-                                                                                              :com.wsscode.pathom3.connect.planner/node-parents  #{5},
-                                                                                              :com.wsscode.pathom3.connect.planner/invalid-node? true},
-                                                                          5                  #:com.wsscode.pathom3.connect.planner{:expects  {:a {}},
-                                                                                                                                   :node-id  5,
-                                                                                                                                   :run-or   #{4
-                                                                                                                                               3
-                                                                                                                                               2},
-                                                                                                                                   :run-next 1}},
-                                                  :index-ast             {:z {:type         :prop,
-                                                                              :dispatch-key :z,
-                                                                              :key          :z},
-                                                                          :a {:type         :join,
-                                                                              :children     [{:type         :prop,
-                                                                                              :key          :b,
-                                                                                              :dispatch-key :b}],
-                                                                              :key          :a,
-                                                                              :dispatch-key :a}},
-                                                  :index-resolver->nodes {z  #{1},
-                                                                          a3 #{4},
-                                                                          a1 #{#?(:clj 3 :cljs 2)},
-                                                                          a2 #{#?(:clj 2 :cljs 3)}},
-                                                  :index-attrs           {:z #{1}, :a #{4 3 2}},
-                                                  :root                  5})))
+           '{:com.wsscode.pathom3.connect.planner/index-ast             {:a {:children     [{:dispatch-key :b
+                                                                                             :key          :b
+                                                                                             :type         :prop}]
+                                                                             :dispatch-key :a
+                                                                             :key          :a
+                                                                             :type         :join}
+                                                                         :z {:dispatch-key :z
+                                                                             :key          :z
+                                                                             :type         :prop}}
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{2
+                                                                              3
+                                                                              4}
+                                                                         :z #{1}}
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a1 #{3}
+                                                                         a2 #{2}
+                                                                         a3 #{4}
+                                                                         z  #{1}}
+             :com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    z
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:z {}}
+                                                                            :com.wsscode.pathom3.connect.planner/input        {:a {:b {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      1
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{5}}
+                                                                         2 {:com.wsscode.pathom3.connect.operation/op-name     a2
+                                                                            :com.wsscode.pathom3.connect.planner/expects       {:a {}}
+                                                                            :com.wsscode.pathom3.connect.planner/input         {}
+                                                                            :com.wsscode.pathom3.connect.planner/invalid-node? true
+                                                                            :com.wsscode.pathom3.connect.planner/node-id       2
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents  #{5}}
+                                                                         3 {:com.wsscode.pathom3.connect.operation/op-name     a1
+                                                                            :com.wsscode.pathom3.connect.planner/expects       {:a {}}
+                                                                            :com.wsscode.pathom3.connect.planner/input         {}
+                                                                            :com.wsscode.pathom3.connect.planner/invalid-node? true
+                                                                            :com.wsscode.pathom3.connect.planner/node-id       3
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents  #{5}}
+                                                                         4 {:com.wsscode.pathom3.connect.operation/op-name    a3
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:a {:b {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/input        {}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      4
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{5}}
+                                                                         5 {:com.wsscode.pathom3.connect.planner/expects  {:a {}}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id  5
+                                                                            :com.wsscode.pathom3.connect.planner/run-next 1
+                                                                            :com.wsscode.pathom3.connect.planner/run-or   #{2
+                                                                                                                            3
+                                                                                                                            4}}}
+             :com.wsscode.pathom3.connect.planner/root                  5})))
 
   (testing "data partially available, require join lookup"
     (is (= (compute-run-graph
@@ -901,41 +908,36 @@
                                            ::pco/input   [:user/id]
                                            ::pco/output  [:user/score]}]
                   ::p.error/lenient-mode? true}))
-           '{:com.wsscode.pathom3.connect.planner/nodes
-             {1
-              {:com.wsscode.pathom3.connect.operation/op-name    scores-sum,
-               :com.wsscode.pathom3.connect.planner/node-id      1,
-               :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}},
-               :com.wsscode.pathom3.connect.planner/input
-               {:users {:user/score {}}},
-               :com.wsscode.pathom3.connect.planner/node-parents #{2}},
-              2
-              {:com.wsscode.pathom3.connect.operation/op-name users,
-               :com.wsscode.pathom3.connect.planner/node-id   2,
-               :com.wsscode.pathom3.connect.planner/expects   {:users {}},
-               :com.wsscode.pathom3.connect.planner/input     {},
-               :com.wsscode.pathom3.connect.planner/run-next  1}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-             {scores-sum #{1}, users #{2}},
-             ::pcp/unreachable-paths
-             {:total-max-score {}, :users {:user/max-score {}}},
-             :com.wsscode.pathom3.connect.planner/index-ast
-             {:scores-sum
-              {:type :prop, :dispatch-key :scores-sum, :key :scores-sum},
-              :total-max-score
-              {:type         :prop,
-               :dispatch-key :total-max-score,
-               :key          :total-max-score}
-              :users
-              {:type         :join
-               :key          :users
-               :dispatch-key :users
-               :children     [{:type         :prop
-                               :key          :user/score
-                               :dispatch-key :user/score}]}},
-             :com.wsscode.pathom3.connect.planner/index-attrs
-             {:scores-sum #{1}, :users #{2}},
-             :com.wsscode.pathom3.connect.planner/root 2})))
+           '{:com.wsscode.pathom3.connect.planner/index-ast             {:scores-sum      {:dispatch-key :scores-sum
+                                                                                           :key          :scores-sum
+                                                                                           :type         :prop}
+                                                                         :total-max-score {:dispatch-key :total-max-score
+                                                                                           :key          :total-max-score
+                                                                                           :type         :prop}
+                                                                         :users           {:children     [{:dispatch-key :user/score
+                                                                                                           :key          :user/score
+                                                                                                           :type         :prop}]
+                                                                                           :dispatch-key :users
+                                                                                           :key          :users
+                                                                                           :type         :join}}
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:scores-sum #{1}
+                                                                         :users      #{3}}
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {scores-sum #{1}
+                                                                         users      #{3}}
+             :com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    scores-sum
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}}
+                                                                            :com.wsscode.pathom3.connect.planner/input        {:users {:user/score {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      1
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{3}}
+                                                                         3 {:com.wsscode.pathom3.connect.operation/op-name users
+                                                                            :com.wsscode.pathom3.connect.planner/expects   {:users {:user/id {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/input     {}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id   3
+                                                                            :com.wsscode.pathom3.connect.planner/run-next  1}}
+             :com.wsscode.pathom3.connect.planner/root                  3
+             :com.wsscode.pathom3.connect.planner/unreachable-paths     {:total-max-score {}
+                                                                         :users           {:user/max-score {}}}
+             :com.wsscode.pathom3.connect.planner/verification-failed?  true})))
 
   (testing "self output reference in input"
     (is (= (compute-run-graph
@@ -944,11 +946,13 @@
                                              ::pco/input   [{:a [:b]}]
                                              ::pco/output  [:b]}]
                   ::p.error/lenient-mode? true}))
-           '#:com.wsscode.pathom3.connect.planner{:nodes             {},
-                                                  :index-ast         {:b {:type         :prop,
-                                                                          :dispatch-key :b,
-                                                                          :key          :b}},
-                                                  :unreachable-paths {:a {}, :b {}}}))
+           '{:com.wsscode.pathom3.connect.planner/index-ast            {:b {:dispatch-key :b
+                                                                            :key          :b
+                                                                            :type         :prop}}
+             :com.wsscode.pathom3.connect.planner/nodes                {}
+             :com.wsscode.pathom3.connect.planner/unreachable-paths    {:a {}
+                                                                        :b {}}
+             :com.wsscode.pathom3.connect.planner/verification-failed? true}))
 
     (is (= (compute-run-graph
              (-> {::eql/query             [:b]
@@ -957,11 +961,13 @@
                                              ::pco/input   [{:a [:b]}]
                                              ::pco/output  [:b]}]
                   ::p.error/lenient-mode? true}))
-           '#:com.wsscode.pathom3.connect.planner{:nodes             {},
-                                                  :index-ast         {:b {:type         :prop,
-                                                                          :dispatch-key :b,
-                                                                          :key          :b}},
-                                                  :unreachable-paths {:a {:b {}}, :b {}}})))
+           '{:com.wsscode.pathom3.connect.planner/index-ast            {:b {:dispatch-key :b
+                                                                            :key          :b
+                                                                            :type         :prop}}
+             :com.wsscode.pathom3.connect.planner/nodes                {}
+             :com.wsscode.pathom3.connect.planner/unreachable-paths    {:a {:b {}}
+                                                                        :b {}}
+             :com.wsscode.pathom3.connect.planner/verification-failed? true})))
 
   (testing "multiple distinct nested details"
     (is (= (compute-run-graph
@@ -977,47 +983,47 @@
                                 {::pco/op-name user
                                  ::pco/input   [:user/id]
                                  ::pco/output  [:user/age :user/score]}]}))
-           '#:com.wsscode.pathom3.connect.planner{:index-ast             {:age-sum    {:dispatch-key :age-sum
-                                                                                       :key          :age-sum
-                                                                                       :type         :prop}
-                                                                          :scores-sum {:dispatch-key :scores-sum
-                                                                                       :key          :scores-sum
-                                                                                       :type         :prop}
-                                                                          :users      {:children     [{:dispatch-key :user/score
-                                                                                                       :key          :user/score
-                                                                                                       :type         :prop}
-                                                                                                      {:dispatch-key :user/age
-                                                                                                       :key          :user/age
-                                                                                                       :type         :prop}]
-                                                                                       :dispatch-key :users
-                                                                                       :key          :users
-                                                                                       :type         :join}}
-                                                  :index-attrs           {:age-sum    #{4}
-                                                                          :scores-sum #{1}
-                                                                          :users      #{2}}
-                                                  :index-resolver->nodes {age-sum    #{4}
-                                                                          scores-sum #{1}
-                                                                          users      #{2}}
-                                                  :nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    scores-sum
+           '{:com.wsscode.pathom3.connect.planner/index-ast             {:age-sum    {:dispatch-key :age-sum
+                                                                                      :key          :age-sum
+                                                                                      :type         :prop}
+                                                                         :scores-sum {:dispatch-key :scores-sum
+                                                                                      :key          :scores-sum
+                                                                                      :type         :prop}
+                                                                         :users      {:children     [{:dispatch-key :user/score
+                                                                                                      :key          :user/score
+                                                                                                      :type         :prop}
+                                                                                                     {:dispatch-key :user/age
+                                                                                                      :key          :user/age
+                                                                                                      :type         :prop}]
+                                                                                      :dispatch-key :users
+                                                                                      :key          :users
+                                                                                      :type         :join}}
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:age-sum    #{5}
+                                                                         :scores-sum #{1}
+                                                                         :users      #{3}}
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {age-sum    #{5}
+                                                                         scores-sum #{1}
+                                                                         users      #{3}}
+             :com.wsscode.pathom3.connect.planner/nodes                 {1  {:com.wsscode.pathom3.connect.operation/op-name    scores-sum
                                                                              :com.wsscode.pathom3.connect.planner/expects      {:scores-sum {}}
-                                                                             :com.wsscode.pathom3.connect.planner/input        {:users #:user{:score {}}}
+                                                                             :com.wsscode.pathom3.connect.planner/input        {:users {:user/score {}}}
                                                                              :com.wsscode.pathom3.connect.planner/node-id      1
-                                                                             :com.wsscode.pathom3.connect.planner/node-parents #{9}}
-                                                                          2 {:com.wsscode.pathom3.connect.operation/op-name users
-                                                                             :com.wsscode.pathom3.connect.planner/expects   {:users {}}
+                                                                             :com.wsscode.pathom3.connect.planner/node-parents #{11}}
+                                                                         11 {:com.wsscode.pathom3.connect.planner/node-id      11
+                                                                             :com.wsscode.pathom3.connect.planner/node-parents #{3}
+                                                                             :com.wsscode.pathom3.connect.planner/run-and      #{1
+                                                                                                                                 5}}
+                                                                         3  {:com.wsscode.pathom3.connect.operation/op-name users
+                                                                             :com.wsscode.pathom3.connect.planner/expects   {:users {:user/id {}}}
                                                                              :com.wsscode.pathom3.connect.planner/input     {}
-                                                                             :com.wsscode.pathom3.connect.planner/node-id   2
-                                                                             :com.wsscode.pathom3.connect.planner/run-next  9}
-                                                                          4 {:com.wsscode.pathom3.connect.operation/op-name    age-sum
+                                                                             :com.wsscode.pathom3.connect.planner/node-id   3
+                                                                             :com.wsscode.pathom3.connect.planner/run-next  11}
+                                                                         5  {:com.wsscode.pathom3.connect.operation/op-name    age-sum
                                                                              :com.wsscode.pathom3.connect.planner/expects      {:age-sum {}}
-                                                                             :com.wsscode.pathom3.connect.planner/input        {:users #:user{:age {}}}
-                                                                             :com.wsscode.pathom3.connect.planner/node-id      4
-                                                                             :com.wsscode.pathom3.connect.planner/node-parents #{9}}
-                                                                          9 #:com.wsscode.pathom3.connect.planner{:node-id      9
-                                                                                                                  :node-parents #{2}
-                                                                                                                  :run-and      #{1
-                                                                                                                                  4}}}
-                                                  :root                  2})))
+                                                                             :com.wsscode.pathom3.connect.planner/input        {:users {:user/age {}}}
+                                                                             :com.wsscode.pathom3.connect.planner/node-id      5
+                                                                             :com.wsscode.pathom3.connect.planner/node-parents #{11}}}
+             :com.wsscode.pathom3.connect.planner/root                  3})))
 
   (testing "recursive nested input"
     (is (= (compute-run-graph
@@ -1071,30 +1077,32 @@
                       {:total-score (reduce + 0 (map :user/score users))}))])
 
                ::eql/query [:total-score]))
-           '#:com.wsscode.pathom3.connect.planner{:nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    total-score,
-                                                                             :com.wsscode.pathom3.connect.planner/expects      {:total-score {}},
-                                                                             :com.wsscode.pathom3.connect.planner/input        {:users {}},
-                                                                             :com.wsscode.pathom3.connect.planner/node-id      1,
-                                                                             :com.wsscode.pathom3.connect.planner/node-parents #{3}},
-                                                                          3 {:com.wsscode.pathom3.connect.operation/op-name users,
-                                                                             :com.wsscode.pathom3.connect.planner/expects   {:users {}},
-                                                                             :com.wsscode.pathom3.connect.planner/input     {},
-                                                                             :com.wsscode.pathom3.connect.planner/node-id   3,
-                                                                             :com.wsscode.pathom3.connect.planner/run-next  1}},
-                                                  :index-ast             {:total-score {:type         :prop,
-                                                                                        :dispatch-key :total-score,
-                                                                                        :key          :total-score},
-                                                                          :users       {:type         :join,
-                                                                                        :children     [{:type         :prop,
-                                                                                                        :key          :user/score,
-                                                                                                        :dispatch-key :user/score
-                                                                                                        :params       {::pco/optional? true}}],
-                                                                                        :key          :users,
-                                                                                        :dispatch-key :users}},
-                                                  :index-resolver->nodes {total-score #{1},
-                                                                          users       #{3}},
-                                                  :index-attrs           {:total-score #{1}, :users #{3 2}},
-                                                  :root                  3}))
+           '{:com.wsscode.pathom3.connect.planner/index-ast             {:total-score {:dispatch-key :total-score
+                                                                                       :key          :total-score
+                                                                                       :type         :prop}
+                                                                         :users       {:children     [{:dispatch-key :user/score
+                                                                                                       :key          :user/score
+                                                                                                       :params       {:com.wsscode.pathom3.connect.operation/optional? true}
+                                                                                                       :type         :prop}]
+                                                                                       :dispatch-key :users
+                                                                                       :key          :users
+                                                                                       :type         :join}}
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:total-score #{1}
+                                                                         :users       #{2
+                                                                                        4}}
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {total-score #{1}
+                                                                         users       #{4}}
+             :com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    total-score
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:total-score {}}
+                                                                            :com.wsscode.pathom3.connect.planner/input        {:users {}}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      1
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{4}}
+                                                                         4 {:com.wsscode.pathom3.connect.operation/op-name users
+                                                                            :com.wsscode.pathom3.connect.planner/expects   {:users {:user/id {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/input     {}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id   4
+                                                                            :com.wsscode.pathom3.connect.planner/run-next  1}}
+             :com.wsscode.pathom3.connect.planner/root                  4}))
 
     (is (= (compute-run-graph
              (assoc
@@ -1112,37 +1120,39 @@
                      ::pco/output [:total-score]})])
 
                ::eql/query [:total-score]))
-           '{:com.wsscode.pathom3.connect.planner/nodes {1 {:com.wsscode.pathom3.connect.operation/op-name total-score,
-                                                            :com.wsscode.pathom3.connect.planner/expects {:total-score {}},
-                                                            :com.wsscode.pathom3.connect.planner/input {:users {:foo {}}},
-                                                            :com.wsscode.pathom3.connect.planner/node-id 1,
-                                                            :com.wsscode.pathom3.connect.planner/node-parents #{4}},
-                                                         4 {:com.wsscode.pathom3.connect.operation/op-name users,
-                                                            :com.wsscode.pathom3.connect.planner/expects {:users {}},
-                                                            :com.wsscode.pathom3.connect.planner/input {},
-                                                            :com.wsscode.pathom3.connect.planner/node-id 4,
-                                                            :com.wsscode.pathom3.connect.planner/run-next 1}},
-             :com.wsscode.pathom3.connect.planner/index-ast {:total-score {:type :prop,
-                                                                           :dispatch-key :total-score,
-                                                                           :key :total-score},
-                                                             :users {:type :join,
-                                                                     :children [{:type :join,
-                                                                                 :key :foo,
-                                                                                 :dispatch-key :foo,
-                                                                                 :children [{:type :prop,
-                                                                                             :key :bar,
-                                                                                             :dispatch-key :bar,
-                                                                                             :params {:com.wsscode.pathom3.connect.operation/optional? true}}],}
-                                                                                {:type :prop,
-                                                                                 :key :user/score,
-                                                                                 :dispatch-key :user/score,
-                                                                                 :params {:com.wsscode.pathom3.connect.operation/optional? true}}],
-                                                                     :key :users,
-                                                                     :dispatch-key :users}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {total-score #{1},
-                                                                         users #{4}},
-             :com.wsscode.pathom3.connect.planner/index-attrs {:total-score #{1}, :users #{4 2}},
-             :com.wsscode.pathom3.connect.planner/root 4})))
+           '{:com.wsscode.pathom3.connect.planner/index-ast             {:total-score {:dispatch-key :total-score
+                                                                                       :key          :total-score
+                                                                                       :type         :prop}
+                                                                         :users       {:children     [{:children     [{:dispatch-key :bar
+                                                                                                                       :key          :bar
+                                                                                                                       :params       {:com.wsscode.pathom3.connect.operation/optional? true}
+                                                                                                                       :type         :prop}]
+                                                                                                       :dispatch-key :foo
+                                                                                                       :key          :foo
+                                                                                                       :type         :join}
+                                                                                                      {:dispatch-key :user/score
+                                                                                                       :key          :user/score
+                                                                                                       :params       {:com.wsscode.pathom3.connect.operation/optional? true}
+                                                                                                       :type         :prop}]
+                                                                                       :dispatch-key :users
+                                                                                       :key          :users
+                                                                                       :type         :join}}
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:total-score #{1}
+                                                                         :users       #{3
+                                                                                        8}}
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {total-score #{1}
+                                                                         users       #{8}}
+             :com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    total-score
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:total-score {}}
+                                                                            :com.wsscode.pathom3.connect.planner/input        {:users {:foo {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      1
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{8}}
+                                                                         8 {:com.wsscode.pathom3.connect.operation/op-name users
+                                                                            :com.wsscode.pathom3.connect.planner/expects   {:users {:user/id {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/input     {}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id   8
+                                                                            :com.wsscode.pathom3.connect.planner/run-next  1}}
+             :com.wsscode.pathom3.connect.planner/root                  8})))
 
   (testing "nested dependency on available data"
     (is (= (compute-run-graph
@@ -1164,32 +1174,35 @@
                       {:z "Z"}))])
 
                ::eql/query [:z]))
-           '{::pcp/nodes                 {1 {::pco/op-name      z,
-                                             ::pcp/expects      {:z {}},
-                                             ::pcp/input        {:items {:c {},
-                                                                         :b {}}},
-                                             ::pcp/node-id      1,
-                                             ::pcp/node-parents #{2}},
-                                          2 {::pco/op-name  items,
-                                             ::pcp/expects  {:items {:b {}}},
-                                             ::pcp/input    {},
-                                             ::pcp/node-id  2,
-                                             ::pcp/run-next 1}},
-             ::pcp/index-ast             {:z     {:type         :prop,
-                                                  :dispatch-key :z,
-                                                  :key          :z},
-                                          :items {:type         :join,
-                                                  :children     [{:type         :prop,
-                                                                  :key          :c,
-                                                                  :dispatch-key :c}
-                                                                 {:type         :prop,
-                                                                  :key          :b,
-                                                                  :dispatch-key :b}],
-                                                  :key          :items,
-                                                  :dispatch-key :items}},
-             ::pcp/index-resolver->nodes {z #{1}, items #{2}},
-             ::pcp/index-attrs           {:z #{1}, :items #{2}},
-             ::pcp/root                  2})))
+           '{:com.wsscode.pathom3.connect.planner/index-ast             {:items {:children     [{:dispatch-key :c
+                                                                                                 :key          :c
+                                                                                                 :type         :prop}
+                                                                                                {:dispatch-key :b
+                                                                                                 :key          :b
+                                                                                                 :type         :prop}]
+                                                                                 :dispatch-key :items
+                                                                                 :key          :items
+                                                                                 :type         :join}
+                                                                         :z     {:dispatch-key :z
+                                                                                 :key          :z
+                                                                                 :type         :prop}}
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:items #{3}
+                                                                         :z     #{1}}
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {items #{3}
+                                                                         z     #{1}}
+             :com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    z
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:z {}}
+                                                                            :com.wsscode.pathom3.connect.planner/input        {:items {:b {}
+                                                                                                                                       :c {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      1
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{3}}
+                                                                         3 {:com.wsscode.pathom3.connect.operation/op-name items
+                                                                            :com.wsscode.pathom3.connect.planner/expects   {:items {:a {}
+                                                                                                                                    :b {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/input     {}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id   3
+                                                                            :com.wsscode.pathom3.connect.planner/run-next  1}}
+             :com.wsscode.pathom3.connect.planner/root                  3})))
 
   (testing "nested plan failure"
     (is (thrown-with-msg?
@@ -1752,12 +1765,13 @@
               ::pci/index-oir         {:release/script {{:db/id {}} #{'dynamic-resolver}}}
               ::eql/query             [:release/script]
               ::p.error/lenient-mode? true})
-           {::pcp/nodes             {}
-            ::pcp/unreachable-paths {:db/id          {}
-                                     :release/script {}}
-            ::pcp/index-ast         {:release/script {:type         :prop,
-                                                      :dispatch-key :release/script,
-                                                      :key          :release/script}}})))
+           {:com.wsscode.pathom3.connect.planner/index-ast            {:release/script {:dispatch-key :release/script
+                                                                                        :key          :release/script
+                                                                                        :type         :prop}}
+            :com.wsscode.pathom3.connect.planner/nodes                {}
+            :com.wsscode.pathom3.connect.planner/unreachable-paths    {:db/id          {}
+                                                                       :release/script {}}
+            :com.wsscode.pathom3.connect.planner/verification-failed? true})))
 
   (testing "simple dynamic call"
     (is (= (compute-run-graph

@@ -26,7 +26,8 @@
   :test-deps
   {:extra-paths ["test"]
    :extra-deps  {nubank/matcher-combinators {:mvn/version "3.3.1"}
-                 check/check                {:mvn/version "0.2.0"}
+                 ;check/check                {:mvn/version "0.2.0"}
+                 check/check                {:local/root "/Users/wilkerlucio/Development/check"}
                  meander/epsilon            {:mvn/version "0.0.650"}
                  tortue/spy                 {:mvn/version "2.9.0"}
                  org.clojure/test.check     {:mvn/version "1.1.0"}
