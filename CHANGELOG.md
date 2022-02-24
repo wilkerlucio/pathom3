@@ -2,6 +2,7 @@
 
 ## [Next]
 - `::pcp/expects` now can figure implicit attributes on static resolver nested lookup
+- Planner now removes path options that can't fulfill the sub-query
 
 ## [2022.02.24-alpha]
 - Add `pf.eql/seq-data->query` to find shape of a combined collection

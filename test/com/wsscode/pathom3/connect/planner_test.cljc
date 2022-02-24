@@ -732,7 +732,7 @@
                                              ::pcp/run-next 1}}
              ::pcp/root                  3})))
 
-  (testing "mark bad paths regarding nested inputs"
+  (testing "remove bad paths regarding nested inputs"
     (is (= (compute-run-graph
              {::eql/query             [:z]
               ::resolvers             '[{::pco/op-name a1
@@ -745,52 +745,30 @@
                                          ::pco/input   [{:a [:b]}]
                                          ::pco/output  [:z]}]
               ::p.error/lenient-mode? true})
-           '{::pcp/index-ast             {:a {:children     [{:dispatch-key :b
-                                                              :key          :b
-                                                              :type         :prop}]
-                                              :dispatch-key :a
-                                              :key          :a
-                                              :type         :join}
-                                          :z {:dispatch-key :z
-                                              :key          :z
-                                              :type         :prop}}
-             ::pcp/index-attrs           {:a #{2
-                                               3
-                                               4}
-                                          :z #{1}}
-             ::pcp/index-resolver->nodes {a1 #{3}
-                                          a2 #{2}
-                                          a3 #{4}
-                                          z  #{1}}
-             ::pcp/nodes                 {1 {::pco/op-name      z
-                                             ::pcp/expects      {:z {}}
-                                             ::pcp/input        {:a {:b {}}}
-                                             ::pcp/node-id      1
-                                             ::pcp/node-parents #{5}}
-                                          2 {::pco/op-name       a2
-                                             ::pcp/expects       {:a {}}
-                                             ::pcp/input         {}
-                                             ::pcp/invalid-node? true
-                                             ::pcp/node-id       2
-                                             ::pcp/node-parents  #{5}}
-                                          3 {::pco/op-name       a1
-                                             ::pcp/expects       {:a {}}
-                                             ::pcp/input         {}
-                                             ::pcp/invalid-node? true
-                                             ::pcp/node-id       3
-                                             ::pcp/node-parents  #{5}}
-                                          4 {::pco/op-name      a3
-                                             ::pcp/expects      {:a {:b {}}}
-                                             ::pcp/input        {}
-                                             ::pcp/node-id      4
-                                             ::pcp/node-parents #{5}}
-                                          5 {::pcp/expects  {:a {}}
-                                             ::pcp/node-id  5
-                                             ::pcp/run-next 1
-                                             ::pcp/run-or   #{2
-                                                              3
-                                                              4}}}
-             ::pcp/root                  5})))
+           '{:com.wsscode.pathom3.connect.planner/index-ast             {:a {:children     [{:dispatch-key :b
+                                                                                             :key          :b
+                                                                                             :type         :prop}]
+                                                                             :dispatch-key :a
+                                                                             :key          :a
+                                                                             :type         :join}
+                                                                         :z {:dispatch-key :z
+                                                                             :key          :z
+                                                                             :type         :prop}}
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{4}
+                                                                         :z #{1}}
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a3 #{4}
+                                                                         z  #{1}}
+             :com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    z
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:z {}}
+                                                                            :com.wsscode.pathom3.connect.planner/input        {:a {:b {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      1
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{4}}
+                                                                         4 {:com.wsscode.pathom3.connect.operation/op-name a3
+                                                                            :com.wsscode.pathom3.connect.planner/expects   {:a {:b {}}}
+                                                                            :com.wsscode.pathom3.connect.planner/input     {}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id   4
+                                                                            :com.wsscode.pathom3.connect.planner/run-next  1}}
+             :com.wsscode.pathom3.connect.planner/root                  4})))
 
   (testing "data partially available, require join lookup"
     (is (= (compute-run-graph
@@ -1087,8 +1065,7 @@
                                                         :key          :users
                                                         :type         :join}}
              ::pcp/index-attrs           {:total-score #{1}
-                                          :users       #{2
-                                                         4}}
+                                          :users       #{4}}
              ::pcp/index-resolver->nodes {total-score #{1}
                                           users       #{4}}
              ::pcp/nodes                 {1 {::pco/op-name      total-score
@@ -1137,8 +1114,7 @@
                                                         :key          :users
                                                         :type         :join}}
              ::pcp/index-attrs           {:total-score #{1}
-                                          :users       #{3
-                                                         8}}
+                                          :users       #{8}}
              ::pcp/index-resolver->nodes {total-score #{1}
                                           users       #{8}}
              ::pcp/nodes                 {1 {::pco/op-name      total-score
@@ -2646,7 +2622,7 @@
                ::pcp/index-resolver->nodes {a #{1}}}
              1)
            '{::pcp/nodes                 {}
-             ::pcp/index-resolver->nodes {a #{}}})))
+             ::pcp/index-resolver->nodes {}})))
 
   (testing "remove after node reference from run-next"
     (is (= (pcp/remove-node
@@ -2661,8 +2637,7 @@
              1)
            '{::pcp/nodes                 {2 {::pcp/node-id 2
                                              ::pco/op-name b}}
-             ::pcp/index-resolver->nodes {a #{}
-                                          b #{2}}})))
+             ::pcp/index-resolver->nodes {b #{2}}})))
 
   (testing "remove after node of branch nodes"
     (is (= (pcp/remove-node
@@ -3095,7 +3070,7 @@
              1 2))))
 
 (deftest optimize-resolver-chain-test
-  (is (= (pcp/optimize-dynamic-resolver-chain
+  (is (= (pcp/optimize-resolver-chain
            '#::pcp{:nodes                 {1 {::pco/op-name      dynamic-resolver,
                                               ::pcp/expects      {:c {}},
                                               ::pcp/input        {:b {}},
@@ -3137,7 +3112,7 @@
                  :index-attrs           {:c #{2}}
                  :root                  2}))
 
-  (is (= (pcp/optimize-dynamic-resolver-chain
+  (is (= (pcp/optimize-resolver-chain
            '#::pcp{:nodes                 {1 {::pco/op-name      dynamic-resolver,
                                               ::pcp/expects      {:c {}},
                                               ::pcp/input        {:b {}},

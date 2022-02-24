@@ -453,11 +453,17 @@
 (defn remove-node*
   "Remove a node from the graph. Doesn't remove any references, caution!"
   [graph node-id]
-  (let [node (get-node graph node-id)]
+  (let [node (get-node graph node-id)
+        op-name (::pco/op-name node)]
     (-> graph
         (cond->
-          (::pco/op-name node)
-          (update-in [::index-resolver->nodes (::pco/op-name node)] disj node-id))
+          op-name
+          (update ::index-resolver->nodes
+            (fn [idx]
+              (let [next (disj (get idx op-name) node-id)]
+                (if (seq next)
+                  (assoc idx op-name next)
+                  (dissoc idx op-name))))))
         (update ::nodes dissoc node-id))))
 
 (defn remove-node
@@ -487,7 +493,7 @@
           {::keys [run-next] :as node} (get-node graph node-id)
           branches   (or (node-branches node) #{})
           next-nodes (cond-> branches run-next (conj run-next))]
-      (recur (remove-node* graph node-id)
+      (recur (remove-node graph node-id)
         (into rest next-nodes)))
     graph))
 
@@ -1771,17 +1777,17 @@
       (optimize-OR-sub-paths env node-id)
       (simplify-branch-node env node-id)))
 
-(defn optimize-dynamic-resolver-chain?
+(defn optimize-resolver-chain?
   [graph {::pco/keys [op-name] ::keys [run-next]}]
   (= op-name
      (get-node graph run-next ::pco/op-name)))
 
-(defn optimize-dynamic-resolver-chain
+(defn optimize-resolver-chain
   "Merge node and its run-next, when they are the same dynamic resolver."
   [graph env node-id]
   (let [{::keys [run-next] :as node} (get-node graph node-id)
         next (get-node graph run-next)]
-    (if (optimize-dynamic-resolver-chain? graph node)
+    (if (optimize-resolver-chain? graph node)
       (recur
         (-> graph
             (add-snapshot! env {::snapshot-message "Merge chained same dynamic resolvers."
@@ -1795,6 +1801,15 @@
         node-id)
       graph)))
 
+(defn optimize-resolver-node [graph env node-id]
+  (let [{::keys [invalid-node?]} (get-node graph node-id)]
+    (if invalid-node?
+      (do
+        (add-snapshot! graph env {::snapshot-message (str "Removing node " node-id " because it doesn't fulfill the sub-query.")
+                                  ::highlight-nodes  #{node-id}})
+        (remove-root-node-cluster graph [node-id]))
+      (optimize-resolver-chain graph env node-id))))
+
 (defn optimize-node
   [graph env node-id]
   (if-let [node (get-node graph node-id)]
@@ -1803,7 +1818,7 @@
                                 ::highlight-nodes  #{node-id}})
       (case (node-kind node)
         ::node-resolver
-        (let [graph' (optimize-dynamic-resolver-chain graph env node-id)]
+        (let [graph' (optimize-resolver-node graph env node-id)]
           (recur graph'
             env
             (get-node graph' node-id ::run-next)))
