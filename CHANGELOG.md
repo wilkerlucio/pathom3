@@ -1,7 +1,7 @@
 # Changelog
 
 ## [2022.02.24-alpha]
-- Support feeding sequences directly to `pf.eql/data->query`
+- Add `pf.eql/seq-data->query` to find shape of a combined collection
 
 ## [2022.02.21-alpha]
 - Bumped Promesa to 6.1.436

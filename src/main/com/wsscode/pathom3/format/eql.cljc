@@ -212,11 +212,11 @@
            []
            data)
          (sort-by (comp pr-str #(if (map? %) (ffirst %) %))) ; sort results
-         vec)
+         vec)))
 
-    (sequential? data)
-    (-> (data->query {::temp data})
-        ffirst val)))
+(defn seq-data->query [coll]
+  (-> (data->query {::temp coll})
+      ffirst val))
 
 (defn map-children->children [map-children]
   (reduce-kv
