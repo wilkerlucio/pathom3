@@ -1,5 +1,8 @@
 # Changelog
 
+## [2022.02.24-alpha]
+- Support feeding sequences directly to `pf.eql/data->query`
+
 ## [2022.02.21-alpha]
 - Bumped Promesa to 6.1.436
 - INTERNAL BREAK: the internal `plan-and-run!` from all runners now return env instead of the graph plan

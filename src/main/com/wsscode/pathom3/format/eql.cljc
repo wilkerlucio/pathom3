@@ -182,7 +182,8 @@
   "Helper function to transform a data into an output shape."
   [data]
   [any? => (? ::eql/query)]
-  (if (map? data)
+  (cond
+    (map? data)
     (->> (reduce-kv
            (fn [out k v]
              (if (or (keyword? k)
@@ -211,7 +212,11 @@
            []
            data)
          (sort-by (comp pr-str #(if (map? %) (ffirst %) %))) ; sort results
-         vec)))
+         vec)
+
+    (sequential? data)
+    (-> (data->query {::temp data})
+        ffirst val)))
 
 (defn map-children->children [map-children]
   (reduce-kv
