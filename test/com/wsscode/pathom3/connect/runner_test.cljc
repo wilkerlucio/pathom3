@@ -1885,13 +1885,35 @@
                                             :entity/id                  "something"
                                             :entity/pkey-expr           "something"}]}))])]
         (check-all-runners env {:query/args []}
-                           [:entity.metric.query.response/unformatted-metric-honey]
-                           {:query/args []
-                            :portfolioKey "p"
-                            :appKey "a"
-                            :ont/attribute-sql-projection "blah"
-                            :ont/events-withs-fn "event-withs-fn"
-                            :entity.metric.query.response/unformatted-metric-honey "something"})))))
+          [:entity.metric.query.response/unformatted-metric-honey]
+          {:query/args                                            []
+           :portfolioKey                                          "p"
+           :appKey                                                "a"
+           :ont/attribute-sql-projection                          "blah"
+           :ont/events-withs-fn                                   "event-withs-fn"
+           :entity.metric.query.response/unformatted-metric-honey "something"})))))
+
+(deftest run-graph!batch-optional
+  (testing "bug #107"
+    (check-all-runners
+      (pci/register
+        [(pco/resolver 'timezone-batch-resolver
+           {::pco/input  [:timezone/id]
+            ::pco/output [:timezone/label]
+            ::pco/batch? true}
+           (fn [_ items]
+             (mapv (fn [{:keys [timezone/id]}]
+                     {:timezone/label (str id " label")})
+               items)))
+
+         (pco/resolver 'item-checks
+           {::pco/input  [{(pco/? :item/timezone) [:timezone/id :timezone/label]}]
+            ::pco/output [:item/checks]}
+           (fn [_ item] {:item/checks item}))])
+      {:item/timezone {:timezone/id "UTC"}}
+      [:item/checks]
+      {:item/timezone {:timezone/id "UTC", :timezone/label "UTC label"}
+       :item/checks   {:item/timezone {:timezone/id "UTC", :timezone/label "UTC label"}}})))
 
 (deftest run-graph!-dynamic-resolvers-test
   (testing "dynamic resolver"

@@ -442,6 +442,26 @@
      ::pcp/foreign-ast     (::pcp/foreign-ast node)}
     input-data))
 
+(defn wait-batch-check [env node entity input input+opts op-name input-data]
+  (let [missing-all (pfsd/missing-from-data entity input+opts)
+        wait-batch? (and missing-all
+                         (missing-maybe-in-pending-batch? env input+opts))
+        missing     (and missing-all
+                         (not wait-batch?)
+                         (pfsd/missing-from-data entity input))]
+    (cond
+      wait-batch?
+      (wait-batch-response env node)
+
+      missing
+      (report-resolver-error
+        (assoc env ::p.error/lenient-mode? true)
+        node
+        (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
+                 {:required  input
+                  :available (pfsd/data->shape-descriptor input-data)
+                  :missing   missing})))))
+
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
 
@@ -459,7 +479,8 @@
          :as        r-config} (pco/operation-config resolver)
         env             (assoc env ::pcp/node node)
         entity          (p.ent/entity env)
-        input-data      (pfsd/select-shape-filtering entity (pfsd/merge-shapes input optionals) input)
+        input+opts      (pfsd/merge-shapes input optionals)
+        input-data      (pfsd/select-shape-filtering entity input+opts input)
         input-data      (enhance-dynamic-input r-config node input-data)
         params          (pco/params env)
         cache-store     (choose-cache-store env cache-store)
@@ -467,17 +488,11 @@
         _               (merge-node-stats! env node
                           {::resolver-run-start-ms (time/now-ms)})
         response        (try
-                          (if-let [missing (pfsd/missing-from-data entity input)]
-                            (if (missing-maybe-in-pending-batch? env input)
-                              (wait-batch-response env node)
-                              (report-resolver-error
-                                (assoc env ::p.error/lenient-mode? true)
-                                node
-                                (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
-                                         {:required  input
-                                          :available (pfsd/data->shape-descriptor input-data)
-                                          :missing   missing})))
+                          (let [batch-check (wait-batch-check env node entity input input+opts op-name input-data)]
                             (cond
+                              batch-check
+                              batch-check
+
                               batch?
                               (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
                                 (val x)
