@@ -1885,13 +1885,13 @@
                                             :entity/id                  "something"
                                             :entity/pkey-expr           "something"}]}))])]
         (check-all-runners env {:query/args []}
-                           [:entity.metric.query.response/unformatted-metric-honey]
-                           {:query/args []
-                            :portfolioKey "p"
-                            :appKey "a"
-                            :ont/attribute-sql-projection "blah"
-                            :ont/events-withs-fn "event-withs-fn"
-                            :entity.metric.query.response/unformatted-metric-honey "something"})))))
+          [:entity.metric.query.response/unformatted-metric-honey]
+          {:query/args []
+           :portfolioKey "p"
+           :appKey "a"
+           :ont/attribute-sql-projection "blah"
+           :ont/events-withs-fn "event-withs-fn"
+           :entity.metric.query.response/unformatted-metric-honey "something"})))))
 
 (deftest run-graph!-dynamic-resolvers-test
   (testing "dynamic resolver"
