@@ -2526,4 +2526,4 @@
                           :com.wsscode.pathom3.connect.planner/node-id 7,
                           :com.wsscode.pathom3.connect.planner/run-or  #{1 6 3 2}}
                          #{1 6 3 2})
-      => #{3 2})))
+      => #{3 #?(:clj 2 :cljs 1)})))
