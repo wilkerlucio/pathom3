@@ -23,7 +23,10 @@
     [matcher-combinators.matchers :as m]
     [matcher-combinators.standalone :as mcs]
     [matcher-combinators.test]
-    [promesa.core :as p]))
+    [promesa.core :as p])
+  #?(:cljs
+     (:require-macros
+       [com.wsscode.pathom3.connect.runner-test])))
 
 (declare thrown-with-msg? =>)
 
@@ -150,13 +153,21 @@
 
 (def all-runners [run-graph #?@(:clj [run-graph-async run-graph-parallel])])
 
-(defn check-all-runners [env entity tx expected]
-  (doseq [runner all-runners]
-    (testing (str runner)
-      (check (=> expected
-                 (let [res (runner env entity tx)]
-                   (if (p/promise? res)
-                     @res res)))))))
+#?(:clj
+   (defmacro check-serial [env entity tx expected]
+     `(check
+        (run-graph ~env ~entity ~tx)
+        ~'=> ~expected)))
+
+#?(:clj
+   (defmacro check-all-runners [env entity tx expected]
+     `(doseq [runner# all-runners]
+        (testing (str runner#)
+          (check
+            (let [res# (runner# ~env ~entity ~tx)]
+              (if (p/promise? res#)
+                @res# res#))
+            ~'=> ~expected)))))
 
 (defn check-all-runners-ex [env entity tx expected]
   (doseq [runner all-runners]
@@ -917,6 +928,71 @@
           {}
           [:value :value2]
           {:value 1 :value2 2}))))
+
+(deftest run-graph!-weight-sort
+  (testing "pick lighter path"
+    (check-all-runners
+      (-> {::pcr/resolver-weights* (atom '{a1 50 a2 10})}
+          (pci/register
+            [(pco/resolver 'a1 {::pco/output [:a]} (fn [_ _] {:a 1}))
+             (pco/resolver 'a2 {::pco/output [:a]} (fn [_ _] {:a 2}))]))
+      {}
+      [:a]
+      {:a 2})
+
+    (check-all-runners
+      (-> {::pcr/resolver-weights* (atom '{a2 2})}
+          (pci/register
+            [(pco/resolver 'a1 {::pco/output [:a]} (fn [_ _] {:a 1}))
+             (pco/resolver 'a2 {::pco/output [:a]} (fn [_ _] {:a 2}))]))
+      {}
+      [:a]
+      {:a 1})
+
+    (check-all-runners
+      (-> {::pcr/resolver-weights* (atom '{a1 100 a2 70 a3 5})}
+          (pci/register
+            [(pco/resolver 'a1 {::pco/output [:a]} (fn [_ _] {:a 1}))
+             (pco/resolver 'a2 {::pco/output [:a]} (fn [_ _] {:a 2}))
+             (pco/resolver 'a3 {::pco/input [:b] ::pco/output [:a]} (fn [_ _] {:a 3}))
+             (pco/resolver 'b {::pco/input [:c] ::pco/output [:b]} (fn [_ _] {:b nil}))
+             (pco/resolver 'c {::pco/output [:c]} (fn [_ _] {:c nil}))]))
+      {}
+      [:a]
+      {:a 3}))
+
+  (testing "time update"
+    (let [weights* (atom '{a1 10})]
+      (check-serial
+        (-> {::pcr/resolver-weights* weights*}
+            (pci/register
+              [(pco/resolver 'a1 {::pco/output [:a]} (fn [_ _] {:a 1}))
+               (pco/resolver 'a2 {::pco/output [:a]} (fn [_ _] {:a 2}))])
+            (p.plugin/register (pbip/resolver-weight-tracker)))
+        {}
+        [:a]
+        {:a 2})
+
+      (check
+        @weights*
+        => {'a2 number?}))
+
+    (testing "doubles on error"
+      (let [weights* (atom '{a1 10 a2 50})]
+        (run-graph
+          (-> {::pcr/resolver-weights* weights*
+               ::p.error/lenient-mode? true}
+              (pci/register
+                [(pco/resolver 'a1 {::pco/output [:a]} (fn [_ _] (throw (ex-info "Err" {}))))
+                 (pco/resolver 'a2 {::pco/output [:a]} (fn [_ _] (throw (ex-info "Err" {}))))])
+              (p.plugin/register (pbip/resolver-weight-tracker)))
+          {}
+          [:a])
+
+        (check
+          @weights*
+          => {'a1 20
+              'a2 100})))))
 
 (deftest run-graph!-unions-test
   (is (graph-response?
