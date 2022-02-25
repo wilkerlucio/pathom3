@@ -6,6 +6,7 @@
 - New priority sort algorithm. Thanks to @mszabo!
 - Optimize nested or nodes, pulling nested branches into parent OR node
 - Add weight sort feature to load balance between OR branches
+- Fix issue #107 regarding batch + nested optional inputs
 
 ## [2022.02.24-alpha]
 - Add `pf.eql/seq-data->query` to find shape of a combined collection

@@ -3,7 +3,6 @@
   and performance characteristics might change."
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.log :as l]
     [com.wsscode.misc.coll :as coll]
@@ -206,35 +205,30 @@
          :as        r-config} (pco/operation-config resolver)
         env             (assoc env ::pcp/node node)
         entity          (p.ent/entity env)
-        input-data      (pfsd/select-shape-filtering entity (pfsd/merge-shapes input optionals) input)
+        input+opts      (pfsd/merge-shapes input optionals)
+        input-data      (pfsd/select-shape-filtering entity input+opts input)
         input-data      (pcr/enhance-dynamic-input r-config node input-data)
         params          (pco/params env)
         cache-store     (pcr/choose-cache-store env cache-store)
         resolver-cache* (get env cache-store)
         _               (pcr/merge-node-stats! env node
                           {::pcr/resolver-run-start-ms (time/now-ms)})
-        response        (-> (if-let [missing (pfsd/missing-from-data entity input)]
-                              (if (pcr/missing-maybe-in-pending-batch? env input)
-                                (pcr/wait-batch-response env node)
-                                (pcr/report-resolver-error
-                                  (assoc env :com.wsscode.pathom3.error/lenient-mode? true)
-                                  node
-                                  (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
-                                           {:required  input
-                                            :available (pfsd/data->shape-descriptor input-data)
-                                            :missing   missing})))
-                              (cond
-                                batch?
-                                (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
-                                  (val x)
-                                  (if (::pcr/unsupported-batch? env)
-                                    (invoke-resolver-cached-batch
-                                      env cache? op-name resolver cache-store input-data params)
-                                    (pcr/batch-hold-token env cache? op-name node cache-store input-data params)))
+        batch-check     (pcr/wait-batch-check env node entity input input+opts op-name input-data)
+        response        (-> (cond
+                              batch-check
+                              batch-check
 
-                                :else
-                                (invoke-resolver-cached
-                                  env cache? op-name resolver cache-store input-data params)))
+                              batch?
+                              (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
+                                (val x)
+                                (if (::pcr/unsupported-batch? env)
+                                  (invoke-resolver-cached-batch
+                                    env cache? op-name resolver cache-store input-data params)
+                                  (pcr/batch-hold-token env cache? op-name node cache-store input-data params)))
+
+                              :else
+                              (invoke-resolver-cached
+                                env cache? op-name resolver cache-store input-data params))
                             (p/catch
                               (fn [error]
                                 (pcr/report-resolver-error env node error))))]
