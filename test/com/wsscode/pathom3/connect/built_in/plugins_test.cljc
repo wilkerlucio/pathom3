@@ -1,6 +1,6 @@
 (ns com.wsscode.pathom3.connect.built-in.plugins-test
   (:require
-    [check.core :refer [check]]
+    [check.core :refer [check =>]]
     [clojure.test :refer [deftest is are run-tests testing]]
     [com.wsscode.log :as l]
     [com.wsscode.pathom3.connect.built-in.plugins :as pbip]
@@ -10,8 +10,6 @@
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [spy.core :as spy]))
-
-(declare =>)
 
 (deftest mutation-resolve-params-test
   (is (= (p.eql/process

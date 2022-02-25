@@ -1,6 +1,6 @@
 (ns com.wsscode.pathom3.interface.eql-test
   (:require
-    [check.core :refer [check]]
+    [check.core :refer [check =>]]
     [clojure.test :refer [deftest is are run-tests testing]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -9,8 +9,6 @@
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
     [edn-query-language.core :as eql]))
-
-(declare =>)
 
 (pco/defresolver coords []
   {::coords

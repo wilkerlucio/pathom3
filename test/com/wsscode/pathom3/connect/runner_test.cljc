@@ -1,6 +1,6 @@
 (ns com.wsscode.pathom3.connect.runner-test
   (:require
-    [check.core :refer [check]]
+    [check.core :refer [check =>]]
     [clojure.spec.alpha :as s]
     [clojure.test :refer [deftest is are run-tests testing]]
     [com.wsscode.pathom3.cache :as p.cache]
@@ -28,7 +28,7 @@
      (:require-macros
        [com.wsscode.pathom3.connect.runner-test])))
 
-(declare thrown-with-msg? =>)
+(declare thrown-with-msg?)
 
 (defn match-keys? [ks]
   (fn [m]

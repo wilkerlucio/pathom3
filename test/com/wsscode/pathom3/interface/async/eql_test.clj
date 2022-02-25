@@ -1,6 +1,6 @@
 (ns com.wsscode.pathom3.interface.async.eql-test
   (:require
-    [check.core :refer [check]]
+    [check.core :refer [check =>]]
     [clojure.test :refer [deftest is testing]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -8,8 +8,6 @@
     [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
     [promesa.core :as p]))
-
-(declare =>)
 
 (def registry
   [geo/full-registry
