@@ -678,7 +678,7 @@
                  {:value 2}))])
           {}
           [:value]
-          {:value 1})
+          {:value 2})
         (is (= @spy #?(:clj 3 :cljs 1)))))
 
     (testing "one option fail, one succeed"
@@ -854,28 +854,27 @@
                 {:c     3
                  :value 2})))
 
-        (testing "priority in the middle"
-          (is (graph-response?
-                (pci/register
-                  [(pco/resolver 'value
-                     {::pco/input  [:a :b]
-                      ::pco/output [:value]}
-                     (fn [_ _]
-                       {:value 1}))
-                   (pco/resolver 'value2
-                     {::pco/input  [:c]
-                      ::pco/output [:value]}
-                     (fn [_ _]
-                       {:value 2}))
-                   (pbir/constantly-resolver :a 1)
-                   (pbir/constantly-resolver :b 2)
-                   (pco/update-config
-                     (pbir/constantly-resolver :c 3)
-                     assoc ::pco/priority 1)])
-                {}
-                [:value]
-                {:c     3
-                 :value 2})))
+        (testing "priority in the middle, ignores it"
+          (check-all-runners
+            (pci/register
+              [(pco/resolver 'value
+                 {::pco/input  [:a :b]
+                  ::pco/output [:value]}
+                 (fn [_ _]
+                   {:value 1}))
+               (pco/resolver 'value2
+                 {::pco/input  [:c]
+                  ::pco/output [:value]}
+                 (fn [_ _]
+                   {:value 2}))
+               (pbir/constantly-resolver :a 1)
+               (pbir/constantly-resolver :b 2)
+               (pco/update-config
+                 (pbir/constantly-resolver :c 3)
+                 assoc ::pco/priority 1)])
+            {}
+            [:value]
+            {:value 1}))
 
         (testing "leaf is a branch"
           (is (graph-response?
@@ -1793,20 +1792,14 @@
                                             :entity/parameters          []
                                             :entity/id                  "something"
                                             :entity/pkey-expr           "something"}]}))])]
-        (is (graph-response? env {:query/args []}
-              [:entity.metric.query.response/unformatted-metric-honey]
-              {:query/args                                            [],
-               :portfolioKey                                          "p",
-               :appKey                                                "a",
-               :entities                                              [#:entity{:friendlyName        "a",
-                                                                                :friendlyName-plural "as",
-                                                                                :parameters          [],
-                                                                                :id                  "something",
-                                                                                :pkey-expr           "something"}],
-               :entity                                                "something",
-               :ont/attribute-sql-projection                          "blah",
-               :ont/events-withs-fn                                   "event-withs-fn",
-               :entity.metric.query.response/unformatted-metric-honey "something"}))))))
+        (check-all-runners env {:query/args []}
+                           [:entity.metric.query.response/unformatted-metric-honey]
+                           {:query/args []
+                            :portfolioKey "p"
+                            :appKey "a"
+                            :ont/attribute-sql-projection "blah"
+                            :ont/events-withs-fn "event-withs-fn"
+                            :entity.metric.query.response/unformatted-metric-honey "something"})))))
 
 (deftest run-graph!-dynamic-resolvers-test
   (testing "dynamic resolver"
@@ -2531,33 +2524,6 @@
       (pcr/priority-sort (assoc env ::pcp/graph graph)
                          {:com.wsscode.pathom3.connect.planner/expects {:a {}},
                           :com.wsscode.pathom3.connect.planner/node-id 7,
-                          :com.wsscode.pathom3.connect.planner/run-or  #{4
-                                                                         6}}
-                         #{4
-                           6})
-      => #{4}))
-
-  (let [env   (pci/register [(pco/resolver 'a1 {::pco/output   [:a]
-                                                ::pco/priority 2} (fn [_ _]))
-                             (pco/resolver 'a2 {::pco/output [:a]} (fn [_ _]))
-                             (pco/resolver 'a3 {::pco/output   [:a]
-                                                ::pco/priority 2} (fn [_ _]))
-                             (pco/resolver 'a4 {::pco/input    [:b]
-                                                ::pco/output   [:a]
-                                                ::pco/priority 1} (fn [_ _]))
-                             (pco/resolver 'b {::pco/output [:b]} (fn [_ _]))])
-        graph (pcp/compute-run-graph
-                (assoc env :edn-query-language.ast/node (eql/query->ast [:a])))]
-
-    (check
-      (pcr/priority-sort (assoc env ::pcp/graph graph)
-                         {:com.wsscode.pathom3.connect.planner/expects {:a {}},
-                          :com.wsscode.pathom3.connect.planner/node-id 4,
-                          :com.wsscode.pathom3.connect.planner/run-or #{1
-                                                                        3
-                                                                        2},
-                          :com.wsscode.pathom3.connect.planner/node-parents #{7}}
-                         #{1
-                           3
-                           2})
+                          :com.wsscode.pathom3.connect.planner/run-or  #{1 6 3 2}}
+                         #{1 6 3 2})
       => #{3 2})))

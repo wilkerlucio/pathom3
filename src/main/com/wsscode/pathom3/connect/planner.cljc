@@ -1768,10 +1768,37 @@
           (recur graph' chains'))
         graph))))
 
+(defn optimize-nested-OR [graph env node-id]
+  (let [{::keys [run-or]} (get-node graph node-id)
+
+        nested-candidates
+        (into #{}
+              (keep
+                (fn [node-id]
+                  (let [node (get-node graph node-id)]
+                    (and (::run-or node)
+                         (not (::run-next node))
+                         node))))
+              run-or)]
+    (reduce
+      (fn [graph {::keys   [run-or]
+                  node-id' ::node-id}]
+        (-> (add-snapshot! graph env {::snapshot-message "Pulling nested OR"
+                                      ::highlight-nodes  (conj run-or node-id node-id')
+                                      ::highlight-styles {node-id' 1}})
+            (remove-node node-id')
+            (add-node-branches node-id ::run-or run-or)
+            (add-snapshot! env {::snapshot-message "Pulled nodes"
+                                ::highlight-nodes  (conj run-or node-id)
+                                ::highlight-styles {node-id 1}})))
+      graph
+      nested-candidates)))
+
 (defn optimize-OR-branches [graph env node-id]
   (-> graph
       (optimize-branch-items env node-id)
       (optimize-OR-sub-paths env node-id)
+      (optimize-nested-OR env node-id)
       (simplify-branch-node env node-id)))
 
 (defn optimize-resolver-chain?
