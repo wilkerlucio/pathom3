@@ -154,7 +154,7 @@
   (doseq [runner all-runners]
     (testing (str runner)
       (check (=> expected
-                 (clet [res (runner env entity tx)]
+                 (let [res (runner env entity tx)]
                    (if (p/promise? res)
                      @res res)))))))
 
@@ -539,45 +539,45 @@
                                    [:foo])))))
 
       (testing "bug report #120"
-        (is
-          (graph-response? (pci/register [(pco/resolver 'dashboard-chartObjects-1
-                                            {::pco/input  [:portfolioKey :appKey :data-source/friendlyName]
-                                             ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
-                                            (fn [_ _]
-                                              {:dashboard {:dashboard/chartObjects []}}))
+        (check-all-runners
+          (-> (pci/register [(pco/resolver 'dashboard-chartObjects-1
+                               {::pco/input  [:portfolioKey :appKey :data-source/friendlyName]
+                                ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
+                               (fn [_ _]
+                                 {:dashboard {:dashboard/chartObjects []}}))
 
-                                          (pco/resolver 'dashboard-chartObjects-2
-                                            {::pco/input  [:portfolioKey :appKey {:data-sources [:data-source/friendlyName]}]
-                                             ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
-                                            (fn [_ _]
-                                              {:dashboard {:dashboard/chartObjects []}}))
+                             (pco/resolver 'dashboard-chartObjects-2
+                               {::pco/input  [:portfolioKey :appKey {:data-sources [:data-source/friendlyName]}]
+                                ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
+                               (fn [_ _]
+                                 {:dashboard {:dashboard/chartObjects []}}))
 
-                                          (pco/resolver 'data-source
-                                            {::pco/input  [:portfolioKey :appKey]
-                                             ::pco/output [:appName :platform]}
-                                            (fn [_ _]
-                                              {:appName nil :platform nil}))
+                             (pco/resolver 'data-source
+                               {::pco/input  [:portfolioKey :appKey]
+                                ::pco/output [:appName :platform]}
+                               (fn [_ _]
+                                 {:appName nil :platform nil}))
 
-                                          (pco/resolver 'data-sources
-                                            {::pco/input       [:portfolioKey]
-                                             ::pco/output      [{:data-sources [:portfolioKey :appKey :appName :platform]}]
-                                             ::pco/cache-store :thirty-sec-ttl-cache*}
-                                            (fn [_ _]
-                                              {:data-sources []}))
+                             (pco/resolver 'data-sources
+                               {::pco/input       [:portfolioKey]
+                                ::pco/output      [{:data-sources [:portfolioKey :appKey :appName :platform]}]
+                                ::pco/cache-store :thirty-sec-ttl-cache*}
+                               (fn [_ _]
+                                 {:data-sources []}))
 
-                                          (pco/resolver 'data-source-friendlyName
-                                            {::pco/input  [:appName]
-                                             ::pco/output [:data-source/friendlyName]}
-                                            (fn [_ _]
-                                              {:data-source/friendlyName "appName"}))])
-            {:portfolioKey "portfolioKey", :appKey "appKey"}
-            [{:dashboard [:dashboard/chartObjects]}]
-            {:portfolioKey "portfolioKey",
-             :appKey "appKey",
-             :appName nil,
-             :platform nil,
-             :data-source/friendlyName "appName",
-             :dashboard {:dashboard/chartObjects []}}))))
+                             (pco/resolver 'data-source-friendlyName
+                               {::pco/input  [:appName]
+                                ::pco/output [:data-source/friendlyName]}
+                               (fn [_ _]
+                                 {:data-source/friendlyName "appName"}))]))
+          {:portfolioKey "portfolioKey", :appKey "appKey"}
+          [:data-source/friendlyName {:dashboard [:dashboard/chartObjects]}]
+          {:portfolioKey             "portfolioKey",
+           :appKey                   "appKey",
+           :appName                  nil,
+           :platform                 nil,
+           :data-source/friendlyName "appName",
+           :dashboard                {:dashboard/chartObjects []}})))
 
     (testing "mutations"
       (let [err (ex-info "Fail fast" {})]
@@ -664,21 +664,21 @@
   (testing "processing OR nodes"
     (testing "return the first option that works, don't call the others"
       (let [spy (atom 0)]
-        (is (graph-response?
-              (pci/register
-                [(pco/resolver 'value
-                   {::pco/output [:value]}
-                   (fn [_ _]
-                     (swap! spy inc)
-                     {:value 1}))
-                 (pco/resolver 'value2
-                   {::pco/output [:value]}
-                   (fn [_ _]
-                     (swap! spy inc)
-                     {:value 2}))])
-              {}
-              [:value]
-              {:value 2}))
+        (check-all-runners
+          (pci/register
+            [(pco/resolver 'value
+               {::pco/output [:value]}
+               (fn [_ _]
+                 (swap! spy inc)
+                 {:value 1}))
+             (pco/resolver 'value2
+               {::pco/output [:value]}
+               (fn [_ _]
+                 (swap! spy inc)
+                 {:value 2}))])
+          {}
+          [:value]
+          {:value 1})
         (is (= @spy #?(:clj 3 :cljs 1)))))
 
     (testing "one option fail, one succeed"

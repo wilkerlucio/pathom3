@@ -527,32 +527,20 @@
           nil)))))
 
 (defn priority-sort
-  "Sort nodes based on the priority of the node successors. This scans all successors
-  and choose which one has a node with the highest priority number.
+  "Find the node path with the highest priority to run."
+  [{::pcp/keys [graph] :as env} or-node node-ids]
+  (let [expects (-> or-node ::pcp/expects keys)
+        nodes (for [id node-ids
+                    parent (pcp/node-successors graph id)
+                    :let [config (pcp/node-with-resolver-config graph env parent)
+                          provides (::pco/provides config)]
+                    :when (and provides (every? provides expects))]
+                [id config])
+        [id] (apply max-key #(-> % second (::pco/priority 0)) nodes)]
+    (or id (first node-ids))))
 
-  Returns the paths and their highest priority, in order with the highest priority as
-  first. For example:
-
-      [[4 [2 1]] [6 [1]]]
-
-  Means the first path is choosing node-id 4, and highest priority is 2."
-  [{::pcp/keys [graph] :as env} node-ids]
-  (let [paths (mapv
-                (fn [nid]
-                  [nid
-                   (->> (pcp/node-successors graph nid)
-                        (keep #(pcp/node-with-resolver-config graph env %))
-                        (map #(or (::pco/priority %) 0))
-                        (distinct)
-                        (sort #(compare %2 %))
-                        vec)])
-                node-ids)]
-    (->> paths
-         (sort-by second #(coll/vector-compare %2 %)))))
-
-(defn default-choose-path [env _or-node node-ids]
-  (-> (priority-sort env node-ids)
-      ffirst))
+(defn default-choose-path [env or-node node-ids]
+  (priority-sort env or-node node-ids))
 
 (defn add-taken-path!
   [{::keys [node-run-stats*]} {::pcp/keys [node-id]} taken-path-id]
