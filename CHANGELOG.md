@@ -1,6 +1,6 @@
 # Changelog
 
-## [Next]
+## [2022.02.25-alpha]
 - `::pcp/expects` now can figure implicit attributes on static resolver nested lookup
 - Planner now removes path options that can't fulfill the sub-query
 - New priority sort algorithm. Thanks to @mszabo!
