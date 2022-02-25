@@ -2513,3 +2513,51 @@
                responses ["a" "b"]]
            (pcr/combine-inputs-with-responses groups inputs responses))
          [[:a "a"] [:b "a"] [:c "b"]])))
+
+(deftest priority-sort-test
+  (let [env   (pci/register [(pco/resolver 'a1 {::pco/output   [:a]
+                                                ::pco/priority 2} (fn [_ _]))
+                             (pco/resolver 'a2 {::pco/output [:a]} (fn [_ _]))
+                             (pco/resolver 'a3 {::pco/output   [:a]
+                                                ::pco/priority 2} (fn [_ _]))
+                             (pco/resolver 'a4 {::pco/input    [:b]
+                                                ::pco/output   [:a]
+                                                ::pco/priority 1} (fn [_ _]))
+                             (pco/resolver 'b {::pco/output [:b]} (fn [_ _]))])
+        graph (pcp/compute-run-graph
+                (assoc env :edn-query-language.ast/node (eql/query->ast [:a])))]
+
+    (check
+      (pcr/priority-sort (assoc env ::pcp/graph graph)
+                         {:com.wsscode.pathom3.connect.planner/expects {:a {}},
+                          :com.wsscode.pathom3.connect.planner/node-id 7,
+                          :com.wsscode.pathom3.connect.planner/run-or  #{4
+                                                                         6}}
+                         #{4
+                           6})
+      => #{4}))
+
+  (let [env   (pci/register [(pco/resolver 'a1 {::pco/output   [:a]
+                                                ::pco/priority 2} (fn [_ _]))
+                             (pco/resolver 'a2 {::pco/output [:a]} (fn [_ _]))
+                             (pco/resolver 'a3 {::pco/output   [:a]
+                                                ::pco/priority 2} (fn [_ _]))
+                             (pco/resolver 'a4 {::pco/input    [:b]
+                                                ::pco/output   [:a]
+                                                ::pco/priority 1} (fn [_ _]))
+                             (pco/resolver 'b {::pco/output [:b]} (fn [_ _]))])
+        graph (pcp/compute-run-graph
+                (assoc env :edn-query-language.ast/node (eql/query->ast [:a])))]
+
+    (check
+      (pcr/priority-sort (assoc env ::pcp/graph graph)
+                         {:com.wsscode.pathom3.connect.planner/expects {:a {}},
+                          :com.wsscode.pathom3.connect.planner/node-id 4,
+                          :com.wsscode.pathom3.connect.planner/run-or #{1
+                                                                        3
+                                                                        2},
+                          :com.wsscode.pathom3.connect.planner/node-parents #{7}}
+                         #{1
+                           3
+                           2})
+      => #{3 2})))
