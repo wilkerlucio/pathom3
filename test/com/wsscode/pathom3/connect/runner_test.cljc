@@ -157,7 +157,13 @@
    (defmacro check-serial [env entity tx expected]
      `(check
         (run-graph ~env ~entity ~tx)
-        ~'=> ~expected)))
+        ~'=> ~expected))
+
+   :cljs
+   (defn check-serial [env entity tx expected]
+     (check
+       (run-graph env entity tx)
+       => expected)))
 
 #?(:clj
    (defmacro check-all-runners [env entity tx expected]
@@ -167,7 +173,17 @@
             (let [res# (runner# ~env ~entity ~tx)]
               (if (p/promise? res#)
                 @res# res#))
-            ~'=> ~expected)))))
+            ~'=> ~expected))))
+
+   :cljs
+   (defn check-all-runners [env entity tx expected]
+     (doseq [runner all-runners]
+       (testing (str runner)
+         (check
+           (let [res (runner env entity tx)]
+             (if (p/promise? res)
+               @res res))
+           => expected)))))
 
 (defn check-all-runners-ex [env entity tx expected]
   (doseq [runner all-runners]
