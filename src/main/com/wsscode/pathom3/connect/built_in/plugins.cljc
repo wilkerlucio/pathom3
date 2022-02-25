@@ -1,7 +1,9 @@
 (ns com.wsscode.pathom3.connect.built-in.plugins
   (:require
-    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.fulcrologic.guardrails.core :refer [>def]]
     [com.wsscode.log :as l]
+    [com.wsscode.misc.coll :as coll]
+    [com.wsscode.misc.time :as time]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.connect.planner :as pcp]
@@ -40,6 +42,38 @@
            (mutate env (assoc ast :params params'))))))})
 
 (>def ::apply-everywhere? boolean?)
+
+(defn resolver-weight-tracker
+  "Starts an atom to track the weight of a resolver. The weight is calculated by measuring
+  the time a resolver takes to run. The time is add to last known time (or 1 in case of
+  no previous data) and divided by two to get the new weight.
+
+  You should use this plugin to enable weight sorting."
+  []
+  (let [weights* (atom {})]
+    {::p.plugin/id
+     `resolver-weight-tracker
+
+     ::pcr/wrap-root-run-graph!
+     (fn [process]
+       (fn [env ast entity*]
+         (process (coll/merge-defaults env {::pcr/resolver-weights* weights*}) ast entity*)))
+
+     ::pcr/wrap-resolve
+     (fn [resolve]
+       (fn [{::pcr/keys [resolver-weights*]
+             ::pcp/keys [node]
+             :as        env} input]
+         (let [{::pco/keys [op-name]} node]
+           (ctry
+             (clet [start   (time/now-ms)
+                    result  (resolve env input)
+                    elapsed (- (time/now-ms) start)]
+               (swap! resolver-weights* update op-name #(/ (+ (or % 1) elapsed) 2))
+               result)
+             (catch #?(:clj Throwable :cljs :default) e
+               (swap! resolver-weights* update op-name #(* (or % 10) 2))
+               (throw e))))))}))
 
 (defn filtered-sequence-items-plugin
   ([] (filtered-sequence-items-plugin {}))

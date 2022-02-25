@@ -543,8 +543,37 @@
                       (map first)) nodes)
       node-ids)))
 
+(defn node-weight
+  "Sums up the weight of a node and its successors"
+  [{::pcp/keys [graph]
+    ::keys     [resolver-weights*]
+    :as        env} node-id]
+  (let [{::pcp/keys [run-next] :as node} (pcp/get-node graph node-id)]
+    (cond-> (case (pcp/node-kind node)
+              ::pcp/node-and
+              (transduce (map #(node-weight env %)) + (::pcp/run-and node))
+
+              ::pcp/node-or
+              (apply min (mapv #(node-weight env %) (::pcp/run-or node)))
+
+              ::pcp/node-resolver
+              (-> @resolver-weights* (get (::pco/op-name node) 1)))
+      run-next
+      (+ (node-weight env run-next)))))
+
+(defn weight-sort
+  "Sorts nodes based on the weight of their paths. The weight is calculated every time
+  a resolver runs."
+  [{::keys [resolver-weights*] :as env} _or-node candidates]
+  (if resolver-weights*
+    (apply min-key #(node-weight env %) candidates)
+    (first candidates)))
+
 (defn default-choose-path [env or-node node-ids]
-  (first (priority-sort env or-node node-ids)))
+  (let [candidates (priority-sort env or-node node-ids)]
+    (if (> (count candidates) 1)
+      (weight-sort env or-node candidates)
+      (first candidates))))
 
 (defn add-taken-path!
   [{::keys [node-run-stats*]} {::pcp/keys [node-id]} taken-path-id]
