@@ -35,7 +35,7 @@
 (>def ::cache-store keyword?)
 (>def ::cache-key fn?)
 (>def ::batch? boolean?)
-(>def ::batch-max-size pos-int?)
+(>def ::batch-chunk-size pos-int?)
 (>def ::priority int?)
 (>def ::resolve fn?)
 (>def ::mutate fn?)
@@ -455,9 +455,9 @@
      Batching options:
 
        ::pco/batch? - set true to indicate this resolver does batch processing
-       ::pco/batch-max-size - the max number of items to batch at once, in case there
-                              are more items Pathom will split the batching in multiple
-                              request, each containing at max the number defined here
+       ::pco/batch-chunk-size - the max size of each batch chunk, when set Pathom will
+                                split the batch groups in groups of at max batch-chunk-size
+                                items
 
      Note that any other option that you send to the resolver config will be stored in the
      index and can be read from it at any time.

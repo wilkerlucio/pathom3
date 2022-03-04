@@ -216,7 +216,7 @@
           inputs       (pcr/batch-group-inputs batch-items)
           batch-env    (-> batch-items first ::pcr/env
                            (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
-          max-size     (-> resolver pco/operation-config ::pco/batch-max-size)
+          max-size     (-> resolver pco/operation-config ::pco/batch-chunk-size)
           start        (time/now-ms)
           responses    (-> (p/do!
                              (pcra/invoke-async-maybe-split-batches max-size resolver batch-env batch-op input-groups inputs))

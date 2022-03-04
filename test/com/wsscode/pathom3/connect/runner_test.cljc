@@ -1761,10 +1761,10 @@
     (testing "ensures each call has the correct max number of items"
       (check-all-runners
         (pci/register (pco/resolver 'batch-thing
-                        {::pco/input          [:id]
-                         ::pco/output         [:name]
-                         ::pco/batch?         true
-                         ::pco/batch-max-size 3}
+                        {::pco/input            [:id]
+                         ::pco/output           [:name]
+                         ::pco/batch?           true
+                         ::pco/batch-chunk-size 3}
                         (fn [_ items]
                           (assert (<= (count items) 3) "Expected each call to has at max 3 items")
                           (mapv #(assoc % :name (str "Item " (:id %))) items))))
@@ -1785,10 +1785,10 @@
       (testing "missing"
         (check-all-runners
           (pci/register (pco/resolver 'batch-thing
-                          {::pco/input          [:id]
-                           ::pco/output         [:name]
-                           ::pco/batch?         true
-                           ::pco/batch-max-size 3}
+                          {::pco/input            [:id]
+                           ::pco/output           [:name]
+                           ::pco/batch?           true
+                           ::pco/batch-chunk-size 3}
                           (fn [_ items]
                             (if (= 1 (count items))
                               [nil]
@@ -1809,10 +1809,10 @@
       (testing "error thrown flows up"
         (check-all-runners-ex
           (pci/register (pco/resolver 'batch-thing
-                          {::pco/input          [:id]
-                           ::pco/output         [:name]
-                           ::pco/batch?         true
-                           ::pco/batch-max-size 3}
+                          {::pco/input            [:id]
+                           ::pco/output           [:name]
+                           ::pco/batch?           true
+                           ::pco/batch-chunk-size 3}
                           (fn [_ items]
                             (if (= 1 (count items))
                               (throw (ex-info "Error in batch call" {}))
@@ -1825,10 +1825,10 @@
           (check-all-runners
             (-> {::p.error/lenient-mode? true}
                 (pci/register (pco/resolver 'batch-thing
-                                {::pco/input          [:id]
-                                 ::pco/output         [:name]
-                                 ::pco/batch?         true
-                                 ::pco/batch-max-size 3}
+                                {::pco/input            [:id]
+                                 ::pco/output           [:name]
+                                 ::pco/batch?           true
+                                 ::pco/batch-chunk-size 3}
                                 (fn [_ items]
                                   (if (= 1 (count items))
                                     (throw (ex-info "Error in batch call" {}))

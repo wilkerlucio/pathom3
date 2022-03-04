@@ -989,7 +989,7 @@
             inputs       (batch-group-inputs batch-items)
             batch-env    (-> batch-items first ::env
                              (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
-            max-size     (-> resolver pco/operation-config ::pco/batch-max-size)
+            max-size     (-> resolver pco/operation-config ::pco/batch-chunk-size)
             start        (time/now-ms)
             responses    (try
                            (if max-size

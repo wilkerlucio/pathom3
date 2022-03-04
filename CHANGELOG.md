@@ -1,7 +1,7 @@
 # Changelog
 
 ## [2022.03.04-alpha]
-- Add support for `::pco/batch-max-size` to how many items to batch at once
+- Add support for `::pco/batch-chunk-size` to how many items to batch at once
 - Batch process retains input order when making batch calls
 
 ## [2022.02.25-alpha]
