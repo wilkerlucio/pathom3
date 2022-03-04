@@ -2,6 +2,7 @@
 
 ## [2022.03.04-alpha]
 - Add support for `::pco/batch-max-size` to how many items to batch at once
+- Batch process retains input order when making batch calls
 
 ## [2022.02.25-alpha]
 - `::pcp/expects` now can figure implicit attributes on static resolver nested lookup
