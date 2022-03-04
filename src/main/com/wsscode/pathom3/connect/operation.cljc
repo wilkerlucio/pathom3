@@ -35,6 +35,7 @@
 (>def ::cache-store keyword?)
 (>def ::cache-key fn?)
 (>def ::batch? boolean?)
+(>def ::batch-max-size pos-int?)
 (>def ::priority int?)
 (>def ::resolve fn?)
 (>def ::mutate fn?)
@@ -444,7 +445,19 @@
        ::pco/input - description of resolver input, in EQL format
        ::pco/params - description of resolver parameters, in EQL format
        ::pco/transform - a function to transform the resolver configuration before instantiating the resolver
-       ::pcr/cache? - true by default, set to false to disable caching for the resolver
+
+     Caching options:
+
+       ::pco/cache? - true by default, set to false to disable caching for the resolver
+       ::pco/cache-store - a keyword pointing a cache store in the environment
+       ::pco/cache-key - a function of [env input-data] to use as a key when caching this resolver call
+
+     Batching options:
+
+       ::pco/batch? - set true to indicate this resolver does batch processing
+       ::pco/batch-max-size - the max number of items to batch at once, in case there
+                              are more items Pathom will split the batching in multiple
+                              request, each containing at max the number defined here
 
      Note that any other option that you send to the resolver config will be stored in the
      index and can be read from it at any time.

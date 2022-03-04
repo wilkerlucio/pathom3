@@ -120,9 +120,12 @@
   (let [ast (eql/query->ast query)]
     (pcr/run-graph! env ast (p.ent/create-entity tree))))
 
-(defn run-graph-async [env tree query]
-  (let [ast (eql/query->ast query)]
-    (pcra/run-graph! env ast (p.ent/create-entity tree))))
+(defn run-graph-async
+  ([env tree query]
+   (let [ast (eql/query->ast query)]
+     (pcra/run-graph! env ast (p.ent/create-entity tree))))
+  ([env tree query _expected]
+   (run-graph-async env tree query)))
 
 (defn run-graph-parallel [env tree query]
   (let [ast (eql/query->ast query)]
@@ -186,23 +189,29 @@
                @res res))
            => expected)))))
 
-(defn check-all-runners-ex [env entity tx expected]
-  (doseq [runner all-runners]
-    (testing (str runner)
-      (check (=> expected
-                 (let [res (ctry
-                             (runner env entity tx)
-                             (catch #?(:clj Throwable :cljs :default) e
-                               (ex-data e)))]
-                   (if (p/promise? res)
-                     @res res)))))))
+#?(:clj
+   (defmacro check-all-runners-ex [env entity tx expected]
+     `(doseq [runner# all-runners]
+        (testing (str runner#)
+          (check (~'=> ~expected
+                       (let [res# (ctry
+                                    (runner# ~env ~entity ~tx)
+                                    (catch #?(:clj Throwable :cljs :default) e#
+                                      (ex-data e#)))]
+                         (if (p/promise? res#)
+                           @res# res#)))))))
 
-(comment
-  (time
-    @(run-graph-async (pci/register
-                        (pbir/single-attr-resolver :id :x #(p/delay 100 (inc %))))
-       {:items [{:id 1} {:id 2} {:id 3}]}
-       [{:items [:x]}])))
+   :cljs
+   (defn check-all-runners-ex [env entity tx expected]
+     (doseq [runner all-runners]
+       (testing (str runner)
+         (check (=> expected
+                    (let [res (ctry
+                                (runner env entity tx)
+                                (catch #?(:clj Throwable :cljs :default) e
+                                  (ex-data e)))]
+                      (if (p/promise? res)
+                        @res res))))))))
 
 ; region helpers
 
@@ -1747,6 +1756,95 @@
                {:id 3}]}
       [{:items [(pco/? :name)]}]
       {:items [{:name "foo"} {} {:name "bar"}]}))
+
+  (testing "batch in blocks"
+    (testing "ensures each call has the correct max number of items"
+      (check-all-runners
+        (pci/register (pco/resolver 'batch-thing
+                        {::pco/input          [:id]
+                         ::pco/output         [:name]
+                         ::pco/batch?         true
+                         ::pco/batch-max-size 3}
+                        (fn [_ items]
+                          (assert (<= (count items) 3) "Expected each call to has at max 3 items")
+                          (mapv #(assoc % :name (str "Item " (:id %))) items))))
+        {:items (mapv #(array-map :id %) (range 10))}
+        [{:items [:name]}]
+        {:items [{:id 0, :name "Item 0"}
+                 {:id 1, :name "Item 1"}
+                 {:id 2, :name "Item 2"}
+                 {:id 3, :name "Item 3"}
+                 {:id 4, :name "Item 4"}
+                 {:id 5, :name "Item 5"}
+                 {:id 6, :name "Item 6"}
+                 {:id 7, :name "Item 7"}
+                 {:id 8, :name "Item 8"}
+                 {:id 9, :name "Item 9"}]}))
+
+    (testing "partial failure"
+      (testing "missing"
+        (check-all-runners
+          (pci/register (pco/resolver 'batch-thing
+                          {::pco/input          [:id]
+                           ::pco/output         [:name]
+                           ::pco/batch?         true
+                           ::pco/batch-max-size 3}
+                          (fn [_ items]
+                            (if (= 1 (count items))
+                              [nil]
+                              (mapv #(assoc % :name (str "Item " (:id %))) items)))))
+          {:items (mapv #(array-map :id %) (range 10))}
+          [{:items [(pco/? :name)]}]
+          {:items [{:id 0, :name "Item 0"}
+                   {:id 1, :name "Item 1"}
+                   {:id 2, :name "Item 2"}
+                   {:id 3, :name "Item 3"}
+                   {:id 4, :name "Item 4"}
+                   {:id 5, :name "Item 5"}
+                   {:id 6, :name "Item 6"}
+                   {:id 7, :name "Item 7"}
+                   {:id 8, :name "Item 8"}
+                   {:id 9}]}))
+
+      (testing "error thrown flows up"
+        (check-all-runners-ex
+          (pci/register (pco/resolver 'batch-thing
+                          {::pco/input          [:id]
+                           ::pco/output         [:name]
+                           ::pco/batch?         true
+                           ::pco/batch-max-size 3}
+                          (fn [_ items]
+                            (if (= 1 (count items))
+                              (throw (ex-info "Error in batch call" {}))
+                              (mapv #(assoc % :name (str "Item " (:id %))) items)))))
+          {:items (mapv #(array-map :id %) (range 10))}
+          [{:items [(pco/? :name)]}]
+          {::pcr/processor-error? true})
+
+        (testing "allows the partial results to flow up in lenient mode"
+          (check-all-runners
+            (-> {::p.error/lenient-mode? true}
+                (pci/register (pco/resolver 'batch-thing
+                                {::pco/input          [:id]
+                                 ::pco/output         [:name]
+                                 ::pco/batch?         true
+                                 ::pco/batch-max-size 3}
+                                (fn [_ items]
+                                  (if (= 1 (count items))
+                                    (throw (ex-info "Error in batch call" {}))
+                                    (mapv #(assoc % :name (str "Item " (:id %))) items))))))
+            {:items (mapv #(array-map :id %) (range 10))}
+            [{:items [:name]}]
+            {:items [{:id 0, :name "Item 0"}
+                     {:id 1, :name "Item 1"}
+                     {:id 2, :name "Item 2"}
+                     {:id 3, :name "Item 3"}
+                     {:id 4, :name "Item 4"}
+                     {:id 5, :name "Item 5"}
+                     {:id 6, :name "Item 6"}
+                     {:id 7, :name "Item 7"}
+                     {:id 8, :name "Item 8"}
+                     {:id 9, ::pcr/attribute-errors {}}]})))))
 
   (testing "uses batch resolver as single resolver when running under a path that batch wont work"
     (is (graph-response?

@@ -16,6 +16,7 @@
     [com.wsscode.pathom3.connect.operation.protocols :as pco.prot]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.connect.runner :as pcr]
+    [com.wsscode.pathom3.connect.runner.async :as pcra]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
@@ -212,11 +213,13 @@
   (p/let [batch-op     (-> batch-items first ::pco/op-name)
           resolver     (pci/resolver env batch-op)
           input-groups (pcr/batch-group-input-groups batch-items)
-          inputs       (keys input-groups)
+          inputs       (pcr/batch-group-inputs batch-items)
           batch-env    (-> batch-items first ::pcr/env
                            (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
+          max-size     (-> resolver pco/operation-config ::pco/batch-max-size)
           start        (time/now-ms)
-          responses    (-> (p/do! (pcr/invoke-resolver-with-plugins resolver batch-env inputs))
+          responses    (-> (p/do!
+                             (pcra/invoke-async-maybe-split-batches max-size resolver batch-env batch-op input-groups inputs))
                            (p/catch (fn [e]
                                       (try
                                         (pcr/mark-batch-errors e env batch-op batch-items)

@@ -961,6 +961,24 @@
 (defn batch-group-input-groups [batch-items]
   (group-by ::node-resolver-input batch-items))
 
+(defn batch-group-inputs [batch-items]
+  (into [] (comp (map ::node-resolver-input) (distinct)) batch-items))
+
+(defn mark-batch-block-errors [err env batch-op input-groups inputs]
+  (mark-batch-errors err env batch-op
+                     (vec (for [input inputs
+                                item  (get input-groups input)]
+                            item)))
+  (vec (repeat (count inputs) nil)))
+
+(defn invoke-batch-block [resolver batch-env batch-op input-groups inputs]
+  (if (::p.error/lenient-mode? batch-env)
+    (try
+      (invoke-resolver-with-plugins resolver batch-env inputs)
+      (catch #?(:clj Throwable :cljs :default) err
+        (mark-batch-block-errors err batch-env batch-op input-groups inputs)))
+    (invoke-resolver-with-plugins resolver batch-env inputs)))
+
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
@@ -968,12 +986,22 @@
     (doseq [[{batch-op ::pco/op-name} batch-items] batches]
       (let [resolver     (pci/resolver env batch-op)
             input-groups (batch-group-input-groups batch-items)
-            inputs       (keys input-groups)
+            inputs       (batch-group-inputs batch-items)
             batch-env    (-> batch-items first ::env
                              (coll/update-if ::p.path/path #(cond-> % (seq %) pop)))
+            max-size     (-> resolver pco/operation-config ::pco/batch-max-size)
             start        (time/now-ms)
             responses    (try
-                           (invoke-resolver-with-plugins resolver batch-env inputs)
+                           (if max-size
+                             (into []
+                                   (mapcat #(invoke-batch-block
+                                              resolver
+                                              batch-env
+                                              batch-op
+                                              input-groups
+                                              %))
+                                   (partition-all max-size inputs))
+                             (invoke-resolver-with-plugins resolver batch-env inputs))
                            (catch #?(:clj Throwable :cljs :default) e
                              (fail-fast env e)
                              (mark-batch-errors e env batch-op batch-items)))

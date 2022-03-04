@@ -1,5 +1,8 @@
 # Changelog
 
+## [Next]
+- Add support for `::pco/batch-max-size` to how many items to batch at once
+
 ## [2022.02.25-alpha]
 - `::pcp/expects` now can figure implicit attributes on static resolver nested lookup
 - Planner now removes path options that can't fulfill the sub-query
