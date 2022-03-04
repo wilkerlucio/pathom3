@@ -1,6 +1,6 @@
 # Changelog
 
-## [Next]
+## [2022.03.04-alpha]
 - Add support for `::pco/batch-max-size` to how many items to batch at once
 
 ## [2022.02.25-alpha]
