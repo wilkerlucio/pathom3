@@ -3,6 +3,7 @@
     [check.core :refer [check =>]]
     [clojure.spec.alpha :as s]
     [clojure.test :refer [deftest is are run-tests testing]]
+    [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.cache :as p.cache]
     [com.wsscode.pathom3.connect.built-in.plugins :as pbip]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
@@ -449,20 +450,6 @@
                       ::geo/left 7
                       :left      7}
                      20]}))))
-
-(comment
-  (check-all-runners-ex
-    (pci/register
-      [(pco/resolver 'bar
-         {::pco/output [:bar]}
-         (fn [_ _] {:bar "x"}))
-       (pco/resolver 'foo
-         {::pco/input  [:bar]
-          ::pco/output [:foo]}
-         (fn [_ _] (throw (ex-info "Error" {}))))])
-    {}
-    [:foo]
-    {:a 1}))
 
 (deftest run-graph!-fail-cases-test
   (testing "strict mode"
@@ -1742,6 +1729,24 @@
                                                                          :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause                      :com.wsscode.pathom3.error/node-exception,
                                                                                                                            :com.wsscode.pathom3.error/exception any?}}}}}
               res)))))
+
+  (testing "partial results"
+    (check-all-runners
+      (pci/register
+        [(pco/resolver 'batch-thing
+           {::pco/input  [:id]
+            ::pco/output [:name]
+            ::pco/batch? true}
+           (fn [_ items]
+             (coll/restore-order2 items
+                                  :id
+                                  [{:id 3 :name "bar"}
+                                   {:id 1 :name "foo"}])))])
+      {:items [{:id 1}
+               {:id 2}
+               {:id 3}]}
+      [{:items [(pco/? :name)]}]
+      {:items [{:name "foo"} {} {:name "bar"}]}))
 
   (testing "uses batch resolver as single resolver when running under a path that batch wont work"
     (is (graph-response?
