@@ -13,10 +13,8 @@ and chasing bugs and help improve the development of Pathom.
 
 ## Install
 
-While in alpha state, this library is only available as a git deps dependency.
-
 ```clojure
-com.wsscode/pathom3 {:mvn/version "2021.07.10-alpha"}
+com.wsscode/pathom3 {:mvn/version "VERSION"}
 ```
 
 ## Documentation
