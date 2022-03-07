@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2022.03.07-alpha]
 - Run stats now includes details for transient (implicit) dependencies as well
 - Improve parallelism with placeholders
 - Placeholders with params are deal as a new entity (instead of an extension of the parent)
