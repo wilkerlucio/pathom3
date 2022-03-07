@@ -2382,26 +2382,24 @@
           {:>/path {:x 20
                     :y 40}}))
 
-    (is (graph-response? (pci/register
-                           [(pbir/constantly-resolver :x 10)
-                            (pbir/single-attr-resolver :x :y #(* 2 %))])
-          {}
-          '[{(:>/path {:x 20}) [:y]}]
-          {:x      10
-           :y      20
-           :>/path {:x 20
-                    :y 40}}))
+    (check-all-runners
+      (pci/register
+        [(pbir/constantly-resolver :x 10)
+         (pbir/single-attr-resolver :x :y #(* 2 %))])
+      {}
+      '[{(:>/path {:x 20}) [:y]}]
+      {:>/path {:x 20
+                :y 40}})
 
-    (is (graph-response? (pci/register
-                           [(pbir/constantly-resolver :x 10)
-                            (pbir/single-attr-resolver :x :y #(* 2 %))])
-          {}
-          '[:x
-            {(:>/path {:x 20}) [:y]}]
-          {:x      10
-           :y      20
-           :>/path {:x 20
-                    :y 40}}))
+    (check-all-runners
+      (pci/register
+        [(pbir/constantly-resolver :x 10)
+         (pbir/single-attr-resolver :x :y #(* 2 %))])
+      {}
+      '[:x
+        {(:>/path {:x 20}) [:y]}]
+      {:>/path {:x 20
+                :y 40}})
 
     (testing "different parameters"
       (is (graph-response? (pci/register

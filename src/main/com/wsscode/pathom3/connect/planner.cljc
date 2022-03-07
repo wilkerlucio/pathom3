@@ -1435,6 +1435,40 @@
       :else
       (add-unreachable-path graph env {attr {}}))))
 
+(defn sanitize-params [params]
+  (when (seq params)
+    params))
+
+(defn merge-ast-children [a b]
+  (let [idx (pf.eql/index-ast a)]
+    (reduce
+      (fn [ast child]
+        (if-let [entry (get idx (:key child))]
+          (let [p1 (sanitize-params (:params entry))
+                p2 (sanitize-params (:params child))]
+            (if (= p1 p2)
+              (if (and (seq (:children entry)) (seq (:children child)))
+                (update ast :children
+                  (fn [children]
+                    (mapv
+                      (fn [c]
+                        (if (= c entry)
+                          (merge-ast-children c child)
+                          c))
+                      children)))
+                ast)
+              (throw (ex-info "Incompatible placeholder request"
+                              {:source-node      entry
+                               :conflicting-node child}))))
+          (update ast :children conj child)))
+      a
+      (:children b))))
+
+(defn merge-placeholder-ast [index-ast placeholder-ast]
+  (merge-with merge-ast-children
+              index-ast
+              (coll/filter-vals (comp seq :children) (pf.eql/index-ast placeholder-ast))))
+
 (defn compute-non-index-attribute
   "This function deals with attributes that are not part of the index execution. The
   cases here are:
@@ -1459,7 +1493,11 @@
                             ::snapshot-message (str "Attribute already available " attr)}))
 
     (pph/placeholder-key? env attr)
-    (compute-run-graph* (add-placeholder-entry graph attr) env)))
+    (-> (add-placeholder-entry graph attr)
+        (cond->
+          (empty? (:params ast))
+          (-> (compute-run-graph* env)
+              (update ::index-ast merge-placeholder-ast ast))))))
 
 (defn plan-mutation-nested-query [graph env {:keys [key] :as ast}]
   (if-let [nested-shape (-> env

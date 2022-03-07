@@ -2,6 +2,8 @@
 
 ## [NEXT]
 - Run stats now includes details for transient (implicit) dependencies as well
+- Improve parallelism with placeholders
+- Placeholders with params are deal as a new entity (instead of an extension of the parent)
 
 ## [2022.03.04-alpha]
 - Add support for `::pco/batch-chunk-size` to how many items to batch at once

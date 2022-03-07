@@ -1404,37 +1404,48 @@
               ::eql/query     [{:>/p1
                                 [:a
                                  {:>/p2 [:b]}]}]})
-           '#::pcp{:nodes                 {1 {::pco/op-name      a,
-                                              ::pcp/node-id      1,
-                                              ::pcp/expects      {:a {}},
-                                              ::pcp/input        {},
-                                              ::pcp/node-parents #{3}},
-                                           2 {::pco/op-name      b,
-                                              ::pcp/node-id      2,
-                                              ::pcp/expects      {:b {}},
-                                              ::pcp/input        {},
-                                              ::pcp/node-parents #{3}},
-                                           3 #::pcp{:node-id 3,,
-                                                    :run-and #{1
-                                                               2}}},
-                   :index-ast             #:>{:p1 {:type         :join,
-                                                   :dispatch-key :>/p1,
-                                                   :key          :>/p1,
-                                                   :query        [:a #:>{:p2 [:b]}],
-                                                   :children     [{:type         :prop,
-                                                                   :dispatch-key :a,
-                                                                   :key          :a}
-                                                                  {:type         :join,
-                                                                   :dispatch-key :>/p2,
-                                                                   :key          :>/p2,
-                                                                   :query        [:b],
-                                                                   :children     [{:type         :prop,
-                                                                                   :dispatch-key :b,
-                                                                                   :key          :b}]}]}},
-                   :placeholders          #{:>/p1 :>/p2},
-                   :index-resolver->nodes {a #{1}, b #{2}},
-                   :index-attrs           {:b #{2}, :a #{1}},
-                   :root                  3})))
+           '{:com.wsscode.pathom3.connect.planner/index-ast             {:>/p1 {:children     [{:dispatch-key :a
+                                                                                                :key          :a
+                                                                                                :type         :prop}
+                                                                                               {:children     [{:dispatch-key :b
+                                                                                                                :key          :b
+                                                                                                                :type         :prop}]
+                                                                                                :dispatch-key :>/p2
+                                                                                                :key          :>/p2
+                                                                                                :query        [:b]
+                                                                                                :type         :join}]
+                                                                                :dispatch-key :>/p1
+                                                                                :key          :>/p1
+                                                                                :query        [:a
+                                                                                               {:>/p2 [:b]}]
+                                                                                :type         :join}
+                                                                         :>/p2 {:children     [{:dispatch-key :b
+                                                                                                :key          :b
+                                                                                                :type         :prop}]
+                                                                                :dispatch-key :>/p2
+                                                                                :key          :>/p2
+                                                                                :query        [:b]
+                                                                                :type         :join}}
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{1}
+                                                                         :b #{2}}
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}
+                                                                         b #{2}}
+             :com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    a
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:a {}}
+                                                                            :com.wsscode.pathom3.connect.planner/input        {}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      1
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{3}}
+                                                                         2 {:com.wsscode.pathom3.connect.operation/op-name    b
+                                                                            :com.wsscode.pathom3.connect.planner/expects      {:b {}}
+                                                                            :com.wsscode.pathom3.connect.planner/input        {}
+                                                                            :com.wsscode.pathom3.connect.planner/node-id      2
+                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{3}}
+                                                                         3 {:com.wsscode.pathom3.connect.planner/node-id 3
+                                                                            :com.wsscode.pathom3.connect.planner/run-and #{1
+                                                                                                                           2}}}
+             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1
+                                                                          :>/p2}
+             :com.wsscode.pathom3.connect.planner/root                  3})))
 
   #_(testing "conflict between params"
       (is (= (compute-run-graph
@@ -3648,3 +3659,51 @@
                        2 {::pcp/node-id 2}
                        3 {::pcp/node-id 3}
                        4 {::pcp/node-id 4}}})))
+
+(deftest merge-placeholder-ast-test
+  (testing "only add elements when there is a sub-query"
+    (is (= (pcp/merge-placeholder-ast
+             {}
+             (eql/query->ast [:a]))
+           {}))
+
+    (is (= (pcp/merge-placeholder-ast
+             {}
+             (eql/query->ast [{:a [:b]}]))
+           {:a (eql/query->ast1 [{:a [:b]}])})))
+
+  (testing "add new attributes"
+    (check (=>
+             {:a (dissoc (eql/query->ast1 [{:a [:b :c]}]) :query)}
+             (pcp/merge-placeholder-ast
+               {:a (eql/query->ast1 [{:a [:b]}])}
+               (eql/query->ast [{:a [:c]}]))))
+
+    (testing "skip already present"
+      (is (= (pcp/merge-placeholder-ast
+               {:a (eql/query->ast1 [{:a [:b :c]}])}
+               (eql/query->ast [{:a [:c]}]))
+             {:a (eql/query->ast1 [{:a [:b :c]}])})))
+
+    (testing "deep merge"
+      (is (= (pcp/merge-placeholder-ast
+               {:a (eql/query->ast1 [{:a [{:b [:c]}]}])}
+               (eql/query->ast [{:a [{:b [:d]}]}]))
+             {:a {:type :join,
+                  :dispatch-key :a,
+                  :key :a,
+                  :query [{:b [:c]}],
+                  :children [{:type :join,
+                              :dispatch-key :b,
+                              :key :b,
+                              :query [:c],
+                              :children [{:type :prop, :dispatch-key :c, :key :c}
+                                         {:type :prop, :dispatch-key :d, :key :d}]}]}})))
+
+    (testing "error on conflicting parameters"
+      (is (thrown-with-msg?
+            #?(:clj Throwable :cljs :default)
+            #"Incompatible placeholder request"
+            (pcp/merge-placeholder-ast
+              {:a (eql/query->ast1 [{:a [:b]}])}
+              (eql/query->ast '[{:a [(:b {:p 1})]}])))))))
