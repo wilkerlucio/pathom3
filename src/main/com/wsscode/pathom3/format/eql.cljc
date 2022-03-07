@@ -147,24 +147,76 @@
                                :key          k
                                :dispatch-key k})) attrs))
 
+(defn stats-value?
+  "Check if a value is a map with a run stats, or a sequence containing items
+  with run stats"
+  [x]
+  (cond
+    (map? x)
+    (-> x meta (contains? :com.wsscode.pathom3.connect.runner/run-stats))
+
+    (coll? x)
+    (-> x first meta (contains? :com.wsscode.pathom3.connect.runner/run-stats))
+
+    :else
+    false))
+
+(defn select-stats-data
+  "Filter X to keep only values that are relevant for running stats."
+  [x]
+  (cond
+    (map? x)
+    (into (with-meta {} (meta x))
+          (comp (filter
+                  (fn [e]
+                    (stats-value? (val e))))
+                (map
+                  (fn [e]
+                    (coll/make-map-entry (key e) (select-stats-data (val e))))))
+          x)
+
+    (coll/collection? x)
+    (cond-> (into (empty x)
+                  (map select-stats-data)
+                  x)
+      (coll/coll-append-at-head? x)
+      reverse)))
+
 (>defn map-select-ast
   "Same as map-select, but using AST as source."
-  [{::keys [map-select-include] :as env} source ast]
+  [{::keys [map-select-include]
+    :as    env} source ast]
   [map? any? (s/keys :opt-un [:edn-query-language.ast/children])
    => any?]
   (if (coll/native-map? source)
-    (let [start (with-meta {} (meta source))]
-      (into start (keep #(p.plugin/run-with-plugins env ::wrap-map-select-entry
-                           map-select-entry env source (assoc % :parent-ast ast)))
-            (-> ast
-                (pick-union-entry source)
-                :children
-                (cond->
-                  map-select-include
-                  (include-extra-attrs map-select-include))
-                (cond->>
-                  (ast-contains-wildcard? ast)
-                  (extend-ast-with-wildcard source)))))
+    (let [start    (with-meta {} (meta source))
+          selected (into start
+                         (keep #(p.plugin/run-with-plugins env ::wrap-map-select-entry
+                                  map-select-entry env source (assoc % :parent-ast ast)))
+                         (-> ast
+                             (pick-union-entry source)
+                             :children
+                             (cond->
+                               map-select-include
+                               (include-extra-attrs map-select-include))
+                             (cond->>
+                               (ast-contains-wildcard? ast)
+                               (extend-ast-with-wildcard source))))]
+      (if (stats-value? source)
+        (let [transient-attrs (into {}
+                                    (comp (filter
+                                            (fn [entry]
+                                              (and (not (contains? selected (key entry)))
+                                                   (stats-value? (val entry)))))
+                                          (map
+                                            (fn [entry]
+                                              (coll/make-map-entry (key entry) (select-stats-data (val entry))))))
+                                    source)]
+          (vary-meta selected assoc-in
+                     [:com.wsscode.pathom3.connect.runner/run-stats
+                      :com.wsscode.pathom3.connect.runner/transient-stats]
+                     transient-attrs))
+        selected))
     source))
 
 (>defn map-select

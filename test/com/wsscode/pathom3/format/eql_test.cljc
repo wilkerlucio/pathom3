@@ -250,3 +250,33 @@
                                       :dispatch-key :c,
                                       :key          :c,
                                       :children     [{:type :prop, :dispatch-key :d, :key :d}]}]}]})))
+
+
+(defn with-rs [x]
+  (with-meta x {:com.wsscode.pathom3.connect.runner/run-stats {}}))
+
+(deftest stats-value?-test
+  (is (= (pf.eql/stats-value? {})
+         false))
+  (is (= (pf.eql/stats-value? (with-rs {}))
+         true))
+  (is (= (pf.eql/stats-value? [(with-rs {})])
+         true))
+  (is (= (pf.eql/stats-value? [{}])
+         false))
+  (is (= (pf.eql/stats-value? 3)
+         false))
+  (is (= (pf.eql/stats-value? true)
+         false))
+  (is (= (pf.eql/stats-value? "foo")
+         false)))
+
+(deftest select-stats-data-test
+  (is (= (pf.eql/select-stats-data
+           {:foo   "bar"
+            :other (with-rs {:a 1
+                             :b (with-rs {:d 1})})
+            :more  [(with-rs {:b 1})
+                    (with-rs {:b 2})
+                    (with-rs {:b 3})]})
+         {:other {:b {}}, :more [{} {} {}]})))

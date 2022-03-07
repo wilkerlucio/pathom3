@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Run stats now includes details for transient (implicit) dependencies as well
+
 ## [2022.03.04-alpha]
 - Add support for `::pco/batch-chunk-size` to how many items to batch at once
 - Batch process retains input order when making batch calls
