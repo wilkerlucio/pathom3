@@ -283,7 +283,12 @@
     (testing "lenient mode"
       (is (= (fi {:pathom/eql           [:invalid]
                   :pathom/lenient-mode? true})
-             {:com.wsscode.pathom3.connect.runner/attribute-errors {:invalid {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}}})))))
+             {:com.wsscode.pathom3.connect.runner/attribute-errors {:invalid {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}}}))
+
+      (testing "lenient mode from env"
+        (let [fi (p.eql/boundary-interface (assoc (pci/register registry) :com.wsscode.pathom3.error/lenient-mode? true))]
+          (is (= (fi {:pathom/eql [:invalid]})
+                 {:com.wsscode.pathom3.connect.runner/attribute-errors {:invalid {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}}})))))))
 
 (deftest boundary-interface-include-stats-test
   (testing "omit stats by default"

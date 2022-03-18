@@ -118,16 +118,20 @@
 
   IMPORTANT: :pathom/tx is deprecated and its going to be dropped, if you are using it please
   replace it with :pathom/eql to avoid breakages in the future."
-  [input]
-  [(s/or :query ::eql/query
+  [env input]
+  [map?
+   (s/or :query ::eql/query
          :config (s/keys :req [(or :pathom/tx :pathom/eql :pathom/ast)] :opt [:pathom/entity]))
    => (s/keys :req [(or :pathom/tx :pathom/eql :pathom/ast)] :opt [:pathom/entity])]
-  (if (vector? input)
-    {:pathom/eql    input
-     :pathom/entity {}}
-    (cond->> input
-      (:pathom/lenient-mode? input)
-      (merge {:pathom/include-stats? true}))))
+  (cond->>
+    (if (vector? input)
+      {:pathom/eql    input
+       :pathom/entity {}}
+      input)
+
+    (or (:pathom/lenient-mode? input)
+        (::p.error/lenient-mode? env))
+    (merge {:pathom/include-stats? true})))
 
 (>defn extend-env
   [source-env env-extension]
@@ -173,7 +177,7 @@
     (fn boundary-interface-internal
       ([env-extension request]
        (let [{:pathom/keys [eql entity ast include-stats?] :as request'}
-             (normalize-input request)
+             (normalize-input env request)
              env'    (-> env'
                          (boundary-env request)
                          (extend-env env-extension)

@@ -1,5 +1,8 @@
 # Changelog
 
+## [2022.03.17-alpha]
+- Fix boundary interface detection of lenient mode to output stats
+
 ## [2022.03.07-alpha]
 - Run stats now includes details for transient (implicit) dependencies as well
 - Improve parallelism with placeholders
