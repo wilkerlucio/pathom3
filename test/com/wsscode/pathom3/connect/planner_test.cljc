@@ -113,7 +113,8 @@
              ::pcp/index-attrs           {:a #{1}}
              ::pcp/index-ast             {:a {:dispatch-key :a
                                               :key          :a
-                                              :type         :prop}}})))
+                                              :type         :prop}}
+             ::pcp/user-request-shape    {:a {}}})))
 
   (testing "OR on multiple paths"
     (is (= (compute-run-graph
@@ -141,6 +142,7 @@
                                               :key          :a}},
              ::pcp/index-resolver->nodes {a2 #{2}, a #{1}},
              ::pcp/index-attrs           {:a #{1 2}},
+             ::pcp/user-request-shape    {:a {}}
              ::pcp/root                  3})))
 
   (testing "partial failure with OR"
@@ -171,6 +173,9 @@
                                           :bar/year   {:type         :prop,
                                                        :dispatch-key :bar/year,
                                                        :key          :bar/year}},
+             ::pcp/user-request-shape    {:bar/id     {}
+                                          :bar/year   {}
+                                          :foo/number {}}
              ::pcp/index-resolver->nodes {bar-id #{1}, get-year #{5}},
              ::pcp/index-attrs           {:foo/number #{1},
                                           :bar/id     #{1},
@@ -204,6 +209,7 @@
                                           :b {:type         :prop,
                                               :dispatch-key :b,
                                               :key          :b}}
+             ::pcp/user-request-shape    {:a {} :b {}}
              ::pcp/root                  3})))
 
   (testing "expectation for nested needs"
@@ -307,10 +313,11 @@
                {::pci/index-oir      '{}
                 ::eql/query          [:a]
                 ::pcp/available-data {:a {}}})
-             {::pcp/nodes     {}
-              ::pcp/index-ast {:a {:dispatch-key :a
-                                   :key          :a
-                                   :type         :prop}}}))
+             {::pcp/nodes              {}
+              ::pcp/user-request-shape {:a {}}
+              ::pcp/index-ast          {:a {:dispatch-key :a
+                                            :key          :a
+                                            :type         :prop}}}))
 
       (testing "optional"
         (is (= (compute-run-graph
@@ -330,6 +337,7 @@
                                                   :params       {::pco/optional? true}}},
                  ::pcp/index-resolver->nodes {a #{1}},
                  ::pcp/index-attrs           {:a #{1}},
+                 ::pcp/user-request-shape    {:a {} :b {}}
                  ::pcp/root                  1,
                  ::pcp/unreachable-paths     {:b {}}})))
 
@@ -338,29 +346,31 @@
                  {::pci/index-oir      '{}
                   ::eql/query          [{:a [:bar]}]
                   ::pcp/available-data {:a {}}})
-               {::pcp/nodes          {}
-                ::pcp/nested-process #{:a}
-                ::pcp/index-ast      {:a {:children     [{:dispatch-key :bar
-                                                          :key          :bar
-                                                          :type         :prop}]
-                                          :dispatch-key :a
-                                          :key          :a
-                                          :query        [:bar]
-                                          :type         :join}}}))
+               {::pcp/nodes              {}
+                ::pcp/user-request-shape {:a {:bar {}}}
+                ::pcp/nested-process     #{:a}
+                ::pcp/index-ast          {:a {:children     [{:dispatch-key :bar
+                                                              :key          :bar
+                                                              :type         :prop}]
+                                              :dispatch-key :a
+                                              :key          :a
+                                              :query        [:bar]
+                                              :type         :join}}}))
 
         (is (= (compute-run-graph
                  {::pci/index-oir      '{}
                   ::eql/query          [:a {:b '...}]
                   ::pcp/available-data {:a {} :b {}}})
-               {::pcp/nodes          {}
-                ::pcp/nested-process #{:b}
-                ::pcp/index-ast      {:a {:type         :prop,
-                                          :dispatch-key :a,
-                                          :key          :a},
-                                      :b {:type         :join,
-                                          :dispatch-key :b,
-                                          :key          :b,
-                                          :query        '...}}}))))))
+               {::pcp/nodes              {}
+                ::pcp/user-request-shape {:a {} :b {}}
+                ::pcp/nested-process     #{:b}
+                ::pcp/index-ast          {:a {:type         :prop,
+                                              :dispatch-key :a,
+                                              :key          :a},
+                                          :b {:type         :join,
+                                              :dispatch-key :b,
+                                              :key          :b,
+                                              :query        '...}}}))))))
 
 (deftest compute-run-graph-no-path-tolerant-mode-test
   (testing "no path"
@@ -372,6 +382,7 @@
                                             :key          :a
                                             :type         :prop}}
             ::pcp/nodes                {}
+            ::pcp/user-request-shape   {:a {}}
             ::pcp/unreachable-paths    {:a {}}
             ::pcp/verification-failed? true}))
 
@@ -383,6 +394,7 @@
              '{::pcp/index-ast            {:b {:dispatch-key :b
                                                :key          :b
                                                :type         :prop}}
+               ::pcp/user-request-shape   {:b {}}
                ::pcp/nodes                {}
                ::pcp/unreachable-paths    {:a {}
                                            :b {}}
@@ -395,6 +407,7 @@
              '{::pcp/index-ast            {:b {:dispatch-key :b
                                                :key          :b
                                                :type         :prop}}
+               ::pcp/user-request-shape   {:b {}}
                ::pcp/nodes                {}
                ::pcp/unreachable-paths    {:a {}
                                            :b {}}
@@ -413,6 +426,7 @@
                                                :key          :b
                                                :type         :prop}}
                ::pcp/nodes                {}
+               ::pcp/user-request-shape   {:b {}}
                ::pcp/unreachable-paths    {:a {}
                                            :b {}}
                ::pcp/verification-failed? true}))
@@ -429,6 +443,7 @@
              '{::pcp/index-ast            {:c {:dispatch-key :c
                                                :key          :c
                                                :type         :prop}}
+               ::pcp/user-request-shape   {:c {}}
                ::pcp/nodes                {}
                ::pcp/unreachable-paths    {:a {}
                                            :b {}
@@ -449,6 +464,7 @@
              '{::pcp/index-ast            {:c {:dispatch-key :c
                                                :key          :c
                                                :type         :prop}}
+               ::pcp/user-request-shape   {:c {}}
                ::pcp/nodes                {}
                ::pcp/unreachable-paths    {:a {}
                                            :b {}
@@ -459,12 +475,13 @@
   (is (= (compute-run-graph
            {::pci/index-oir '{}
             ::eql/query     [(list 'foo {})]})
-         '{::pcp/nodes     {}
-           ::pcp/mutations [foo]
-           ::pcp/index-ast {foo {:dispatch-key foo
-                                 :key          foo
-                                 :params       {}
-                                 :type         :call}}})))
+         '{::pcp/nodes              {}
+           ::pcp/user-request-shape {foo {}}
+           ::pcp/mutations          [foo]
+           ::pcp/index-ast          {foo {:dispatch-key foo
+                                          :key          foo
+                                          :params       {}
+                                          :type         :call}}})))
 
 (deftest compute-run-graph-dynamic-mutations-test
   (testing "mutation query going over"
@@ -472,40 +489,42 @@
       (is (= (compute-run-graph
                {::dynamics  {'dyn [(pco/mutation 'doit {::pco/output [:done]} (fn [_ _]))]}
                 ::eql/query [{(list 'doit {}) [:done]}]})
-             '{::pcp/nodes     {},
-               ::pcp/index-ast {doit {:dispatch-key     doit,
-                                      :key              doit,
-                                      :params           {},
-                                      :type             :call,
-                                      :query            [:done],
-                                      :children         [{:type         :prop,
-                                                          :dispatch-key :done,
-                                                          :key          :done}],
-                                      ::pcp/foreign-ast {:type     :root,
-                                                         :children [{:type         :prop,
-                                                                     :key          :done,
-                                                                     :dispatch-key :done}]}}},
-               ::pcp/mutations [doit]})))
+             '{::pcp/nodes              {},
+               ::pcp/user-request-shape {doit {:done {}}}
+               ::pcp/index-ast          {doit {:dispatch-key     doit,
+                                               :key              doit,
+                                               :params           {},
+                                               :type             :call,
+                                               :query            [:done],
+                                               :children         [{:type         :prop,
+                                                                   :dispatch-key :done,
+                                                                   :key          :done}],
+                                               ::pcp/foreign-ast {:type     :root,
+                                                                  :children [{:type         :prop,
+                                                                              :key          :done,
+                                                                              :dispatch-key :done}]}}},
+               ::pcp/mutations          [doit]})))
 
     (testing "attribute extended from mutation, but still in the same foreign"
       (is (= (compute-run-graph
                {::dynamics  {'dyn [(pco/mutation 'doit {::pco/output [:done]} (fn [_ _]))
                                    (pbir/alias-resolver :done :done?)]}
                 ::eql/query [{(list 'doit {}) [:done?]}]})
-             '{::pcp/nodes     {},
-               ::pcp/index-ast {doit {:dispatch-key     doit,
-                                      :key              doit,
-                                      :params           {},
-                                      :type             :call,
-                                      :query            [:done?],
-                                      :children         [{:type         :prop,
-                                                          :dispatch-key :done?,
-                                                          :key          :done?}],
-                                      ::pcp/foreign-ast {:type     :root,
-                                                         :children [{:type         :prop,
-                                                                     :key          :done?,
-                                                                     :dispatch-key :done?}]}}},
-               ::pcp/mutations [doit]})))
+             '{::pcp/nodes              {},
+               ::pcp/user-request-shape {doit {:done? {}}}
+               ::pcp/index-ast          {doit {:dispatch-key     doit,
+                                               :key              doit,
+                                               :params           {},
+                                               :type             :call,
+                                               :query            [:done?],
+                                               :children         [{:type         :prop,
+                                                                   :dispatch-key :done?,
+                                                                   :key          :done?}],
+                                               ::pcp/foreign-ast {:type     :root,
+                                                                  :children [{:type         :prop,
+                                                                              :key          :done?,
+                                                                              :dispatch-key :done?}]}}},
+               ::pcp/mutations          [doit]})))
 
     (testing "attribute extended from mutation locally"
       (is (= (compute-run-graph
@@ -524,8 +543,9 @@
                                       :params           {}
                                       :query            [:done?]
                                       :type             :call}}
+               ::pcp/user-request-shape {doit {:done? {}}}
                ::pcp/mutations [doit]
-               ::pcp/nodes     {}})))))
+               ::pcp/nodes {}})))))
 
 (deftest compute-run-graph-idents-test
   (testing "separate idents"
@@ -539,6 +559,9 @@
                                              ::pcp/input   {}}}
              ::pcp/index-resolver->nodes {a #{1}}
              ::pcp/root                  1
+             ::pcp/user-request-shape    {:a      {}
+                                          [:foo
+                                           "bar"] {}}
              ::pcp/idents                #{[:foo "bar"]}
              ::pcp/index-attrs           {:a #{1}}
              ::pcp/index-ast             {:a           {:dispatch-key :a
@@ -558,6 +581,9 @@
                                              ::pcp/expects {:a {}}
                                              ::pcp/input   {}}}
              ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/user-request-shape    {:a      {}
+                                          [:foo
+                                           "bar"] {:baz {}}}
              ::pcp/root                  1
              ::pcp/idents                #{[:foo "bar"]}
              ::pcp/index-attrs           {:a #{1}}
@@ -588,6 +614,7 @@
                                              :key          :a
                                              :type         :prop}}
              ::pcp/nodes                {}
+             ::pcp/user-request-shape   {:a {}}
              ::pcp/unreachable-paths    {:a {}
                                          :b {}}
              ::pcp/verification-failed? true}))
@@ -607,6 +634,7 @@
            '{::pcp/index-ast            {:a {:dispatch-key :a
                                              :key          :a
                                              :type         :prop}}
+             ::pcp/user-request-shape   {:a {}}
              ::pcp/nodes                {}
              ::pcp/unreachable-paths    {:a {}
                                          :b {}
@@ -633,6 +661,8 @@
                      :index-resolver->nodes {a1 #{4}
                                              b  #{2}
                                              c  #{1}}
+
+                     :user-request-shape    {:c {} :a {}}
                      :nodes                 {1 {::pco/op-name      c
                                                 ::pcp/expects      {:c {}}
                                                 ::pcp/input        {:b {}}
@@ -691,6 +721,7 @@
                                                       :key          :scores-sum
                                                       :type         :prop}}
              ::pcp/nodes                {}
+             ::pcp/user-request-shape   {:scores-sum {}}
              ::pcp/unreachable-paths    {:scores-sum {}
                                          :users      {:user/score {}}}
              ::pcp/verification-failed? true})))
@@ -718,6 +749,7 @@
                                                        :type         :join}}
              ::pcp/index-attrs           {:scores-sum #{1}
                                           :users      #{3}}
+             ::pcp/user-request-shape    {:scores-sum {}}
              ::pcp/index-resolver->nodes {scores-sum #{1}
                                           users      #{3}}
              ::pcp/nodes                 {1 {::pco/op-name      scores-sum
@@ -758,6 +790,7 @@
                                                                          :z #{1}}
              :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a3 #{4}
                                                                          z  #{1}}
+             ::pcp/user-request-shape                                   {:z {}}
              :com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    z
                                                                             :com.wsscode.pathom3.connect.planner/expects      {:z {}}
                                                                             :com.wsscode.pathom3.connect.planner/input        {:a {:b {}}}
@@ -791,6 +824,8 @@
                    :nested-process        #{:users}
                    :index-attrs           {:scores-sum #{1}}
                    :root                  1
+
+                   :user-request-shape    {:scores-sum {}}
                    :index-ast             {:scores-sum {:type         :prop,
                                                         :dispatch-key :scores-sum,
                                                         :key          :scores-sum}
@@ -829,6 +864,7 @@
                                               ::pcp/run-next 1}},
                    :index-resolver->nodes {scores-sum #{1},
                                            other      #{3}},
+                   :user-request-shape    {:scores-sum {}}
                    :nested-process        #{:users}
                    :index-ast             {:scores-sum {:type         :prop,
                                                         :dispatch-key :scores-sum,
@@ -864,11 +900,12 @@
                {:users {:user/score {}}}}},
              ::pcp/index-resolver->nodes
              {scores-sum #{1}},
+             ::pcp/user-request-shape {:scores-sum {}}
              ::pcp/index-ast
              {:scores-sum
               {:type :prop, :dispatch-key :scores-sum, :key :scores-sum}},
-             ::pcp/root        1,
-             ::pcp/index-attrs {:scores-sum #{1}}})))
+             ::pcp/root               1,
+             ::pcp/index-attrs        {:scores-sum #{1}}})))
 
   (testing "multiple resolvers for the same root but different sub queries"
     (is (= (compute-run-graph
@@ -901,6 +938,7 @@
                                           :users      #{3}}
              ::pcp/index-resolver->nodes {scores-sum #{1}
                                           users      #{3}}
+             ::pcp/user-request-shape    {:scores-sum {} :total-max-score {}}
              ::pcp/nodes                 {1 {::pco/op-name      scores-sum
                                              ::pcp/expects      {:scores-sum {}}
                                              ::pcp/input        {:users {:user/score {}}}
@@ -927,6 +965,7 @@
                                              :key          :b
                                              :type         :prop}}
              ::pcp/nodes                {}
+             ::pcp/user-request-shape   {:b {}}
              ::pcp/unreachable-paths    {:a {}
                                          :b {}}
              ::pcp/verification-failed? true}))
@@ -942,6 +981,7 @@
                                              :key          :b
                                              :type         :prop}}
              ::pcp/nodes                {}
+             ::pcp/user-request-shape   {:b {}}
              ::pcp/unreachable-paths    {:a {:b {}}
                                          :b {}}
              ::pcp/verification-failed? true})))
@@ -978,6 +1018,7 @@
              ::pcp/index-attrs           {:age-sum    #{5}
                                           :scores-sum #{1}
                                           :users      #{3}}
+             ::pcp/user-request-shape    {:scores-sum {} :age-sum {}}
              ::pcp/index-resolver->nodes {age-sum    #{5}
                                           scores-sum #{1}
                                           users      #{3}}
@@ -1012,28 +1053,29 @@
                                           ::pco/input   [:name]
                                           ::pco/output  [{:children [:name]}]}]
                   ::pcp/available-data {:name {}}}))
-           '#::pcp{:nodes                 {1 {::pco/op-name      nested-input-recursive,
-                                              ::pcp/node-id      1,
-                                              ::pcp/expects      {:names {}},
-                                              ::pcp/input        {:name     {},
-                                                                  :children {}},
-                                              ::pcp/node-parents #{2},},
-                                           2 {::pco/op-name  from-name,
-                                              ::pcp/node-id  2,
-                                              ::pcp/expects  {:children {}},
-                                              ::pcp/input    {:name {}},
-                                              ::pcp/run-next 1}},
-                   :index-ast             {:names    {:type         :prop,
-                                                      :dispatch-key :names,
-                                                      :key          :names},
-                                           :children {:type         :join,
-                                                      :key          :children,
-                                                      :dispatch-key :children,
-                                                      :query        ...}},
-                   :index-resolver->nodes {nested-input-recursive #{1},
-                                           from-name              #{2}},
-                   :index-attrs           {:children #{2}, :names #{1}},
-                   :root                  2})))
+           '#::pcp{:nodes                   {1 {::pco/op-name      nested-input-recursive,
+                                                ::pcp/node-id      1,
+                                                ::pcp/expects      {:names {}},
+                                                ::pcp/input        {:name     {},
+                                                                    :children {}},
+                                                ::pcp/node-parents #{2},},
+                                             2 {::pco/op-name  from-name,
+                                                ::pcp/node-id  2,
+                                                ::pcp/expects  {:children {}},
+                                                ::pcp/input    {:name {}},
+                                                ::pcp/run-next 1}},
+                   :index-ast               {:names    {:type         :prop,
+                                                        :dispatch-key :names,
+                                                        :key          :names},
+                                             :children {:type         :join,
+                                                        :key          :children,
+                                                        :dispatch-key :children,
+                                                        :query        ...}},
+                   :index-resolver->nodes   {nested-input-recursive #{1},
+                                             from-name              #{2}},
+                   :index-attrs             {:children #{2}, :names #{1}},
+                   ::pcp/user-request-shape {:names {}}
+                   :root                    2})))
 
   (testing "optional nested input"
     (is (= (compute-run-graph
@@ -1068,6 +1110,7 @@
                                           :users       #{4}}
              ::pcp/index-resolver->nodes {total-score #{1}
                                           users       #{4}}
+             ::pcp/user-request-shape    {:total-score {}}
              ::pcp/nodes                 {1 {::pco/op-name      total-score
                                              ::pcp/expects      {:total-score {}}
                                              ::pcp/input        {:users {}}
@@ -1117,6 +1160,7 @@
                                           :users       #{8}}
              ::pcp/index-resolver->nodes {total-score #{1}
                                           users       #{8}}
+             ::pcp/user-request-shape    {:total-score {}}
              ::pcp/nodes                 {1 {::pco/op-name      total-score
                                              ::pcp/expects      {:total-score {}}
                                              ::pcp/input        {:users {:foo {}}}
@@ -1165,6 +1209,7 @@
                                           :z     #{1}}
              ::pcp/index-resolver->nodes {items #{3}
                                           z     #{1}}
+             ::pcp/user-request-shape    {:z {}}
              ::pcp/nodes                 {1 {::pco/op-name      z
                                              ::pcp/expects      {:z {}}
                                              ::pcp/input        {:items {:b {}
@@ -1204,23 +1249,24 @@
                                            {::pco/op-name 'x
                                             ::pco/output  [:x]}]
                   ::p.error/lenient-mode? true}))
-           '#::pcp{:nodes                 {1 {::pco/op-name      foo,
-                                              ::pcp/node-id      1,
-                                              ::pcp/expects      {:foo {}},
-                                              ::pcp/input        {:x {}},
-                                              ::pcp/node-parents #{2},},
-                                           2 {::pco/op-name  x,
-                                              ::pcp/node-id  2,
-                                              ::pcp/expects  {:x {}},
-                                              ::pcp/input    {},
-                                              ::pcp/run-next 1}},
-                   :index-resolver->nodes {foo #{1}, x #{2}},
-                   :unreachable-paths     {:y {}},
-                   :index-ast             {:foo {:type         :prop,
-                                                 :dispatch-key :foo,
-                                                 :key          :foo}},
-                   :index-attrs           {:foo #{1}, :x #{2}},
-                   :root                  2})))
+           '{::pcp/nodes                 {1 {::pco/op-name      foo,
+                                             ::pcp/node-id      1,
+                                             ::pcp/expects      {:foo {}},
+                                             ::pcp/input        {:x {}},
+                                             ::pcp/node-parents #{2},},
+                                          2 {::pco/op-name  x,
+                                             ::pcp/node-id  2,
+                                             ::pcp/expects  {:x {}},
+                                             ::pcp/input    {},
+                                             ::pcp/run-next 1}},
+             ::pcp/user-request-shape    {:foo {}}
+             ::pcp/index-resolver->nodes {foo #{1}, x #{2}},
+             ::pcp/unreachable-paths     {:y {}},
+             ::pcp/index-ast             {:foo {:type         :prop,
+                                                :dispatch-key :foo,
+                                                :key          :foo}},
+             ::pcp/index-attrs           {:foo #{1}, :x #{2}},
+             ::pcp/root                  2})))
 
   (testing "adds optionals to plan, when available"
     (is (= (compute-run-graph
@@ -1242,6 +1288,7 @@
              ::pcp/index-resolver->nodes {foo #{1}
                                           x   #{2}
                                           y   #{3}}
+             ::pcp/user-request-shape    {:foo {}}
              ::pcp/nodes                 {1 {::pco/op-name      foo
                                              ::pcp/expects      {:foo {}}
                                              ::pcp/input        {:x {}}
@@ -1272,17 +1319,18 @@
                                               ::pco/input   [(pco/? :y)]
                                               ::pco/output  [:foo]}]
                     ::p.error/lenient-mode? true}))
-             '#::pcp{:nodes                 {1 {::pco/op-name foo,
-                                                ::pcp/node-id 1,
-                                                ::pcp/expects {:foo {}},
-                                                ::pcp/input   {},}},
-                     :index-resolver->nodes {foo #{1}},
-                     :unreachable-paths     {:y {}},
-                     :index-ast             {:foo {:type         :prop,
-                                                   :dispatch-key :foo,
-                                                   :key          :foo}},
-                     :root                  1,
-                     :index-attrs           {:foo #{1}}})))
+             '{::pcp/nodes                 {1 {::pco/op-name foo,
+                                               ::pcp/node-id 1,
+                                               ::pcp/expects {:foo {}},
+                                               ::pcp/input   {},}},
+               ::pcp/user-request-shape    {:foo {}}
+               ::pcp/index-resolver->nodes {foo #{1}},
+               ::pcp/unreachable-paths     {:y {}},
+               ::pcp/index-ast             {:foo {:type         :prop,
+                                                  :dispatch-key :foo,
+                                                  :key          :foo}},
+               ::pcp/root                  1,
+               ::pcp/index-attrs           {:foo #{1}}})))
 
     (testing "available"
       (is (= (compute-run-graph
@@ -1299,6 +1347,7 @@
                                             :y   #{2}}
                ::pcp/index-resolver->nodes {foo #{1}
                                             y   #{2}}
+               ::pcp/user-request-shape    {:foo {}}
                ::pcp/nodes                 {1 {::pco/op-name      foo
                                                ::pcp/expects      {:foo {}}
                                                ::pcp/input        {}
@@ -1317,21 +1366,22 @@
     (is (= (compute-run-graph
              {::pci/index-oir '{:a {{} #{a}}}
               ::eql/query     [{:>/p1 [:a]}]})
-           '#::pcp{:nodes                 {1 {::pco/op-name a,
-                                              ::pcp/node-id 1,
-                                              ::pcp/expects {:a {}},
-                                              ::pcp/input   {},}},
-                   :index-ast             #:>{:p1 {:type         :join,
-                                                   :dispatch-key :>/p1,
-                                                   :key          :>/p1,
-                                                   :query        [:a],
-                                                   :children     [{:type         :prop,
-                                                                   :dispatch-key :a,
-                                                                   :key          :a}]}},
-                   :placeholders          #{:>/p1},
-                   :index-resolver->nodes {a #{1}},
-                   :root                  1,
-                   :index-attrs           {:a #{1}}})))
+           '{::pcp/nodes                 {1 {::pco/op-name a,
+                                             ::pcp/node-id 1,
+                                             ::pcp/expects {:a {}},
+                                             ::pcp/input   {},}},
+             ::pcp/index-ast             #:>{:p1 {:type         :join,
+                                                  :dispatch-key :>/p1,
+                                                  :key          :>/p1,
+                                                  :query        [:a],
+                                                  :children     [{:type         :prop,
+                                                                  :dispatch-key :a,
+                                                                  :key          :a}]}},
+             ::pcp/placeholders          #{:>/p1},
+             ::pcp/user-request-shape    {:>/p1 {:a {}}}
+             ::pcp/index-resolver->nodes {a #{1}},
+             ::pcp/root                  1,
+             ::pcp/index-attrs           {:a #{1}}})))
 
 
   (testing "placeholder + external"
@@ -1340,62 +1390,64 @@
                                 :b {{} #{b}}}
               ::eql/query     [:a
                                {:>/p1 [:b]}]})
-           '#::pcp{:nodes                 {1 {::pco/op-name      a,
-                                              ::pcp/node-id      1,
-                                              ::pcp/expects      {:a {}},
-                                              ::pcp/input        {},
-                                              ::pcp/node-parents #{3}},
-                                           2 {::pco/op-name      b,
-                                              ::pcp/node-id      2,
-                                              ::pcp/expects      {:b {}},
-                                              ::pcp/input        {},
-                                              ::pcp/node-parents #{3}},
-                                           3 #::pcp{:node-id 3,
-                                                    :run-and #{1
-                                                               2}}},
-                   :index-ast             {:a    {:type         :prop,
-                                                  :dispatch-key :a,
-                                                  :key          :a},
-                                           :>/p1 {:type         :join,
-                                                  :dispatch-key :>/p1,
-                                                  :key          :>/p1,
-                                                  :query        [:b],
-                                                  :children     [{:type         :prop,
-                                                                  :dispatch-key :b,
-                                                                  :key          :b}]}},
-                   :index-resolver->nodes {a #{1}, b #{2}},
-                   :index-attrs           {:b #{2}, :a #{1}},
-                   :placeholders          #{:>/p1},
-                   :root                  3})))
+           '{::pcp/nodes                 {1 {::pco/op-name      a,
+                                             ::pcp/node-id      1,
+                                             ::pcp/expects      {:a {}},
+                                             ::pcp/input        {},
+                                             ::pcp/node-parents #{3}},
+                                          2 {::pco/op-name      b,
+                                             ::pcp/node-id      2,
+                                             ::pcp/expects      {:b {}},
+                                             ::pcp/input        {},
+                                             ::pcp/node-parents #{3}},
+                                          3 #::pcp{:node-id 3,
+                                                   :run-and #{1
+                                                              2}}},
+             ::pcp/index-ast             {:a    {:type         :prop,
+                                                 :dispatch-key :a,
+                                                 :key          :a},
+                                          :>/p1 {:type         :join,
+                                                 :dispatch-key :>/p1,
+                                                 :key          :>/p1,
+                                                 :query        [:b],
+                                                 :children     [{:type         :prop,
+                                                                 :dispatch-key :b,
+                                                                 :key          :b}]}},
+             ::pcp/user-request-shape    {:>/p1 {:b {}} :a {}}
+             ::pcp/index-resolver->nodes {a #{1}, b #{2}},
+             ::pcp/index-attrs           {:b #{2}, :a #{1}},
+             ::pcp/placeholders          #{:>/p1},
+             ::pcp/root                  3})))
 
   (testing "multiple placeholders repeating"
     (is (= (compute-run-graph
              {::pci/index-oir '{:a {{} #{a}}}
               ::eql/query     [{:>/p1 [:a]}
                                {:>/p2 [:a]}]})
-           '#::pcp{:index-ast             #:>{:p1 {:children     [{:dispatch-key :a
-                                                                   :key          :a
-                                                                   :type         :prop}]
-                                                   :dispatch-key :>/p1
-                                                   :key          :>/p1
-                                                   :query        [:a]
-                                                   :type         :join}
-                                              :p2 {:children     [{:dispatch-key :a
-                                                                   :key          :a
-                                                                   :type         :prop}]
-                                                   :dispatch-key :>/p2
-                                                   :key          :>/p2
-                                                   :query        [:a]
-                                                   :type         :join}}
-                   :index-attrs           {:a #{1}}
-                   :index-resolver->nodes {a #{1}}
-                   :nodes                 {1 {::pco/op-name a
-                                              ::pcp/expects {:a {}}
-                                              ::pcp/input   {}
-                                              ::pcp/node-id 1}}
-                   :placeholders          #{:>/p1
-                                            :>/p2}
-                   :root                  1})))
+           '{::pcp/index-ast             #:>{:p1 {:children     [{:dispatch-key :a
+                                                                  :key          :a
+                                                                  :type         :prop}]
+                                                  :dispatch-key :>/p1
+                                                  :key          :>/p1
+                                                  :query        [:a]
+                                                  :type         :join}
+                                             :p2 {:children     [{:dispatch-key :a
+                                                                  :key          :a
+                                                                  :type         :prop}]
+                                                  :dispatch-key :>/p2
+                                                  :key          :>/p2
+                                                  :query        [:a]
+                                                  :type         :join}}
+             ::pcp/user-request-shape    {:>/p1 {:a {}} :>/p2 {:a {}}}
+             ::pcp/index-attrs           {:a #{1}}
+             ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/nodes                 {1 {::pco/op-name a
+                                             ::pcp/expects {:a {}}
+                                             ::pcp/input   {}
+                                             ::pcp/node-id 1}}
+             ::pcp/placeholders          #{:>/p1
+                                           :>/p2}
+             ::pcp/root                  1})))
 
   (testing "nested placeholders"
     (is (= (compute-run-graph
@@ -1404,48 +1456,49 @@
               ::eql/query     [{:>/p1
                                 [:a
                                  {:>/p2 [:b]}]}]})
-           '{:com.wsscode.pathom3.connect.planner/index-ast             {:>/p1 {:children     [{:dispatch-key :a
-                                                                                                :key          :a
-                                                                                                :type         :prop}
-                                                                                               {:children     [{:dispatch-key :b
-                                                                                                                :key          :b
-                                                                                                                :type         :prop}]
-                                                                                                :dispatch-key :>/p2
-                                                                                                :key          :>/p2
-                                                                                                :query        [:b]
-                                                                                                :type         :join}]
-                                                                                :dispatch-key :>/p1
-                                                                                :key          :>/p1
-                                                                                :query        [:a
-                                                                                               {:>/p2 [:b]}]
-                                                                                :type         :join}
-                                                                         :>/p2 {:children     [{:dispatch-key :b
-                                                                                                :key          :b
-                                                                                                :type         :prop}]
-                                                                                :dispatch-key :>/p2
-                                                                                :key          :>/p2
-                                                                                :query        [:b]
-                                                                                :type         :join}}
-             :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{1}
-                                                                         :b #{2}}
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}
-                                                                         b #{2}}
-             :com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    a
-                                                                            :com.wsscode.pathom3.connect.planner/expects      {:a {}}
-                                                                            :com.wsscode.pathom3.connect.planner/input        {}
-                                                                            :com.wsscode.pathom3.connect.planner/node-id      1
-                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{3}}
-                                                                         2 {:com.wsscode.pathom3.connect.operation/op-name    b
-                                                                            :com.wsscode.pathom3.connect.planner/expects      {:b {}}
-                                                                            :com.wsscode.pathom3.connect.planner/input        {}
-                                                                            :com.wsscode.pathom3.connect.planner/node-id      2
-                                                                            :com.wsscode.pathom3.connect.planner/node-parents #{3}}
-                                                                         3 {:com.wsscode.pathom3.connect.planner/node-id 3
-                                                                            :com.wsscode.pathom3.connect.planner/run-and #{1
-                                                                                                                           2}}}
-             :com.wsscode.pathom3.connect.planner/placeholders          #{:>/p1
-                                                                          :>/p2}
-             :com.wsscode.pathom3.connect.planner/root                  3})))
+           '{::pcp/index-ast             {:>/p1 {:children     [{:dispatch-key :a
+                                                                 :key          :a
+                                                                 :type         :prop}
+                                                                {:children     [{:dispatch-key :b
+                                                                                 :key          :b
+                                                                                 :type         :prop}]
+                                                                 :dispatch-key :>/p2
+                                                                 :key          :>/p2
+                                                                 :query        [:b]
+                                                                 :type         :join}]
+                                                 :dispatch-key :>/p1
+                                                 :key          :>/p1
+                                                 :query        [:a
+                                                                {:>/p2 [:b]}]
+                                                 :type         :join}
+                                          :>/p2 {:children     [{:dispatch-key :b
+                                                                 :key          :b
+                                                                 :type         :prop}]
+                                                 :dispatch-key :>/p2
+                                                 :key          :>/p2
+                                                 :query        [:b]
+                                                 :type         :join}}
+             ::pcp/index-attrs           {:a #{1}
+                                          :b #{2}}
+             ::pcp/index-resolver->nodes {a #{1}
+                                          b #{2}}
+             ::pcp/user-request-shape    {:>/p1 {:a {} :>/p2 {:b {}}}}
+             ::pcp/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name a
+                                             ::pcp/expects                                  {:a {}}
+                                             ::pcp/input                                    {}
+                                             ::pcp/node-id                                  1
+                                             ::pcp/node-parents                             #{3}}
+                                          2 {:com.wsscode.pathom3.connect.operation/op-name b
+                                             ::pcp/expects                                  {:b {}}
+                                             ::pcp/input                                    {}
+                                             ::pcp/node-id                                  2
+                                             ::pcp/node-parents                             #{3}}
+                                          3 {::pcp/node-id 3
+                                             ::pcp/run-and #{1
+                                                             2}}}
+             ::pcp/placeholders          #{:>/p1
+                                           :>/p2}
+             ::pcp/root                  3})))
 
   #_(testing "conflict between params"
       (is (= (compute-run-graph
@@ -1466,6 +1519,7 @@
                                              ::pcp/expects {:a {}}
                                              ::pcp/input   {}}}
              ::pcp/index-resolver->nodes {a #{1}}
+             ::pcp/user-request-shape    {:a {}}
              ::pcp/root                  1
              ::pcp/index-attrs           {:a #{1}}
              ::pcp/index-ast             {:a {:type         :prop,
@@ -1479,23 +1533,24 @@
                {::pci/index-oir '{:a {{} #{a}}
                                   :b {{} #{a}}}
                 ::eql/query     [(list :a {:x 1}) :b]})
-             '#::pcp{:index-ast             {:a {:dispatch-key :a
-                                                 :key          :a
-                                                 :params       {:x 1}
-                                                 :type         :prop}
-                                             :b {:dispatch-key :b
-                                                 :key          :b
-                                                 :type         :prop}}
-                     :index-attrs           {:a #{1}
-                                             :b #{1}}
-                     :index-resolver->nodes {a #{1}}
-                     :nodes                 {1 {::pco/op-name a
-                                                ::pcp/expects {:a {}
-                                                               :b {}}
-                                                ::pcp/input   {}
-                                                ::pcp/node-id 1
-                                                ::pcp/params  {:x 1}}}
-                     :root                  1})))))
+             '{::pcp/index-ast             {:a {:dispatch-key :a
+                                                :key          :a
+                                                :params       {:x 1}
+                                                :type         :prop}
+                                            :b {:dispatch-key :b
+                                                :key          :b
+                                                :type         :prop}}
+               ::pcp/index-attrs           {:a #{1}
+                                            :b #{1}}
+               ::pcp/index-resolver->nodes {a #{1}}
+               ::pcp/user-request-shape    {:a {} :b {}}
+               ::pcp/nodes                 {1 {::pco/op-name a
+                                               ::pcp/expects {:a {}
+                                                              :b {}}
+                                               ::pcp/input   {}
+                                               ::pcp/node-id 1
+                                               ::pcp/params  {:x 1}}}
+               ::pcp/root                  1})))))
 
 (deftest compute-run-graph-optimize-test
   (testing "optimize AND nodes"
@@ -1503,20 +1558,21 @@
              {::pci/index-oir {:a {{} #{'x}}
                                :b {{} #{'x}}}
               ::eql/query     [:a :b]})
-           '#::pcp{:nodes                 {1 {::pco/op-name x,
-                                              ::pcp/expects {:a {},
-                                                             :b {}},
-                                              ::pcp/input   {},
-                                              ::pcp/node-id 1}},
-                   :index-ast             {:a {:type         :prop,
-                                               :dispatch-key :a,
-                                               :key          :a},
-                                           :b {:type         :prop,
-                                               :dispatch-key :b,
-                                               :key          :b}},
-                   :index-resolver->nodes {x #{1}},
-                   :index-attrs           {:a #{1}, :b #{1}},
-                   :root                  1}))
+           '{::pcp/nodes                 {1 {::pco/op-name x,
+                                             ::pcp/expects {:a {},
+                                                            :b {}},
+                                             ::pcp/input   {},
+                                             ::pcp/node-id 1}},
+             ::pcp/index-ast             {:a {:type         :prop,
+                                              :dispatch-key :a,
+                                              :key          :a},
+                                          :b {:type         :prop,
+                                              :dispatch-key :b,
+                                              :key          :b}},
+             ::pcp/user-request-shape    {:a {} :b {}}
+             ::pcp/index-resolver->nodes {x #{1}},
+             ::pcp/index-attrs           {:a #{1}, :b #{1}},
+             ::pcp/root                  1}))
 
     (testing "multiple nodes"
       (is (= (compute-run-graph
@@ -1524,24 +1580,25 @@
                                  :b {{} #{'x}}
                                  :c {{} #{'x}}}
                 ::eql/query     [:a :b :c]})
-             '#::pcp{:nodes                 {1 {::pco/op-name x,
-                                                ::pcp/expects {:a {},
-                                                               :b {},
-                                                               :c {}},
-                                                ::pcp/input   {},
-                                                ::pcp/node-id 1}},
-                     :index-ast             {:a {:type         :prop,
-                                                 :dispatch-key :a,
-                                                 :key          :a},
-                                             :b {:type         :prop,
-                                                 :dispatch-key :b,
-                                                 :key          :b},
-                                             :c {:type         :prop,
-                                                 :dispatch-key :c,
-                                                 :key          :c}},
-                     :index-resolver->nodes {x #{1}},
-                     :index-attrs           {:a #{1}, :b #{1}, :c #{1}},
-                     :root                  1})))
+             '{::pcp/nodes                 {1 {::pco/op-name x,
+                                               ::pcp/expects {:a {},
+                                                              :b {},
+                                                              :c {}},
+                                               ::pcp/input   {},
+                                               ::pcp/node-id 1}},
+               ::pcp/index-ast             {:a {:type         :prop,
+                                                :dispatch-key :a,
+                                                :key          :a},
+                                            :b {:type         :prop,
+                                                :dispatch-key :b,
+                                                :key          :b},
+                                            :c {:type         :prop,
+                                                :dispatch-key :c,
+                                                :key          :c}},
+               ::pcp/user-request-shape    {:a {} :b {} :c {}}
+               ::pcp/index-resolver->nodes {x #{1}},
+               ::pcp/index-attrs           {:a #{1}, :b #{1}, :c #{1}},
+               ::pcp/root                  1})))
 
     (testing "multiple resolvers"
       (is (= (compute-run-graph
@@ -1552,54 +1609,55 @@
                                  :e {{} #{'z}}
                                  :f {{} #{'x}}}
                 ::eql/query     [:a :b :c :d :e :f]})
-             '#::pcp{:nodes                 {1 {::pco/op-name      x,
-                                                ::pcp/expects      {:a {},
-                                                                    :c {},
-                                                                    :f {}},
-                                                ::pcp/input        {},
-                                                ::pcp/node-id      1,
-                                                ::pcp/node-parents #{7}},
-                                             2 {::pco/op-name      y,
-                                                ::pcp/expects      {:b {}},
-                                                ::pcp/input        {},
-                                                ::pcp/node-id      2,
-                                                ::pcp/node-parents #{7}},
-                                             4 {::pco/op-name      z,
-                                                ::pcp/expects      {:d {},
-                                                                    :e {}},
-                                                ::pcp/input        {},
-                                                ::pcp/node-id      4,
-                                                ::pcp/node-parents #{7}},
-                                             7 #::pcp{:node-id 7,
-                                                      :run-and #{1
-                                                                 4
-                                                                 2}}},
-                     :index-ast             {:a {:type         :prop,
-                                                 :dispatch-key :a,
-                                                 :key          :a},
-                                             :b {:type         :prop,
-                                                 :dispatch-key :b,
-                                                 :key          :b},
-                                             :c {:type         :prop,
-                                                 :dispatch-key :c,
-                                                 :key          :c},
-                                             :d {:type         :prop,
-                                                 :dispatch-key :d,
-                                                 :key          :d},
-                                             :e {:type         :prop,
-                                                 :dispatch-key :e,
-                                                 :key          :e},
-                                             :f {:type         :prop,
-                                                 :dispatch-key :f,
-                                                 :key          :f}},
-                     :index-resolver->nodes {x #{1}, y #{2}, z #{4}},
-                     :index-attrs           {:a #{1},
-                                             :b #{2},
-                                             :c #{1},
-                                             :d #{4},
-                                             :e #{4},
-                                             :f #{1}},
-                     :root                  7}))))
+             '{::pcp/nodes                 {1 {::pco/op-name      x,
+                                               ::pcp/expects      {:a {},
+                                                                   :c {},
+                                                                   :f {}},
+                                               ::pcp/input        {},
+                                               ::pcp/node-id      1,
+                                               ::pcp/node-parents #{7}},
+                                            2 {::pco/op-name      y,
+                                               ::pcp/expects      {:b {}},
+                                               ::pcp/input        {},
+                                               ::pcp/node-id      2,
+                                               ::pcp/node-parents #{7}},
+                                            4 {::pco/op-name      z,
+                                               ::pcp/expects      {:d {},
+                                                                   :e {}},
+                                               ::pcp/input        {},
+                                               ::pcp/node-id      4,
+                                               ::pcp/node-parents #{7}},
+                                            7 #::pcp{:node-id 7,
+                                                     :run-and #{1
+                                                                4
+                                                                2}}},
+               ::pcp/user-request-shape    {:a {} :b {} :c {} :d {} :e {} :f {}}
+               ::pcp/index-ast             {:a {:type         :prop,
+                                                :dispatch-key :a,
+                                                :key          :a},
+                                            :b {:type         :prop,
+                                                :dispatch-key :b,
+                                                :key          :b},
+                                            :c {:type         :prop,
+                                                :dispatch-key :c,
+                                                :key          :c},
+                                            :d {:type         :prop,
+                                                :dispatch-key :d,
+                                                :key          :d},
+                                            :e {:type         :prop,
+                                                :dispatch-key :e,
+                                                :key          :e},
+                                            :f {:type         :prop,
+                                                :dispatch-key :f,
+                                                :key          :f}},
+               ::pcp/index-resolver->nodes {x #{1}, y #{2}, z #{4}},
+               ::pcp/index-attrs           {:a #{1},
+                                            :b #{2},
+                                            :c #{1},
+                                            :d #{4},
+                                            :e #{4},
+                                            :f #{1}},
+               ::pcp/root                  7}))))
 
   (is (= (compute-run-graph
            {::pci/index-oir {:a {{} #{'x}}
@@ -1618,6 +1676,7 @@
                                            ::pcp/input    {},
                                            ::pcp/node-id  2,
                                            ::pcp/run-next 1}},
+           ::pcp/user-request-shape    {:c {}}
            ::pcp/index-ast             {:c {:type         :prop,
                                             :dispatch-key :c,
                                             :key          :c}},
@@ -1649,6 +1708,7 @@
                                            ::pcp/input    {},
                                            ::pcp/node-id  3,
                                            ::pcp/run-next 2}},
+           ::pcp/user-request-shape    {:c {}}
            ::pcp/index-ast             {:c {:type         :prop,
                                             :dispatch-key :c,
                                             :key          :c}},
@@ -1662,26 +1722,27 @@
                                :b {{:z {}} #{'x}}
                                :z {{} #{'z}}}
               ::eql/query     [:a :b]})
-           '#::pcp{:nodes                 {1 {::pco/op-name      x,
-                                              ::pcp/expects      {:a {},
-                                                                  :b {}},
-                                              ::pcp/input        {:z {}},
-                                              ::pcp/node-id      1,
-                                              ::pcp/node-parents #{2}},
-                                           2 {::pco/op-name  z,
-                                              ::pcp/expects  {:z {}},
-                                              ::pcp/input    {},
-                                              ::pcp/node-id  2,
-                                              ::pcp/run-next 1}},
-                   :index-ast             {:a {:type         :prop,
-                                               :dispatch-key :a,
-                                               :key          :a},
-                                           :b {:type         :prop,
-                                               :dispatch-key :b,
-                                               :key          :b}},
-                   :index-resolver->nodes {x #{1}, z #{2}},
-                   :index-attrs           {:a #{1}, :z #{2}, :b #{1}},
-                   :root                  2})))
+           '{::pcp/nodes                 {1 {::pco/op-name      x,
+                                             ::pcp/expects      {:a {},
+                                                                 :b {}},
+                                             ::pcp/input        {:z {}},
+                                             ::pcp/node-id      1,
+                                             ::pcp/node-parents #{2}},
+                                          2 {::pco/op-name  z,
+                                             ::pcp/expects  {:z {}},
+                                             ::pcp/input    {},
+                                             ::pcp/node-id  2,
+                                             ::pcp/run-next 1}},
+             ::pcp/index-ast             {:a {:type         :prop,
+                                              :dispatch-key :a,
+                                              :key          :a},
+                                          :b {:type         :prop,
+                                              :dispatch-key :b,
+                                              :key          :b}},
+             ::pcp/user-request-shape    {:a {} :b {}}
+             ::pcp/index-resolver->nodes {x #{1}, z #{2}},
+             ::pcp/index-attrs           {:a #{1}, :z #{2}, :b #{1}},
+             ::pcp/root                  2})))
 
   (testing "optimize AND next node")
 
@@ -1723,6 +1784,7 @@
                                                ::pcp/node-id 7,
                                                ::pcp/run-or  #{4
                                                                2}}},
+               ::pcp/user-request-shape    {:a {}}
                ::pcp/index-ast             {:a {:type         :prop,
                                                 :dispatch-key :a,
                                                 :key          :a}},
@@ -1755,6 +1817,7 @@
                                                          :key          :release/script
                                                          :type         :prop}}
             ::pcp/nodes                {}
+            ::pcp/user-request-shape   {:release/script {}}
             ::pcp/unreachable-paths    {:db/id          {}
                                         :release/script {}}
             ::pcp/verification-failed? true})))
@@ -1778,6 +1841,7 @@
                                             ::pcp/foreign-ast    (eql/query->ast [:release/script])}}
             ::pcp/index-resolver->nodes {'dynamic-resolver #{1}}
             ::pcp/root                  1
+            ::pcp/user-request-shape    {:release/script {}}
             ::pcp/index-attrs           {:release/script #{1}}
             ::pcp/index-ast             {:release/script {:type         :prop,
                                                           :dispatch-key :release/script,
@@ -1802,21 +1866,22 @@
                 ::pcp/available-data  {}
                 ::eql/query           [:a]})
 
-             '#::pcp{:nodes                 {1 {::pco/op-name        dynamic-resolver
-                                                ::pcp/source-op-name a
-                                                ::pcp/expects        {:a {}}
-                                                ::pcp/input          {}
-                                                ::pcp/node-id        1
-                                                ::pcp/foreign-ast    {:type     :root
-                                                                      :children [{:type         :prop
-                                                                                  :dispatch-key :a
-                                                                                  :key          :a}]}}}
-                     :index-ast             {:a {:type         :prop
-                                                 :dispatch-key :a
-                                                 :key          :a}}
-                     :index-resolver->nodes {dynamic-resolver #{1}}
-                     :index-attrs           {:a #{1}}
-                     :root                  1})))
+             '{::pcp/nodes                 {1 {::pco/op-name        dynamic-resolver
+                                               ::pcp/source-op-name a
+                                               ::pcp/expects        {:a {}}
+                                               ::pcp/input          {}
+                                               ::pcp/node-id        1
+                                               ::pcp/foreign-ast    {:type     :root
+                                                                     :children [{:type         :prop
+                                                                                 :dispatch-key :a
+                                                                                 :key          :a}]}}}
+               ::pcp/index-ast             {:a {:type         :prop
+                                                :dispatch-key :a
+                                                :key          :a}}
+               ::pcp/user-request-shape    {:a {}}
+               ::pcp/index-resolver->nodes {dynamic-resolver #{1}}
+               ::pcp/index-attrs           {:a #{1}}
+               ::pcp/root                  1})))
 
     (testing "retain params"
       (is (= (compute-run-graph
@@ -1839,6 +1904,7 @@
                                                 :dispatch-key :a,
                                                 :key          :a,
                                                 :params       {:b "c"}}},
+               ::pcp/user-request-shape    {:a {}}
                ::pcp/index-resolver->nodes {dyn #{1}},
                ::pcp/index-attrs           {:a #{1}},
                ::pcp/root                  1}))
@@ -1872,6 +1938,7 @@
                                                                   :params       {:p "v"}}]}},
                  ::pcp/index-resolver->nodes {dyn #{1}},
                  ::pcp/index-attrs           {:a #{1}},
+                 ::pcp/user-request-shape    {:a {:b {}}}
                  ::pcp/root                  1}))
 
         (is (= (compute-run-graph
@@ -1904,6 +1971,7 @@
                                                                   :key          :c,
                                                                   :params       {:p "v"}}]}},
                  ::pcp/index-resolver->nodes {dyn #{2}},
+                 ::pcp/user-request-shape    {:a {:c {}}}
                  ::pcp/index-attrs           {:a #{2}},
                  ::pcp/root                  2})))))
 
@@ -1931,6 +1999,7 @@
                                          :b {:type         :prop,
                                              :dispatch-key :b,
                                              :key          :b}}
+            ::pcp/user-request-shape    {:a {} :b {}}
             ::pcp/root                  1})))
 
   (testing "optimized with dependencies"
@@ -1946,36 +2015,37 @@
                   ::resolvers           [{::pco/op-name 'id
                                           ::pco/output  [:db/id]}]}))
 
-           '#::pcp{:nodes                 {1 {::pco/op-name      dynamic-resolver,
-                                              ::pcp/expects      {:release/script {},
-                                                                  :label/type     {}},
-                                              ::pcp/input        #:db{:id {}},
-                                              ::pcp/node-id      1,
-                                              ::pcp/foreign-ast  {:type     :root,
-                                                                  :children [{:type         :prop,
-                                                                              :dispatch-key :release/script,
-                                                                              :key          :release/script}
-                                                                             {:type         :prop,
-                                                                              :dispatch-key :label/type,
-                                                                              :key          :label/type}]},
-                                              ::pcp/node-parents #{2}},
-                                           2 {::pco/op-name  id,
-                                              ::pcp/expects  #:db{:id {}},
-                                              ::pcp/input    {},
-                                              ::pcp/node-id  2,
-                                              ::pcp/run-next 1}},
-                   :index-ast             {:release/script {:type         :prop,
-                                                            :dispatch-key :release/script,
-                                                            :key          :release/script},
-                                           :label/type     {:type         :prop,
-                                                            :dispatch-key :label/type,
-                                                            :key          :label/type}},
-                   :index-resolver->nodes {dynamic-resolver #{1},
-                                           id               #{2}},
-                   :index-attrs           {:release/script #{1},
-                                           :db/id          #{2},
-                                           :label/type     #{1}},
-                   :root                  2})))
+           '{::pcp/nodes                 {1 {::pco/op-name      dynamic-resolver,
+                                             ::pcp/expects      {:release/script {},
+                                                                 :label/type     {}},
+                                             ::pcp/input        #:db{:id {}},
+                                             ::pcp/node-id      1,
+                                             ::pcp/foreign-ast  {:type     :root,
+                                                                 :children [{:type         :prop,
+                                                                             :dispatch-key :release/script,
+                                                                             :key          :release/script}
+                                                                            {:type         :prop,
+                                                                             :dispatch-key :label/type,
+                                                                             :key          :label/type}]},
+                                             ::pcp/node-parents #{2}},
+                                          2 {::pco/op-name  id,
+                                             ::pcp/expects  #:db{:id {}},
+                                             ::pcp/input    {},
+                                             ::pcp/node-id  2,
+                                             ::pcp/run-next 1}},
+             ::pcp/user-request-shape    {:release/script {} :label/type {}}
+             ::pcp/index-ast             {:release/script {:type         :prop,
+                                                           :dispatch-key :release/script,
+                                                           :key          :release/script},
+                                          :label/type     {:type         :prop,
+                                                           :dispatch-key :label/type,
+                                                           :key          :label/type}},
+             ::pcp/index-resolver->nodes {dynamic-resolver #{1},
+                                          id               #{2}},
+             ::pcp/index-attrs           {:release/script #{1},
+                                          :db/id          #{2},
+                                          :label/type     #{1}},
+             ::pcp/root                  2})))
 
   (testing "dependency reuse"
     (is (= (compute-run-graph
@@ -2018,6 +2088,7 @@
              ::pcp/index-ast             {:d {:type         :prop,
                                               :dispatch-key :d,
                                               :key          :d}},
+             ::pcp/user-request-shape    {:d {}}
              ::pcp/index-resolver->nodes {other-resolver   #{1},
                                           dynamic-resolver #{2}},
              ::pcp/index-attrs           {:d #{1}, :b #{2}, :c #{2}},
@@ -2054,6 +2125,7 @@
                                              ::pcp/input    {},
                                              ::pcp/node-id  2,
                                              ::pcp/run-next 1}},
+             ::pcp/user-request-shape    {:release/script {} :label/type {}}
              ::pcp/index-ast             {:release/script {:type         :prop,
                                                            :dispatch-key :release/script,
                                                            :key          :release/script},
@@ -2089,6 +2161,7 @@
              ::pcp/index-ast             {:b {:type         :prop,
                                               :dispatch-key :b,
                                               :key          :b}},
+             ::pcp/user-request-shape    {:b {}}
              ::pcp/index-resolver->nodes {dynamic-resolver #{2}},
              ::pcp/index-attrs           {:b #{2}},
              ::pcp/root                  2}))
@@ -2115,6 +2188,7 @@
              ::pcp/index-ast             {:c {:type         :prop,
                                               :dispatch-key :c,
                                               :key          :c}},
+             ::pcp/user-request-shape    {:c {}}
              ::pcp/index-resolver->nodes {dynamic-resolver #{3}},
              ::pcp/index-attrs           {:c #{3}},
              ::pcp/root                  3}))
@@ -2145,6 +2219,7 @@
                                              ::pcp/input    {},
                                              ::pcp/node-id  3,
                                              ::pcp/run-next 2}},
+             ::pcp/user-request-shape    {:b {}}
              ::pcp/index-ast             {:b {:type         :prop,
                                               :dispatch-key :b,
                                               :key          :b}},
@@ -2181,6 +2256,7 @@
                                                                               :key          :b,
                                                                               :dispatch-key :b}]},
                                                ::pcp/run-next    1}},
+               ::pcp/user-request-shape    {:z {}}
                ::pcp/index-ast             {:z {:type         :prop,
                                                 :dispatch-key :z,
                                                 :key          :z}},
@@ -2217,6 +2293,7 @@
                ::pcp/index-ast             {:e {:type         :prop,
                                                 :dispatch-key :e,
                                                 :key          :e}},
+               ::pcp/user-request-shape    {:e {}}
                ::pcp/index-resolver->nodes {dyn #{5}},
                ::pcp/index-attrs           {:e #{5}},
                ::pcp/root                  5}))))
@@ -2274,6 +2351,7 @@
                                             ::pcp/foreign-ast    (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{1}}
             ::pcp/root                  1
+            ::pcp/user-request-shape    {:a {:b {}}}
             ::pcp/index-attrs           {:a #{1}}
             ::pcp/index-ast             {:a {:type         :join,
                                              :dispatch-key :a,
@@ -2305,6 +2383,7 @@
                                             ::pcp/input          {}
                                             ::pcp/foreign-ast    (eql/query->ast [{:a [:b]}])}}
             ::pcp/index-resolver->nodes '{dyn #{2}}
+            ::pcp/user-request-shape    {:a {:c {}}}
             ::pcp/root                  2
             ::pcp/index-attrs           {:a #{2}}
             ::pcp/index-ast             {:a {:type         :join,
@@ -2341,6 +2420,7 @@
             ::pcp/index-resolver->nodes '{dyn #{2}}
             ::pcp/root                  2
             ::pcp/index-attrs           {:a #{2}}
+            ::pcp/user-request-shape    {:a {:c {}}}
             ::pcp/index-ast             {:a {:type         :join,
                                              :dispatch-key :a,
                                              :key          :a,
@@ -2384,6 +2464,7 @@
                                                 :type         :join}}
                ::pcp/index-attrs           {:a #{4}}
                ::pcp/index-resolver->nodes {dyn #{4}}
+               ::pcp/user-request-shape    {:a {:c {} :d {}}}
                ::pcp/nodes                 {4 {::pco/op-name        dyn
                                                ::pcp/source-op-name a
                                                ::pcp/expects        {:a {:b {}
@@ -2449,6 +2530,7 @@
                                                                 :key          :order/line-items,
                                                                 :dispatch-key :order/line-items}},
                ::pcp/index-resolver->nodes {total #{1}, dyn #{2}},
+               ::pcp/user-request-shape    {:order/items-total {}}
                ::pcp/index-attrs           {:order/items-total #{1},
                                             :order/line-items  #{2}},
                ::pcp/root                  2})))))
@@ -2512,6 +2594,8 @@
                                                                                        :dispatch-key :c,
                                                                                        :key          :c}]}]}]}},
              ::pcp/index-resolver->nodes {dyn #{1}},
+             ::pcp/user-request-shape    {:a {:b {}
+                                              :c {}}}
              ::pcp/index-attrs           {:a #{1}},
              ::pcp/root                  1}))))
 
@@ -3276,13 +3360,14 @@
                                            ::pcp/input        {:b {}},
                                            ::pcp/node-id      2,
                                            ::pcp/node-parents #{3}},
-                                        3 {::pco/op-name      a,
-                                           ::pcp/expects      {:a {}
-                                                               :b {}},
-                                           ::pcp/input        {},
-                                           ::pcp/node-id      3,
-                                           ::pcp/run-next     2,
-                                           ::pcp/node-parents #{4}},
+                                        3 {::pco/op-name                     a,
+                                           ::pcp/expects                     {:a {}
+                                                                              :b {}},
+                                           ::pcp/input                       {},
+                                           ::pcp/node-id                     3,
+                                           ::pcp/run-next                    2,
+                                           ::pcp/node-resolution-checkpoint? true
+                                           ::pcp/node-parents                #{4}},
                                         4 {::pcp/expects {:a {}},
                                            ::pcp/node-id 4,
                                            ::pcp/run-or  #{3}}},

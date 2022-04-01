@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Fix unnecessary resolver calls due to merging OR branches optimization
+
 ## [2022.03.17-alpha]
 - Fix boundary interface detection of lenient mode to output stats
 

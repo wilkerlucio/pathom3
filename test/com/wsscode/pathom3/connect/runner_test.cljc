@@ -19,6 +19,7 @@
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
+    [com.wsscode.pathom3.test.helpers :as h]
     [com.wsscode.promesa.macros :refer [clet ctry]]
     [edn-query-language.core :as eql]
     [matcher-combinators.matchers :as m]
@@ -719,6 +720,33 @@
               [:error]
               {:error "value"}))
         (is (= @spy #?(:clj 3 :cljs 1)))))
+
+    (testing "don't call unnecessary intermidiary steps"
+      (let [middle-resolver
+            (h/spy {:return {:resp "resp"}})
+
+            env
+            (pci/register
+              [(pco/resolver 'test
+                 {::pco/input  [:id]
+                  ::pco/output [:link :payload]}
+                 (fn [_ _]
+                   {:link "foo" :payload "bar"}))
+
+               (pco/resolver 'test-b
+                 {::pco/input  [:link]
+                  ::pco/output [:resp]}
+                 middle-resolver)
+
+               (pco/resolver 'test2
+                 {::pco/input  [:id :link :resp]
+                  ::pco/output [:payload]}
+                 (fn [_ _]
+                   {:payload "bar2"}))])]
+        (check-all-runners env {:id 1} [:payload]
+          (fn [x]
+            (and (some-> middle-resolver meta :calls deref empty?)
+                 (= (:payload x) "bar"))))))
 
     (testing "all options fail"
       (is (thrown-with-msg?

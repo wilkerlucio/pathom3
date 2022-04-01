@@ -37,6 +37,10 @@
   "An shape descriptor declaring which data is already available when the planner starts."
   (? ::pfsd/shape-descriptor))
 
+(>def ::user-request-shape
+  "An shape descriptor declaring which data is required to fulfill the user request."
+  (? ::pfsd/shape-descriptor))
+
 (>def ::node-parents
   "A set of node-ids containing the direct parents of the current node.
   In regular execution nodes, this is the reverse of ::run-next, but in case of
@@ -91,6 +95,10 @@
 (>def ::node-chain-depth
   "The chain depth relative to the current node."
   nat-int?)
+
+(>def ::node-resolution-checkpoint?
+  "Mark to Pathom that it should verify graph completion after running this done"
+  boolean?)
 
 (defn ignore-nils [m]
   (into {} (remove (fn [[_ v]] (nil? v))) m))
@@ -1679,9 +1687,10 @@
             (compute-run-graph*
               (merge (base-graph)
                      graph
-                     {::index-ast      (pf.eql/index-ast (:edn-query-language.ast/node env))
-                      ::source-ast     (:edn-query-language.ast/node env)
-                      ::available-data (::available-data env)})
+                     {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
+                      ::source-ast         (:edn-query-language.ast/node env)
+                      ::available-data     (::available-data env)
+                      ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})
               env')
 
             optimize-graph?
@@ -1760,15 +1769,17 @@
 (defn merge-sibling-or-sub-chains [graph env [chain & other-chains]]
   (reduce
     (fn [graph chain']
-      (reduce
-        (fn [graph [{target-node-id ::node-id}
-                    {source-node-id ::node-id}]]
-          (-> graph
-              (add-snapshot! env {::snapshot-message "Merge sibling resolvers from same OR sub-path"
-                                  ::highlight-nodes  #{target-node-id source-node-id}})
-              (merge-sibling-resolver-node target-node-id source-node-id)))
-        graph
-        (mapv vector chain chain')))
+      (let [{last-target-node-id ::node-id} (get chain (dec (count chain')))]
+        (-> (reduce
+              (fn [graph [{target-node-id ::node-id}
+                          {source-node-id ::node-id}]]
+                (-> graph
+                    (add-snapshot! env {::snapshot-message "Merge sibling resolvers from same OR sub-path"
+                                        ::highlight-nodes  #{target-node-id source-node-id}})
+                    (merge-sibling-resolver-node target-node-id source-node-id)))
+              graph
+              (mapv vector chain chain'))
+            (assoc-node last-target-node-id ::node-resolution-checkpoint? true))))
     graph
     other-chains))
 

@@ -514,6 +514,9 @@
         (merge (report-resolver-io-stats env input-data response))))
     response))
 
+(defn user-demand-completed? [env]
+  (empty? (pfsd/missing-from-data (p.ent/entity env) (-> env ::pcp/graph ::pcp/user-request-shape))))
+
 (defn run-resolver-node!
   "This function evaluates the resolver associated with the node.
 
@@ -534,7 +537,9 @@
         (do
           (merge-resolver-response! env response)
           (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
-          (run-next-node! env node))
+          (if-not (and (::pcp/node-resolution-checkpoint? node)
+                       (user-demand-completed? env))
+            (run-next-node! env node)))
 
         :else
         (do

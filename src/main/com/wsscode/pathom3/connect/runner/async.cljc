@@ -261,7 +261,9 @@
         (p/do!
           (merge-resolver-response! env response)
           (pcr/merge-node-stats! env node {::pcr/node-run-finish-ms (time/now-ms)})
-          (run-next-node! env node))
+          (if-not (and (::pcp/node-resolution-checkpoint? node)
+                       (pcr/user-demand-completed? env))
+            (run-next-node! env node)))
 
         :else
         (do
