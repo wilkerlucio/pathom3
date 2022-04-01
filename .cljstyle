@@ -75,7 +75,6 @@
   {:padding-lines 1}
 
   :functions
-
   {:enabled? false}
 
   :types
