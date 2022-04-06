@@ -311,7 +311,8 @@
   (p/do!
     (pcr/merge-node-stats! env or-node {::pcr/node-run-start-ms (time/now-ms)})
 
-    (p/let [res (run-or-node!* env or-node run-or [])]
+    (p/let [res (if-not (pcr/all-requires-ready? env or-node)
+                  (run-or-node!* env or-node run-or []))]
       (cond
         (::pcr/batch-hold res)
         res

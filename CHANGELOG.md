@@ -2,6 +2,7 @@
 
 ## [NEXT]
 - Fix unnecessary resolver calls due to merging OR branches optimization
+- Add check on OR nodes to test for expectation done before start running
 
 ## [2022.03.17-alpha]
 - Fix boundary interface detection of lenient mode to output stats
