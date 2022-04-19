@@ -1,1 +1,2 @@
-{:linters {:unused-public-var {:level :off}}}
+{:linters {:unused-public-var {:level :off}}
+ :source-aliases #{:provided :test-deps}}

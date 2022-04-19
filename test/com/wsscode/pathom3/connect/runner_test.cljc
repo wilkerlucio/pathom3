@@ -251,12 +251,6 @@
    ::pco/batch? true}
   (mapv #(hash-map :id (inc (:pre-id %))) items))
 
-(pco/defresolver pre-idc [items]
-  {::pco/input  [:id]
-   ::pco/output [:v]
-   ::pco/batch? true}
-  (mapv #(hash-map :v (* 10 (:id %))) items))
-
 (defrecord CustomCacheType [atom]
   p.cache/CacheStore
   (-cache-lookup-or-miss [_ cache-key f]

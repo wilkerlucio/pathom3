@@ -26,5 +26,3 @@
   (is (= (pcrs/overhead-pct {::pcr/graph-run-duration-ms 100
                              ::pcrs/overhead-duration-ms 20})
          {::pcrs/overhead-duration-percentage 0.2})))
-
-(def err (ex-info "Error" {}))
