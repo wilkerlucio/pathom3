@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2022.04.20-alpha]
 - Fix unnecessary resolver calls due to merging OR branches optimization
 - Add check on OR nodes to test for expectation done before start running
 - Upgrade guardrails to have its own Kondo configuration
