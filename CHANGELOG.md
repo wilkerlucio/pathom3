@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Fix nested check on deep dynamic resolver requirements
+
 ## [2022.04.20-alpha]
 - Fix unnecessary resolver calls due to merging OR branches optimization
 - Add check on OR nodes to test for expectation done before start running
