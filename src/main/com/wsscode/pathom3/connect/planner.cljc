@@ -976,7 +976,10 @@
   (let [checked-nodes (into []
                             (map (fn [node]
                                    (cond-> node
-                                     (shape-reachable? (assoc env ::p.attr/attribute attr) (-> node ::pco/provides (get attr)) shape)
+                                     (shape-reachable?
+                                       (assoc env ::p.attr/attribute attr)
+                                       (-> node ::pco/provides (get attr))
+                                       shape)
                                      (assoc :valid-path? true))))
                             nodes)]
     (if (some :valid-path? checked-nodes)
