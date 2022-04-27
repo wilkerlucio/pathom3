@@ -461,7 +461,7 @@
 (defn remove-node*
   "Remove a node from the graph. Doesn't remove any references, caution!"
   [graph node-id]
-  (let [node (get-node graph node-id)
+  (let [node    (get-node graph node-id)
         op-name (::pco/op-name node)]
     (-> graph
         (cond->
@@ -493,15 +493,30 @@
         (remove-node-expects-index-attrs node-id)
         (remove-node* node-id))))
 
+(defn find-chain-start
+  "Given a graph and a node-id, walks the run-next chain until it finds the first node
+  that's connected to a branch parent (via branch relationship, not as run next) or
+  the root."
+  [graph node-id]
+  (let [{::keys [node-parents]} (get-node graph node-id)
+        parent-id (first node-parents)]
+    (if parent-id
+      (let [parent (get-node graph parent-id)]
+        (if (= (::run-next parent) node-id)
+          (recur graph parent-id)
+          node-id))
+      node-id)))
+
 (defn remove-root-node-cluster
   "Remove a complete node cluster, starting from some node root."
   [graph node-ids]
   (if (seq node-ids)
     (let [[node-id & rest] node-ids
-          {::keys [run-next] :as node} (get-node graph node-id)
+          node-id'   (find-chain-start graph node-id)
+          {::keys [run-next] :as node} (get-node graph node-id')
           branches   (or (node-branches node) #{})
           next-nodes (cond-> branches run-next (conj run-next))]
-      (recur (remove-node graph node-id)
+      (recur (remove-node graph node-id')
         (into rest next-nodes)))
     graph))
 

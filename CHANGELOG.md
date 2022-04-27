@@ -2,6 +2,7 @@
 
 ## [NEXT]
 - Fix nested check on deep dynamic resolver requirements
+- Fix bad optimization when invalid sub-query isn't the first branch option of a path
 
 ## [2022.04.20-alpha]
 - Fix unnecessary resolver calls due to merging OR branches optimization

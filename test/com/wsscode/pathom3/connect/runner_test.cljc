@@ -477,44 +477,43 @@
                        {}
                        [{:>/inside [:foo]}]))))
 
-    #_
-    (testing "Exception during run includes graph"
-      (check-all-runners-ex
-        (pci/register
-          [(pco/resolver 'bar
-             {::pco/output [:bar]}
-             (fn [_ _] {:bar "x"}))
-           (pco/resolver 'foo
-             {::pco/input  [:bar]
-              ::pco/output [:foo]}
-             (fn [_ _] (throw (ex-info "Error" {}))))])
-        {}
-        [:foo]
-        '{:com.wsscode.pathom3.connect.planner/graph
-          {:com.wsscode.pathom3.connect.planner/source-ast
-           {:children [{:key :foo, :type :prop, :dispatch-key :foo}],
-            :type     :root},
-           :com.wsscode.pathom3.connect.planner/index-attrs
-           {:bar #{2}, :foo #{1}},
-           :com.wsscode.pathom3.connect.planner/root           2,
-           :com.wsscode.pathom3.connect.planner/available-data {},
-           :com.wsscode.pathom3.connect.planner/index-ast
-           {:foo {:key :foo, :type :prop, :dispatch-key :foo}},
-           :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-           {bar #{2}, foo #{1}},
-           :com.wsscode.pathom3.connect.planner/nodes
-           {1
-            {:com.wsscode.pathom3.connect.operation/op-name    foo,
-             :com.wsscode.pathom3.connect.planner/expects      {:foo {}},
-             :com.wsscode.pathom3.connect.planner/input        {:bar {}},
-             :com.wsscode.pathom3.connect.planner/node-id      1,
-             :com.wsscode.pathom3.connect.planner/node-parents #{2}},
-            2
-            {:com.wsscode.pathom3.connect.operation/op-name bar,
-             :com.wsscode.pathom3.connect.planner/expects   {:bar {}},
-             :com.wsscode.pathom3.connect.planner/input     {},
-             :com.wsscode.pathom3.connect.planner/run-next  1,
-             :com.wsscode.pathom3.connect.planner/node-id   2}}}}))
+    #_(testing "Exception during run includes graph"
+        (check-all-runners-ex
+          (pci/register
+            [(pco/resolver 'bar
+               {::pco/output [:bar]}
+               (fn [_ _] {:bar "x"}))
+             (pco/resolver 'foo
+               {::pco/input  [:bar]
+                ::pco/output [:foo]}
+               (fn [_ _] (throw (ex-info "Error" {}))))])
+          {}
+          [:foo]
+          '{:com.wsscode.pathom3.connect.planner/graph
+            {:com.wsscode.pathom3.connect.planner/source-ast
+             {:children [{:key :foo, :type :prop, :dispatch-key :foo}],
+              :type     :root},
+             :com.wsscode.pathom3.connect.planner/index-attrs
+             {:bar #{2}, :foo #{1}},
+             :com.wsscode.pathom3.connect.planner/root           2,
+             :com.wsscode.pathom3.connect.planner/available-data {},
+             :com.wsscode.pathom3.connect.planner/index-ast
+             {:foo {:key :foo, :type :prop, :dispatch-key :foo}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
+             {bar #{2}, foo #{1}},
+             :com.wsscode.pathom3.connect.planner/nodes
+             {1
+              {:com.wsscode.pathom3.connect.operation/op-name    foo,
+               :com.wsscode.pathom3.connect.planner/expects      {:foo {}},
+               :com.wsscode.pathom3.connect.planner/input        {:bar {}},
+               :com.wsscode.pathom3.connect.planner/node-id      1,
+               :com.wsscode.pathom3.connect.planner/node-parents #{2}},
+              2
+              {:com.wsscode.pathom3.connect.operation/op-name bar,
+               :com.wsscode.pathom3.connect.planner/expects   {:bar {}},
+               :com.wsscode.pathom3.connect.planner/input     {},
+               :com.wsscode.pathom3.connect.planner/run-next  1,
+               :com.wsscode.pathom3.connect.planner/node-id   2}}}}))
 
     (testing "optionals"
       (testing "not on index"
@@ -2062,7 +2061,7 @@
           {:a 1}
           [:b :c]
           {:a 1,
-           :b {:type :root,
+           :b {:type     :root,
                :children [{:type :prop, :dispatch-key :b, :key :b}
                           {:type :prop, :dispatch-key :c, :key :c}]},
            :c {:a 1}}))))
@@ -2535,28 +2534,28 @@
           [:names]
           (fn [res]
             (mcs/match?
-              {:name "a",
-               :children [{:name "b",
-                           :children [{:name "e",
-                                       :children [{:name "f",
-                                                   :children [{:name "g",
-                                                               :com.wsscode.pathom3.connect.runner/attribute-errors {:names {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
-                                                                                                                             :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause                      :com.wsscode.pathom3.error/node-exception,
-                                                                                                                                                                               :com.wsscode.pathom3.error/exception any?}}},
+              {:name     "a",
+               :children [{:name     "b",
+                           :children [{:name     "e",
+                                       :children [{:name     "f",
+                                                   :children [{:name                                                "g",
+                                                               :com.wsscode.pathom3.connect.runner/attribute-errors {:names    {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
+                                                                                                                                :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause                      :com.wsscode.pathom3.error/node-exception,
+                                                                                                                                                                                  :com.wsscode.pathom3.error/exception any?}}},
                                                                                                                      :children {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
                                                                                                                                 :com.wsscode.pathom3.error/node-error-details {2 {::p.error/cause :com.wsscode.pathom3.error/attribute-missing}}}}}],
-                                                   :names ["f" "g"]}],
-                                       :names ["e" "f" "g"]}],
-                           :names ["b" "e" "f" "g"]}
-                          {:name "c",
-                           :children [{:name "d",
-                                       :com.wsscode.pathom3.connect.runner/attribute-errors {:names {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
-                                                                                                     :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause                      :com.wsscode.pathom3.error/node-exception,
-                                                                                                                                                       :com.wsscode.pathom3.error/exception any?}}},
+                                                   :names    ["f" "g"]}],
+                                       :names    ["e" "f" "g"]}],
+                           :names    ["b" "e" "f" "g"]}
+                          {:name     "c",
+                           :children [{:name                                                "d",
+                                       :com.wsscode.pathom3.connect.runner/attribute-errors {:names    {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
+                                                                                                        :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause                      :com.wsscode.pathom3.error/node-exception,
+                                                                                                                                                          :com.wsscode.pathom3.error/exception any?}}},
                                                                                              :children {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
                                                                                                         :com.wsscode.pathom3.error/node-error-details {2 {::p.error/cause :com.wsscode.pathom3.error/attribute-missing}}}}}],
-                           :names ["c" "d"]}],
-               :names ["a" "b" "e" "f" "g" "c" "d"]}
+                           :names    ["c" "d"]}],
+               :names    ["a" "b" "e" "f" "g" "c" "d"]}
               res))))))
 
 (deftest run-graph!-mutations-test
@@ -2643,6 +2642,39 @@
           {}
           [^::pbip/remove-error-items {:items [:x :y]}]
           {:items [{:x "b", :y "y"} {:x "c", :y "y2"}]}))))
+
+(deftest run-graph!-user-reports
+  (testing "issue 136"
+    (check-all-runners
+      (pci/register [(pco/resolver 'get-comment
+                       {::pco/output [{:comment/author [:user/id]}]}
+                       (fn [_ _]
+                         {:comment/author {:user/id "user-id"}}))
+
+                     (pbir/equivalence-resolver :comment/author :user)
+
+                     (pco/resolver 'user-resolver
+                       {::pco/input  [:user/id]
+                        ::pco/output [:user/avatar-filename]}
+                       (fn
+                         [_ _]
+                         {:user/avatar-filename "avatar-filename"}))
+
+                     (pco/resolver 'avatar
+                       {::pco/input  [{:user [:user/avatar-filename]}]
+                        ::pco/output [:user/avatar]}
+                       (fn
+                         [_ {:keys [user]}]
+                         {:user/avatar user}))
+
+                     (pco/resolver 'user-object-resolver
+                       {::pco/output [{:user [:user/id]}]}
+                       (fn
+                         [_ _]
+                         {:user {:user/id "user-id"}}))])
+      {}
+      [{:user [:user/avatar]}]
+      {:user {:user/avatar {:user/avatar-filename "avatar-filename"}}})))
 
 #?(:clj
    (deftest run-graph!-async-tests
