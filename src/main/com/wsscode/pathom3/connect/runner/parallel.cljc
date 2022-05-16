@@ -91,7 +91,7 @@
     :as        env} entity k v]
   [(s/keys :req [::pcp/graph]) map? ::p.path/path-entry any?
    => any?]
-  (let [{:keys [children] :as ast} (pcr/entry-ast graph k)
+  (let [{:keys [children] :as ast} (pcr/process-attr-subquery-ast graph k)
         env (p.path/append-path env k)]
     (if children
       (cond
@@ -482,7 +482,7 @@
                      {::pcr/mutation-run-finish-ms (time/now-ms)})
           result'  (if (::pcr/mutation-error result)
                      result
-                     (process-attr-subquery env {} key result))]
+                     (process-attr-subquery env {} ast result))]
 
     (p.ent/swap-entity! env assoc key result')
 
@@ -495,8 +495,8 @@
   "Runs the mutations gathered by the planner."
   [{::pcp/keys [graph] :as env}]
   (reduce-async
-    (fn [_ key]
-      (invoke-mutation! env (pcr/entry-ast graph key)))
+    (fn [_ ast]
+      (invoke-mutation! env ast))
     nil
     (::pcp/mutations graph)))
 

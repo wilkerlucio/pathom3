@@ -2614,7 +2614,24 @@
           {}
           '[::env-var
             (call)]
-          #(= (::env-var %) (get % 'call))))))
+          #(= (::env-var %) (get % 'call)))))
+
+  (testing "multiple calls for the same mutation"
+    (let [acc (atom [])]
+      (check-all-runners
+        (-> (pci/register
+              (pco/mutation 'doit
+                {::pco/output [:res]
+                 ::pco/params [:in]}
+                (fn [{:keys [acc]} {:keys [in]}]
+                  (swap! acc conj in)
+                  {:res in :acc @acc})))
+            (assoc :acc acc))
+        {}
+        '[(doit {:in 1}) (doit {:in 2})]
+        (fn [res]
+          (reset! acc [])
+          (= res '{doit {:res 2 :acc [1 2]}}))))))
 
 (deftest run-graph!-wrap-resolve-test
   (testing "extending resolver execution"

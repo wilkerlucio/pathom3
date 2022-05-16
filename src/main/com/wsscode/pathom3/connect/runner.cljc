@@ -2,7 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
-    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.fulcrologic.guardrails.core :refer [=> >def >defn ?]]
     [com.wsscode.log :as l]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
@@ -212,12 +212,16 @@
 (defn fail-fast [{::p.error/keys [lenient-mode?]} error]
   (if-not lenient-mode? (throw error)))
 
+(defn process-attr-subquery-ast
+  [graph k]
+  (if (map? k) k (entry-ast graph k)))
+
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
     :as        env} entity k v]
   [(s/keys :req [::pcp/graph]) map? ::p.path/path-entry any?
    => any?]
-  (let [{:keys [children] :as ast} (entry-ast graph k)
+  (let [{:keys [children] :as ast} (process-attr-subquery-ast graph k)
         env (p.path/append-path env k)]
     (if children
       (cond
@@ -756,7 +760,7 @@
     (if (::mutation-error result)
       (p.ent/swap-entity! env assoc key result)
       (p.ent/swap-entity! env assoc key
-        (process-attr-subquery env {} key result)))
+        (process-attr-subquery env {} ast result)))
 
     (merge-mutation-stats! env {::pco/op-name key}
                            {::node-run-finish-ms (time/now-ms)})))
@@ -764,8 +768,8 @@
 (defn process-mutations!
   "Runs the mutations gathered by the planner."
   [{::pcp/keys [graph] :as env}]
-  (doseq [key (::pcp/mutations graph)]
-    (invoke-mutation! env (entry-ast graph key))))
+  (doseq [ast (::pcp/mutations graph)]
+    (invoke-mutation! env ast)))
 
 (defn check-entity-requires!
   "Verify if entity contains all required keys from graph index-ast. This is

@@ -1526,23 +1526,23 @@
           (-> (compute-run-graph* env)
               (update ::index-ast merge-placeholder-ast ast))))))
 
-(defn plan-mutation-nested-query [graph env {:keys [key] :as ast}]
+(defn plan-mutation-nested-query [env {:keys [key] :as ast}]
   (if-let [nested-shape (-> env
                             (assoc
                               ::pco/op-name key
                               :edn-query-language.ast/node ast)
                             (dissoc ::p.attr/attribute)
                             (compute-dynamic-nested-requirements))]
-    (assoc-in graph [::index-ast key ::foreign-ast]
-      (pfsd/shape-descriptor->ast nested-shape))
-    graph))
+    (assoc ast ::foreign-ast (pfsd/shape-descriptor->ast nested-shape))
+    ast))
 
 (defn plan-mutation [graph env {:keys [key] :as ast}]
   (if-let [mutation (pci/mutation env key)]
-    (cond-> (update graph ::mutations coll/vconj key)
-      (-> mutation pco/operation-config ::pco/dynamic-name)
-      (plan-mutation-nested-query env ast))
-    (update graph ::mutations coll/vconj key)))
+    (let [ast (cond->> ast
+                (-> mutation pco/operation-config ::pco/dynamic-name)
+                (plan-mutation-nested-query env))]
+      (update graph ::mutations coll/vconj ast))
+    (update graph ::mutations coll/vconj ast)))
 
 (defn compute-run-graph*
   "Starts scanning the AST to plan for each attribute."

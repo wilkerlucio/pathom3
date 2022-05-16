@@ -3,6 +3,9 @@
 ## [NEXT]
 - Fix nested check on deep dynamic resolver requirements
 - Fix bad optimization when invalid sub-query isn't the first branch option of a path
+- Fix multiple calls to same mutation (issue #137)
+- BREAKING: Mutations are not part of `index-ast` anymore
+- BREAKING: `::pcp/mutations` now contains the full call AST instead of the mutation key
 
 ## [2022.04.20-alpha]
 - Fix unnecessary resolver calls due to merging OR branches optimization

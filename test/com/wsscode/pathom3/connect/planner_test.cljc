@@ -477,11 +477,11 @@
             ::eql/query     [(list 'foo {})]})
          '{::pcp/nodes              {}
            ::pcp/user-request-shape {foo {}}
-           ::pcp/mutations          [foo]
-           ::pcp/index-ast          {foo {:dispatch-key foo
-                                          :key          foo
-                                          :params       {}
-                                          :type         :call}}})))
+           ::pcp/mutations          [{:dispatch-key foo
+                                      :key          foo
+                                      :params       {}
+                                      :type         :call}]
+           ::pcp/index-ast          {}})))
 
 (deftest compute-run-graph-dynamic-mutations-test
   (testing "mutation query going over"
@@ -489,63 +489,63 @@
       (is (= (compute-run-graph
                {::dynamics  {'dyn [(pco/mutation 'doit {::pco/output [:done]} (fn [_ _]))]}
                 ::eql/query [{(list 'doit {}) [:done]}]})
-             '{::pcp/nodes              {},
-               ::pcp/user-request-shape {doit {:done {}}}
-               ::pcp/index-ast          {doit {:dispatch-key     doit,
-                                               :key              doit,
-                                               :params           {},
-                                               :type             :call,
-                                               :query            [:done],
-                                               :children         [{:type         :prop,
-                                                                   :dispatch-key :done,
-                                                                   :key          :done}],
-                                               ::pcp/foreign-ast {:type     :root,
-                                                                  :children [{:type         :prop,
-                                                                              :key          :done,
-                                                                              :dispatch-key :done}]}}},
-               ::pcp/mutations          [doit]})))
+             '{:com.wsscode.pathom3.connect.planner/index-ast          {}
+               :com.wsscode.pathom3.connect.planner/mutations          [{:children                                        [{:dispatch-key :done
+                                                                                                                            :key          :done
+                                                                                                                            :type         :prop}]
+                                                                         :com.wsscode.pathom3.connect.planner/foreign-ast {:children [{:dispatch-key :done
+                                                                                                                                       :key          :done
+                                                                                                                                       :type         :prop}]
+                                                                                                                           :type     :root}
+                                                                         :dispatch-key                                    doit
+                                                                         :key                                             doit
+                                                                         :params                                          {}
+                                                                         :query                                           [:done]
+                                                                         :type                                            :call}]
+               :com.wsscode.pathom3.connect.planner/nodes              {}
+               :com.wsscode.pathom3.connect.planner/user-request-shape {doit {:done {}}}})))
 
     (testing "attribute extended from mutation, but still in the same foreign"
       (is (= (compute-run-graph
                {::dynamics  {'dyn [(pco/mutation 'doit {::pco/output [:done]} (fn [_ _]))
                                    (pbir/alias-resolver :done :done?)]}
                 ::eql/query [{(list 'doit {}) [:done?]}]})
-             '{::pcp/nodes              {},
-               ::pcp/user-request-shape {doit {:done? {}}}
-               ::pcp/index-ast          {doit {:dispatch-key     doit,
-                                               :key              doit,
-                                               :params           {},
-                                               :type             :call,
-                                               :query            [:done?],
-                                               :children         [{:type         :prop,
-                                                                   :dispatch-key :done?,
-                                                                   :key          :done?}],
-                                               ::pcp/foreign-ast {:type     :root,
-                                                                  :children [{:type         :prop,
-                                                                              :key          :done?,
-                                                                              :dispatch-key :done?}]}}},
-               ::pcp/mutations          [doit]})))
+             '{:com.wsscode.pathom3.connect.planner/index-ast          {}
+               :com.wsscode.pathom3.connect.planner/mutations          [{:children                                        [{:dispatch-key :done?
+                                                                                                                            :key          :done?
+                                                                                                                            :type         :prop}]
+                                                                         :com.wsscode.pathom3.connect.planner/foreign-ast {:children [{:dispatch-key :done?
+                                                                                                                                       :key          :done?
+                                                                                                                                       :type         :prop}]
+                                                                                                                           :type     :root}
+                                                                         :dispatch-key                                    doit
+                                                                         :key                                             doit
+                                                                         :params                                          {}
+                                                                         :query                                           [:done?]
+                                                                         :type                                            :call}]
+               :com.wsscode.pathom3.connect.planner/nodes              {}
+               :com.wsscode.pathom3.connect.planner/user-request-shape {doit {:done? {}}}})))
 
     (testing "attribute extended from mutation locally"
       (is (= (compute-run-graph
                {::dynamics  {'dyn [(pco/mutation 'doit {::pco/output [:done]} (fn [_ _]))]}
                 ::resolvers [(pbir/alias-resolver :done :done?)]
                 ::eql/query [{(list 'doit {}) [:done?]}]})
-             '{::pcp/index-ast {doit {:children         [{:dispatch-key :done?
-                                                          :key          :done?
-                                                          :type         :prop}]
-                                      ::pcp/foreign-ast {:children [{:dispatch-key :done
-                                                                     :key          :done
-                                                                     :type         :prop}]
-                                                         :type     :root}
-                                      :dispatch-key     doit
-                                      :key              doit
-                                      :params           {}
-                                      :query            [:done?]
-                                      :type             :call}}
-               ::pcp/user-request-shape {doit {:done? {}}}
-               ::pcp/mutations [doit]
-               ::pcp/nodes {}})))))
+             '{:com.wsscode.pathom3.connect.planner/index-ast          {}
+               :com.wsscode.pathom3.connect.planner/mutations          [{:children                                        [{:dispatch-key :done?
+                                                                                                                            :key          :done?
+                                                                                                                            :type         :prop}]
+                                                                         :com.wsscode.pathom3.connect.planner/foreign-ast {:children [{:dispatch-key :done
+                                                                                                                                       :key          :done
+                                                                                                                                       :type         :prop}]
+                                                                                                                           :type     :root}
+                                                                         :dispatch-key                                    doit
+                                                                         :key                                             doit
+                                                                         :params                                          {}
+                                                                         :query                                           [:done?]
+                                                                         :type                                            :call}]
+               :com.wsscode.pathom3.connect.planner/nodes              {}
+               :com.wsscode.pathom3.connect.planner/user-request-shape {doit {:done? {}}}})))))
 
 (deftest compute-run-graph-idents-test
   (testing "separate idents"
