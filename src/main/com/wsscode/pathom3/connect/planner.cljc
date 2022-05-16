@@ -309,6 +309,9 @@
       (if (::run-and node) "AND")
       (if (::run-or node) "OR"))))
 
+(defn attr-optional? [{::keys [index-ast]} attribute]
+  (get-in index-ast [attribute :params :com.wsscode.pathom3.connect.operation/optional?]))
+
 (defn add-node-parent [graph node-id node-parent-id]
   (assert node-parent-id "Tried to add after node with nil value")
   (update-node graph node-id ::node-parents coll/sconj node-parent-id))

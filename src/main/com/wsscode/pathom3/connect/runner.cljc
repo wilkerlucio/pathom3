@@ -614,6 +614,11 @@
     (mark-node-error-with-plugins env or-node error)
     (fail-fast env error)))
 
+(defn or-expected-optional?
+  [{::pcp/keys [graph]} or-node]
+  (let [attr (ffirst (::pcp/expects or-node))]
+    (pcp/attr-optional? graph attr)))
+
 (>defn run-or-node!
   [{::pcp/keys [graph]
     ::keys     [choose-path]
@@ -657,7 +662,8 @@
       (::batch-hold res)
       res
 
-      (::or-option-error res)
+      (and (::or-option-error res)
+           (not (or-expected-optional? env or-node)))
       (handle-or-error env or-node res)
 
       :else

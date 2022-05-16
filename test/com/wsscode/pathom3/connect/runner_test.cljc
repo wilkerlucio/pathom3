@@ -1395,7 +1395,27 @@
         {::email "bar@acme.com"}
         [::email
          (pco/? ::display-name)]
-        {::email "bar@acme.com"}))))
+        {::email "bar@acme.com"})))
+
+  (testing "multiple options on optional, issue #138"
+    (check-all-runners
+      (pci/register
+        [(pco/resolver 'resolver-a
+           {::pco/input  [:in]
+            ::pco/output [:out]}
+           (fn [_ {in :in}]
+             (when (= in "a")
+               {:out "A"})))
+
+         (pco/resolver 'resolver-b
+           {::pco/input  [:in]
+            ::pco/output [:out]}
+           (fn [_ {in :in}]
+             (when (= in "b")
+               {:out "B"})))])
+      {:in "c"}
+      [(pco/? :out)]
+      {})))
 
 (deftest run-graph!-batch-test
   (testing "simple batching"

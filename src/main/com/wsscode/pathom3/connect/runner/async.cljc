@@ -317,7 +317,8 @@
         (::pcr/batch-hold res)
         res
 
-        (::pcr/or-option-error res)
+        (and (::pcr/or-option-error res)
+             (not (pcr/or-expected-optional? env or-node)))
         (pcr/handle-or-error env or-node res)
 
         :else

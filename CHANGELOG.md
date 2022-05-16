@@ -6,6 +6,7 @@
 - Fix multiple calls to same mutation (issue #137)
 - BREAKING: Mutations are not part of `index-ast` anymore
 - BREAKING: `::pcp/mutations` now contains the full call AST instead of the mutation key
+- Fix Optional key throws "All paths from an OR node failed" (issue #138)
 
 ## [2022.04.20-alpha]
 - Fix unnecessary resolver calls due to merging OR branches optimization
