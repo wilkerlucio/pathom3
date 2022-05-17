@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2022.05.17-alpha]
 - Fix nested check on deep dynamic resolver requirements
 - Fix bad optimization when invalid sub-query isn't the first branch option of a path
 - Fix multiple calls to same mutation (issue #137)
