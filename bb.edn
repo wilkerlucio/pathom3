@@ -73,6 +73,9 @@
   test
   (shell "clojure" "-A:test:test-deps")
 
+  test-gr
+  (shell "clojure" "-A:test:test-deps" "-J-Dguardrails.enabled")
+
   test-cljs
   (shell "shadow-cljs" "watch" "test" "-A:test-deps:test-cljs")
 
