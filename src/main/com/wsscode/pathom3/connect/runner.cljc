@@ -216,12 +216,20 @@
   [graph k]
   (if (map? k) k (entry-ast graph k)))
 
+(defn process-attr-subquery-key
+  [k]
+  (if (map? k) (get k :key) k))
+
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
     :as        env} entity k v]
-  [(s/keys :req [::pcp/graph]) map? ::p.path/path-entry any?
+  [(s/keys :req [::pcp/graph]) map?
+   (s/or :path ::p.path/path-entry
+         :ast :edn-query-language.ast/node)
+   any?
    => any?]
   (let [{:keys [children] :as ast} (process-attr-subquery-ast graph k)
+        k   (process-attr-subquery-key k)
         env (p.path/append-path env k)]
     (if children
       (cond

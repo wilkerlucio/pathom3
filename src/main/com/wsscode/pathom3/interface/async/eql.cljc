@@ -135,7 +135,8 @@
   (let [env' (p/let [env env] (pci/register env pcf/foreign-indexes-resolver))]
     (fn boundary-interface-internal
       ([env-extension input]
-       (-> (p/let [{:pathom/keys [eql entity ast include-stats?] :as request}
+       (-> (p/let [env env
+                   {:pathom/keys [eql entity ast include-stats?] :as request}
                    (p.eql/normalize-input env input)
                    ; ensure if it's a promise it gets resolved
                    env'          env'

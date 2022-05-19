@@ -2,10 +2,10 @@
   "WARN: this part of the library is under experimentation process, the design, interface
   and performance characteristics might change."
   (:require
-    [clojure.core.async :as async :refer [go-loop <! put!]]
+    [clojure.core.async :as async :refer [<! go-loop put!]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
-    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.fulcrologic.guardrails.core :refer [=> >def >defn ?]]
     [com.wsscode.log :as l]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
@@ -89,9 +89,12 @@
 (>defn process-attr-subquery
   [{::pcp/keys [graph]
     :as        env} entity k v]
-  [(s/keys :req [::pcp/graph]) map? ::p.path/path-entry any?
+  [(s/keys :req [::pcp/graph]) map?
+   (s/or :path ::p.path/path-entry
+         :ast :edn-query-language.ast/node) any?
    => any?]
   (let [{:keys [children] :as ast} (pcr/process-attr-subquery-ast graph k)
+        k   (pcr/process-attr-subquery-key k)
         env (p.path/append-path env k)]
     (if children
       (cond

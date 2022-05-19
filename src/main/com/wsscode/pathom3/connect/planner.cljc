@@ -165,7 +165,7 @@
 
 (>def ::mutations
   "A vector with the operation name of every mutation that appears in the query."
-  (s/coll-of ::pco/op-name :kind vector?))
+  (s/coll-of :edn-query-language.ast/node :kind vector?))
 
 (>def ::nested-process
   "Which attributes need further processing due to sub-query requirements."
