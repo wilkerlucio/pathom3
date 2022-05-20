@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Fix nexted optional key throws "All paths from an OR node failed" (issue #139)
+
 ## [2022.05.19-alpha]
 - Fix spec issues with mutations
 - Fix async environment on async boundary interface
