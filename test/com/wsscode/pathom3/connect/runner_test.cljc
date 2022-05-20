@@ -1415,7 +1415,32 @@
                {:out "B"})))])
       {:in "c"}
       [(pco/? :out)]
-      {})))
+      {}))
+
+  (testing "nested multiple options on optional, issue #139"
+    (is
+      (graph-response? (pci/register [(pco/resolver 'one
+                                        {::pco/input  []
+                                         ::pco/output [::one]}
+                                        (fn [_ _] nil))
+
+                                      (pco/resolver 'two-a
+                                        {::pco/input  [::one]
+                                         ::pco/output [::two]}
+                                        (fn [_ _] nil))
+
+                                      (pco/resolver 'two-b
+                                        {::pco/input  [::one]
+                                         ::pco/output [::two]}
+                                        (fn [_ _] nil))
+
+                                      (pco/resolver 'three
+                                        {::pco/input  [::two]
+                                         ::pco/output [::three]}
+                                        (fn [_ _] nil))])
+        {}
+        [(pco/? ::three)]
+        {}))))
 
 (deftest run-graph!-batch-test
   (testing "simple batching"
