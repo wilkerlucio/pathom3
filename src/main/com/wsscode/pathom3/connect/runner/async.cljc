@@ -260,7 +260,8 @@
       (cond
         batch-hold response
 
-        (not (refs/kw-identical? ::pcr/node-error response))
+        (or (not (refs/kw-identical? ::pcr/node-error response))
+            (pcp/node-optional? node))
         (p/do!
           (merge-resolver-response! env response)
           (pcr/merge-node-stats! env node {::pcr/node-run-finish-ms (time/now-ms)})
