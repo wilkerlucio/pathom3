@@ -315,6 +315,9 @@
     (or (nil? attribute)
         (get-in attribute [:params ::pco/optional?]))))
 
+(defn node-optional? [{::keys [params]}]
+  (::pco/optional? params))
+
 (defn add-node-parent [graph node-id node-parent-id]
   (assert node-parent-id "Tried to add after node with nil value")
   (update-node graph node-id ::node-parents coll/sconj node-parent-id))

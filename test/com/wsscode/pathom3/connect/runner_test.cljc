@@ -1418,29 +1418,96 @@
       {}))
 
   (testing "nested multiple options on optional, issue #139"
-    (is
-      (graph-response? (pci/register [(pco/resolver 'one
-                                        {::pco/input  []
-                                         ::pco/output [::one]}
-                                        (fn [_ _] nil))
+    (check-all-runners
+      (pci/register
+        [(pco/resolver 'one
+           {::pco/input  []
+            ::pco/output [::one]}
+           (fn [_ _] nil))
 
-                                      (pco/resolver 'two-a
-                                        {::pco/input  [::one]
-                                         ::pco/output [::two]}
-                                        (fn [_ _] nil))
+         (pco/resolver 'two-a
+           {::pco/input  [::one]
+            ::pco/output [::two]}
+           (fn [_ _] nil))
 
-                                      (pco/resolver 'two-b
-                                        {::pco/input  [::one]
-                                         ::pco/output [::two]}
-                                        (fn [_ _] nil))
+         (pco/resolver 'two-b
+           {::pco/input  [::one]
+            ::pco/output [::two]}
+           (fn [_ _] nil))
 
-                                      (pco/resolver 'three
-                                        {::pco/input  [::two]
-                                         ::pco/output [::three]}
-                                        (fn [_ _] nil))])
-        {}
-        [(pco/? ::three)]
-        {}))))
+         (pco/resolver 'three
+           {::pco/input  [::two]
+            ::pco/output [::three]}
+           (fn [_ _] nil))])
+      {}
+      [(pco/? ::three)]
+      {})
+
+    (check-all-runners
+      (pci/register
+        [(pco/resolver 'one
+           {::pco/input  []
+            ::pco/output [::one]}
+           (fn [_ _] nil))
+
+         (pco/resolver 'two-a
+           {::pco/input  [::one]
+            ::pco/output [::two]}
+           (fn [_ _] nil))
+
+         (pco/resolver 'two-b
+           {::pco/input  [::one]
+            ::pco/output [::two]}
+           (fn [_ _] nil))
+
+         (pco/resolver 'three
+           {::pco/input  [::two]
+            ::pco/output [::three]}
+           (fn [_ _] nil))
+
+         (pco/resolver 'four
+           {::pco/input  [(pco/? ::three)]
+            ::pco/output [::four]}
+           (fn [_ _] {::four 4}))])
+      {}
+      [::four]
+      {::four 4})
+
+    (check-all-runners
+      (pci/register
+        [(pco/resolver 'one
+           {::pco/input  []
+            ::pco/output [::one]}
+           (fn [_ _] nil))
+
+         (pco/resolver 'two-a
+           {::pco/input  [::one]
+            ::pco/output [::two]}
+           (fn [_ _] nil))
+
+         (pco/resolver 'two-b
+           {::pco/input  [::one]
+            ::pco/output [::two]}
+           (fn [_ _] nil))
+
+         (pco/resolver 'three
+           {::pco/input  [::two]
+            ::pco/output [::three]}
+           (fn [_ _] nil))
+
+         (pco/resolver 'four
+           {::pco/input  []
+            ::pco/output [::four]}
+           (fn [_ _] {::four "4"}))
+
+         (pco/resolver 'five
+           {::pco/input  [(pco/? ::three) ::four]
+            ::pco/output [::five]}
+           (fn [_ {::keys [three four]}]
+             {::five (str three four)}))])
+      {}
+      [::five]
+      {::five "4"})))
 
 (deftest run-graph!-batch-test
   (testing "simple batching"

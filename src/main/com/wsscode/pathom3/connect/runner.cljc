@@ -545,7 +545,8 @@
         ; so they can wait for the batch result
         batch-hold response
 
-        (not (refs/kw-identical? ::node-error response))
+        (or (not (refs/kw-identical? ::node-error response))
+            (pcp/node-optional? node))
         (do
           (merge-resolver-response! env response)
           (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
