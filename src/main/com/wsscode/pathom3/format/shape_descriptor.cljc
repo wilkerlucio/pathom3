@@ -127,7 +127,7 @@
    :children (shape-descriptor->ast-children shape)})
 
 (>defn shape-descriptor->query
-  "Convert pathom output format into shape descriptor format."
+  "Convert shape descriptor format to EQL."
   [shape]
   [::shape-descriptor => (s/or :eql :edn-query-language.core/query
                                :union map?)]
