@@ -1,6 +1,7 @@
 (ns com.wsscode.pathom3.interface.async.eql-test
   (:require
     [check.core :refer [check =>]]
+    [clojure.string :as string]
     [clojure.test :refer [deftest is testing]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -207,3 +208,26 @@
                  :pathom/include-stats? true})
               meta
               :com.wsscode.pathom3.connect.runner/run-stats)))))
+
+(deftest avoid-huge-ex-message
+  (let [env (pci/register (pco/resolver `a
+                            {::pco/output [:a]}
+                            (fn [_ _]
+                              (throw (ex-info "hello"
+                                       {:world 42})))))
+        ex (try
+             (deref (p.a.eql/process env
+                      [:a]))
+             (catch Throwable ex
+               ex))
+        msg (ex-message ex)]
+    (testing
+      "Not a huge size"
+      (is (< (count msg)
+            1e3)))
+    (testing
+      "starts with the cause message"
+      (is (string/starts-with? msg "Graph execution failed")))
+    (testing
+      "Ends with the root cause message"
+      (is (string/ends-with? msg "ex-message-size")))))

@@ -19,7 +19,8 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.placeholder :as pph]
-    [com.wsscode.pathom3.plugin :as p.plugin]))
+    [com.wsscode.pathom3.plugin :as p.plugin])
+  #?(:clj (:import (clojure.lang ExceptionInfo))))
 
 (>def ::attribute-errors (s/map-of ::p.attr/attribute any?))
 
@@ -883,14 +884,21 @@
       (ex-info (ex-message err)
                (-> (ex-data err)
                    (assoc ::processor-error-parent-env env')))
-      (ex-info
-        (str "Graph execution failed: " (ex-message err))
-        (assoc env'
-          ::p.error/error-message (ex-message err)
-          ::p.error/error-data (ex-data err)
-          ::p.error/error-stack (p.error/error-stack err)
-          ::processor-error? true)
-        err))))
+      (let [msg (str "Graph execution failed: " (ex-message err))
+            data (assoc env'
+                   ::p.error/error-message (ex-message err)
+                   ::p.error/error-data (ex-data err)
+                   ::p.error/error-stack (p.error/error-stack err)
+                   ::processor-error? true)]
+        ;; When running inside an async process in the JDK, this exception will end up at
+        ;; java.util.concurrent.CompletableFuture.get method. This method will wrap the
+        ;; exception in a java.util.concurrent.ExecutionException using its default constructor,
+        ;; that calls Object.toString on the exception.
+        ;; Without this .toString override, the final exception message will contain the entire stacktrace.
+        ;; See: com.wsscode.pathom3.interface.async.eql-test/avoid-huge-ex-message
+        #?(:clj     (proxy [ExceptionInfo] [msg data err]
+                      (toString [] msg))
+           :default (ex-info msg data err))))))
 
 (defn plan-and-run!
   [env ast-or-graph entity-tree*]
