@@ -20,7 +20,10 @@
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.placeholder :as pph]
     [com.wsscode.pathom3.plugin :as p.plugin])
-  #?(:clj (:import (clojure.lang ExceptionInfo))))
+  #?(:clj
+     (:import
+       (clojure.lang
+         ExceptionInfo))))
 
 (>def ::attribute-errors (s/map-of ::p.attr/attribute any?))
 
