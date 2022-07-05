@@ -122,7 +122,8 @@
 
 (defn datafy-processor-error* [env]
   (-> env
-      (select-keys [::error-message
+      (select-keys [::error-data
+                    ::error-message
                     ::error-stack
                     ::pcp/graph
                     :com.wsscode.pathom3.connect.runner/processor-error?
