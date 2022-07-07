@@ -2,6 +2,7 @@
 
 ## [NEXT]
 - Fix: Exceptions that occur inside `p.a.eql/process` in JVM won't include the entire stacktrace anymore. (issue #142)
+- Add `::p.error/error-data` to datafied error object
 
 ## [2022.06.01-alpha]
 - Fix nested optional key throws "All paths from an OR node failed" (issue #139)

@@ -449,7 +449,8 @@
                                 (if lenient-mode?
                                   error
                                   (ex-info (str "Resolver " op-name " exception at path " (pr-str path) ": " (ex-message error))
-                                           {::p.path/path path} error))))
+                                           (merge (ex-data error) {::p.path/path path})
+                                           error))))
 
 (defn enhance-dynamic-input
   [{::pco/keys [dynamic-resolver?]} node input-data]
