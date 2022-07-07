@@ -1,6 +1,6 @@
 (ns com.wsscode.pathom3.connect.planner-test
   (:require
-    [check.core :refer [check =>]]
+    [check.core :refer [=> check]]
     [clojure.test :refer [deftest is testing]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
@@ -3318,7 +3318,50 @@
                  :index-resolver->nodes {dynamic-resolver #{1}}
                  :index-attrs           {:a #{1}
                                          :b #{1}}
-                 :root                  1})))
+                 :root                  1}))
+
+  (testing "merge AND branches connected with other AND branches"
+    (check
+      (compute-run-graph
+        {::resolvers [{::pco/op-name 'a
+                       ::pco/output  [:a]}
+                      {::pco/op-name 'b
+                       ::pco/output  [:b]}]
+         ::eql/query [:a :b {:>/s1 [:a :b]}]})
+      => '{:com.wsscode.pathom3.connect.planner/index-attrs  {:b #{2}, :a #{1}},
+           :com.wsscode.pathom3.connect.planner/user-request-shape
+           {:b {}, :>/s1 {:b {}, :a {}}, :a {}},
+           :com.wsscode.pathom3.connect.planner/root         6,
+           :com.wsscode.pathom3.connect.planner/index-ast
+           {:b {:key :b, :type :prop, :dispatch-key :b},
+            :>/s1
+            {:children
+             [{:key :a, :type :prop, :dispatch-key :a}
+              {:key :b, :type :prop, :dispatch-key :b}],
+             :key          :>/s1,
+             :type         :join,
+             :dispatch-key :>/s1,
+             :query        [:a :b]},
+            :a {:key :a, :type :prop, :dispatch-key :a}},
+           :com.wsscode.pathom3.connect.planner/placeholders #{:>/s1},
+           :com.wsscode.pathom3.connect.planner/index-resolver->nodes
+           {a #{1}, b #{2}},
+           :com.wsscode.pathom3.connect.planner/nodes
+           {1
+            {:com.wsscode.pathom3.connect.operation/op-name    a,
+             :com.wsscode.pathom3.connect.planner/expects      {:a {}},
+             :com.wsscode.pathom3.connect.planner/input        {},
+             :com.wsscode.pathom3.connect.planner/node-id      1,
+             :com.wsscode.pathom3.connect.planner/node-parents #{6}},
+            2
+            {:com.wsscode.pathom3.connect.operation/op-name    b,
+             :com.wsscode.pathom3.connect.planner/expects      {:b {}},
+             :com.wsscode.pathom3.connect.planner/input        {},
+             :com.wsscode.pathom3.connect.planner/node-id      2,
+             :com.wsscode.pathom3.connect.planner/node-parents #{6}},
+            6
+            {:com.wsscode.pathom3.connect.planner/run-and #{1 2},
+             :com.wsscode.pathom3.connect.planner/node-id 6}}})))
 
 (deftest optimize-OR-subpaths-test
   (is (= (pcp/optimize-OR-sub-paths

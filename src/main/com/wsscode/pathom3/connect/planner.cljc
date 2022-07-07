@@ -322,7 +322,9 @@
   (assert node-parent-id "Tried to add after node with nil value")
   (update-node graph node-id ::node-parents coll/sconj node-parent-id))
 
-(defn remove-node-parent [graph node-id node-parent-id]
+(defn remove-node-parent
+  "Disconnect the parent node node-parent-id from node node-id"
+  [graph node-id node-parent-id]
   (let [node          (get-node graph node-id)
         node-parents' (disj (::node-parents node #{}) node-parent-id)]
     (if (seq node-parents')
@@ -1779,10 +1781,55 @@
       graph
       branches)))
 
+(defn optimize-AND-nested
+  "This pass will look for branches of an AND node that are also AND nodes. In case
+  further AND doesn't contain a run-next, it can be safely merged with the parent AND.
+
+    AND           >        AND
+    -> A          >        -> A
+    -> AND        >        -> B
+       -> B       >        -> C
+       -> C       >
+  "
+  [graph env node-id]
+  (let [{::keys [run-and]} (get-node graph node-id)]
+    (loop [graph graph
+           [pivot & node-ids] run-and]
+      (if pivot
+        (let [pivot-node (some->> pivot (get-node graph))]
+          (if (and pivot-node
+                   (::run-and pivot-node)
+                   (nil? (::run-next pivot-node)))
+            (let [_      (add-snapshot! graph env
+                                        {::snapshot-event   ::snapshot-merge-nested-ands
+                                         ::snapshot-message "Merge nested AND with parent AND"
+                                         ::highlight-nodes  (into #{node-id pivot} (::run-and pivot-node))
+                                         ::highlight-styles {node-id 1
+                                                             pivot   1}})
+                  graph' (-> (reduce
+                               ; move each nested-and-child-node-id to parent AND
+                               (fn [g nested-and-child-node-id]
+                                 (-> g
+                                     (remove-from-parent-branches {::node-id      nested-and-child-node-id
+                                                                   ::node-parents #{pivot}})
+                                     (add-branch-to-node node-id ::run-and nested-and-child-node-id)))
+                               graph
+                               (::run-and pivot-node))
+                             (remove-node pivot))
+                  _      (add-snapshot! graph' env
+                                        {::snapshot-event   ::snapshot-merge-nested-ands-done
+                                         ::snapshot-message "Merged nested AND with parent AND"
+                                         ::highlight-nodes  (into #{node-id} (::run-and pivot-node))
+                                         ::highlight-styles {node-id 1}})]
+              (recur graph' node-ids))
+            (recur graph node-ids)))
+        graph))))
+
 (defn optimize-AND-branches
   [graph env node-id]
   (-> graph
       (optimize-branch-items env node-id)
+      (optimize-AND-nested env node-id)
       (optimize-AND-resolvers-pass env node-id)
       (simplify-branch-node env node-id)))
 
