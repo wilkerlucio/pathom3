@@ -21,7 +21,8 @@
 
   :demos
   {:extra-paths ["src/demos"]
-   :extra-deps  {meander/epsilon {:mvn/version "0.0.602"}}}
+   :extra-deps  {meander/epsilon   {:mvn/version "0.0.602"}
+                 cheshire/cheshire {:mvn/version "5.11.0"}}}
 
   :test-deps
   {:extra-paths ["test"]
