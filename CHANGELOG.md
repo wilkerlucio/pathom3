@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Add support for ::pcr/wrap-merge-attribute hook in async and parallel runners
+
 ## [2022.07.08-alpha]
 - Fix: Exceptions that occur inside `p.a.eql/process` in JVM won't include the entire stacktrace anymore. (issue #142)
 - Add `::p.error/error-data` to datafied error object

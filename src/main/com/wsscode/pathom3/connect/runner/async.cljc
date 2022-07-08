@@ -123,8 +123,11 @@
     (fn [out k v]
       (if (refs/kw-identical? v ::pco/unknown-value)
         out
-        (p/let [v' (process-attr-subquery env entity k v)]
-          (assoc out k v'))))
+        (p.plugin/run-with-plugins env ::pcr/wrap-merge-attribute
+          (fn merge-entity-data--internal [env m k v]
+            (p/let [v' (process-attr-subquery env entity k v)]
+              (assoc m k v')))
+          env out k v)))
     entity
     new-data))
 
