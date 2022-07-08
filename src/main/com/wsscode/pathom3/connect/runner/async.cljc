@@ -148,10 +148,13 @@
   [env idents]
   (-> (reduce-async
         (fn [_ k]
-          (p/let [sub-value (process-attr-subquery env {} k
-                                                   (-> (get (p.ent/entity env) k)
-                                                       (assoc (first k) (second k))))]
-            (p.ent/swap-entity! env #(assoc % k sub-value))))
+          (p/let [entity  (p.ent/entity env)
+                  entity' (p.plugin/run-with-plugins env ::pcr/wrap-merge-attribute
+                            (fn process-idents-merge-attr--internal [env m k v]
+                              (p/let [sub-value (process-attr-subquery env entity k v)]
+                                (assoc m k sub-value)))
+                            env {} k (assoc (get entity k) (first k) (second k)))]
+            (p.ent/swap-entity! env #(assoc % k (get entity' k)))))
         nil
         idents)
       (p/then (constantly nil))))

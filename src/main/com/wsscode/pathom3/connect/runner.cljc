@@ -288,8 +288,11 @@
   [env idents]
   (doseq [k idents]
     (p.ent/swap-entity! env
-      #(assoc % k (process-attr-subquery env {} k
-                                         (assoc (get % k) (first k) (second k)))))))
+      (fn [entity]
+        (p.plugin/run-with-plugins env ::wrap-merge-attribute
+          (fn process-idents-merge-attr--internal [env m k v]
+            (assoc m k (process-attr-subquery env entity k v)))
+          env {} k (assoc (get entity k) (first k) (second k)))))))
 
 (defn run-next-node!
   "Runs the next node associated with the node, in case it exists."

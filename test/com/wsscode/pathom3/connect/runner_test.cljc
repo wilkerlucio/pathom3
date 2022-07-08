@@ -2805,6 +2805,50 @@
       [{:user [:user/avatar]}]
       {:user {:user/avatar {:user/avatar-filename "avatar-filename"}}})))
 
+(deftest run-graph!-wrap-merge-attribute
+  (testing "modify result"
+    (check-all-runners
+      (-> (pci/register [(pbir/constantly-resolver :x 1)])
+          (p.plugin/register
+            {::p.plugin/id 'x-env
+             ::pcr/wrap-merge-attribute
+             (fn [merge-attr]
+               (fn [env m k _v]
+                 (merge-attr env m k "mudei")))}))
+      {}
+      [:x]
+      {:x "mudei"}))
+
+  (testing "modify env"
+    (check-all-runners
+      (-> (pci/register [(pbir/constantly-fn-resolver :x :x)])
+          (p.plugin/register
+            {::p.plugin/id 'x-env
+             ::pcr/wrap-merge-attribute
+             (fn [merge-attr]
+               (fn [env m k v]
+                 (if-let [x (-> env ::pcp/graph (pcp/entry-ast k) :params :xx)]
+                   (merge-attr (assoc env :x x) m k v)
+                   (merge-attr env m k v))))}))
+      {}
+      [:x
+       {'(:>/foo {:xx 42}) [:x]}]
+      {:x nil
+       :>/foo {:x 42}}))
+
+  (testing "works on idents"
+    (check-all-runners
+      (-> (pci/register [(pbir/constantly-resolver :x 1)])
+          (p.plugin/register
+            {::p.plugin/id 'x-env
+             ::pcr/wrap-merge-attribute
+             (fn [merge-attr]
+               (fn [env m k _v]
+                 (merge-attr env m k "mudei")))}))
+      {}
+      [{[:a 1] [:x]}]
+      {[:a 1] "mudei"})))
+
 #?(:clj
    (deftest run-graph!-async-tests
      (testing "async env"
