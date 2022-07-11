@@ -93,9 +93,7 @@
 
 (defn map-select-entry
   [env source {:keys [key query type] :as ast}]
-  (if-let [x (or (find source key)
-                 (if (pph/placeholder-key? env key)
-                   (coll/make-map-entry key (vary-meta source dissoc :com.wsscode.pathom3.connect.runner/run-stats))))]
+  (if-let [x (find source key)]
     (let [val (val x)
           ast (if (recursive-query? query) (:parent-ast ast) ast)
           ast (update ast :children #(or % [{:key          '*
@@ -308,6 +306,18 @@
   (-> (merge-params node1 node2)
       (merge-ast-children node2)))
 
+(defn- index-ast-item [m {:keys [key] :as node}]
+  (cond
+    (not (contains? m key))
+    (assoc m key node)
+
+    (and (contains? m key)
+         (not= node (get m key)))
+    (update m key merge-nodes node)
+
+    :else
+    m))
+
 (>defn index-ast
   ([ast]
    [:edn-query-language.ast/node => ::prop->ast]
@@ -322,19 +332,12 @@
               (fn [m node]
                 (p.plugin/run-with-plugins env ::wrap-index-ast-entry
                   (fn [env m {:keys [key] :as node}]
-                    (cond
-                      (pph/placeholder-key? env key)
-                      (index-ast env m node)
+                    (if (pph/placeholder-key? env key)
+                      (cond-> (index-ast (assoc env ::indexing-placeholder? true) m node)
+                        (-> env ::indexing-placeholder? not)
+                        (index-ast-item node))
 
-                      (not (contains? m key))
-                      (assoc m key node)
-
-                      (and (contains? m key)
-                           (not= node (get m key)))
-                      (update m key merge-nodes node)
-
-                      :else
-                      m))
+                      (index-ast-item m node)))
                   env m node))
               index))
        (dissoc '*))))

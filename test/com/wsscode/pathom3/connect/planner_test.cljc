@@ -1372,7 +1372,14 @@
                                              ::pcp/input   {},}},
              ::pcp/index-ast             {:a {:dispatch-key :a
                                               :key          :a
-                                              :type         :prop}},
+                                              :type         :prop}
+                                          :>/p1 {:children     [{:dispatch-key :a
+                                                                 :key          :a
+                                                                 :type         :prop}]
+                                                 :dispatch-key :>/p1
+                                                 :key          :>/p1
+                                                 :query        [:a]
+                                                 :type         :join}},
              ::pcp/placeholders          #{:>/p1},
              ::pcp/user-request-shape    {:>/p1 {:a {}}}
              ::pcp/index-resolver->nodes {a #{1}},
@@ -1404,7 +1411,14 @@
                                               :type         :prop}
                                           :b {:dispatch-key :b
                                               :key          :b
-                                              :type         :prop}},
+                                              :type         :prop}
+                                          :>/p1 {:children     [{:dispatch-key :b
+                                                                 :key          :b
+                                                                 :type         :prop}]
+                                                 :dispatch-key :>/p1
+                                                 :key          :>/p1
+                                                 :query        [:b]
+                                                 :type         :join}},
              ::pcp/user-request-shape    {:>/p1 {:b {}} :a {}}
              ::pcp/index-resolver->nodes {a #{1}, b #{2}},
              ::pcp/index-attrs           {:b #{2}, :a #{1}},
@@ -1418,7 +1432,21 @@
                                {:>/p2 [:a]}]})
            '{::pcp/index-ast             {:a {:dispatch-key :a
                                               :key          :a
-                                              :type         :prop}}
+                                              :type         :prop}
+                                          :>/p1 {:children     [{:dispatch-key :a
+                                                                 :key          :a
+                                                                 :type         :prop}]
+                                                 :dispatch-key :>/p1
+                                                 :key          :>/p1
+                                                 :query        [:a]
+                                                 :type         :join}
+                                          :>/p2 {:children     [{:dispatch-key :a
+                                                                 :key          :a
+                                                                 :type         :prop}]
+                                                 :dispatch-key :>/p2
+                                                 :key          :>/p2
+                                                 :query        [:a]
+                                                 :type         :join}}
              ::pcp/user-request-shape    {:>/p1 {:a {}} :>/p2 {:a {}}}
              ::pcp/index-attrs           {:a #{1}}
              ::pcp/index-resolver->nodes {a #{1}}
@@ -1442,7 +1470,22 @@
                                               :type         :prop}
                                           :b {:dispatch-key :b
                                               :key          :b
-                                              :type         :prop}}
+                                              :type         :prop}
+                                          :>/p1 {:children     [{:dispatch-key :a
+                                                                 :key          :a
+                                                                 :type         :prop}
+                                                                {:children     [{:dispatch-key :b
+                                                                                 :key          :b
+                                                                                 :type         :prop}]
+                                                                 :dispatch-key :>/p2
+                                                                 :key          :>/p2
+                                                                 :query        [:b]
+                                                                 :type         :join}]
+                                                 :dispatch-key :>/p1
+                                                 :key          :>/p1
+                                                 :query        [:a
+                                                                {:>/p2 [:b]}]
+                                                 :type         :join}}
              ::pcp/index-attrs           {:a #{1}
                                           :b #{2}}
              ::pcp/index-resolver->nodes {a #{1}

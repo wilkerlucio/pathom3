@@ -51,18 +51,64 @@
             :b {:type :prop, :dispatch-key :b, :key :b},
             :c {:type :prop, :dispatch-key :c, :key :c}})))
 
-  (testing "placeholders get add"
+  (testing "placeholders"
     (is (= (pf.eql/index-ast (eql/query->ast [:foo
                                               {:>/ph [:bar]}]))
-           {:foo {:type :prop, :dispatch-key :foo, :key :foo},
-            :bar {:type :prop, :dispatch-key :bar, :key :bar}}))
+           {:>/ph {:children     [{:dispatch-key :bar
+                                   :key          :bar
+                                   :type         :prop}]
+                   :dispatch-key :>/ph
+                   :key          :>/ph
+                   :query        [:bar]
+                   :type         :join}
+            :bar  {:dispatch-key :bar
+                   :key          :bar
+                   :type         :prop}
+            :foo  {:dispatch-key :foo
+                   :key          :foo
+                   :type         :prop}}))
 
-    (is (= (pf.eql/index-ast (eql/query->ast [:foo
-                                              {:>/ph [:bar
-                                                      {:>/more [:baz]}]}]))
-           {:foo {:type :prop, :dispatch-key :foo, :key :foo},
-            :bar {:type :prop, :dispatch-key :bar, :key :bar},
-            :baz {:type :prop, :dispatch-key :baz, :key :baz}})))
+    (testing "merged"
+      (is (= (pf.eql/index-ast (eql/query->ast [:foo
+                                                {:>/ph [:bar]}
+                                                {:>/ph [:baz]}]))
+             {:foo {:type :prop, :dispatch-key :foo, :key :foo},
+              :bar {:type :prop, :dispatch-key :bar, :key :bar},
+              :>/ph {:type :join,
+                     :dispatch-key :>/ph,
+                     :key :>/ph,
+                     :children [{:type :prop, :dispatch-key :bar, :key :bar}
+                                {:type :prop, :dispatch-key :baz, :key :baz}]},
+              :baz {:type :prop, :dispatch-key :baz, :key :baz}})))
+
+    (testing "nested"
+      (is (= (pf.eql/index-ast (eql/query->ast [:foo
+                                                {:>/ph [:bar
+                                                        {:>/more [:baz]}]}]))
+             {:>/ph {:children     [{:dispatch-key :bar
+                                     :key          :bar
+                                     :type         :prop}
+                                    {:children     [{:dispatch-key :baz
+                                                     :key          :baz
+                                                     :type         :prop}]
+                                     :dispatch-key :>/more
+                                     :key          :>/more
+                                     :query        [:baz]
+                                     :type         :join}]
+                     :dispatch-key :>/ph
+                     :key          :>/ph
+                     :query        [:bar
+                                    {:>/more [:baz]}]
+                     :type         :join}
+              :bar  {:dispatch-key :bar
+                     :key          :bar
+                     :type         :prop}
+              :baz  {:dispatch-key :baz
+                     :key          :baz
+                     :type         :prop}
+              :foo  {:dispatch-key :foo
+                     :key          :foo
+                     :type         :prop}}))))
 
   (testing "errors on different params"
     (is (thrown-with-msg?
@@ -81,11 +127,26 @@
     (testing "under placeholder"
       (is (= (pf.eql/index-ast (eql/query->ast [{:bar [:baz]}
                                                 {:>/ph [{:bar [:bur]}]}]))
-             {:bar {:type         :join,
-                    :dispatch-key :bar,
-                    :key          :bar,
-                    :children     [{:type :prop, :dispatch-key :baz, :key :baz}
-                                   {:type :prop, :dispatch-key :bur, :key :bur}]}}))))
+             {:>/ph {:children     [{:children     [{:dispatch-key :bur
+                                                     :key          :bur
+                                                     :type         :prop}]
+                                     :dispatch-key :bar
+                                     :key          :bar
+                                     :query        [:bur]
+                                     :type         :join}]
+                     :dispatch-key :>/ph
+                     :key          :>/ph
+                     :query        [{:bar [:bur]}]
+                     :type         :join}
+              :bar  {:children     [{:dispatch-key :baz
+                                     :key          :baz
+                                     :type         :prop}
+                                    {:dispatch-key :bur
+                                     :key          :bur
+                                     :type         :prop}]
+                     :dispatch-key :bar
+                     :key          :bar
+                     :type         :join}}))))
 
   (testing "remove *"
     (is (= (pf.eql/index-ast (eql/query->ast [:foo '*]))
@@ -105,8 +166,19 @@
                (eql/query->ast [:foo
                                 {'(:>/ph {:skip? true}) [:bar]}
                                 {:>/ph2 [:baz]}]))
-             {:foo {:type :prop, :dispatch-key :foo, :key :foo},
-              :baz {:type :prop, :dispatch-key :baz, :key :baz}})))))
+             {:>/ph2 {:children     [{:dispatch-key :baz
+                                      :key          :baz
+                                      :type         :prop}]
+                      :dispatch-key :>/ph2
+                      :key          :>/ph2
+                      :query        [:baz]
+                      :type         :join}
+              :baz   {:dispatch-key :baz
+                      :key          :baz
+                      :type         :prop}
+              :foo   {:dispatch-key :foo
+                      :key          :foo
+                      :type         :prop}})))))
 
 (def protected-list #{:foo})
 
@@ -171,10 +243,6 @@
                                       :b [:b]
                                       :c [:ccc]}}])
            {:foo [{:aa 2} {:b 2} {:ccc 300}]})))
-
-  (testing "placeholders"
-    (is (= (pf.eql/map-select {} {:a 1} [{:>/ph [:a]}])
-           {:>/ph {:a 1}})))
 
   (testing "*"
     (is (= (pf.eql/map-select {} {:foo 1 :bar 2} [:foo '*])

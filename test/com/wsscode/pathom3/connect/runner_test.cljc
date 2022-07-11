@@ -2840,18 +2840,7 @@
                                                                  :dispatch-key :>/p1}}}
                 ::p.ent/entity-tree* (volatile! {:foo "bar"})
                 ::pcr/source-entity  {}})
-             {:>/p1 {:foo "bar"}})))
-
-  (testing "override with source when params are provided"
-    (is (= (pcr/placeholder-merge-entity
-             {::pcp/graph          {::pcp/nodes        {}
-                                    ::pcp/placeholders #{:>/p1}
-                                    ::pcp/index-ast    {:>/p1 {:key          :>/p1
-                                                               :dispatch-key :>/p1
-                                                               :params       {:x 10}}}}
-              ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})
-              ::pcr/source-entity  {:z true}})
-           {:>/p1 {:z true :x 10}}))))
+             {:>/p1 {:foo "bar"}}))))
 
 (defn set-done [k]
   (fn [process]

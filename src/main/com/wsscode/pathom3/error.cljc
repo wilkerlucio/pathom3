@@ -6,7 +6,8 @@
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.planner :as pcp]
     [com.wsscode.pathom3.plugin :as p.plugin]
-    #?(:cljs [goog.object :as gobj]))
+    #?(:cljs [goog.object :as gobj])
+    [com.wsscode.pathom3.placeholder :as pph])
   #?(:clj
      (:import
        (java.io
@@ -68,21 +69,22 @@
 
 (defn attribute-error
   "Return the attribute error, in case it failed."
-  [_env response attribute]
-  (if (contains? response attribute)
-    nil
-    (let [{:com.wsscode.pathom3.connect.planner/keys [index-ast index-attrs] :as run-stats}
-          (-> response meta :com.wsscode.pathom3.connect.runner/run-stats)]
-      (if (contains? index-ast attribute)
-        (if-let [nodes (get index-attrs attribute)]
-          (let [run-stats (assoc run-stats ::p.attr/attribute attribute)
-                errors    (into {} (keep #(attribute-node-error run-stats %)) nodes)]
-            (if (seq errors)
-              {::cause              ::node-errors
-               ::node-error-details errors}))
-          (if-not (optional? index-ast attribute)
-            {::cause ::attribute-unreachable}))
-        {::cause ::attribute-not-requested}))))
+  ([response attribute] (attribute-error {} response attribute))
+  ([_env response attribute]
+   (if (contains? response attribute)
+     nil
+     (let [{:com.wsscode.pathom3.connect.planner/keys [index-ast index-attrs] :as run-stats}
+           (-> response meta :com.wsscode.pathom3.connect.runner/run-stats)]
+       (if (contains? index-ast attribute)
+         (if-let [nodes (get index-attrs attribute)]
+           (let [run-stats (assoc run-stats ::p.attr/attribute attribute)
+                 errors    (into {} (keep #(attribute-node-error run-stats %)) nodes)]
+             (if (seq errors)
+               {::cause              ::node-errors
+                ::node-error-details errors}))
+           (if-not (optional? index-ast attribute)
+             {::cause ::attribute-unreachable}))
+         {::cause ::attribute-not-requested})))))
 
 (defn scan-for-errors? [response]
   ; some node error?

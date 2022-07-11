@@ -127,7 +127,7 @@
          (-> (pcr/run-graph! env ast entity-tree*) meta ::pcr/run-stats)
 
          (when-let [error (and (refs/kw-identical? (get env ::error-mode) ::error-mode-loud)
-                               (p.error/attribute-error @entity-tree* k))]
+                               (p.error/attribute-error env @entity-tree* k))]
            (throw (ex-info "Smart Map fetch error" error)))
 
          (wrap-smart-map env (get @entity-tree* k default-value)))))))
