@@ -1563,16 +1563,16 @@
           (fn [[graph node-ids] ast]
             (cond
               (contains? #{:prop :join} (:type ast))
-              (let [env (assoc env :edn-query-language.ast/node ast)]
+              (let [env' (assoc env :edn-query-language.ast/node ast)]
                 (or
                   ; try to compute a non-index attribute
-                  (if-let [{::keys [root] :as graph'} (compute-non-index-attribute graph env)]
+                  (if-let [{::keys [root] :as graph'} (compute-non-index-attribute graph env')]
                     [graph' (cond-> node-ids root (conj root))])
 
                   ; try to figure the attribute from the indexes
                   (let [{::keys [root] :as graph'}
                         (compute-attribute-graph graph
-                          (assoc env :edn-query-language.ast/node ast))]
+                          (assoc env' :edn-query-language.ast/node ast))]
                     (if root
                       ; success
                       [graph' (conj node-ids root)]
