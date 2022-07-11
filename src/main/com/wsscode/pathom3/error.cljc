@@ -68,7 +68,7 @@
 
 (defn attribute-error
   "Return the attribute error, in case it failed."
-  [response attribute]
+  [_env response attribute]
   (if (contains? response attribute)
     nil
     (let [{:com.wsscode.pathom3.connect.planner/keys [index-ast index-attrs] :as run-stats}
@@ -101,7 +101,7 @@
           errors (into {}
                        (keep (fn [k]
                                (if-let [error (p.plugin/run-with-plugins env ::wrap-attribute-error
-                                                attribute-error entity k)]
+                                                attribute-error env entity k)]
                                  (coll/make-map-entry k error))))
                        (keys ast))]
       (cond-> entity
