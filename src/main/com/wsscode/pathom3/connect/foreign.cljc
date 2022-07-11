@@ -11,25 +11,26 @@
   [::pci/indexes])
 
 (defn foreign-indexed-key [i]
-  (keyword ">" (str "foreign-" i)))
+  (keyword "com.wsscode.pathom3.connect.foreign.slice" (str "foreign-" i)))
 
 (defn compute-foreign-request
   [inputs]
-  (let [ph-requests (into []
+  (let [entity      (volatile! {})
+        ph-requests (into []
                           (map-indexed
                             (fn [i {::pcp/keys [foreign-ast]
                                     ::pcr/keys [node-resolver-input]}]
                               (let [k (foreign-indexed-key i)]
-                                (cond-> {:type         :join
-                                         :key          k
-                                         :dispatch-key k
-                                         :children     (:children foreign-ast)}
-                                  (seq node-resolver-input)
-                                  (assoc :params node-resolver-input)))))
+                                (vswap! entity assoc k (or node-resolver-input {}))
+                                {:type         :join
+                                 :key          k
+                                 :dispatch-key k
+                                 :children     (:children foreign-ast)})))
                           inputs)
         ast         {:type     :root
                      :children ph-requests}]
-    {:pathom/ast ast}))
+    {:pathom/ast    ast
+     :pathom/entity @entity}))
 
 (defn compute-foreign-mutation
   [{::pcp/keys [node]}]

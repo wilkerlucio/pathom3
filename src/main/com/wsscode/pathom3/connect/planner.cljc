@@ -1473,40 +1473,6 @@
       :else
       (add-unreachable-path graph env {attr {}}))))
 
-(defn sanitize-params [params]
-  (when (seq params)
-    params))
-
-(defn merge-ast-children [a b]
-  (let [idx (pf.eql/index-ast a)]
-    (reduce
-      (fn [ast child]
-        (if-let [entry (get idx (:key child))]
-          (let [p1 (sanitize-params (:params entry))
-                p2 (sanitize-params (:params child))]
-            (if (= p1 p2)
-              (if (and (seq (:children entry)) (seq (:children child)))
-                (update ast :children
-                  (fn [children]
-                    (mapv
-                      (fn [c]
-                        (if (= c entry)
-                          (merge-ast-children c child)
-                          c))
-                      children)))
-                ast)
-              (throw (ex-info "Incompatible placeholder request"
-                              {:source-node      entry
-                               :conflicting-node child}))))
-          (update ast :children conj child)))
-      a
-      (:children b))))
-
-(defn merge-placeholder-ast [index-ast placeholder-ast]
-  (merge-with merge-ast-children
-              index-ast
-              (coll/filter-vals (comp seq :children) (pf.eql/index-ast placeholder-ast))))
-
 (defn compute-non-index-attribute
   "This function deals with attributes that are not part of the index execution. The
   cases here are:
@@ -1531,11 +1497,7 @@
                             ::snapshot-message (str "Attribute already available " attr)}))
 
     (pph/placeholder-key? env attr)
-    (-> (add-placeholder-entry graph attr)
-        (cond->
-          (empty? (:params ast))
-          (-> (compute-run-graph* env)
-              (update ::index-ast merge-placeholder-ast ast))))))
+    (add-placeholder-entry graph attr)))
 
 (defn plan-mutation-nested-query [env {:keys [key] :as ast}]
   (if-let [nested-shape (-> env
@@ -1557,7 +1519,7 @@
 
 (defn compute-run-graph*
   "Starts scanning the AST to plan for each attribute."
-  [graph env]
+  [{::keys [index-ast] :as graph} env]
   (let [[graph' node-ids]
         (reduce
           (fn [[graph node-ids] ast]
@@ -1586,7 +1548,9 @@
               :else
               [graph node-ids]))
           [graph #{}]
-          (:children (:edn-query-language.ast/node env)))]
+          (into (vec (vals index-ast))
+                (remove #(contains? index-ast (:key %)))
+                (:children (:edn-query-language.ast/node env))))]
     (if (seq node-ids)
       (create-root-and graph' env node-ids)
       graph')))
@@ -1718,7 +1682,7 @@
             (compute-run-graph*
               (merge (base-graph)
                      graph
-                     {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
+                     {::index-ast          (pf.eql/index-ast env (:edn-query-language.ast/node env))
                       ::source-ast         (:edn-query-language.ast/node env)
                       ::available-data     (::available-data env)
                       ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})

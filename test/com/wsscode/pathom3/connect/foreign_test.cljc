@@ -35,34 +35,36 @@
   (testing "no inputs"
     (is (= (pcf/compute-foreign-request
              [{::pcp/foreign-ast (eql/query->ast [:a])}])
-           {:pathom/ast {:type     :root,
-                         :children [{:type         :join,
-                                     :key          :>/foreign-0,
-                                     :dispatch-key :>/foreign-0,
-                                     :children     [{:type :prop, :dispatch-key :a, :key :a}]}]}})))
+           {:pathom/ast    {:type     :root,
+                            :children [{:type         :join,
+                                        :key          :com.wsscode.pathom3.connect.foreign.slice/foreign-0,
+                                        :dispatch-key :com.wsscode.pathom3.connect.foreign.slice/foreign-0,
+                                        :children     [{:type :prop, :dispatch-key :a, :key :a}]}]},
+            :pathom/entity {:com.wsscode.pathom3.connect.foreign.slice/foreign-0 {}}})))
 
   (testing "inputs, but no parent ident, single attribute always goes as ident"
     (is (= (pcf/compute-foreign-request
              [{::pcp/foreign-ast         (eql/query->ast [:a])
                ::pcr/node-resolver-input {:z "bar"}}])
-           {:pathom/ast {:type :root,
-                         :children [{:type :join,
-                                     :key :>/foreign-0,
-                                     :dispatch-key :>/foreign-0,
-                                     :children [{:type :prop, :dispatch-key :a, :key :a}],
-                                     :params {:z "bar"}}]}})))
+           {:pathom/ast    {:type     :root,
+                            :children [{:type         :join,
+                                        :key          :com.wsscode.pathom3.connect.foreign.slice/foreign-0,
+                                        :dispatch-key :com.wsscode.pathom3.connect.foreign.slice/foreign-0,
+                                        :children     [{:type :prop, :dispatch-key :a, :key :a}]}]},
+            :pathom/entity {:com.wsscode.pathom3.connect.foreign.slice/foreign-0 {:z "bar"}}})))
 
   (testing "with multiple inputs"
     (is (= (pcf/compute-foreign-request
              [{::pcp/foreign-ast         (eql/query->ast [:a])
                ::pcr/node-resolver-input {:x "foo"
                                           :z "bar"}}])
-           {:pathom/ast {:type :root,
-                         :children [{:type :join,
-                                     :key :>/foreign-0,
-                                     :dispatch-key :>/foreign-0,
-                                     :children [{:type :prop, :dispatch-key :a, :key :a}],
-                                     :params {:x "foo", :z "bar"}}]}}))))
+           {:pathom/ast    {:type     :root,
+                            :children [{:type         :join,
+                                        :key          :com.wsscode.pathom3.connect.foreign.slice/foreign-0,
+                                        :dispatch-key :com.wsscode.pathom3.connect.foreign.slice/foreign-0,
+                                        :children     [{:type :prop, :dispatch-key :a, :key :a}]}]},
+            :pathom/entity {:com.wsscode.pathom3.connect.foreign.slice/foreign-0 {:x "foo",
+                                                                                  :z "bar"}}}))))
 
 (deftest process-foreign-query
   (testing "basic integration"

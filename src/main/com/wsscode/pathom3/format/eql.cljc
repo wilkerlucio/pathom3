@@ -2,10 +2,11 @@
   "Helpers to manipulate EQL."
   (:require
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.fulcrologic.guardrails.core :refer [=> >def >defn ?]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.attribute :as p.attr]
+    [com.wsscode.pathom3.placeholder :as pph]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [edn-query-language.core :as eql]))
 
@@ -87,19 +88,14 @@
   [any? => (? ::p.attr/attribute)]
   (if (vector? key) (first key)))
 
-(>defn index-ast [{:keys [children]}]
-  [:edn-query-language.ast/node => ::prop->ast]
-  ; TODO consider merging issues when key is repeated
-  (-> (into [] (remove #(-> % :type (= :call))) children)
-      (->> (coll/index-by :key))
-      (dissoc '*)))
-
 (defn recursive-query? [query]
   (or (= '... query) (int? query)))
 
 (defn map-select-entry
   [env source {:keys [key query type] :as ast}]
-  (if-let [x (find source key)]
+  (if-let [x (or (find source key)
+                 (if (pph/placeholder-key? env key)
+                   (coll/make-map-entry key source)))]
     (let [val (val x)
           ast (if (recursive-query? query) (:parent-ast ast) ast)
           ast (update ast :children #(or % [{:key          '*
@@ -278,6 +274,17 @@
     []
     map-children))
 
+(defn merge-params
+  "Merge ast node params. At this time this function will only accept if the
+  params are the same, otherwise will be thrown an error. This may change for
+  more robust merge approaches in the future."
+  [node1 node2]
+  (if (= (seq (:params node1))
+         (seq (:params node2)))
+    node1
+    (throw (ex-info "Can't merge different params" {:node1 node1
+                                                    :node2 node2}))))
+
 (defn merge-ast-children [ast1 ast2]
   (let [idx  (coll/index-by :key (:children ast1))
         idx' (reduce
@@ -296,3 +303,35 @@
           (and (seq idx') (not (contains? #{:join :root} (:type ast1))))
           (assoc :type :join))
         (dissoc :query))))
+
+(defn merge-nodes [node1 node2]
+  (-> (merge-params node1 node2)
+      (merge-ast-children node2)))
+
+(>defn index-ast
+  ([ast]
+   [:edn-query-language.ast/node => ::prop->ast]
+   (index-ast {} {} ast))
+  ([env ast]
+   [map? :edn-query-language.ast/node => ::prop->ast]
+   (index-ast env {} ast))
+  ([env index {:keys [children]}]
+   [map? map? :edn-query-language.ast/node => ::prop->ast]
+   (-> (into [] (remove #(-> % :type (= :call))) children)
+       (->> (reduce
+              (fn [m {:keys [key] :as node}]
+                (cond
+                  (pph/placeholder-key? env key)
+                  (index-ast env m node)
+
+                  (not (contains? m key))
+                  (assoc m key node)
+
+                  (and (contains? m key)
+                       (not= node (get m key)))
+                  (update m key merge-nodes node)
+
+                  :else
+                  m))
+              index))
+       (dissoc '*))))

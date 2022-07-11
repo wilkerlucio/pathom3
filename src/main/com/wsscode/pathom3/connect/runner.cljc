@@ -286,13 +286,13 @@
 
   If there is ident data already, it gets merged with the ident value."
   [env idents]
-  (doseq [k idents]
+  (doseq [ident idents]
     (p.ent/swap-entity! env
       (fn [entity]
         (p.plugin/run-with-plugins env ::wrap-merge-attribute
           (fn process-idents-merge-attr--internal [env m k v]
             (assoc m k (process-attr-subquery env entity k v)))
-          env {} k (assoc (get entity k) (first k) (second k)))))))
+          env {} ident (assoc (get entity ident) (first ident) (second ident)))))))
 
 (defn run-next-node!
   "Runs the next node associated with the node, in case it exists."
@@ -826,9 +826,6 @@
   nil)
 
 (defn run-graph-entity-done [env]
-  ; placeholders
-  (if (-> env ::pcp/graph ::pcp/placeholders)
-    (merge-resolver-response! env (placeholder-merge-entity env)))
   ; entity ready
   (p.plugin/run-with-plugins env ::wrap-entity-ready! run-graph-done!
     env))

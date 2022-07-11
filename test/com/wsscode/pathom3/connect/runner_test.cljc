@@ -15,7 +15,9 @@
     [com.wsscode.pathom3.connect.runner.parallel :as pcrc]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.error :as p.error]
+    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
@@ -117,22 +119,30 @@
           ::geo/half-width 15
           ::geo/center-x   25})))
 
+(defn run-post [{::keys [map-select?] :as env} ast response]
+  (if map-select?
+    (pf.eql/map-select-ast (p.eql/select-ast-env env) response ast)
+    response))
+
 (defn run-graph [env tree query]
   (let [ast (eql/query->ast query)]
-    (pcr/run-graph! env ast (p.ent/create-entity tree))))
+    (run-post env ast
+              (pcr/run-graph! env ast (p.ent/create-entity tree)))))
 
 (defn run-graph-async
   ([env tree query]
-   (let [ast (eql/query->ast query)]
-     (pcra/run-graph! env ast (p.ent/create-entity tree))))
+   (p/let [ast (eql/query->ast query)
+           res (pcra/run-graph! env ast (p.ent/create-entity tree))]
+     (run-post env ast res)))
   ([env tree query _expected]
    (run-graph-async env tree query)))
 
 (defn run-graph-parallel [env tree query]
-  (let [ast (eql/query->ast query)]
-    (p/timeout
-      (pcrc/run-graph! env ast (p.ent/create-entity tree))
-      3000)))
+  (p/let [ast (eql/query->ast query)
+          res (p/timeout
+                (pcrc/run-graph! env ast (p.ent/create-entity tree))
+                3000)]
+    (run-post env ast res)))
 
 (defn coords-resolver [c]
   (pco/resolver 'coords-resolver {::pco/output [::coords]}
@@ -1630,18 +1640,19 @@
 
   (testing "run stats"
     (is (some? (-> (run-graph
-                     (pci/register
-                       [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
-                     {}
-                     [{'(:>/id {:id 1}) [:v]}])
+                     (pci/register {::map-select? true}
+                                   [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
+                     {:id 1}
+                     [{:>/id [:v]}])
                    :>/id meta ::pcr/run-stats)))
 
     (is (nil? (-> (run-graph
-                    (-> {::pcr/omit-run-stats? true}
+                    (-> {::pcr/omit-run-stats? true
+                         ::map-select? true}
                         (pci/register
                           [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))]))
-                    {}
-                    [{'(:>/id {:id 1}) [:v]}])
+                    {:id 1}
+                    [{:>/id [:v]}])
                   :>/id meta ::pcr/run-stats))))
 
   (testing "different plan"
@@ -2479,78 +2490,39 @@
            :y 20}))))
 
 (deftest run-graph!-placeholders-test
-  (is (graph-response? (pci/register (pbir/constantly-resolver :foo "bar"))
-        {}
-        [{:>/path [:foo]}]
-        {:foo    "bar"
-         :>/path {:foo "bar"}}))
+  (check-all-runners
+    (pci/register {::map-select? true}
+                  (pbir/constantly-resolver :foo "bar"))
+    {}
+    [{:>/path [:foo]}]
+    {:>/path {:foo "bar"}})
 
-  (is (graph-response? (pci/register (pbir/constantly-resolver :foo "bar"))
-        {:foo "baz"}
-        [{:>/path [:foo]}]
-        {:foo    "baz"
-         :>/path {:foo "baz"}}))
+  (check-all-runners (pci/register {::map-select? true} (pbir/constantly-resolver :foo "bar"))
+    {:foo "baz"}
+    [{:>/path [:foo]}]
+    {:>/path {:foo "baz"}})
+
+  (testing "nested placeholders"
+    (check-all-runners
+      (pci/register {::map-select? true}
+                    (pbir/constantly-resolver :foo "bar"))
+      {}
+      [{:>/path [{:>/more [:foo]}]}]
+      {:>/path {:>/more {:foo "bar"}}}))
 
   (testing "with batch"
-    (is (graph-response? (pci/register
-                           [(pco/resolver 'batch
-                              {::pco/batch? true
-                               ::pco/input  [:x]
-                               ::pco/output [:y]}
-                              (fn [_ xs]
-                                (mapv #(array-map :y (inc (:x %))) xs)))])
-          {:x 10}
-          '[:y
-            {:>/go [:y]}]
-          {:x    10
-           :y    11
-           :>/go {:x 10
-                  :y 11}})))
-
-  (testing "modified data"
-    (is (graph-response? (pci/register
-                           [(pbir/single-attr-resolver :x :y #(* 2 %))])
-          {}
-          '[{(:>/path {:x 20}) [:y]}]
-          {:>/path {:x 20
-                    :y 40}}))
-
-    (check-all-runners
-      (pci/register
-        [(pbir/constantly-resolver :x 10)
-         (pbir/single-attr-resolver :x :y #(* 2 %))])
-      {}
-      '[{(:>/path {:x 20}) [:y]}]
-      {:>/path {:x 20
-                :y 40}})
-
-    (check-all-runners
-      (pci/register
-        [(pbir/constantly-resolver :x 10)
-         (pbir/single-attr-resolver :x :y #(* 2 %))])
-      {}
-      '[:x
-        {(:>/path {:x 20}) [:y]}]
-      {:>/path {:x 20
-                :y 40}})
-
-    (testing "different parameters"
-      (is (graph-response? (pci/register
-                             [(pbir/constantly-resolver :x 10)
-                              (pbir/single-attr-with-env-resolver :x :y #(* (:m (pco/params %) 2) %2))])
-            {}
-            '[:x
-              {:>/m2 [(:y)]}
-              {:>/m3 [(:y {:m 3})]}
-              {:>/m4 [(:y {:m 4})]}]
-            {:x    10
-             :y    30
-             :>/m2 {:x 10
-                    :y 20}
-             :>/m3 {:x 10
-                    :y 30}
-             :>/m4 {:x 10
-                    :y 40}})))))
+    (check-all-runners (pci/register {::map-select? true}
+                                     [(pco/resolver 'batch
+                                        {::pco/batch? true
+                                         ::pco/input  [:x]
+                                         ::pco/output [:y]}
+                                        (fn [_ xs]
+                                          (mapv #(array-map :y (inc (:x %))) xs)))])
+      {:x 10}
+      '[:y
+        {:>/go [:y]}]
+      {:y    11
+       :>/go {:y 11}})))
 
 (deftest run-graph!-recursive-test
   (testing "unbounded recursive query"
@@ -2830,11 +2802,11 @@
                  (if-let [x (-> env ::pcp/graph (pcp/entry-ast k) :params :xx)]
                    (merge-attr (assoc env :x x) m k v)
                    (merge-attr env m k v))))}))
-      {}
+      {:foo {:xx 42}}
       [:x
-       {'(:>/foo {:xx 42}) [:x]}]
+       {'(:foo {:xx 42}) [:x]}]
       {:x nil
-       :>/foo {:x 42}}))
+       :foo {:x 42}}))
 
   (testing "works on idents"
     (check-all-runners

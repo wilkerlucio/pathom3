@@ -1,6 +1,6 @@
 (ns com.wsscode.pathom3.format.eql-test
   (:require
-    [clojure.test :refer [deftest is are run-tests testing]]
+    [clojure.test :refer [deftest is testing]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
@@ -44,6 +44,48 @@
                 :key          :bar,
                 :query        [:baz],
                 :children     [{:type :prop, :dispatch-key :baz, :key :baz}]}}))
+
+  (testing "repetitions go away"
+    (is (= (pf.eql/index-ast (eql/query->ast [:a :b :a :a :c :b]))
+           {:a {:type :prop, :dispatch-key :a, :key :a},
+            :b {:type :prop, :dispatch-key :b, :key :b},
+            :c {:type :prop, :dispatch-key :c, :key :c}})))
+
+  (testing "placeholders get add"
+    (is (= (pf.eql/index-ast (eql/query->ast [:foo
+                                              {:>/ph [:bar]}]))
+           {:foo {:type :prop, :dispatch-key :foo, :key :foo},
+            :bar {:type :prop, :dispatch-key :bar, :key :bar}}))
+
+    (is (= (pf.eql/index-ast (eql/query->ast [:foo
+                                              {:>/ph [:bar
+                                                      {:>/more [:baz]}]}]))
+           {:foo {:type :prop, :dispatch-key :foo, :key :foo},
+            :bar {:type :prop, :dispatch-key :bar, :key :bar},
+            :baz {:type :prop, :dispatch-key :baz, :key :baz}})))
+
+  (testing "errors on different params"
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Can't merge different params"
+          (pf.eql/index-ast (eql/query->ast '[(:a {:x 1}) (:a {:y 1})])))))
+
+  (testing "merging sub queries"
+    (is (= (pf.eql/index-ast (eql/query->ast [{:bar [:baz]} {:bar [:bur]}]))
+           {:bar {:type         :join,
+                  :dispatch-key :bar,
+                  :key          :bar,
+                  :children     [{:type :prop, :dispatch-key :baz, :key :baz}
+                                 {:type :prop, :dispatch-key :bur, :key :bur}]}}))
+
+    (testing "under placeholder"
+      (is (= (pf.eql/index-ast (eql/query->ast [{:bar [:baz]}
+                                                {:>/ph [{:bar [:bur]}]}]))
+             {:bar {:type         :join,
+                    :dispatch-key :bar,
+                    :key          :bar,
+                    :children     [{:type :prop, :dispatch-key :baz, :key :baz}
+                                   {:type :prop, :dispatch-key :bur, :key :bur}]}}))))
 
   (testing "remove *"
     (is (= (pf.eql/index-ast (eql/query->ast [:foo '*]))
@@ -112,6 +154,10 @@
                                       :b [:b]
                                       :c [:ccc]}}])
            {:foo [{:aa 2} {:b 2} {:ccc 300}]})))
+
+  (testing "placeholders"
+    (is (= (pf.eql/map-select {} {:a 1} [{:>/ph [:a]}])
+           {:>/ph {:a 1}})))
 
   (testing "*"
     (is (= (pf.eql/map-select {} {:foo 1 :bar 2} [:foo '*])
