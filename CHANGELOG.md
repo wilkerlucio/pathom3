@@ -1,11 +1,11 @@
 # Changelog
 
 ## [NEXT]
-- Add support for ::pcr/wrap-merge-attribute hook in async and parallel runners
-- Add support for ::pcr/wrap-merge-attribute hook on idents (all runners)
+- Add support for `::pcr/wrap-merge-attribute` hook in async and parallel runners
+- Add support for `::pcr/wrap-merge-attribute` hook on idents (all runners)
 - BREAKING: modified semantics for placeholders
 - Add extension point `::pf.eql/wrap-index-ast-entry`
-- BREAKING: ::p.error/wrap-attribute-error now takes 3 arguments: env, entity, k
+- BREAKING: `::p.error/wrap-attribute-error` now takes 3 arguments: env, entity, k
 
 ## [2022.07.08-alpha]
 - Fix: Exceptions that occur inside `p.a.eql/process` in JVM won't include the entire stacktrace anymore. (issue #142)
