@@ -89,7 +89,24 @@
 
   (testing "remove *"
     (is (= (pf.eql/index-ast (eql/query->ast [:foo '*]))
-           {:foo {:type :prop, :dispatch-key :foo, :key :foo},}))))
+           {:foo {:type :prop, :dispatch-key :foo, :key :foo},})))
+
+  (testing "::wrap-index-ast-entry"
+    (testing "can ignore placeholder parts"
+      (is (= (pf.eql/index-ast
+               (p.plugin/register
+                 {::p.plugin/id 'cancel
+                  ::pf.eql/wrap-index-ast-entry
+                  (fn [wrap-entry]
+                    (fn [env m node]
+                      (if (some-> node :params :skip?)
+                        m
+                        (wrap-entry env m node))))})
+               (eql/query->ast [:foo
+                                {'(:>/ph {:skip? true}) [:bar]}
+                                {:>/ph2 [:baz]}]))
+             {:foo {:type :prop, :dispatch-key :foo, :key :foo},
+              :baz {:type :prop, :dispatch-key :baz, :key :baz}})))))
 
 (def protected-list #{:foo})
 

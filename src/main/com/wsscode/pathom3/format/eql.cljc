@@ -319,19 +319,22 @@
    [map? map? :edn-query-language.ast/node => ::prop->ast]
    (-> (into [] (remove #(-> % :type (= :call))) children)
        (->> (reduce
-              (fn [m {:keys [key] :as node}]
-                (cond
-                  (pph/placeholder-key? env key)
-                  (index-ast env m node)
+              (fn [m node]
+                (p.plugin/run-with-plugins env ::wrap-index-ast-entry
+                  (fn [env m {:keys [key] :as node}]
+                    (cond
+                      (pph/placeholder-key? env key)
+                      (index-ast env m node)
 
-                  (not (contains? m key))
-                  (assoc m key node)
+                      (not (contains? m key))
+                      (assoc m key node)
 
-                  (and (contains? m key)
-                       (not= node (get m key)))
-                  (update m key merge-nodes node)
+                      (and (contains? m key)
+                           (not= node (get m key)))
+                      (update m key merge-nodes node)
 
-                  :else
-                  m))
+                      :else
+                      m))
+                  env m node))
               index))
        (dissoc '*))))
