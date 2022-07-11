@@ -95,7 +95,7 @@
   [env source {:keys [key query type] :as ast}]
   (if-let [x (or (find source key)
                  (if (pph/placeholder-key? env key)
-                   (coll/make-map-entry key source)))]
+                   (coll/make-map-entry key (vary-meta source dissoc :com.wsscode.pathom3.connect.runner/run-stats))))]
     (let [val (val x)
           ast (if (recursive-query? query) (:parent-ast ast) ast)
           ast (update ast :children #(or % [{:key          '*
