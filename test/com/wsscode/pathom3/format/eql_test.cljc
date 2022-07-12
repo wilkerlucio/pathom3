@@ -4,13 +4,17 @@
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.pathom3.test.helpers :as th]
     [edn-query-language.core :as eql]))
+
+(defn with-rs [x]
+  (with-meta x {:com.wsscode.pathom3.connect.runner/run-stats {}}))
 
 (deftest query-root-properties-test
   (is (= (pf.eql/query-root-properties [{:a [:b]} :c])
          [:a :c]))
 
-  (is (= (pf.eql/query-root-properties {:foo  [{:a [:b]} :c]
+  (is (= (pf.eql/query-root-properties {:foo [{:a [:b]} :c]
                                         :bar [:a :d]})
          [:a :c :d])))
 
@@ -269,7 +273,30 @@
     (is (= (pf.eql/map-select {}
                               {'foo {:com.wsscode.pathom3.connect.runner/mutation-error "x"}}
                               '[{(foo) [:bar]}])
-           {'foo {:com.wsscode.pathom3.connect.runner/mutation-error "x"}}))))
+           {'foo {:com.wsscode.pathom3.connect.runner/mutation-error "x"}})))
+
+  (testing "transient stats"
+    (is (= (th/expose-meta
+             (pf.eql/map-select {}
+                                (with-rs {:bar 10
+                                          :foo (with-rs {:a 1})})
+                                [:bar]))
+           {:bar                                   10,
+            :com.wsscode.pathom3.test.helpers/meta {:com.wsscode.pathom3.connect.runner/run-stats {:com.wsscode.pathom3.connect.runner/transient-stats {:foo {}}}}}))
+
+    (testing "placeholders don't get transient meta"
+      (is (= (th/expose-meta
+               (pf.eql/map-select {}
+                                  (with-rs {:bar  10
+                                            :foo  (with-rs {:a 1})
+                                            :>/ph (with-rs {:bar 10
+                                                            :foo (with-rs {:a 1})})})
+                                  [:bar
+                                   {:>/ph [:bar]}]))
+             {:bar                                   10,
+              :>/ph                                  {:bar                                   10,
+                                                      :com.wsscode.pathom3.test.helpers/meta {:com.wsscode.pathom3.connect.runner/run-stats {}}},
+              :com.wsscode.pathom3.test.helpers/meta {:com.wsscode.pathom3.connect.runner/run-stats {:com.wsscode.pathom3.connect.runner/transient-stats {:foo {}}}}})))))
 
 (deftest data->query-test
   (is (= (pf.eql/data->query {}) []))
@@ -382,10 +409,6 @@
                                       :key          :c,
                                       :children     [{:type :prop, :dispatch-key :d, :key :d}]}]}]})))
 
-
-(defn with-rs [x]
-  (with-meta x {:com.wsscode.pathom3.connect.runner/run-stats {}}))
-
 (deftest stats-value?-test
   (is (= (pf.eql/stats-value? {})
          false))
@@ -405,6 +428,7 @@
 (deftest select-stats-data-test
   (is (= (pf.eql/select-stats-data
            {:foo   "bar"
+            :bar   {}
             :other (with-rs {:a 1
                              :b (with-rs {:d 1})})
             :more  [(with-rs {:b 1})

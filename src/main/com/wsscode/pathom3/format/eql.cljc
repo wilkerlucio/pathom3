@@ -166,10 +166,10 @@
           val
 
           (map? val)
-          (map-select-ast env val ast)
+          (map-select-ast (assoc env ::parent-key key) val ast)
 
           (coll/collection? val)
-          (into (empty val) (map #(map-select-ast env % ast))
+          (into (empty val) (map #(map-select-ast (assoc env ::parent-key key) % ast))
                 (cond-> val
                   (coll/coll-append-at-head? val)
                   reverse))
@@ -179,7 +179,7 @@
 
 (>defn map-select-ast
   "Same as map-select, but using AST as source."
-  [{::keys [map-select-include]
+  [{::keys [map-select-include parent-key]
     :as    env} source ast]
   [map? any? (s/keys :opt-un [:edn-query-language.ast/children])
    => any?]
@@ -197,7 +197,8 @@
                              (cond->>
                                (ast-contains-wildcard? ast)
                                (extend-ast-with-wildcard source))))]
-      (if (stats-value? source)
+      (if (and (stats-value? source)
+               (not (pph/placeholder-key? env parent-key)))
         (let [transient-attrs (into {}
                                     (comp (filter
                                             (fn [entry]

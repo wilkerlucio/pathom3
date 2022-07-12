@@ -2385,7 +2385,23 @@
                                                         ::pcr/mutation-run-finish-ms
                                                         ::pcr/node-run-start-ms
                                                         ::pcr/node-run-finish-ms])}}
-             (-> % meta ::pcr/run-stats))))))
+             (-> % meta ::pcr/run-stats)))))
+
+  (testing "placeholders"
+    (run-graph
+      (pci/register (pbir/constantly-resolver :a 1))
+      {}
+      [:a])
+
+    (testing "transient status"
+      (comment
+
+        (run-graph
+          (pci/register {::map-select? true}
+            [(pbir/constantly-resolver :a 1)
+             (pbir/single-attr-resolver :a :b inc)])
+          {}
+          [:b])))))
 
 (deftest run-graph!-params-test
   (is (graph-response?
