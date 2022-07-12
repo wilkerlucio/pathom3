@@ -733,10 +733,11 @@
   has params, params in placeholders means that you want some specific data at that
   point."
   [{::pcp/keys [graph] :as env}]
-  (reduce
-    (fn [out ph] (assoc out ph (p.ent/entity env)))
-    {}
-    (::pcp/placeholders graph)))
+  (let [entity (p.ent/entity env)]
+    (reduce
+      (fn [out ph] (assoc out ph entity))
+      {}
+      (::pcp/placeholders graph))))
 
 (defn run-foreign-mutation
   [env {:keys [key] :as ast}]
