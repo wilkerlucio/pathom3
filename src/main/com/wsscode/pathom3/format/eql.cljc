@@ -307,7 +307,7 @@
   (-> (merge-params node1 node2)
       (merge-ast-children node2)))
 
-(defn- index-ast-item [m {:keys [key] :as node}]
+(defn index-ast-item [m {:keys [key] :as node}]
   (cond
     (not (contains? m key))
     (assoc m key node)
