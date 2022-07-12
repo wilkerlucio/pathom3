@@ -514,8 +514,11 @@
 (defn run-graph-entity-done [env]
   (p/do!
     ; placeholders
-    (if (-> env ::pcp/graph ::pcp/placeholders)
-      (merge-resolver-response! env (pcr/placeholder-merge-entity env)))
+    (if-let [placeholders (-> env ::pcp/graph ::pcp/placeholders)]
+      (p/let [entity (p.ent/entity env)
+              maps   (p/all (mapv (fn [ph] (merge-entity-data env {} {ph entity})) placeholders))
+              joined (reduce merge {} maps)]
+        (p.ent/swap-entity! env merge joined)))
     ; entity ready
     (p.plugin/run-with-plugins env ::pcr/wrap-entity-ready! pcr/run-graph-done! env)))
 
