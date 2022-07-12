@@ -91,34 +91,8 @@
 (defn recursive-query? [query]
   (or (= '... query) (int? query)))
 
-(defn map-select-entry
-  [env source {:keys [key query type] :as ast}]
-  (if-let [x (find source key)]
-    (let [val (val x)
-          ast (if (recursive-query? query) (:parent-ast ast) ast)
-          ast (update ast :children #(or % [{:key          '*
-                                             :dispatch-key '*}]))]
-      (coll/make-map-entry
-        key
-        (cond
-          (and (refs/kw-identical? type :call)
-               (:com.wsscode.pathom3.connect.runner/mutation-error val))
-          val
-
-          (map? val)
-          (map-select-ast env val ast)
-
-          (coll/collection? val)
-          (into (empty val) (map #(map-select-ast env % ast))
-                (cond-> val
-                  (coll/coll-append-at-head? val)
-                  reverse))
-
-          :else
-          val)))))
-
 (defn ast-contains-wildcard?
-  "Check if some of the AST children is the wildcard value, which is *."
+  "Check if some AST children is the wildcard value, which is *."
   [{:keys [children]}]
   (boolean (some #{'*} (map :key children))))
 
@@ -176,6 +150,32 @@
                   x)
       (coll/coll-append-at-head? x)
       reverse)))
+
+(defn map-select-entry
+  [env source {:keys [key query type] :as ast}]
+  (if-let [x (find source key)]
+    (let [val (val x)
+          ast (if (recursive-query? query) (:parent-ast ast) ast)
+          ast (update ast :children #(or % [{:key          '*
+                                             :dispatch-key '*}]))]
+      (coll/make-map-entry
+        key
+        (cond
+          (and (refs/kw-identical? type :call)
+               (:com.wsscode.pathom3.connect.runner/mutation-error val))
+          val
+
+          (map? val)
+          (map-select-ast env val ast)
+
+          (coll/collection? val)
+          (into (empty val) (map #(map-select-ast env % ast))
+                (cond-> val
+                  (coll/coll-append-at-head? val)
+                  reverse))
+
+          :else
+          val)))))
 
 (>defn map-select-ast
   "Same as map-select, but using AST as source."
