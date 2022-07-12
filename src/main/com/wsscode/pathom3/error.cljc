@@ -5,9 +5,9 @@
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.planner :as pcp]
+    [com.wsscode.pathom3.placeholder :as pph]
     [com.wsscode.pathom3.plugin :as p.plugin]
-    #?(:cljs [goog.object :as gobj])
-    [com.wsscode.pathom3.placeholder :as pph])
+    #?(:cljs [goog.object :as gobj]))
   #?(:clj
      (:import
        (java.io
@@ -99,13 +99,16 @@
   (if (scan-for-errors? entity)
     (let [ast    (-> entity meta
                      :com.wsscode.pathom3.connect.runner/run-stats
-                     :com.wsscode.pathom3.connect.planner/index-ast)
+                     ::pcp/source-ast)
           errors (into {}
-                       (keep (fn [k]
-                               (if-let [error (p.plugin/run-with-plugins env ::wrap-attribute-error
-                                                attribute-error env entity k)]
-                                 (coll/make-map-entry k error))))
-                       (keys ast))]
+                       (comp (map :key)
+                             (filter keyword?)
+                             (remove #(pph/placeholder-key? env %))
+                             (keep (fn [k]
+                                     (if-let [error (p.plugin/run-with-plugins env ::wrap-attribute-error
+                                                      attribute-error env entity k)]
+                                       (coll/make-map-entry k error)))))
+                       (:children ast))]
       (cond-> entity
         (seq errors)
         (assoc :com.wsscode.pathom3.connect.runner/attribute-errors errors)))

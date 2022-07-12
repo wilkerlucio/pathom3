@@ -512,7 +512,12 @@
     (::pcp/mutations graph)))
 
 (defn run-graph-entity-done [env]
-  (p.plugin/run-with-plugins env ::pcr/wrap-entity-ready! pcr/run-graph-done! env))
+  (p/do!
+    ; placeholders
+    (if (-> env ::pcp/graph ::pcp/placeholders)
+      (merge-resolver-response! env (pcr/placeholder-merge-entity env)))
+    ; entity ready
+    (p.plugin/run-with-plugins env ::pcr/wrap-entity-ready! pcr/run-graph-done! env)))
 
 (defn run-root-node!
   [{::pcp/keys [graph] :as env}]

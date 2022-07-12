@@ -642,21 +642,40 @@
               {})))
 
       (testing "error"
-        (check
-          (run-graph
-            (pci/register
-              {::p.error/lenient-mode? true}
-              (pbir/constantly-fn-resolver :err (fn [_] (throw (ex-info "error" {})))))
-            {}
-            [(pco/? :err)])
-          => {::pcr/attribute-errors
-              {:err
-               {::p.error/cause
-                ::p.error/node-errors
+        (check-all-runners
+          (pci/register
+            {::p.error/lenient-mode? true}
+            (pbir/constantly-fn-resolver :err (fn [_] (throw (ex-info "error" {})))))
+          {}
+          [(pco/? :err)]
+          {::pcr/attribute-errors
+           {:err
+            {::p.error/cause
+             ::p.error/node-errors
 
-                ::p.error/node-error-details
-                {1 {::p.error/cause     ::p.error/node-exception
-                    ::p.error/exception {::p.error/error-message #"error"}}}}}})))))
+             ::p.error/node-error-details
+             {1 {::p.error/cause     ::p.error/node-exception
+                 ::p.error/exception {::p.error/error-message #"error"}}}}}}))
+
+      (testing "placeholders"
+        (check-all-runners
+          (pci/register
+            {::p.error/lenient-mode? true}
+            [(pbir/constantly-fn-resolver :err (fn [_] (throw (ex-info "error" {}))))
+             (pbir/constantly-fn-resolver :err1 (fn [_] (throw (ex-info "error" {}))))])
+          {}
+          [(pco/? :err)
+           {:>/foo [:err1]}]
+          {::pcr/attribute-errors
+           {:err
+            {::p.error/cause
+             ::p.error/node-errors}}
+
+           :>/foo
+           {::pcr/attribute-errors
+            {:err1
+             {::p.error/cause
+              ::p.error/node-errors}}}})))))
 
 (deftest run-graph!-final-test
   (testing "map value"
