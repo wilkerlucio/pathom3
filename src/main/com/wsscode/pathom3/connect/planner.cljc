@@ -281,6 +281,12 @@
   (or (::run-and node)
       (::run-or node)))
 
+(defn node-branch-type
+  [node]
+  (cond
+    (::run-and node) ::run-and
+    (::run-or node) ::run-or))
+
 (>defn branch-node?
   "Returns true when the node is a branch node type."
   [node]
@@ -347,7 +353,7 @@
     (update-in graph [::nodes node-id] dissoc ::run-next)))
 
 (defn set-node-run-next
-  "Set the node run next value and add the node-parent counter part. Noop if target
+  "Set the node run next value and add the node-parent counterpart. Noop if target
   and run next are the same node."
   ([graph run-next] (set-node-run-next graph (::root graph) run-next))
   ([graph target-node-id run-next]
@@ -456,6 +462,15 @@
     (-> graph
         (remove-from-parent-branches node)
         (remove-run-next-edge node-id))))
+
+(defn move-branch-item-node
+  "Move a branch item from source parent target parent."
+  [graph target-parent-id node-id]
+  (let [node        (get-node graph node-id)
+        branch-type (-> (get-node graph target-parent-id)
+                        (node-branch-type))]
+    (-> (remove-from-parent-branches graph node)
+        (add-branch-to-node target-parent-id branch-type node-id))))
 
 (defn disj-rem [m k item]
   (let [new-val (disj (get m k) item)]
@@ -714,8 +729,8 @@
           (reduce
             (fn [g {::keys [node-id run-next]}]
               (-> g
-                  (add-branch-to-node (::node-id and-node) ::run-and run-next)
-                  (remove-node-parent run-next node-id)))
+                  (remove-node-parent run-next node-id)
+                  (add-branch-to-node (::node-id and-node) ::run-and run-next)))
             <>
             run-next-nodes)
           (set-node-run-next <> pivot (::node-id and-node))))
@@ -1859,12 +1874,57 @@
             (recur graph node-ids)))
         graph))))
 
+(defn compare-AND-children-denorm [node]
+  (select-keys node [::pco/op-name ::run-and ::run-or ::run-next]))
+
+(defn merge-sibling-equal-branches
+  [graph env [target-node-id & mergeable-siblings-ids]]
+  (add-snapshot! graph env
+                 {::snapshot-message "Merge AND siblings with same branches"
+                  ::highlight-nodes  (into #{target-node-id} mergeable-siblings-ids)
+                  ::highlight-styles {target-node-id 1}})
+  (as-> graph <>
+    (reduce
+      (fn [graph node-id]
+        (let [{::keys [run-and]} (get-node graph node-id)]
+          (reduce
+            #(move-branch-item-node % target-node-id %2)
+            graph
+            run-and)))
+      <>
+      mergeable-siblings-ids)
+    (combine-run-next <> env (conj mergeable-siblings-ids target-node-id) target-node-id)
+    (reduce remove-node <> mergeable-siblings-ids)
+    (add-snapshot! <> env {::snapshot-message "Merge done"
+                           ::highlight-nodes  #{target-node-id}})))
+
+(defn optimize-AND-siblings-with-same-braches
+  [graph env node-id]
+  (let [{::keys [run-and]} (get-node graph node-id)
+        node-ids           (->> run-and
+                                (keep (fn [nid]
+                                        (let [{::keys [run-and node-id]} (get-node graph nid)]
+                                          (if run-and node-id)))))
+        graph'             (as-> graph <>
+                             (assoc <> ::denorm-update-node compare-AND-children-denorm)
+                             (reduce #(-> (update-in % [::nodes %2] dissoc ::run-next)
+                                          (denormalize-node %2)) <> node-ids))
+        same-branch-groups (->> node-ids
+                                (group-by #(get-denormalized-node graph' %))
+                                (coll/filter-vals #(> (count %) 1)))
+        mergeable-groups   (vals same-branch-groups)]
+    (if (seq mergeable-groups)
+      (-> (reduce #(merge-sibling-equal-branches % env %2) graph mergeable-groups)
+          (optimize-branch-items env node-id))
+      graph)))
+
 (defn optimize-AND-branches
   [graph env node-id]
   (-> graph
       (optimize-branch-items env node-id)
       (optimize-AND-nested env node-id)
       (optimize-AND-resolvers-pass env node-id)
+      (optimize-AND-siblings-with-same-braches env node-id)
       (simplify-branch-node env node-id)))
 
 (defn sub-sequence? [seq-a seq-b]
@@ -1895,8 +1955,8 @@
 
 (defn optimize-OR-sub-paths
   "This function looks to match branches of the OR node that are
-  sub-paths of each other. In this case we can merge those chains
-  and return the number of branches in the OR node.
+  sub-paths of each other (eg: A, A -> B, merge to just A -> B). In this case we can
+  merge those chains and return the number of branches in the OR node.
 
   At this moment this fn only deals with paths that have only resolvers,
   it may look for paths with sub-branches in the future."
