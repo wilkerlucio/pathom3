@@ -748,7 +748,7 @@
         (set-node-run-next (::node-id leaf) node-to-move-id))))
 
 (>defn simplify-branch-node
-  "When a branch node contains a single branch out, remove the AND node and put that
+  "When a branch node contains a single branch out, remove the node and put that
   single item in place.
 
   Note in case the branch has a run-next, that run-next gets moved to the end of chain
@@ -772,6 +772,7 @@
             (::run-next node)
             (move-run-next-to-edge target-node-id (::run-next node)))
           (transfer-node-parents target-node-id node-id)
+          (update-node target-node-id nil combine-expects node)
           (remove-node-edges node-id)
           (remove-node node-id)
           (add-snapshot! env {::snapshot-message "Simplification done"
@@ -1880,39 +1881,46 @@
 (defn merge-sibling-equal-branches
   [graph env [target-node-id & mergeable-siblings-ids]]
   (add-snapshot! graph env
-                 {::snapshot-message "Merge AND siblings with same branches"
+                 {::snapshot-message "Merge siblings of same type with same branches"
                   ::highlight-nodes  (into #{target-node-id} mergeable-siblings-ids)
                   ::highlight-styles {target-node-id 1}})
   (as-> graph <>
     (reduce
       (fn [graph node-id]
-        (let [{::keys [run-and]} (get-node graph node-id)]
+        (let [node         (get-node graph node-id)
+              branch-items (node-branches node)]
           (reduce
             #(move-branch-item-node % target-node-id %2)
             graph
-            run-and)))
+            branch-items)))
       <>
       mergeable-siblings-ids)
     (combine-run-next <> env (conj mergeable-siblings-ids target-node-id) target-node-id)
-    (reduce remove-node <> mergeable-siblings-ids)
+    (reduce (fn [graph node-id]
+              (-> graph
+                  (update-node target-node-id nil combine-expects (get-node graph node-id))
+                  (remove-node node-id))) <> mergeable-siblings-ids)
     (add-snapshot! <> env {::snapshot-message "Merge done"
                            ::highlight-nodes  #{target-node-id}})))
 
-(defn optimize-AND-siblings-with-same-braches
+(defn optimize-siblings-with-same-braches
   [graph env node-id]
-  (let [{::keys [run-and]} (get-node graph node-id)
-        node-ids           (->> run-and
+  (let [branches           (-> (get-node graph node-id) node-branches)
+        node-ids           (->> branches
                                 (keep (fn [nid]
-                                        (let [{::keys [run-and node-id]} (get-node graph nid)]
-                                          (if run-and node-id)))))
-        graph'             (as-> graph <>
+                                        (let [node (get-node graph nid)]
+                                          (if (node-branch-type node) nid)))))
+        denorm-index       (as-> graph <>
                              (assoc <> ::denorm-update-node compare-AND-children-denorm)
                              (reduce #(-> (update-in % [::nodes %2] dissoc ::run-next)
                                           (denormalize-node %2)) <> node-ids))
         same-branch-groups (->> node-ids
-                                (group-by #(get-denormalized-node graph' %))
+                                (group-by #(get-denormalized-node denorm-index %))
                                 (coll/filter-vals #(> (count %) 1)))
         mergeable-groups   (vals same-branch-groups)]
+    (when (= 15 node-id)
+      (tap> ["NIDS" node-ids]))
+    (if (seq mergeable-groups) (tap> ["G" mergeable-groups]))
     (if (seq mergeable-groups)
       (-> (reduce #(merge-sibling-equal-branches % env %2) graph mergeable-groups)
           (optimize-branch-items env node-id))
@@ -1924,7 +1932,7 @@
       (optimize-branch-items env node-id)
       (optimize-AND-nested env node-id)
       (optimize-AND-resolvers-pass env node-id)
-      (optimize-AND-siblings-with-same-braches env node-id)
+      (optimize-siblings-with-same-braches env node-id)
       (simplify-branch-node env node-id)))
 
 (defn sub-sequence? [seq-a seq-b]
@@ -1946,7 +1954,9 @@
                 (-> graph
                     (add-snapshot! env {::snapshot-message "Merge sibling resolvers from same OR sub-path"
                                         ::highlight-nodes  #{target-node-id source-node-id}})
-                    (merge-sibling-resolver-node target-node-id source-node-id)))
+                    (merge-sibling-resolver-node target-node-id source-node-id)
+                    (add-snapshot! env {::snapshot-message "Merged"
+                                        ::highlight-nodes  #{target-node-id}})))
               graph
               (mapv vector chain chain'))
             (assoc-node last-target-node-id ::node-resolution-checkpoint? true))))
@@ -2018,6 +2028,7 @@
       (optimize-branch-items env node-id)
       (optimize-OR-sub-paths env node-id)
       (optimize-nested-OR env node-id)
+      (optimize-siblings-with-same-braches env node-id)
       (simplify-branch-node env node-id)))
 
 (defn optimize-resolver-chain?
