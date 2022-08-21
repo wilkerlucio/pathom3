@@ -3710,6 +3710,101 @@
                          5 {::pcp/run-and #{1}}},
                  :root  1})))
 
+(deftest denormalize-node-test
+  (check
+    (pcp/denormalize-node (compute-run-graph
+                            {::resolvers [(pbir/constantly-resolver :a 1)]
+                             ::eql/query [:a]})
+      1)
+    => '{:com.wsscode.pathom3.connect.planner/nodes-denormalized
+         {1 {:com.wsscode.pathom3.connect.operation/op-name -unqualified/a--const,
+             :com.wsscode.pathom3.connect.planner/expects   {:a {}},
+             :com.wsscode.pathom3.connect.planner/input     {},}}})
+
+  (check
+    (pcp/denormalize-node (compute-run-graph
+                            {::resolvers [(pbir/constantly-resolver :a 1)
+                                          (pbir/alias-resolver :a :b)]
+                             ::eql/query [:b]})
+      2)
+    => '{:com.wsscode.pathom3.connect.planner/nodes-denormalized
+         {1 {:com.wsscode.pathom3.connect.operation/op-name -unqualified/a->b--alias,
+             :com.wsscode.pathom3.connect.planner/expects   {:b {}},
+             :com.wsscode.pathom3.connect.planner/input     {:a {}},},
+          2 {:com.wsscode.pathom3.connect.operation/op-name -unqualified/a--const,
+             :com.wsscode.pathom3.connect.planner/expects   {:a {}},
+             :com.wsscode.pathom3.connect.planner/input     {},
+             :com.wsscode.pathom3.connect.planner/run-next  {:com.wsscode.pathom3.connect.operation/op-name -unqualified/a->b--alias,
+                                                             :com.wsscode.pathom3.connect.planner/expects   {:b {}},
+                                                             :com.wsscode.pathom3.connect.planner/input     {:a {}},}}}})
+
+  (check
+    (pcp/denormalize-node (compute-run-graph
+                            {::resolvers [(pbir/constantly-resolver :a 1)
+                                          (pbir/constantly-resolver :b 2)]
+                             ::eql/query [:a :b]})
+      3)
+    => '{:com.wsscode.pathom3.connect.planner/nodes-denormalized
+         {1 {:com.wsscode.pathom3.connect.operation/op-name -unqualified/a--const,
+             :com.wsscode.pathom3.connect.planner/expects   {:a {}},
+             :com.wsscode.pathom3.connect.planner/input     {}},
+          2 {:com.wsscode.pathom3.connect.operation/op-name -unqualified/b--const,
+             :com.wsscode.pathom3.connect.planner/expects   {:b {}},
+             :com.wsscode.pathom3.connect.planner/input     {}},
+          3 {:com.wsscode.pathom3.connect.planner/run-and #{{:com.wsscode.pathom3.connect.operation/op-name -unqualified/a--const,
+                                                             :com.wsscode.pathom3.connect.planner/expects   {:a {}},
+                                                             :com.wsscode.pathom3.connect.planner/input     {}}
+                                                            {:com.wsscode.pathom3.connect.operation/op-name -unqualified/b--const,
+                                                             :com.wsscode.pathom3.connect.planner/expects   {:b {}},
+                                                             :com.wsscode.pathom3.connect.planner/input     {}}}}}})
+
+  (check
+    (pcp/denormalize-node (compute-run-graph
+                            {::resolvers [(pbir/constantly-resolver :a 1)
+                                          (pco/update-config (pbir/constantly-resolver :a 2)
+                                            assoc ::pco/op-name 'a2)]
+                             ::eql/query [:a]})
+      3)
+    => '{:com.wsscode.pathom3.connect.planner/nodes-denormalized
+         {1 {:com.wsscode.pathom3.connect.operation/op-name a2,
+             :com.wsscode.pathom3.connect.planner/expects   {:a {}},
+             :com.wsscode.pathom3.connect.planner/input     {}},
+          2 {:com.wsscode.pathom3.connect.operation/op-name -unqualified/a--const,
+             :com.wsscode.pathom3.connect.planner/expects   {:a {}},
+             :com.wsscode.pathom3.connect.planner/input     {}},
+          3 {:com.wsscode.pathom3.connect.planner/expects {:a {}},
+             :com.wsscode.pathom3.connect.planner/run-or
+             #{{:com.wsscode.pathom3.connect.operation/op-name
+                -unqualified/a--const,
+                :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                :com.wsscode.pathom3.connect.planner/input   {}}
+               {:com.wsscode.pathom3.connect.operation/op-name a2,
+                :com.wsscode.pathom3.connect.planner/expects   {:a {}},
+                :com.wsscode.pathom3.connect.planner/input     {}}}}}})
+
+  (testing "denorm update node"
+    (check
+      (pcp/denormalize-node
+        (-> (compute-run-graph
+              {::resolvers [(pbir/constantly-resolver :a 1)
+                            (pbir/alias-resolver :a :b)]
+               ::eql/query [:b]})
+            (assoc ::pcp/denorm-update-node
+              #(assoc % :foo "bar")))
+        2)
+      => '{:com.wsscode.pathom3.connect.planner/nodes-denormalized
+           {1 {:com.wsscode.pathom3.connect.operation/op-name -unqualified/a->b--alias,
+               :com.wsscode.pathom3.connect.planner/expects   {:b {}}
+               :com.wsscode.pathom3.connect.planner/input     {:a {}},
+               :foo                                           "bar",},
+            2 {:com.wsscode.pathom3.connect.operation/op-name -unqualified/a--const,
+               :com.wsscode.pathom3.connect.planner/expects   {:a {}}
+               :com.wsscode.pathom3.connect.planner/input     {},
+               :com.wsscode.pathom3.connect.planner/run-next  {:com.wsscode.pathom3.connect.operation/op-name -unqualified/a->b--alias,
+                                                               :com.wsscode.pathom3.connect.planner/expects   {:b {}},
+                                                               :com.wsscode.pathom3.connect.planner/input     {:a {}},},
+               :foo                                           "bar"}}})))
+
 (deftest find-root-resolver-nodes-test
   (is (= (pcp/find-root-resolver-nodes
            {::pcp/nodes {1 {::pco/op-name 'res}}

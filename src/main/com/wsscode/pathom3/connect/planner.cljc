@@ -189,6 +189,11 @@
   "Atom to store each step of the planning process"
   refs/atom?)
 
+(>def ::denorm-update-node
+  "Function to update denormalized node before indexing it. Useful for post processing,
+  for example to keep only a subset of the node data, to enable direct comparison."
+  fn?)
+
 ; endregion
 
 (declare add-snapshot! compute-run-graph compute-run-graph* compute-attribute-graph
@@ -636,6 +641,35 @@
               (transfer-node-parent g target-node-id source-node-id node-id))
             <>
             parents)))))
+
+(declare denormalize-node)
+
+(defn get-denormalized-node [graph node-id]
+  (get-in graph [::nodes-denormalized node-id]))
+
+(defn denormalize-node
+  "Compute a version of the node that contains all forward references denormalized. It means
+  instead of having the ids at run-next/branches (both OR and AND) the node will have
+  the node data itself directly there. The denormalized version is added using the node-id
+  at the ::nodes-denormalized key in the graph. All subsequent nodes are also denormalized
+  in the process and also add to ::nodes-denormalized, so a lookup for then will be
+  also readly available."
+  [{::keys [denorm-update-node] :as graph} node-id]
+  (if (get-denormalized-node graph node-id)
+    graph
+    (let [{::keys [run-next run-and run-or] :as node} (get-node graph node-id)
+          branches (node-branches node)
+          graph'   (cond-> graph
+                     run-next (denormalize-node run-next)
+                     branches (as-> <> (reduce denormalize-node <> branches)))
+
+          node'    (cond-> node
+                     run-next (assoc ::run-next (get-denormalized-node graph' run-next))
+                     run-and (assoc ::run-and (into #{} (map #(get-denormalized-node graph' %)) branches))
+                     run-or (assoc ::run-or (into #{} (map #(get-denormalized-node graph' %)) branches))
+
+                     denorm-update-node denorm-update-node)]
+      (assoc-in graph' [::nodes-denormalized node-id] node'))))
 
 (defn combine-expects [na nb]
   (update na ::expects pfsd/merge-shapes (::expects nb)))
