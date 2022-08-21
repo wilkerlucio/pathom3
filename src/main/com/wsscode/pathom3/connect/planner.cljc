@@ -420,30 +420,34 @@
         branches)
       graph)))
 
+(defn remove-from-parent-branch
+  "Disconnect a branch node from its parents."
+  [graph node-id parent-id]
+  (let [parent-node (get-node graph parent-id)]
+    (cond
+      (contains? (::run-and parent-node) node-id)
+      (-> graph
+          (update-node parent-id ::run-and disj node-id)
+          (remove-node-parent node-id parent-id))
+
+      (contains? (::run-or parent-node) node-id)
+      (-> graph
+          (update-node parent-id ::run-or disj node-id)
+          (remove-node-parent node-id parent-id))
+
+      (= (::run-next parent-node) node-id)
+      (-> graph
+          (set-node-run-next parent-id nil)
+          (remove-node-parent node-id parent-id))
+
+      :else
+      graph)))
+
 (defn remove-from-parent-branches
   "Disconnect a branch node from its parents."
   [graph {::keys [node-id node-parents]}]
   (reduce
-    (fn [g nid]
-      (let [n (get-node graph nid)]
-        (cond
-          (contains? (::run-and n) node-id)
-          (-> g
-              (update-node nid ::run-and disj node-id)
-              (remove-node-parent node-id nid))
-
-          (contains? (::run-or n) node-id)
-          (-> g
-              (update-node nid ::run-or disj node-id)
-              (remove-node-parent node-id nid))
-
-          (= (::run-next n) node-id)
-          (-> g
-              (set-node-run-next nid nil)
-              (remove-node-parent node-id nid))
-
-          :else
-          g)))
+    #(remove-from-parent-branch % node-id %2)
     graph
     node-parents))
 
@@ -1878,21 +1882,24 @@
 (defn compare-AND-children-denorm [node]
   (select-keys node [::pco/op-name ::run-and ::run-or ::run-next]))
 
+(defn move-branches-to-another-node [graph source-node-id target-node-id]
+  (let [node         (get-node graph source-node-id)
+        branch-items (node-branches node)]
+    (reduce
+      #(move-branch-item-node % target-node-id %2)
+      graph
+      branch-items)))
+
 (defn merge-sibling-equal-branches
   [graph env [target-node-id & mergeable-siblings-ids]]
   (add-snapshot! graph env
-                 {::snapshot-message "Merge siblings of same type with same branches"
+                 {::snapshot-message "Merge nodes of same type with same branches"
                   ::highlight-nodes  (into #{target-node-id} mergeable-siblings-ids)
                   ::highlight-styles {target-node-id 1}})
   (as-> graph <>
     (reduce
       (fn [graph node-id]
-        (let [node         (get-node graph node-id)
-              branch-items (node-branches node)]
-          (reduce
-            #(move-branch-item-node % target-node-id %2)
-            graph
-            branch-items)))
+        (move-branches-to-another-node graph node-id target-node-id))
       <>
       mergeable-siblings-ids)
     (combine-run-next <> env (conj mergeable-siblings-ids target-node-id) target-node-id)
@@ -1903,7 +1910,9 @@
     (add-snapshot! <> env {::snapshot-message "Merge done"
                            ::highlight-nodes  #{target-node-id}})))
 
-(defn optimize-siblings-with-same-braches
+(defn optimize-siblings-with-same-branches
+  "When sibling branch nodes are of the same type and have the same branch structure we
+  can merge then."
   [graph env node-id]
   (let [branches           (-> (get-node graph node-id) node-branches)
         node-ids           (->> branches
@@ -1918,12 +1927,57 @@
                                 (group-by #(get-denormalized-node denorm-index %))
                                 (coll/filter-vals #(> (count %) 1)))
         mergeable-groups   (vals same-branch-groups)]
-    (when (= 15 node-id)
-      (tap> ["NIDS" node-ids]))
-    (if (seq mergeable-groups) (tap> ["G" mergeable-groups]))
     (if (seq mergeable-groups)
       (-> (reduce #(merge-sibling-equal-branches % env %2) graph mergeable-groups)
           (optimize-branch-items env node-id))
+      graph)))
+
+(defn- push-parent-and-deps-to-branch [graph env parent-node-id branch-node-id]
+  (let [node         (get-node graph parent-node-id)
+        branch-items (-> (node-branches node)
+                         (disj branch-node-id))]
+    (add-snapshot! graph env {::snapshot-message "Move parent AND branches to children with same structure"
+                              ::highlight-nodes  (node-branches node)
+                              ::highlight-styles {branch-node-id 1}})
+    (-> (reduce
+          #(move-branch-item-node % branch-node-id %2)
+          graph
+          branch-items)
+        (add-snapshot! env {::snapshot-message "Move done"
+                            ::highlight-nodes  (node-branches node)}))))
+
+(defn optimize-nested-branch-with-same-branches
+  "Similar to optimize-siblings-with-same-braches, but looks if a branch node has a children
+  item that has the same branch structure as the parent."
+  [graph env node-id]
+  (let [node            (get-node graph node-id)
+        branch-type     (node-branch-type node)
+        candidate-ids   (->> (get node branch-type)
+                             (keep (fn [node-id]
+                                     (if (= (-> (get-node graph node-id) node-branch-type)
+                                            branch-type)
+                                       node-id))))
+        denorm-index    (as-> graph <>
+                          (assoc <> ::denorm-update-node compare-AND-children-denorm)
+                          (reduce #(-> (set-node-run-next* % %2 nil)
+                                       (denormalize-node %2)) <> (conj candidate-ids node-id)))
+        parent-denormed (get-denormalized-node denorm-index node-id)
+        ; since we merged siblings before, there could be only one mergeable branch
+        mergeable-id    (->> candidate-ids
+                             (coll/find-first
+                               (fn [node-id]
+                                 (let [denorm-item (get-denormalized-node denorm-index node-id)]
+                                   (= (-> parent-denormed
+                                          (update branch-type disj denorm-item)
+                                          (dissoc ::run-next))
+                                      (dissoc denorm-item ::run-next))))))
+        mergeable-node  (get-node graph mergeable-id)]
+    (if mergeable-id
+      (if (and (::run-next node) (::run-next mergeable-node))
+        (-> (push-parent-and-deps-to-branch graph env node-id mergeable-id)
+            (optimize-node env node-id))
+        (-> (merge-sibling-equal-branches graph env [node-id mergeable-id])
+            (optimize-node env node-id)))
       graph)))
 
 (defn optimize-AND-branches
@@ -1932,7 +1986,8 @@
       (optimize-branch-items env node-id)
       (optimize-AND-nested env node-id)
       (optimize-AND-resolvers-pass env node-id)
-      (optimize-siblings-with-same-braches env node-id)
+      (optimize-siblings-with-same-branches env node-id)
+      (optimize-nested-branch-with-same-branches env node-id)
       (simplify-branch-node env node-id)))
 
 (defn sub-sequence? [seq-a seq-b]
@@ -2028,7 +2083,7 @@
       (optimize-branch-items env node-id)
       (optimize-OR-sub-paths env node-id)
       (optimize-nested-OR env node-id)
-      (optimize-siblings-with-same-braches env node-id)
+      (optimize-siblings-with-same-branches env node-id)
       (simplify-branch-node env node-id)))
 
 (defn optimize-resolver-chain?

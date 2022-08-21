@@ -3364,21 +3364,6 @@
              :com.wsscode.pathom3.connect.planner/node-id 6}}}))
 
   (testing "merge equivalent subtrees in AND nodes"
-
-    (comment
-      (compute-run-graph
-        {::resolvers [{::pco/op-name 'ab1
-                       ::pco/output  [:a :b]}
-                      {::pco/op-name 'ab2
-                       ::pco/output  [:a :b]}
-                      {::pco/op-name 'c1
-                       ::pco/input   [:a]
-                       ::pco/output  [:c]}
-                      {::pco/op-name 'c2
-                       ::pco/input   [:b]
-                       ::pco/output  [:c]}]
-         ::pcp/snapshots* (atom [])
-         ::eql/query [:a :b :c]}))
     (check
       (compute-run-graph
         {::resolvers [{::pco/op-name 'a
@@ -3512,7 +3497,106 @@
                                                              :d #{3},
                                                              :e #{4},
                                                              :b #{1}},
-           :com.wsscode.pathom3.connect.planner/root 5})))
+           :com.wsscode.pathom3.connect.planner/root 5}))
+
+  (testing "simplify next when branches are the same"
+    (check
+      (compute-run-graph
+        {::resolvers [{::pco/op-name 'a
+                       ::pco/output  [:a]}
+                      {::pco/op-name 'b
+                       ::pco/output  [:b]}
+                      {::pco/op-name 'c
+                       ::pco/input   [:a :b]
+                       ::pco/output  [:c]}]
+         ::eql/query [:a :b :c]})
+      => '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    a,
+                                                                          :com.wsscode.pathom3.connect.planner/expects      {:a {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input        {},
+                                                                          :com.wsscode.pathom3.connect.planner/node-id      1,
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents #{7}},
+                                                                       2 {:com.wsscode.pathom3.connect.operation/op-name    b,
+                                                                          :com.wsscode.pathom3.connect.planner/expects      {:b {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input        {},
+                                                                          :com.wsscode.pathom3.connect.planner/node-id      2,
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents #{7}},
+                                                                       3 {:com.wsscode.pathom3.connect.operation/op-name    c,
+                                                                          :com.wsscode.pathom3.connect.planner/expects      {:c {}},
+                                                                          :com.wsscode.pathom3.connect.planner/input        {:a {},
+                                                                                                                             :b {}},
+                                                                          :com.wsscode.pathom3.connect.planner/node-id      3,
+                                                                          :com.wsscode.pathom3.connect.planner/node-parents #{7}},
+                                                                       7 {:com.wsscode.pathom3.connect.planner/node-id  7,
+                                                                          :com.wsscode.pathom3.connect.planner/run-and  #{1
+                                                                                                                          2},
+                                                                          :com.wsscode.pathom3.connect.planner/run-next 3,
+                                                                          :com.wsscode.pathom3.connect.planner/expects  nil}},
+           :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :prop,
+                                                                           :dispatch-key :a,
+                                                                           :key          :a},
+                                                                       :b {:type         :prop,
+                                                                           :dispatch-key :b,
+                                                                           :key          :b},
+                                                                       :c {:type         :prop,
+                                                                           :dispatch-key :c,
+                                                                           :key          :c}},
+           :com.wsscode.pathom3.connect.planner/user-request-shape    {:a {}, :b {}, :c {}},
+           :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}, b #{2}, c #{3}},
+           :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{1}, :b #{2}, :c #{3}},
+           :com.wsscode.pathom3.connect.planner/root                  7})
+
+    (check
+      (compute-run-graph
+        {::resolvers      [{::pco/op-name 'a
+                            ::pco/output  [:a]}
+                           {::pco/op-name 'b
+                            ::pco/output  [:b]}
+                           {::pco/op-name 'c
+                            ::pco/input   [:a :b]
+                            ::pco/output  [:c]}
+                           {::pco/op-name 'd
+                            ::pco/input   [:a :b :c]
+                            ::pco/output  [:d]}]
+         ::eql/query      [:d]})
+      => '{:com.wsscode.pathom3.connect.planner/nodes {1 {:com.wsscode.pathom3.connect.operation/op-name d,
+                                                          :com.wsscode.pathom3.connect.planner/expects {:d {}},
+                                                          :com.wsscode.pathom3.connect.planner/input {:a {},
+                                                                                                      :b {},
+                                                                                                      :c {}},
+                                                          :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                          :com.wsscode.pathom3.connect.planner/node-parents #{4}},
+                                                       2 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                          :com.wsscode.pathom3.connect.planner/expects {:a {}},
+                                                          :com.wsscode.pathom3.connect.planner/input {},
+                                                          :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                          :com.wsscode.pathom3.connect.planner/node-parents #{7}},
+                                                       3 {:com.wsscode.pathom3.connect.operation/op-name b,
+                                                          :com.wsscode.pathom3.connect.planner/expects {:b {}},
+                                                          :com.wsscode.pathom3.connect.planner/input {},
+                                                          :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                          :com.wsscode.pathom3.connect.planner/node-parents #{7}},
+                                                       4 {:com.wsscode.pathom3.connect.operation/op-name c,
+                                                          :com.wsscode.pathom3.connect.planner/expects {:c {}},
+                                                          :com.wsscode.pathom3.connect.planner/input {:a {},
+                                                                                                      :b {}},
+                                                          :com.wsscode.pathom3.connect.planner/node-id 4,
+                                                          :com.wsscode.pathom3.connect.planner/node-parents #{7},
+                                                          :com.wsscode.pathom3.connect.planner/run-next 1},
+                                                       7 {:com.wsscode.pathom3.connect.planner/node-id 7,
+                                                          :com.wsscode.pathom3.connect.planner/run-and #{3
+                                                                                                         2},
+                                                          :com.wsscode.pathom3.connect.planner/run-next 4,
+                                                          :com.wsscode.pathom3.connect.planner/expects nil}},
+           :com.wsscode.pathom3.connect.planner/index-ast {:d {:type :prop,
+                                                               :dispatch-key :d,
+                                                               :key :d}},
+           :com.wsscode.pathom3.connect.planner/user-request-shape {:d {}},
+           :com.wsscode.pathom3.connect.planner/index-resolver->nodes {d #{1},
+                                                                       a #{2},
+                                                                       b #{3},
+                                                                       c #{4}},
+           :com.wsscode.pathom3.connect.planner/index-attrs {:d #{1}, :a #{2}, :b #{3}, :c #{4}},
+           :com.wsscode.pathom3.connect.planner/root 7})))
 
 (deftest optimize-OR-subpaths-test
   (is (= (pcp/optimize-OR-sub-paths

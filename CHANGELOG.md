@@ -6,6 +6,7 @@
 - Fix issue #152 missing shape check when data value is nil
 - Optimize AND siblings with same branches
 - Optimize OR siblings with same branches (big deal!)
+- Optimize AND branch that has same branch structure as parent
 
 ## [2022.07.08-alpha]
 - Fix: Exceptions that occur inside `p.a.eql/process` in JVM won't include the entire stacktrace anymore. (issue #142)
