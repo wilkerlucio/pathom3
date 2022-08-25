@@ -201,28 +201,30 @@
   available data to build a shape, when the required-shape is a sub-set of the available
   data."
   ([available-data required-shape]
-   [map? ::shape-descriptor
+   [(? map?) ::shape-descriptor
     => (? ::shape-descriptor)]
-   (let [res (into
-               {}
-               (keep (fn [el]
-                       (let [attr      (key el)
-                             sub-shape (val el)
-                             sub-value (get available-data attr)]
-                         (if (contains? available-data attr)
-                           (if (seq sub-shape)
-                             (if (coll/collection? sub-value)
-                               (let [shape (reduce merge-shapes {}
-                                             (mapv
-                                               #(missing-from-data % sub-shape)
-                                               sub-value))]
-                                 (if (seq shape)
-                                   (coll/make-map-entry attr shape)))
-                               (if-let [sub-req (missing-from-data sub-value sub-shape)]
-                                 (coll/make-map-entry attr sub-req))))
-                           el))))
-               required-shape)]
-     (if (seq res) res))))
+   (if (nil? available-data)
+     nil
+     (let [res (into
+                 {}
+                 (keep (fn [el]
+                         (let [attr      (key el)
+                               sub-shape (val el)
+                               sub-value (get available-data attr)]
+                           (if (contains? available-data attr)
+                             (if (seq sub-shape)
+                               (if (coll/collection? sub-value)
+                                 (let [shape (reduce merge-shapes {}
+                                               (mapv
+                                                 #(missing-from-data % sub-shape)
+                                                 sub-value))]
+                                   (if (seq shape)
+                                     (coll/make-map-entry attr shape)))
+                                 (if-let [sub-req (missing-from-data sub-value sub-shape)]
+                                   (coll/make-map-entry attr sub-req))))
+                             el))))
+                 required-shape)]
+       (if (seq res) res)))))
 
 (>defn difference
   "Like set/difference, for shapes."

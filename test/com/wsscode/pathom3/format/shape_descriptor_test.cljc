@@ -246,7 +246,11 @@
     (is (= (pfsd/missing-from-data {:foo [{:bar "bar"}
                                           {:bar "bar" :baz "other"}]}
                                    {:foo {:bar {} :baz {}}})
-           {:foo {:baz {}}}))))
+           {:foo {:baz {}}})))
+
+  (testing "handling nil data"
+    (is (= (pfsd/missing-from-data nil {:foo {}})
+           nil))))
 
 (deftest difference-test
   (is (= (pfsd/difference {} {})
