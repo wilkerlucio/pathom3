@@ -466,7 +466,24 @@
                       ::geo/y    9
                       ::geo/left 7
                       :left      7}
-                     20]}))))
+                     20]})))
+
+  (check-all-runners
+    (pci/register [(pbir/constantly-resolver :a 1)
+                   (pbir/constantly-resolver :b 2)
+                   (pco/resolver 'c
+                     {::pco/input  [:a :b]
+                      ::pco/output [:c]}
+                     (fn [_ _]
+                       {:c true}))
+                   (pco/resolver 'd
+                     {::pco/input  [:a :b :c]
+                      ::pco/output [:d]}
+                     (fn [_ _]
+                       {:d true}))])
+    {}
+    [:d]
+    {:d true}))
 
 (deftest run-graph!-fail-cases-test
   (testing "strict mode"
