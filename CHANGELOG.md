@@ -1,6 +1,6 @@
 # Changelog
 
-## [2022.08.25-alpha]
+## [2022.08.25-alpha] - BROKEN, DON'T USE
 - Add support for ::pcr/wrap-merge-attribute hook in async and parallel runners
 - Add support for ::pcr/wrap-merge-attribute hook on idents (all runners)
 - Fix issue #152 missing shape check when data value is nil
