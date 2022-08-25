@@ -444,19 +444,6 @@
              ::geo/y    9
              :left      7}]})))
 
-  (testing "issue 152"
-    (check-all-runners
-      (pci/register
-        [(-> (pbir/global-data-resolver {:simple     1
-                                         :dual-opt   1
-                                         :blank-nest nil})
-             (update 0 pco/update-config assoc ::pco/op-name 'global-data))
-         (pbir/single-attr-resolver :simple :pathway (fn [_] (throw (ex-info "Don't reach me" {}))))
-         (pbir/alias-resolver :pathway :dual-opt)])
-      {}
-      [{:blank-nest [:simple]} :dual-opt]
-      {:blank-nest nil, :dual-opt 1}))
-
   (testing "processing sequence partial items being maps"
     (is (graph-response? (pci/register geo/full-registry)
           {::coords [{::geo/x 7 ::geo/y 9}
@@ -2833,7 +2820,20 @@
                          {:user {:user/id "user-id"}}))])
       {}
       [{:user [:user/avatar]}]
-      {:user {:user/avatar {:user/avatar-filename "avatar-filename"}}})))
+      {:user {:user/avatar {:user/avatar-filename "avatar-filename"}}})
+
+    (testing "issue 152"
+      (check-all-runners
+        (pci/register
+          [(-> (pbir/global-data-resolver {:simple     1
+                                           :dual-opt   1
+                                           :blank-nest nil})
+               (update 0 pco/update-config assoc ::pco/op-name 'global-data))
+           (pbir/single-attr-resolver :simple :pathway (fn [_] (throw (ex-info "Don't reach me" {}))))
+           (pbir/alias-resolver :pathway :dual-opt)])
+        {}
+        [{:blank-nest [:simple]} :dual-opt]
+        {:blank-nest nil, :dual-opt 1}))))
 
 (deftest run-graph!-wrap-merge-attribute
   (testing "modify result"
