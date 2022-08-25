@@ -1,11 +1,11 @@
 # Changelog
 
-## [NEXT]
+## [2022.08.25-alpha]
 - Add support for ::pcr/wrap-merge-attribute hook in async and parallel runners
 - Add support for ::pcr/wrap-merge-attribute hook on idents (all runners)
 - Fix issue #152 missing shape check when data value is nil
 - Optimize AND siblings with same branches
-- Optimize OR siblings with same branches (big deal!)
+- Optimize OR siblings with same branches 🎉
 - Optimize AND branch that has same branch structure as parent
 
 ## [2022.07.08-alpha]
