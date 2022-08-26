@@ -783,10 +783,10 @@
                          #(pco.prot/-mutate mutation %1 (:params %2)) env ast))
                      (throw (ex-info (str "Mutation " key " not found") {::pco/op-name key})))
                    (catch #?(:clj Throwable :cljs :default) e
-                     (p.plugin/run-with-plugins env ::wrap-mutation-error
-                       (fn [_ _ _]) env ast e)
-                     (fail-fast env e)
-                     {::mutation-error e}))]
+                     {::mutation-error
+                      (p.plugin/run-with-plugins env ::wrap-mutation-error
+                        (fn [env _ast e]
+                          (fail-fast env e) e) env ast e)}))]
     (merge-mutation-stats! env {::pco/op-name key}
                            {::mutation-run-finish-ms (time/now-ms)})
 

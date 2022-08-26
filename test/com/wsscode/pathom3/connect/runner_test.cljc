@@ -3012,7 +3012,28 @@
                                       (assoc (mutation env ast) :k (:key ast))))}))
             {}
             ['(foo)]
-            '{foo {:k foo}})))))
+            '{foo {:k foo}}))))
+
+  (testing "wrap mutation-error"
+    (let [err* (atom nil)
+          err  (ex-info "Error" {})]
+      (check-all-runners
+        (-> (pci/register
+              (pco/mutation 'foo {} (fn [_ _] (throw err))))
+            (assoc ::p.error/lenient-mode? true)
+            (p.plugin/register
+              {::p.plugin/id
+               'log
+
+               ::pcr/wrap-mutation-error
+               (fn [mutation-error]
+                 (fn [env ast e]
+                   (let [e' (mutation-error env ast e)]
+                     (reset! err* e')
+                     e')))}))
+        {}
+        ['(foo)]
+        (fn [_] (= @err* err))))))
 
 (deftest combine-inputs-with-responses-test
   (is (= (let [groups    {1 [:a :b]

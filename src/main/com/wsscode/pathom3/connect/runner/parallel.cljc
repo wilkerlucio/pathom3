@@ -485,10 +485,10 @@
                            (throw (ex-info (str "Mutation " key " not found") {::pco/op-name key}))))
                        (p/catch
                          (fn [e]
-                           (p.plugin/run-with-plugins env ::pcr/wrap-mutation-error
-                             (fn [_ _ _]) env ast e)
-                           (pcr/fail-fast env e)
-                           {::pcr/mutation-error e})))
+                           {::pcr/mutation-error
+                            (p.plugin/run-with-plugins env ::pcr/wrap-mutation-error
+                              (fn [env _ast e]
+                                (pcr/fail-fast env e) e) env ast e)})))
           _        (pcr/merge-mutation-stats! env {::pco/op-name key}
                      {::pcr/mutation-run-finish-ms (time/now-ms)})
           result'  (if (::pcr/mutation-error result)
