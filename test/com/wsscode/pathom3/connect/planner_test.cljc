@@ -3366,20 +3366,21 @@
   (testing "merge equivalent subtrees in AND nodes"
     (check
       (compute-run-graph
-        {::resolvers [{::pco/op-name 'a
-                       ::pco/output  [:a]
-                       ::pco/input   [:c]}
-                      {::pco/op-name 'b
-                       ::pco/output  [:b]
-                       ::pco/input   [:c]}
-                      {::pco/op-name 'c
-                       ::pco/output  [:c]
-                       ::pco/input   [:d :e]}
-                      {::pco/op-name 'd
-                       ::pco/output  [:d]}
-                      {::pco/op-name 'e
-                       ::pco/output  [:e]}]
-         ::eql/query [:a :b]})
+        {::resolvers                             [{::pco/op-name 'a
+                                                   ::pco/output  [:a]
+                                                   ::pco/input   [:c]}
+                                                  {::pco/op-name 'b
+                                                   ::pco/output  [:b]
+                                                   ::pco/input   [:c]}
+                                                  {::pco/op-name 'c
+                                                   ::pco/output  [:c]
+                                                   ::pco/input   [:d :e]}
+                                                  {::pco/op-name 'd
+                                                   ::pco/output  [:d]}
+                                                  {::pco/op-name 'e
+                                                   ::pco/output  [:e]}]
+         ::pcp/experimental-branch-optimizations true
+         ::eql/query                             [:a :b]})
       => '{:com.wsscode.pathom3.connect.planner/nodes {1 {:com.wsscode.pathom3.connect.operation/op-name a,
                                                           :com.wsscode.pathom3.connect.planner/expects {:a {}},
                                                           :com.wsscode.pathom3.connect.planner/input {:c {}},
@@ -3436,24 +3437,25 @@
 
     (check
       (compute-run-graph
-        {::resolvers [{::pco/op-name 'dyn
-                       ::pco/dynamic-resolver? true}
-                      {::pco/op-name 'a
-                       ::pco/output  [:a]
-                       ::pco/input   [:c]
-                       ::pco/dynamic-name 'dyn}
-                      {::pco/op-name 'b
-                       ::pco/output  [:b]
-                       ::pco/input   [:c]
-                       ::pco/dynamic-name 'dyn}
-                      {::pco/op-name 'c
-                       ::pco/output  [:c]
-                       ::pco/input   [:d :e]}
-                      {::pco/op-name 'd
-                       ::pco/output  [:d]}
-                      {::pco/op-name 'e
-                       ::pco/output  [:e]}]
-         ::eql/query [:a :b]})
+        {::resolvers                             [{::pco/op-name 'dyn
+                                                   ::pco/dynamic-resolver? true}
+                                                  {::pco/op-name 'a
+                                                   ::pco/output  [:a]
+                                                   ::pco/input   [:c]
+                                                   ::pco/dynamic-name 'dyn}
+                                                  {::pco/op-name 'b
+                                                   ::pco/output  [:b]
+                                                   ::pco/input   [:c]
+                                                   ::pco/dynamic-name 'dyn}
+                                                  {::pco/op-name 'c
+                                                   ::pco/output  [:c]
+                                                   ::pco/input   [:d :e]}
+                                                  {::pco/op-name 'd
+                                                   ::pco/output  [:d]}
+                                                  {::pco/op-name 'e
+                                                   ::pco/output  [:e]}]
+         ::pcp/experimental-branch-optimizations true
+         ::eql/query                             [:a :b]})
       => '{:com.wsscode.pathom3.connect.planner/nodes {1 {:com.wsscode.pathom3.connect.operation/op-name dyn,
                                                           :com.wsscode.pathom3.connect.planner/expects {:a {},
                                                                                                         :b {}},
@@ -3509,6 +3511,7 @@
                       {::pco/op-name 'c
                        ::pco/input   [:a :b]
                        ::pco/output  [:c]}]
+         ::pcp/experimental-branch-optimizations true
          ::eql/query [:a :b :c]})
       => '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name    a,
                                                                           :com.wsscode.pathom3.connect.planner/expects      {:a {}},
@@ -3557,6 +3560,7 @@
                            {::pco/op-name 'd
                             ::pco/input   [:a :b :c]
                             ::pco/output  [:d]}]
+         ::pcp/experimental-branch-optimizations true
          ::eql/query      [:d]})
       => '{:com.wsscode.pathom3.connect.planner/nodes {1 {:com.wsscode.pathom3.connect.operation/op-name d,
                                                           :com.wsscode.pathom3.connect.planner/expects {:d {}},
@@ -3724,11 +3728,12 @@
 (deftest optimize-OR-equal-branches
   (check
     (compute-run-graph
-      {::resolvers [{::pco/op-name 'ab1
-                     ::pco/output  [:a :b]}
-                    {::pco/op-name 'ab2
-                     ::pco/output  [:a :b]}]
-       ::eql/query [:a :b]})
+      {::resolvers                             [{::pco/op-name 'ab1
+                                                 ::pco/output  [:a :b]}
+                                                {::pco/op-name 'ab2
+                                                 ::pco/output  [:a :b]}]
+       ::pcp/experimental-branch-optimizations true
+       ::eql/query                             [:a :b]})
     => #?(:clj
           '{:com.wsscode.pathom3.connect.planner/nodes                 {2 {:com.wsscode.pathom3.connect.operation/op-name                   ab1,
                                                                            :com.wsscode.pathom3.connect.planner/expects                     {:a {},
@@ -3794,17 +3799,18 @@
 
   (check
     (compute-run-graph
-      {::resolvers [{::pco/op-name 'ab1
-                     ::pco/output  [:a :b]}
-                    {::pco/op-name 'ab2
-                     ::pco/output  [:a :b]}
-                    {::pco/op-name 'c1
-                     ::pco/input   [:a]
-                     ::pco/output  [:c]}
-                    {::pco/op-name 'c2
-                     ::pco/input   [:b]
-                     ::pco/output  [:c]}]
-       ::eql/query [:a :b :c]})
+      {::resolvers                             [{::pco/op-name 'ab1
+                                                 ::pco/output  [:a :b]}
+                                                {::pco/op-name 'ab2
+                                                 ::pco/output  [:a :b]}
+                                                {::pco/op-name 'c1
+                                                 ::pco/input   [:a]
+                                                 ::pco/output  [:c]}
+                                                {::pco/op-name 'c2
+                                                 ::pco/input   [:b]
+                                                 ::pco/output  [:c]}]
+       ::pcp/experimental-branch-optimizations true
+       ::eql/query                             [:a :b :c]})
     => #?(:clj  '{:com.wsscode.pathom3.connect.planner/nodes                 {7  {:com.wsscode.pathom3.connect.operation/op-name    c1,
                                                                                   :com.wsscode.pathom3.connect.planner/expects      {:c {}},
                                                                                   :com.wsscode.pathom3.connect.planner/input        {:a {}},

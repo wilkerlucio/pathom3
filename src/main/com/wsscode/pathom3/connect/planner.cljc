@@ -1928,23 +1928,25 @@
   "When sibling branch nodes are of the same type and have the same branch structure we
   can merge then."
   [graph env node-id]
-  (let [branches           (-> (get-node graph node-id) node-branches)
-        node-ids           (->> branches
-                                (keep (fn [nid]
-                                        (let [node (get-node graph nid)]
-                                          (if (node-branch-type node) nid)))))
-        denorm-index       (as-> graph <>
-                             (assoc <> ::denorm-update-node compare-AND-children-denorm)
-                             (reduce #(-> (update-in % [::nodes %2] dissoc ::run-next)
-                                          (denormalize-node %2)) <> node-ids))
-        same-branch-groups (->> node-ids
-                                (group-by #(get-denormalized-node denorm-index %))
-                                (coll/filter-vals #(> (count %) 1)))
-        mergeable-groups   (vals same-branch-groups)]
-    (if (seq mergeable-groups)
-      (-> (reduce #(merge-sibling-equal-branches % env node-id %2) graph mergeable-groups)
-          (optimize-branch-items env node-id))
-      graph)))
+  (if (::experimental-branch-optimizations env)
+    (let [branches           (-> (get-node graph node-id) node-branches)
+          node-ids           (->> branches
+                                  (keep (fn [nid]
+                                          (let [node (get-node graph nid)]
+                                            (if (node-branch-type node) nid)))))
+          denorm-index       (as-> graph <>
+                               (assoc <> ::denorm-update-node compare-AND-children-denorm)
+                               (reduce #(-> (update-in % [::nodes %2] dissoc ::run-next)
+                                            (denormalize-node %2)) <> node-ids))
+          same-branch-groups (->> node-ids
+                                  (group-by #(get-denormalized-node denorm-index %))
+                                  (coll/filter-vals #(> (count %) 1)))
+          mergeable-groups   (vals same-branch-groups)]
+      (if (seq mergeable-groups)
+        (-> (reduce #(merge-sibling-equal-branches % env node-id %2) graph mergeable-groups)
+            (optimize-branch-items env node-id))
+        graph))
+    graph))
 
 (defn- push-parent-and-deps-to-branch [graph env parent-node-id branch-node-id]
   (let [node         (get-node graph parent-node-id)
@@ -1964,35 +1966,37 @@
   "Similar to optimize-siblings-with-same-braches, but looks if a branch node has a children
   item that has the same branch structure as the parent."
   [graph env node-id]
-  (let [node            (get-node graph node-id)
-        branch-type     (node-branch-type node)
-        candidate-ids   (->> (get node branch-type)
-                             (keep (fn [node-id]
-                                     (if (= (-> (get-node graph node-id) node-branch-type)
-                                            branch-type)
-                                       node-id))))
-        denorm-index    (as-> graph <>
-                          (assoc <> ::denorm-update-node compare-AND-children-denorm)
-                          (reduce #(-> (set-node-run-next* % %2 nil)
-                                       (denormalize-node %2)) <> (conj candidate-ids node-id)))
-        parent-denormed (get-denormalized-node denorm-index node-id)
-        ; since we merged siblings before, there could be only one mergeable branch
-        mergeable-id    (->> candidate-ids
-                             (coll/find-first
-                               (fn [node-id]
-                                 (let [denorm-item (get-denormalized-node denorm-index node-id)]
-                                   (= (-> parent-denormed
-                                          (update branch-type disj denorm-item)
-                                          (dissoc ::run-next))
-                                      (dissoc denorm-item ::run-next))))))
-        mergeable-node  (get-node graph mergeable-id)]
-    (if mergeable-id
-      (if (and (::run-next node) (::run-next mergeable-node))
-        (-> (push-parent-and-deps-to-branch graph env node-id mergeable-id)
-            (optimize-node env node-id))
-        (-> (merge-sibling-equal-branches graph env node-id [node-id mergeable-id])
-            (optimize-node env node-id)))
-      graph)))
+  (if (::experimental-branch-optimizations env)
+    (let [node            (get-node graph node-id)
+          branch-type     (node-branch-type node)
+          candidate-ids   (->> (get node branch-type)
+                               (keep (fn [node-id]
+                                       (if (= (-> (get-node graph node-id) node-branch-type)
+                                              branch-type)
+                                         node-id))))
+          denorm-index    (as-> graph <>
+                            (assoc <> ::denorm-update-node compare-AND-children-denorm)
+                            (reduce #(-> (set-node-run-next* % %2 nil)
+                                         (denormalize-node %2)) <> (conj candidate-ids node-id)))
+          parent-denormed (get-denormalized-node denorm-index node-id)
+          ; since we merged siblings before, there could be only one mergeable branch
+          mergeable-id    (->> candidate-ids
+                               (coll/find-first
+                                 (fn [node-id]
+                                   (let [denorm-item (get-denormalized-node denorm-index node-id)]
+                                     (= (-> parent-denormed
+                                            (update branch-type disj denorm-item)
+                                            (dissoc ::run-next))
+                                        (dissoc denorm-item ::run-next))))))
+          mergeable-node  (get-node graph mergeable-id)]
+      (if mergeable-id
+        (if (and (::run-next node) (::run-next mergeable-node))
+          (-> (push-parent-and-deps-to-branch graph env node-id mergeable-id)
+              (optimize-node env node-id))
+          (-> (merge-sibling-equal-branches graph env node-id [node-id mergeable-id])
+              (optimize-node env node-id)))
+        graph))
+    graph))
 
 (defn optimize-AND-branches
   [graph env node-id]
