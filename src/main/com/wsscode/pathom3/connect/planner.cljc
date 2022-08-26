@@ -1900,14 +1900,12 @@
       branch-items)))
 
 (defn merge-sibling-equal-branches
-  [graph env [target-node-id & mergeable-siblings-ids :as node-ids]]
+  [graph env parent-node-id [target-node-id & mergeable-siblings-ids :as node-ids]]
   (add-snapshot! graph env
                  {::snapshot-message "Merge nodes of same type with same branches"
                   ::highlight-nodes  (set node-ids)
                   ::highlight-styles {target-node-id 1}})
-  (let [parent-node (->> (get-node graph target-node-id)
-                         ::node-parents first
-                         (get-node graph))
+  (let [parent-node (get-node graph parent-node-id)
         branch-type (node-branch-type parent-node)]
     (as-> graph <>
       (reduce
@@ -1944,7 +1942,7 @@
                                 (coll/filter-vals #(> (count %) 1)))
         mergeable-groups   (vals same-branch-groups)]
     (if (seq mergeable-groups)
-      (-> (reduce #(merge-sibling-equal-branches % env %2) graph mergeable-groups)
+      (-> (reduce #(merge-sibling-equal-branches % env node-id %2) graph mergeable-groups)
           (optimize-branch-items env node-id))
       graph)))
 
@@ -1992,7 +1990,7 @@
       (if (and (::run-next node) (::run-next mergeable-node))
         (-> (push-parent-and-deps-to-branch graph env node-id mergeable-id)
             (optimize-node env node-id))
-        (-> (merge-sibling-equal-branches graph env [node-id mergeable-id])
+        (-> (merge-sibling-equal-branches graph env node-id [node-id mergeable-id])
             (optimize-node env node-id)))
       graph)))
 

@@ -503,7 +503,7 @@
                           ::pco/output   [:c]
                           ::pco/resolve  (fn [env _]
                                            (if (::pcra/async-runner? env)
-                                             (p/delay 500 {:c 3})
+                                             (p/delay 100 {:c 3})
                                              {:c 3}))})
                        (pco/resolver
                          {::pco/op-name 'c2
