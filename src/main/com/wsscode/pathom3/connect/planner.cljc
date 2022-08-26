@@ -713,8 +713,10 @@
       graph
       attrs)))
 
-(defn combine-run-next
-  [graph env node-ids pivot]
+(defn combine-run-next*
+  "Combine run next of elements, in case both have a run-next, a branch node will
+  be placed there connecting both next nodes."
+  [graph env branch-type node-ids pivot node-defaults]
   (let [run-next-nodes (into []
                              (comp (map #(get-node graph %))
                                    (filter ::run-next))
@@ -727,20 +729,27 @@
             (set-node-run-next pivot run-next)))
 
       (seq run-next-nodes)
-      (let [and-node (new-node env {::run-and #{}})]
+      (let [branch-node (new-node env
+                                  (merge node-defaults {branch-type #{}}))]
         (as-> graph <>
-          (include-node <> and-node)
+          (include-node <> branch-node)
           (reduce
             (fn [g {::keys [node-id run-next]}]
               (-> g
                   (remove-node-parent run-next node-id)
-                  (add-branch-to-node (::node-id and-node) ::run-and run-next)))
+                  (add-branch-to-node (::node-id branch-node) branch-type run-next)))
             <>
             run-next-nodes)
-          (set-node-run-next <> pivot (::node-id and-node))))
+          (set-node-run-next <> pivot (::node-id branch-node))))
 
       :else
       graph)))
+
+(defn combine-run-next
+  "Combine each node in node-ids with the pivot run next, this version will use
+  AND node to connect the run next items"
+  [graph env node-ids pivot]
+  (combine-run-next* graph env ::run-and node-ids pivot {}))
 
 (defn move-run-next-to-edge
   "Find the node at the end of chain from target-node-id and move node-to-move-id
@@ -751,7 +760,7 @@
         (remove-from-parent-branches (get-node graph node-to-move-id))
         (set-node-run-next (::node-id leaf) node-to-move-id))))
 
-(>defn simplify-branch-node
+(>defn simplify-single-branch-node
   "When a branch node contains a single branch out, remove the node and put that
   single item in place.
 
@@ -760,13 +769,11 @@
   [graph env node-id]
   [::graph map? ::node-id => ::graph]
   (let [node           (get-node graph node-id)
-        target-node-id (or
-                         (and
-                           (= 1 (count (::run-and node)))
-                           (first (::run-and node)))
-                         (and
-                           (= 1 (count (::run-or node)))
-                           (first (::run-or node))))]
+        branch-type    (node-branch-type node)
+        target-node-id (and
+                         branch-type
+                         (= 1 (count (branch-type node)))
+                         (first (branch-type node)))]
     (if target-node-id
       (-> graph
           (add-snapshot! env {::snapshot-message "Simplifying branch with single element"
@@ -776,7 +783,9 @@
             (::run-next node)
             (move-run-next-to-edge target-node-id (::run-next node)))
           (transfer-node-parents target-node-id node-id)
-          (update-node target-node-id nil combine-expects node)
+          (cond->
+            (= ::run-and branch-type)
+            (update-node target-node-id nil combine-expects node))
           (remove-node-edges node-id)
           (remove-node node-id)
           (add-snapshot! env {::snapshot-message "Simplification done"
@@ -1891,24 +1900,31 @@
       branch-items)))
 
 (defn merge-sibling-equal-branches
-  [graph env [target-node-id & mergeable-siblings-ids]]
+  [graph env [target-node-id & mergeable-siblings-ids :as node-ids]]
   (add-snapshot! graph env
                  {::snapshot-message "Merge nodes of same type with same branches"
-                  ::highlight-nodes  (into #{target-node-id} mergeable-siblings-ids)
+                  ::highlight-nodes  (set node-ids)
                   ::highlight-styles {target-node-id 1}})
-  (as-> graph <>
-    (reduce
-      (fn [graph node-id]
-        (move-branches-to-another-node graph node-id target-node-id))
-      <>
-      mergeable-siblings-ids)
-    (combine-run-next <> env (conj mergeable-siblings-ids target-node-id) target-node-id)
-    (reduce (fn [graph node-id]
-              (-> graph
-                  (update-node target-node-id nil combine-expects (get-node graph node-id))
-                  (remove-node node-id))) <> mergeable-siblings-ids)
-    (add-snapshot! <> env {::snapshot-message "Merge done"
-                           ::highlight-nodes  #{target-node-id}})))
+  (let [parent-node (->> (get-node graph target-node-id)
+                         ::node-parents first
+                         (get-node graph))
+        branch-type (node-branch-type parent-node)]
+    (as-> graph <>
+      (reduce
+        (fn [graph node-id]
+          (move-branches-to-another-node graph node-id target-node-id))
+        <>
+        mergeable-siblings-ids)
+      (combine-run-next* <> env branch-type (conj mergeable-siblings-ids target-node-id) target-node-id
+                         (if (= ::run-or branch-type)
+                           (select-keys parent-node [::expects])
+                           {}))
+      (reduce (fn [graph node-id]
+                (-> graph
+                    (update-node target-node-id nil combine-expects (get-node graph node-id))
+                    (remove-node node-id))) <> mergeable-siblings-ids)
+      (add-snapshot! <> env {::snapshot-message "Merge done"
+                             ::highlight-nodes  #{target-node-id}}))))
 
 (defn optimize-siblings-with-same-branches
   "When sibling branch nodes are of the same type and have the same branch structure we
@@ -1988,7 +2004,7 @@
       (optimize-AND-resolvers-pass env node-id)
       (optimize-siblings-with-same-branches env node-id)
       (optimize-nested-branch-with-same-branches env node-id)
-      (simplify-branch-node env node-id)))
+      (simplify-single-branch-node env node-id)))
 
 (defn sub-sequence? [seq-a seq-b]
   (->> (map = seq-a seq-b)
@@ -2084,7 +2100,7 @@
       (optimize-OR-sub-paths env node-id)
       (optimize-nested-OR env node-id)
       (optimize-siblings-with-same-branches env node-id)
-      (simplify-branch-node env node-id)))
+      (simplify-single-branch-node env node-id)))
 
 (defn optimize-resolver-chain?
   [graph {::pco/keys [op-name] ::keys [run-next]}]

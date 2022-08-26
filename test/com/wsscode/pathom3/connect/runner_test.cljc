@@ -171,6 +171,18 @@
        => expected)))
 
 #?(:clj
+   (defmacro check-parallel [env entity tx expected]
+     `(check
+        @(run-graph-parallel ~env ~entity ~tx)
+        ~'=> ~expected))
+
+   :cljs
+   (defn check-parallel [env entity tx expected]
+     (check
+       @(run-graph-parallel env entity tx)
+       => expected)))
+
+#?(:clj
    (defmacro check-all-runners [env entity tx expected]
      `(doseq [runner# all-runners]
         (testing (str runner#)
@@ -455,22 +467,53 @@
                       :left      7}
                      20]})))
 
-  (check-all-runners
-    (pci/register [(pbir/constantly-resolver :a 1)
-                   (pbir/constantly-resolver :b 2)
-                   (pco/resolver 'c
-                     {::pco/input  [:a :b]
-                      ::pco/output [:c]}
-                     (fn [_ _]
-                       {:c true}))
-                   (pco/resolver 'd
-                     {::pco/input  [:a :b :c]
-                      ::pco/output [:d]}
-                     (fn [_ _]
-                       {:d true}))])
-    {}
-    [:d]
-    {:d true}))
+  (testing "planner optimizations checkers"
+    (testing "when combining AND parent with AND children with run-next"
+      (check-all-runners
+        (pci/register [(pbir/constantly-resolver :a 1)
+                       (pbir/constantly-resolver :b 2)
+                       (pco/resolver 'c
+                         {::pco/input  [:a :b]
+                          ::pco/output [:c]}
+                         (fn [_ _]
+                           {:c true}))
+                       (pco/resolver 'd
+                         {::pco/input  [:a :b :c]
+                          ::pco/output [:d]}
+                         (fn [_ _]
+                           {:d true}))])
+        {}
+        [:d]
+        {:d true}))
+
+    (testing "when merging sideway OR nodes"
+      (check-parallel
+        (pci/register [(pco/resolver
+                         {::pco/op-name 'ab1
+                          ::pco/output  [:a :b]
+                          ::pco/resolve (fn [_ _] {:a 1 :b 2})})
+                       (pco/resolver
+                         {::pco/op-name 'ab2
+                          ::pco/output  [:a :b]
+                          ::pco/resolve (fn [_ _] {:a 1 :b 2})})
+                       (pco/resolver
+                         {::pco/op-name  'c1
+                          ::pco/priority 1
+                          ::pco/input    [:a]
+                          ::pco/output   [:c]
+                          ::pco/resolve  (fn [env _]
+                                           (if (::pcra/async-runner? env)
+                                             (p/delay 500 {:c 3})
+                                             {:c 3}))})
+                       (pco/resolver
+                         {::pco/op-name 'c2
+                          ::pco/input   [:b]
+                          ::pco/output  [:c]
+                          ::pco/resolve (fn [_ _]
+                                          (throw (ex-info "Never call me" {})))})])
+        {}
+        [:a :b :c]
+        {:a 1 :b 2 :c 3}))))
 
 (deftest run-graph!-fail-cases-test
   (testing "strict mode"

@@ -578,12 +578,14 @@
                       :let [config   (pcp/node-with-resolver-config graph env successor)
                             provides (::pco/provides config)]
                       :when (and provides (every? provides expects))]
-                  [id config])
-        [id config] (apply max-key #(-> % second (::pco/priority 0)) nodes)]
-    (if id
-      (into #{} (comp (filter #(= (::pco/priority config) (::pco/priority (second %))))
-                      (map first)) nodes)
-      node-ids)))
+                  [id config])]
+    (if (seq nodes)
+      (let [[id config] (apply max-key #(-> % second (::pco/priority 0)) nodes)]
+        (if id
+          (into #{} (comp (filter #(= (::pco/priority config) (::pco/priority (second %))))
+                          (map first)) nodes)
+          node-ids))
+      #{})))
 
 (defn node-weight
   "Sums up the weight of a node and its successors"
@@ -612,10 +614,17 @@
     (first candidates)))
 
 (defn default-choose-path [env or-node node-ids]
-  (let [candidates (priority-sort env or-node node-ids)]
-    (if (> (count candidates) 1)
+  (let [candidates (priority-sort env or-node node-ids)
+        cc         (count candidates)]
+    (cond
+      (> cc 1)
       (weight-sort env or-node candidates)
-      (first candidates))))
+
+      (= cc 1)
+      (first candidates)
+
+      :else
+      (first node-ids))))
 
 (defn add-taken-path!
   [{::keys [node-run-stats*]} {::pcp/keys [node-id]} taken-path-id]

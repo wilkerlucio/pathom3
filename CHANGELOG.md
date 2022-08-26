@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Fix planning optimization on merging sibling nodes with OR parent
+
 ## [2022.08.25-alpha] - BROKEN, DON'T USE
 - Add support for ::pcr/wrap-merge-attribute hook in async and parallel runners
 - Add support for ::pcr/wrap-merge-attribute hook on idents (all runners)

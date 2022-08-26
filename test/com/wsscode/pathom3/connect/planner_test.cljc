@@ -3817,14 +3817,13 @@
                                                                                   :com.wsscode.pathom3.connect.planner/node-id                     1,
                                                                                   :com.wsscode.pathom3.connect.planner/node-parents                #{6},
                                                                                   :com.wsscode.pathom3.connect.planner/node-resolution-checkpoint? true},
-                                                                              6  {:com.wsscode.pathom3.connect.planner/expects  {:a {}
-                                                                                                                                 :b {}
-                                                                                                                                 :c {}},
+                                                                              6  {:com.wsscode.pathom3.connect.planner/expects  {:b {}
+                                                                                                                                 :a {}},
                                                                                   :com.wsscode.pathom3.connect.planner/node-id  6,
                                                                                   :com.wsscode.pathom3.connect.planner/run-or   #{1
                                                                                                                                   2},
                                                                                   :com.wsscode.pathom3.connect.planner/run-next 17},
-                                                                              17 {:com.wsscode.pathom3.connect.planner/run-and      #{7
+                                                                              17 {:com.wsscode.pathom3.connect.planner/run-or       #{7
                                                                                                                                       11},
                                                                                   :com.wsscode.pathom3.connect.planner/node-id      17,
                                                                                   :com.wsscode.pathom3.connect.planner/node-parents #{6}},
@@ -3859,7 +3858,8 @@
 
           :cljs '{:com.wsscode.pathom3.connect.planner/nodes
                   {3
-                   {:com.wsscode.pathom3.connect.planner/expects  {:a {}, :b {}, :c {}},
+                   {:com.wsscode.pathom3.connect.planner/expects  {:b {}
+                                                                   :a {}},
                     :com.wsscode.pathom3.connect.planner/node-id  3,
                     :com.wsscode.pathom3.connect.planner/run-or   #{4 5},
                     :com.wsscode.pathom3.connect.planner/run-next 17},
@@ -3892,7 +3892,7 @@
                     :com.wsscode.pathom3.connect.planner/node-id      11,
                     :com.wsscode.pathom3.connect.planner/node-parents #{17}},
                    17
-                   {:com.wsscode.pathom3.connect.planner/run-and      #{7 11},
+                   {:com.wsscode.pathom3.connect.planner/run-or       #{7 11},
                     :com.wsscode.pathom3.connect.planner/node-id      17,
                     :com.wsscode.pathom3.connect.planner/node-parents #{3}}},
                   :com.wsscode.pathom3.connect.planner/index-ast
@@ -3908,7 +3908,7 @@
                   :com.wsscode.pathom3.connect.planner/root 3})))
 
 (deftest simplify-branch-node-test
-  (is (= (pcp/simplify-branch-node
+  (is (= (pcp/simplify-single-branch-node
            '#::pcp{:nodes                 {1 {::pco/op-name      dynamic-resolver,
                                               ::pcp/expects      {:a {},
                                                                   :b {}},
@@ -3958,7 +3958,7 @@
                                          :b #{1}},
                  :root                  1}))
 
-  (is (= (pcp/simplify-branch-node
+  (is (= (pcp/simplify-single-branch-node
            '{::pcp/nodes                 {1 {::pco/op-name      dynamic-resolver,
                                              ::pcp/expects      {:a {},
                                                                  :b {}},
@@ -4009,7 +4009,7 @@
                  :root                  1}))
 
   (testing "move connection to that item"
-    (is (= (pcp/simplify-branch-node
+    (is (= (pcp/simplify-single-branch-node
              '{::pcp/nodes                 {1 {::pco/op-name      dynamic-resolver,
                                                ::pcp/expects      {:a {},
                                                                    :b {}},
@@ -4054,6 +4054,65 @@
                                              ::pcp/node-parents #{4}},
                                           4 {::pcp/node-id 4,
                                              ::pcp/run-and #{1}}},
+             ::pcp/index-ast             {:a {:type         :prop,
+                                              :dispatch-key :a,
+                                              :key          :a},
+                                          :b {:type         :prop,
+                                              :dispatch-key :b,
+                                              :key          :b}},
+             ::pcp/index-resolver->nodes {dynamic-resolver #{1}},
+             ::pcp/index-attrs           {:a #{1}, :b #{1}},
+             ::pcp/root                  4})))
+
+  (testing "OR branches don't merge expects"
+    (is (= (pcp/simplify-single-branch-node
+             '{::pcp/nodes                 {1 {::pco/op-name      dynamic-resolver,
+                                               ::pcp/expects      {:a {},
+                                                                   :b {}},
+                                               ::pcp/input        {},
+                                               ::pcp/node-id      1,
+                                               ::pcp/foreign-ast  {:type     :root,
+                                                                   :children [{:type         :prop,
+                                                                               :dispatch-key :a,
+                                                                               :key          :a}
+                                                                              {:type         :prop,
+                                                                               :dispatch-key :b,
+                                                                               :key          :b}]},
+                                               ::pcp/node-parents #{3}},
+                                            3 {::pcp/node-id      3,
+                                               ::pcp/run-or      #{1}
+                                               ::pcp/expects {:a {}}
+                                               ::pcp/node-parents #{4}}
+                                            4 {::pcp/node-id 4,
+                                               ::pcp/expects {:b {}}
+                                               ::pcp/run-or #{3}}},
+               ::pcp/index-ast             {:a {:type         :prop,
+                                                :dispatch-key :a,
+                                                :key          :a},
+                                            :b {:type         :prop,
+                                                :dispatch-key :b,
+                                                :key          :b}},
+               ::pcp/index-resolver->nodes {dynamic-resolver #{1}},
+               ::pcp/index-attrs           {:a #{1}, :b #{1}},
+               ::pcp/root                  4}
+             {}
+             3)
+           '{::pcp/nodes                 {1 {::pco/op-name      dynamic-resolver,
+                                             ::pcp/expects      {:a {},
+                                                                 :b {}},
+                                             ::pcp/input        {},
+                                             ::pcp/node-id      1,
+                                             ::pcp/foreign-ast  {:type     :root,
+                                                                 :children [{:type         :prop,
+                                                                             :dispatch-key :a,
+                                                                             :key          :a}
+                                                                            {:type         :prop,
+                                                                             :dispatch-key :b,
+                                                                             :key          :b}]},
+                                             ::pcp/node-parents #{4}},
+                                          4 {::pcp/node-id 4,
+                                             ::pcp/expects {:b {}}
+                                             ::pcp/run-or #{1}}},
              ::pcp/index-ast             {:a {:type         :prop,
                                               :dispatch-key :a,
                                               :key          :a},
