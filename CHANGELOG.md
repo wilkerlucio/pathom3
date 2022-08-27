@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Fix ident processing on serial runner
+
 ## [2022.08.26-alpha]
 - Fix planning optimization on merging sibling nodes with OR parent
 - New branch optimizations are now opt-in via ::pcp/experimental-branch-optimizations flag at env

@@ -2876,7 +2876,16 @@
            (pbir/alias-resolver :pathway :dual-opt)])
         {}
         [{:blank-nest [:simple]} :dual-opt]
-        {:blank-nest nil, :dual-opt 1}))))
+        {:blank-nest nil, :dual-opt 1}))
+
+    (testing "issue idents on 2022-08-26"
+      (check-all-runners
+        {}
+        {}
+        [{[:a 42]
+          [:a
+           {[:x 99] [:x]}]}]
+        {[:a 42] {:a 42, [:x 99] {:x 99}}}))))
 
 (deftest run-graph!-wrap-merge-attribute
   (testing "modify result"
