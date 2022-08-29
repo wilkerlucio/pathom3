@@ -192,8 +192,13 @@
    (clojure "-X:deploy" ":artifact" (str-arg artifact))))
 
 (defn bump! []
-  (let [version (next-version)]
-    (spit "VERSION" version)
+  (let [version   (next-version)
+        changelog (slurp "CHANGELOG.md")]
+    (if (re-find #"\[NEXT]" changelog)
+      (let [changelog' (str/replace changelog #"\[NEXT]" (str "[" version "]"))]
+        (spit "VERSION" version)
+        (spit "CHANGELOG.md" changelog'))
+      (throw (ex-info "CHANGELOG.md must have a [NEXT] mark." {})))
     version))
 
 ; endregion

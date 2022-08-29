@@ -64,7 +64,7 @@
   version:bump
   {:doc  "Bump version to current date."
    :task (let [version (tasks/bump!)]
-           (shell (str "git commit -m '" (tasks/version-tag) "' -- VERSION"))
+           (shell (str "git commit -m '" (tasks/version-tag) "' -- CHANGELOG.md VERSION"))
            (println "Bumped to" version))}
 
   setup-hooks
