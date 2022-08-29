@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2022.08.29-alpha]
 - Fix ident processing on serial runner
 
 ## [2022.08.26-alpha]
