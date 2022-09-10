@@ -487,7 +487,7 @@
         {:d true}))
 
     (testing "when merging sideway OR nodes"
-      (check-parallel
+      (check-all-runners
         (pci/register [(pco/resolver
                          {::pco/op-name 'ab1
                           ::pco/output  [:a :b]
