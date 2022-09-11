@@ -2001,15 +2001,17 @@
 
       (testing "error thrown flows up"
         (check-all-runners-ex
-          (pci/register (pco/resolver 'batch-thing
-                          {::pco/input            [:id]
-                           ::pco/output           [:name]
-                           ::pco/batch?           true
-                           ::pco/batch-chunk-size 3}
-                          (fn [_ items]
-                            (if (= 1 (count items))
-                              (throw (ex-info "Error in batch call" {}))
-                              (mapv #(assoc % :name (str "Item " (:id %))) items)))))
+          ; bigger delay ensuring the batch block will contain all the list items
+          (-> {::pcrc/batch-hold-delay-ms 100}
+              (pci/register (pco/resolver 'batch-thing
+                              {::pco/input            [:id]
+                               ::pco/output           [:name]
+                               ::pco/batch?           true
+                               ::pco/batch-chunk-size 3}
+                              (fn [_ items]
+                                (if (= 1 (count items))
+                                  (throw (ex-info "Error in batch call" {}))
+                                  (mapv #(assoc % :name (str "Item " (:id %))) items))))))
           {:items (mapv #(array-map :id %) (range 10))}
           [{:items [(pco/? :name)]}]
           {::pcr/processor-error? true})
