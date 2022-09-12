@@ -124,7 +124,8 @@
        (wrap-smart-map env (val x))
        (let [ast {:type     :root
                   :children [(pf.eql/prop k)]}]
-         (-> (pcr/run-graph! env ast entity-tree*) meta ::pcr/run-stats)
+         (pcr/run-graph! env ast entity-tree*)
+         (swap! entity-tree* dissoc ::pcr/attribute-errors)
 
          (when-let [error (and (refs/kw-identical? (get env ::error-mode) ::error-mode-loud)
                                (p.error/attribute-error @entity-tree* k))]
@@ -547,6 +548,7 @@
                     :children [(pf.eql/prop k)]}
          run-stats (-> (pcr/run-graph! env ast entity-tree*)
                        meta ::pcr/run-stats)]
+     (swap! entity-tree* dissoc ::pcr/attribute-errors)
      (assoc run-stats ::value (wrap-smart-map env (get @entity-tree* k))))))
 
 (>defn sm-replace-context
@@ -593,6 +595,7 @@
    => ::smart-map]
   (let [env (sm-env smart-map)]
     (pcr/run-graph! env ast (::p.ent/entity-tree* env))
+    (swap! (::p.ent/entity-tree* env) dissoc ::pcr/attribute-errors)
     smart-map))
 
 (>defn sm-touch!
