@@ -706,7 +706,16 @@
 
                 ::p.error/node-error-details
                 {1 {::p.error/cause     ::p.error/node-exception
-                    ::p.error/exception {::p.error/error-message #"error"}}}}}})))))
+                    ::p.error/exception {::p.error/error-message #"error"}}}}}}))
+
+      (testing "user requests error data in query"
+        (check-all-runners
+          {::p.error/lenient-mode? true}
+          {}
+          [:err ::pcr/attribute-errors]
+          {::pcr/attribute-errors
+           (m/equals
+             {:err {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}})})))))
 
 (deftest run-graph!-final-test
   (testing "map value"

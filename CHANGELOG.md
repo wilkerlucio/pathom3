@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Fix error when user requests `::pcr/attribute-errors` in lenient mode
+
 ## [2022.08.29-alpha]
 - Fix ident processing on serial runner
 

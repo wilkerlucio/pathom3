@@ -64,7 +64,12 @@
 (>def ::graph-run-start-ms number?)
 (>def ::graph-run-finish-ms number?)
 
-(>def ::map-container? boolean?)
+(>def ::map-container?
+  "This is something to add to a map response metadata, when doing so Pathom will consider
+  the map to be a collection of items, and the sub-query will work on each value of the
+  map, instead of the map itself."
+  boolean?)
+
 (>def ::merge-attribute fn?)
 
 (>def ::node-error any?)
@@ -1102,6 +1107,16 @@
   (run-batches-pending! env)
   (run-batches-waiting! env))
 
+(defn attribute-error-resolver []
+  (pco/resolver (symbol "com.wsscode.pathom3.connect.runner" (str (gensym "attribute-errors")))
+    {::pco/output [::attribute-errors]}
+    (fn [_ _] {::attribute-errors {}})))
+
+(defn setup-root-env [env]
+  (cond-> env
+    (::p.error/lenient-mode? env)
+    (pci/register (attribute-error-resolver))))
+
 (defn setup-runner-env [env entity-tree* cache-type]
   (-> env
       ; due to recursion those need to be defined only on the first time
@@ -1138,7 +1153,7 @@
     (p.plugin/run-with-plugins env ::wrap-root-run-graph!
       (fn [e a t]
         (p.plugin/run-with-plugins env ::wrap-run-graph!
-          impl! e a t))
+          impl! (setup-root-env e) a t))
       env ast-or-graph entity-tree*)
     (p.plugin/run-with-plugins env ::wrap-run-graph!
       impl! env ast-or-graph entity-tree*)))
