@@ -31,6 +31,7 @@
     let-chan*                          [[:inner 0]]
     mapv                               [[:inner 0]]
     merge-indexes                      [[:inner 0]]
+    merge-mutation-stats!              [[:inner 0]]
     merge-node-stats!                  [[:inner 0]]
     p.cache/cached                     [[:inner 0]]
     p.ent/swap-entity!                 [[:inner 0]]

@@ -778,8 +778,8 @@
   (let [mutation (pci/mutation env key)
         start    (time/now-ms)
         _        (merge-mutation-stats! env {::pco/op-name key}
-                                        {::node-run-start-ms     start
-                                         ::mutation-run-start-ms start})
+                   {::node-run-start-ms     start
+                    ::mutation-run-start-ms start})
         result   (try
                    (if mutation
                      (if (-> mutation pco/operation-config ::pco/dynamic-name)
@@ -793,7 +793,7 @@
                         (fn [env _ast e]
                           (fail-fast env e) e) env ast e)}))]
     (merge-mutation-stats! env {::pco/op-name key}
-                           {::mutation-run-finish-ms (time/now-ms)})
+      {::mutation-run-finish-ms (time/now-ms)})
 
     (if (::mutation-error result)
       (p.ent/swap-entity! env assoc key result)
@@ -801,7 +801,7 @@
         (process-attr-subquery env {} ast result)))
 
     (merge-mutation-stats! env {::pco/op-name key}
-                           {::node-run-finish-ms (time/now-ms)})))
+      {::node-run-finish-ms (time/now-ms)})))
 
 (defn process-mutations!
   "Runs the mutations gathered by the planner."
@@ -906,7 +906,7 @@
       (ex-info (ex-message err)
                (-> (ex-data err)
                    (assoc ::processor-error-parent-env env')))
-      (let [msg (str "Graph execution failed: " (ex-message err))
+      (let [msg  (str "Graph execution failed: " (ex-message err))
             data (assoc env'
                    ::p.error/error-message (ex-message err)
                    ::p.error/error-data (ex-data err)
@@ -925,9 +925,9 @@
 (defn plan-and-run!
   [env ast-or-graph entity-tree*]
   #_; keep commented for description, but don't want to validate this fn on runtime
-      [(s/keys) (s/or :ast :edn-query-language.ast/node
+          [(s/keys) (s/or :ast :edn-query-language.ast/node
                       :graph ::pcp/graph) ::p.ent/entity-tree*
-       => (s/keys)]
+           => (s/keys)]
   (let [graph (if (::pcp/nodes ast-or-graph)
                 ast-or-graph
                 (let [start-plan  (time/now-ms)
