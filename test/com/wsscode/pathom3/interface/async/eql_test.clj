@@ -1,6 +1,6 @@
 (ns com.wsscode.pathom3.interface.async.eql-test
   (:require
-    [check.core :refer [check =>]]
+    [check.core :refer [=> check]]
     [clojure.string :as string]
     [clojure.test :refer [deftest is testing]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
@@ -209,16 +209,45 @@
               meta
               :com.wsscode.pathom3.connect.runner/run-stats)))))
 
+(deftest process-one-test
+  (is (= @(p.a.eql/process-one (pci/register registry) {:left 10 :right 30} :width)
+         20))
+
+  (is (= @(p.a.eql/process-one (pci/register geo/full-registry)
+                               {:left 10 :top 5}
+                               {::geo/turn-point [:right]})
+         {:right 10}))
+
+  (testing "keeps meta"
+    (let [response @(p.a.eql/process-one
+                      (pci/register
+                        [(pbir/constantly-resolver :items [{:a 1}])])
+                      :items)]
+      (is (= response [{:a 1}]))
+      (check
+        (meta response)
+        => {:com.wsscode.pathom3.connect.runner/run-stats
+            {:com.wsscode.pathom3.connect.planner/source-ast            {},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {},
+             :com.wsscode.pathom3.connect.planner/user-request-shape    {},
+             :com.wsscode.pathom3.connect.planner/root                  number?,
+             :com.wsscode.pathom3.connect.planner/available-data        {},
+             :com.wsscode.pathom3.connect.runner/node-run-stats         {},
+             :com.wsscode.pathom3.connect.planner/index-ast             {},
+             :com.wsscode.pathom3.connect.runner/transient-stats        {},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {},
+             :com.wsscode.pathom3.connect.planner/nodes                 {}}}))))
+
 (deftest avoid-huge-ex-message
   (let [env (pci/register (pco/resolver `a {::pco/output [:a]}
                             (fn [_ _]
                               (throw (ex-info "hello"
                                               {:world 42})))))
-        ex (try
-             (deref (p.a.eql/process env
-                                     [:a]))
-             (catch Throwable ex
-               ex))
+        ex  (try
+              (deref (p.a.eql/process env
+                                      [:a]))
+              (catch Throwable ex
+                ex))
         msg (ex-message ex)]
     (testing
       "Not a huge size"

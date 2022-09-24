@@ -100,7 +100,27 @@
   (is (= (p.eql/process-one (pci/register geo/full-registry)
                             {:left 10 :top 5}
                             {::geo/turn-point [:right]})
-         {:right 10})))
+         {:right 10}))
+
+  (testing "keeps meta"
+    (let [response (p.eql/process-one
+                     (pci/register
+                       [(pbir/constantly-resolver :items [{:a 1}])])
+                     :items)]
+      (is (= response [{:a 1}]))
+      (check
+        (meta response)
+        => {:com.wsscode.pathom3.connect.runner/run-stats
+            {:com.wsscode.pathom3.connect.planner/source-ast            {},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {},
+             :com.wsscode.pathom3.connect.planner/user-request-shape    {},
+             :com.wsscode.pathom3.connect.planner/root                  number?,
+             :com.wsscode.pathom3.connect.planner/available-data        {},
+             :com.wsscode.pathom3.connect.runner/node-run-stats         {},
+             :com.wsscode.pathom3.connect.planner/index-ast             {},
+             :com.wsscode.pathom3.connect.runner/transient-stats        {},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {},
+             :com.wsscode.pathom3.connect.planner/nodes                 {}}}))))
 
 (defn run-boundary-interface [env request]
   (let [fi (p.eql/boundary-interface env)]

@@ -2,6 +2,7 @@
 
 ## [NEXT]
 - Fix error when user requests `::pcr/attribute-errors` in lenient mode
+- In `process-one` helpers, when the value is collection it gets the run stats from the parent
 
 ## [2022.08.29-alpha]
 - Fix ident processing on serial runner

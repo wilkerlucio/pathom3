@@ -1,7 +1,7 @@
 (ns com.wsscode.pathom3.interface.eql
   (:require
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.fulcrologic.guardrails.core :refer [=> >def >defn]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -86,6 +86,9 @@
   (p.eql/process-one env {:join [:sub-query]})
   (p.eql/process-one env '(:param {:expr \"sion\"}))
   ```
+
+  If the value returned supports meta, it will have the run stats meta from the root
+  entity.
   "
   ([env attr]
    [(s/keys)
@@ -102,7 +105,10 @@
           :param ::eql/param-expr)
     => any?]
    (let [response (process env entity [attr])]
-     (some-> response first val))))
+     (if-let [val (some-> response first val)]
+       (cond-> val
+         (coll? val)
+         (vary-meta assoc ::pcr/run-stats (-> response meta ::pcr/run-stats)))))))
 
 (>defn satisfy
   "Works like process, but none of the original entity data is filtered out."

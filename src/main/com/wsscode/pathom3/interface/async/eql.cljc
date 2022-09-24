@@ -102,7 +102,10 @@
           :param ::eql/param-expr)
     => any?]
    (p/let [response (process env entity [attr])]
-     (some-> response first val))))
+     (if-let [val (some-> response first val)]
+       (cond-> val
+         (coll? val)
+         (vary-meta assoc ::pcr/run-stats (-> response meta ::pcr/run-stats)))))))
 
 (>defn boundary-interface
   "Returns a function that wraps the environment. When exposing Pathom to some external
