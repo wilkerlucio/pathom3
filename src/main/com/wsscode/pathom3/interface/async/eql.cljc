@@ -1,7 +1,8 @@
 (ns com.wsscode.pathom3.interface.async.eql
   (:require
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.fulcrologic.guardrails.core :refer [=> >defn]]
+    [com.wsscode.misc.coll :as coll]
     [com.wsscode.pathom3.connect.foreign :as pcf]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.runner :as pcr]
@@ -105,7 +106,7 @@
      (if-let [val (some-> response first val)]
        (cond-> val
          (coll? val)
-         (vary-meta assoc ::pcr/run-stats (-> response meta ::pcr/run-stats)))))))
+         (vary-meta coll/merge-defaults {::pcr/run-stats (-> response meta ::pcr/run-stats)}))))))
 
 (>defn boundary-interface
   "Returns a function that wraps the environment. When exposing Pathom to some external

@@ -236,7 +236,20 @@
              :com.wsscode.pathom3.connect.planner/index-ast             {},
              :com.wsscode.pathom3.connect.runner/transient-stats        {},
              :com.wsscode.pathom3.connect.planner/index-resolver->nodes {},
-             :com.wsscode.pathom3.connect.planner/nodes                 {}}}))))
+             :com.wsscode.pathom3.connect.planner/nodes                 {}}}))
+
+    (testing "don't change data when its already there"
+      (let [response @(p.a.eql/process-one
+                        (pci/register
+                          [(pbir/constantly-resolver :items {:a 1})
+                           (pbir/alias-resolver :a :b)])
+                        {:items [:b]})]
+        (is (= response {:b 1}))
+        (check
+          (meta response)
+          => {:com.wsscode.pathom3.connect.runner/run-stats
+              {:com.wsscode.pathom3.connect.planner/available-data
+               {:a {}}}})))))
 
 (deftest avoid-huge-ex-message
   (let [env (pci/register (pco/resolver `a {::pco/output [:a]}
