@@ -1108,7 +1108,7 @@
   (run-batches-waiting! env))
 
 (defn attribute-error-resolver []
-  (pco/resolver (symbol "com.wsscode.pathom3.connect.runner" (str (gensym "attribute-errors")))
+  (pco/resolver (symbol "com.wsscode.pathom3.connect.runner" "attribute-errors")
     {::pco/output [::attribute-errors]}
     (fn [_ _] {::attribute-errors {}})))
 
