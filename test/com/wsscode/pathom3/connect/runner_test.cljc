@@ -238,6 +238,17 @@
           (fn [env inputs]
             (mapv #(resolve env %) inputs))))))
 
+(pco/defresolver optional-in [{:keys [foo bar]
+                               :or   {bar 1}}]
+  {:out (str foo " - " bar)})
+
+(deftest resolver-implicit-optionals
+  (check-all-runners
+    (pci/register optional-in)
+    {:foo 3}
+    [:out]
+    {:out "3 - 1"}))
+
 (pco/defresolver batch-param [env items]
   {::pco/input  [:id]
    ::pco/output [:v]
