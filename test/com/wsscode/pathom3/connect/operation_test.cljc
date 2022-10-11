@@ -248,6 +248,9 @@
        (is (= (s/conform ::pco/operation-argument '{:keys [foo] :as bar})
               '[:map {:keys [foo] :as bar}]))
 
+       (is (= (s/conform ::pco/operation-argument '{:keys [foo] :or {foo 123}})
+              '[:map {:keys [foo] :or {foo 123}}]))
+
        (is (= (s/conform ::pco/operation-argument '{:strs [foo]})
               :clojure.spec.alpha/invalid))
 
@@ -256,7 +259,13 @@
                 '[:map {:keys [:foo]}]))
 
          (is (= (s/conform ::pco/operation-argument '{:keys [:foo/bar]})
-                '[:map {:keys [:foo/bar]}]))))
+                '[:map {:keys [:foo/bar]}])))
+
+       (testing "support optionals via :or"
+         (is (= (s/conform ::pco/operation-argument '{:keys [:foo]
+                                                      :or   {foo 123}})
+                '[:map {:keys [:foo]
+                        :or   {foo 123}}]))))
 
      (testing "fails without options or visible map"
        (is (= (s/explain-data ::pco/defresolver-args '[foo [env input] "bar"])
@@ -291,6 +300,24 @@
              :user/keys [id name]
              :as        user})
          [:foo :user/id :user/name]))
+
+  (testing "optionals"
+    (is (= (pco/extract-destructure-map-keys-as-keywords
+             '{:keys [foo]
+               :or   {foo "bar"}})
+           [`(list :foo {::pco/optional? true})]))
+
+    (testing "namespaced key"
+      (is (= (pco/extract-destructure-map-keys-as-keywords
+               '{:some/keys [foo]
+                 :or        {foo "bar"}})
+             [`(list :some/foo {::pco/optional? true})])))
+
+    (testing "namespaced symbol"
+      (is (= (pco/extract-destructure-map-keys-as-keywords
+               '{:keys [some/foo]
+                 :or   {foo "bar"}})
+             [`(list :some/foo {::pco/optional? true})]))))
 
   (is (= (pco/extract-destructure-map-keys-as-keywords
            '{renamed :foo})
@@ -481,6 +508,21 @@
                                                            :inferred-input [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
+     (testing "implicit output, including implicit inputs via destructuring with optional"
+       (is (= (macroexpand-1
+                `(pco/defresolver ~'foo ~'[{:keys [dep] :or {dep 1}}] {:sample "bar"}))
+              '(def foo
+                 (com.wsscode.pathom3.connect.operation/resolver
+                   'user/foo
+                   {:com.wsscode.pathom3.connect.operation/output [:sample],
+                    :com.wsscode.pathom3.connect.operation/inferred-input [(clojure.core/list
+                                                                             :dep
+                                                                             {:com.wsscode.pathom3.connect.operation/optional? true})],
+                    :com.wsscode.pathom3.connect.operation/input [(clojure.core/list
+                                                                    :dep
+                                                                    {:com.wsscode.pathom3.connect.operation/optional? true})]}
+                   (clojure.core/fn foo [_ {:keys [dep], :or {dep 1}}] {:sample "bar"}))))))
+
      (testing "implicit output, including implicit inputs via destructuring"
        (is (= (macroexpand-1
                 `(pco/defresolver ~'foo ~'[{:keys [dep]}] {::pco/output [{:sample [:thing]}]} {:sample "bar"}))
@@ -564,6 +606,16 @@
                    #:com.wsscode.pathom3.connect.operation{:output [:sample],
                                                            :params  [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
+
+     (testing "implicit output, including implicit params via destructuring with optional"
+       (is (= (macroexpand-1
+                `(pco/defmutation ~'foo ~'[{:keys [dep] :or {dep true}}] {:sample "bar"}))
+              '(def foo
+                 (com.wsscode.pathom3.connect.operation/mutation
+                   'user/foo
+                   #:com.wsscode.pathom3.connect.operation{:output [:sample],
+                                                           :params [(clojure.core/list :dep {::pco/optional? true})]}
+                   (clojure.core/fn foo [_ {:keys [dep] :or {dep true}}] {:sample "bar"}))))))
 
      (testing "implicit output, including implicit params via destructuring"
        (is (= (macroexpand-1

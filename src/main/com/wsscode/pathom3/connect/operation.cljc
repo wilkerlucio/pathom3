@@ -292,12 +292,16 @@
      (s/def ::as-binding
        (s/tuple #{:as} simple-symbol?))
 
+     (s/def ::map-destructure-optionals
+       (s/tuple #{:or} (s/map-of simple-symbol? any?)))
+
      (s/def ::map-destructure
        (s/every
          (s/or :simple-keys-binding ::simple-keys-binding
                :qualified-keys-bindings ::qualified-keys-binding
                :named-extract (s/tuple ::operation-argument keyword?)
-               :as ::as-binding)
+               :as ::as-binding
+               :or ::map-destructure-optionals)
          :kind map?))
 
      (s/def ::operation-argument
@@ -328,20 +332,22 @@
    :cljs
    (s/def ::defresolver-args any?))
 
-(defn as-entry? [x] (refs/kw-identical? :as (first x)))
-
-(defn extract-destructure-map-keys-as-keywords [m]
+(defn extract-destructure-map-keys-as-keywords
+  [{defaults :or :as m}]
   (into []
-        (comp
-          (remove as-entry?)
-          (mapcat
-            (fn [[k val]]
-              (if (and (keyword? k)
-                       (= "keys" (name k)))
-                (map #(keyword (or (namespace %)
-                                   (namespace k)) (name %)) val)
-                [val]))))
-        m))
+        (comp (mapcat
+                (fn [[k val]]
+                  (if (and (keyword? k)
+                           (= "keys" (name k)))
+                    (map #(keyword (or (namespace %)
+                                       (namespace k)) (name %)) val)
+                    [val])))
+              (map
+                (fn [input]
+                  (if (contains? defaults (symbol (name input)))
+                    `(list ~input {::optional? true})
+                    input))))
+        (dissoc m :as :or)))
 
 (defn params->resolver-options [{:keys [arglist options body docstring]}]
   (let [[input-type input-arg] (last arglist)
