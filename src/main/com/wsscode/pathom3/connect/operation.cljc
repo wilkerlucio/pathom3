@@ -28,8 +28,10 @@
 
 (>def ::op-name "Name of the operation" symbol?)
 (>def ::input vector?)
+(>def ::inferred-input vector?)
 (>def ::output vector?)
 (>def ::params vector?)
+(>def ::inferred-params vector?)
 (>def ::docstring string?)
 (>def ::cache? boolean?)
 (>def ::cache-store keyword?)
@@ -362,6 +364,11 @@
       (assoc ::inferred-input inferred-input)
 
       (and inferred-input
+           (::input options))
+      (assoc ::input (eql/merge-queries (or inferred-input {})
+                                        (or (::input options) {})))
+
+      (and inferred-input
            (not (::input options)))
       (assoc ::input inferred-input)
 
@@ -370,14 +377,23 @@
 
 (defn params->mutation-options [{:keys [arglist options body docstring]}]
   (let [[input-type params-arg] (last arglist)
-        last-expr (last body)]
+        last-expr       (last body)
+        inferred-params (if (refs/kw-identical? :map input-type)
+                          (extract-destructure-map-keys-as-keywords params-arg))]
     (cond-> options
       (and (map? last-expr) (not (::output options)))
       (assoc ::output (pf.eql/data->query last-expr))
 
-      (and (refs/kw-identical? :map input-type)
+      inferred-params
+      (assoc ::inferred-params inferred-params)
+
+      (and inferred-params
+           (::params options))
+      (assoc ::params (eql/merge-queries inferred-params (::params options)))
+
+      (and inferred-params
            (not (::params options)))
-      (assoc ::params (extract-destructure-map-keys-as-keywords params-arg))
+      (assoc ::params inferred-params)
 
       docstring
       (assoc ::docstring docstring))))

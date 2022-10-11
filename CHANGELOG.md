@@ -4,6 +4,8 @@
 - Fix error when user requests `::pcr/attribute-errors` in lenient mode
 - In `process-one` helpers, when the value is collection it gets the run stats from the parent
 - Add support for `:or` keyword on `defresolver` and `defmutation` args, values in `:or` will be flagged as optional
+- Set `::pco/inferred-params` when params are inferred
+- Instead of overriding `::pco/input` or `::pco/params` when explicitly set, now Pathom will merge that with the inferred input/params
 
 ## [2022.08.29-alpha]
 - Fix ident processing on serial runner
