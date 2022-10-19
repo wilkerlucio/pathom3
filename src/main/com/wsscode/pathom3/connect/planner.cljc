@@ -1177,7 +1177,9 @@
                              (pfsd/merge-shapes i input))))
                        {}
                        root-res)
-        ast-shape    (pfsd/ast->shape-descriptor ast)]
+        ast-shape    (->> ast
+                          (pfsd/ast->shape-descriptor)
+                          (pfsd/lift-placeholders-first-level env))]
     (pfsd/merge-shapes nested-needs
                        (pfsd/intersection available ast-shape))))
 

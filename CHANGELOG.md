@@ -6,6 +6,7 @@
 - Add support for `:or` keyword on `defresolver` and `defmutation` args, values in `:or` will be flagged as optional
 - Set `::pco/inferred-params` when params are inferred
 - Instead of overriding `::pco/input` or `::pco/params` when explicitly set, now Pathom will merge that with the inferred input/params
+- Issue 159 - Fix placeholder nodes on dynamic resolvers
 
 ## [2022.08.29-alpha]
 - Fix ident processing on serial runner

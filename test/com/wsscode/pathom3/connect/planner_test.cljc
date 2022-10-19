@@ -2394,23 +2394,48 @@
                                                              :dispatch-key :c,
                                                              :key          :c}]}}})))
 
+  (testing "nested placeholder requirement"
+    (is (= (compute-run-graph
+             {::dynamics  {'dyn [{::pco/op-name 'a
+                                  ::pco/output  [{:a [:b]}]}]}
+              ::eql/query [{:a [{:>/nest [:b]}]}]})
+           '{:com.wsscode.pathom3.connect.planner/nodes                 {1 {:com.wsscode.pathom3.connect.operation/op-name      dyn,
+                                                                            :com.wsscode.pathom3.connect.planner/expects        {:a {:b {}}},
+                                                                            :com.wsscode.pathom3.connect.planner/input          {},
+                                                                            :com.wsscode.pathom3.connect.planner/node-id        1,
+                                                                            :com.wsscode.pathom3.connect.planner/source-op-name a,
+                                                                            :com.wsscode.pathom3.connect.planner/foreign-ast    {:type     :root,
+                                                                                                                                 :children [{:type         :join,
+                                                                                                                                             :dispatch-key :a,
+                                                                                                                                             :key          :a,
+                                                                                                                                             :query        [:b],
+                                                                                                                                             :children     [{:type         :prop,
+                                                                                                                                                             :key          :b,
+                                                                                                                                                             :dispatch-key :b}]}]}}},
+             :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :join,
+                                                                             :dispatch-key :a,
+                                                                             :key          :a,
+                                                                             :query        [{:>/nest [:b]}],
+                                                                             :children     [{:type         :join,
+                                                                                             :dispatch-key :>/nest,
+                                                                                             :key          :>/nest,
+                                                                                             :query        [:b],
+                                                                                             :children     [{:type         :prop,
+                                                                                                             :dispatch-key :b,
+                                                                                                             :key          :b}]}]}},
+             :com.wsscode.pathom3.connect.planner/user-request-shape    {:a {:>/nest {:b {}}}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {dyn #{1}},
+             :com.wsscode.pathom3.connect.planner/index-attrs           {:a #{1}},
+             :com.wsscode.pathom3.connect.planner/root                  1})))
+
   (testing "nested extended process"
     (is (= (compute-run-graph
-             {::pci/index-resolvers {'dyn {::pco/op-name           'dyn
-                                           ::pco/cache?            false
-                                           ::pco/dynamic-resolver? true
-                                           ::pco/resolve           (fn [_ _])}
-                                     'a   {::pco/op-name      'a
-                                           ::pco/dynamic-name 'dyn
-                                           ::pco/output       [{:a [:b]}]
-                                           ::pco/resolve      (fn [_ _])}
-                                     'c   {::pco/op-name      'c
-                                           ::pco/dynamic-name 'dyn
-                                           ::pco/input        [:b]
-                                           ::pco/output       [:c]}}
-              ::pci/index-oir       {:a {{} #{'a}}
-                                     :c {{:b {}} #{'c}}}
-              ::eql/query           [{:a [:c]}]})
+             {::dynamics  {'dyn [{::pco/op-name 'a
+                                  ::pco/output  [{:a [:b]}]}
+                                 {::pco/op-name 'c
+                                  ::pco/input   [:b]
+                                  ::pco/output  [:c]}]}
+              ::eql/query [{:a [:c]}]})
            {::pcp/nodes                 {2 {::pco/op-name        'dyn
                                             ::pcp/source-op-name 'a
                                             ::pcp/node-id        2

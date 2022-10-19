@@ -8,6 +8,7 @@
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
+    [com.wsscode.pathom3.placeholder :as pph]
     [edn-query-language.core :as eql]))
 
 (>def ::shape-descriptor
@@ -299,7 +300,7 @@
 
 (>defn select-shape-filtering
   "Like select-shape, but in case of collections, if some item doesn't have all the
-  required keys, its removed from the collection."
+  required keys, it's removed from the collection."
   ([data shape]
    [map? ::shape-descriptor => map?]
    (select-shape-filtering data shape shape))
@@ -324,3 +325,27 @@
          out))
      (empty data)
      shape)))
+
+(>defn lift-placeholders-first-level
+  "This function will normalize up all placeholders that start from the root of the tree.
+
+  For example:
+
+    {:>/foo {:a {}}} = becomes => {:a {}}
+
+  Nested items also are bring up:
+
+    {:>/foo {:a {} :>/other {:b {}}}} => {:a {} :b {}}
+
+  But placeholders not connected to the root as kept as-is:
+
+    {:coll {:>/inner {:a {}}}} => {:coll {:>/inner {:a {}}}}"
+  [env shape]
+  [map? ::shape-descriptor => ::shape-descriptor]
+  (reduce-kv
+    (fn [out k v]
+      (if (pph/placeholder-key? env k)
+        (merge out (lift-placeholders-first-level env v))
+        (assoc out k v)))
+    {}
+    shape))
