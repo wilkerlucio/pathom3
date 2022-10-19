@@ -334,20 +334,29 @@
 
 (defn extract-destructure-map-keys-as-keywords
   [{defaults :or :as m}]
-  (into []
-        (comp (mapcat
-                (fn [[k val]]
-                  (if (and (keyword? k)
-                           (= "keys" (name k)))
-                    (map #(keyword (or (namespace %)
-                                       (namespace k)) (name %)) val)
-                    [val])))
-              (map
-                (fn [input]
-                  (if (contains? defaults (symbol (name input)))
-                    `(list ~input {::optional? true})
-                    input))))
-        (dissoc m :as :or)))
+  (letfn [(add-entry [entries sym k]
+            (conj entries
+              (if (contains? defaults sym)
+                `(list ~k {::optional? true})
+                k)))]
+    (reduce-kv
+      (fn [entries k v]
+        (cond
+          (symbol? k)
+          (add-entry entries k v)
+
+          (and (keyword? k) (= "keys" (name k)))
+          (reduce (fn [entries sym]
+                    (add-entry entries (symbol (name sym))
+                               (keyword (or (namespace sym)
+                                            (namespace k)) (name sym))))
+            entries
+            v)
+
+          :else
+          (conj entries v)))
+      []
+      (dissoc m :as :or))))
 
 (defn params->resolver-options [{:keys [arglist options body docstring]}]
   (let [[input-type input-arg] (last arglist)

@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Fix `:or` destructuring inference when mapping it to a symbol destructuring
+
 ## [2022.10.18-alpha]
 - Fix error when user requests `::pcr/attribute-errors` in lenient mode
 - In `process-one` helpers, when the value is collection it gets the run stats from the parent

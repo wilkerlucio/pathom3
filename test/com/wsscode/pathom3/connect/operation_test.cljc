@@ -298,6 +298,12 @@
       (is (= (pco/extract-destructure-map-keys-as-keywords
                '{:keys [some/foo]
                  :or   {foo "bar"}})
+             [`(list :some/foo {::pco/optional? true})])))
+
+    (testing "symbol application"
+      (is (= (pco/extract-destructure-map-keys-as-keywords
+               '{sym :some/foo
+                 :or {sym "bar"}})
              [`(list :some/foo {::pco/optional? true})]))))
 
   (is (= (pco/extract-destructure-map-keys-as-keywords
