@@ -296,3 +296,42 @@
           (and (seq idx') (not (contains? #{:join :root} (:type ast1))))
           (assoc :type :join))
         (dissoc :query))))
+
+(defn merge-asts
+  "Merges two ast's the difference between this and the original merge-ast is related to
+  params, the original implementation would return nil when there is a mismatch in
+  params between the entries being merged. This version will merge the params."
+  ([] {:type :root
+       :children []})
+  ([q] q)
+  ([qa qb]
+   (reduce (fn [ast {:keys [key type params] :as item-b}]
+             (if-let [[idx item] (->> ast :children
+                                      (keep-indexed #(if (-> %2 :key (= key)) [%1 %2]))
+                                      first)]
+               (cond
+                 (or (= :join (:type item) type)
+                     (= :prop (:type item) type))
+                 (cond-> (update-in ast [:children idx] merge-asts item-b)
+                   (or params (:params item))
+                   (update-in [:children idx :params] merge params))
+
+                 (and (= :prop (:type item))
+                      (= :join type))
+                 (assoc-in ast [:children idx] item-b)
+
+                 (= :call type)
+                 (reduced nil)
+
+                 :else ast)
+               (update ast :children conj item-b)))
+     qa
+     (:children qb))))
+
+(defn merge-queries
+  "Merges two queries, the difference between this and the original merge is related to
+  params, the original implementation would return nil when there is a mismatch in
+  params between the entries being merged. This version will merge the params."
+  [qa qb]
+  (some-> (merge-asts (eql/query->ast qa) (eql/query->ast qb))
+          (eql/ast->query)))

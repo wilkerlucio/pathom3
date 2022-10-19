@@ -2,7 +2,6 @@
   (:require
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
     [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef |]]
     [com.wsscode.misc.coll :as coll]
     #?(:clj [com.wsscode.misc.macros :as macros])
@@ -176,7 +175,7 @@
    (resolver (-> config
                  (coll/merge-defaults {::op-name op-name})
                  (assoc ::resolve resolve))))
-  ([{::keys [transform op-name inferred-input input] :as config}]
+  ([{::keys [transform inferred-input] :as config}]
    [(s/or :map (s/keys :req [::op-name] :opt [::input ::output ::resolve ::transform])
           :resolver ::resolver)
     => ::resolver]
@@ -188,13 +187,6 @@
        (throw (ex-info (str "Invalid config on resolver " name)
                        {:explain-data (s/explain-data (s/keys) config)})))
 
-     (if-not (::disable-validate-input-destructuring? config)
-       (if-let [missing (input-destructure-missing config)]
-         (throw (ex-info
-                  (str "Input of resolver " op-name " destructuring requires attributes \"" (str/join "," missing) "\" that are not present at the input definition.")
-                  {::input          input
-                   ::inferred-input inferred-input}))))
-
      (if (resolver? config)
        config
        (let [{::keys [resolve output]} config
@@ -205,7 +197,10 @@
 
              {::keys [input] :as config'}
              (-> (merge defaults config)
-                 (dissoc ::resolve ::transform))
+                 (dissoc ::resolve ::transform)
+                 (cond->
+                   inferred-input
+                   (update ::input #(pf.eql/merge-queries inferred-input %))))
 
              config'  (cond-> config'
                         input
@@ -237,7 +232,7 @@
    (mutation (-> config
                  (coll/merge-defaults {::op-name op-name})
                  (assoc ::mutate mutate))))
-  ([{::keys [transform] :as config}]
+  ([{::keys [transform inferred-params] :as config}]
    [(s/or :map (s/keys :req [::op-name] :opt [::output ::mutate ::transform])
           :mutation ::mutation)
     => ::mutation]
@@ -252,7 +247,10 @@
                       {::provides (pfsd/query->shape-descriptor output)}
                       {})
            config'  (-> (merge defaults config)
-                        (dissoc ::mutate ::transform))]
+                        (dissoc ::mutate ::transform)
+                        (cond->
+                          inferred-params
+                          (update ::params #(pf.eql/merge-queries inferred-params %))))]
        (->Mutation config' (or mutate (fn [_ _])))))))
 
 (>defn params
@@ -363,15 +361,6 @@
       inferred-input
       (assoc ::inferred-input inferred-input)
 
-      (and inferred-input
-           (::input options))
-      (assoc ::input (eql/merge-queries (or inferred-input {})
-                                        (or (::input options) {})))
-
-      (and inferred-input
-           (not (::input options)))
-      (assoc ::input inferred-input)
-
       docstring
       (assoc ::docstring docstring))))
 
@@ -386,14 +375,6 @@
 
       inferred-params
       (assoc ::inferred-params inferred-params)
-
-      (and inferred-params
-           (::params options))
-      (assoc ::params (eql/merge-queries inferred-params (::params options)))
-
-      (and inferred-params
-           (not (::params options)))
-      (assoc ::params inferred-params)
 
       docstring
       (assoc ::docstring docstring))))
