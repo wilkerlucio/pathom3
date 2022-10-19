@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2022.10.18-alpha]
 - Fix error when user requests `::pcr/attribute-errors` in lenient mode
 - In `process-one` helpers, when the value is collection it gets the run stats from the parent
 - Add support for `:or` keyword on `defresolver` and `defmutation` args, values in `:or` will be flagged as optional
