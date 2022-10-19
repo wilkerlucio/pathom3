@@ -45,25 +45,6 @@
               ::pco/provides {:foo {}}
               ::pco/requires {}}))))
 
-  (testing "validate inferred"
-    (is (thrown-with-msg?
-          #?(:clj Throwable :cljs :default)
-          #"Input of resolver foo destructuring requires attributes \":foo\" that are not present at the input definition."
-          (pco/resolver 'foo
-            {::pco/input          []
-             ::pco/inferred-input [:foo]})))
-
-    (is (= (pco/operation-config
-             (pco/resolver 'foo
-               {::pco/input                                 []
-                ::pco/inferred-input                        [:foo]
-                ::pco/disable-validate-input-destructuring? true}))
-           '{:com.wsscode.pathom3.connect.operation/input                                 [],
-             :com.wsscode.pathom3.connect.operation/inferred-input                        [:foo],
-             :com.wsscode.pathom3.connect.operation/disable-validate-input-destructuring? true,
-             :com.wsscode.pathom3.connect.operation/op-name                               foo,
-             :com.wsscode.pathom3.connect.operation/requires                              {}})))
-
   (testing "validates configuration map"
     (try
       (pco/resolver 'foo {::pco/input #{:invalid}} (fn [_ _] {:sample "bar"}))
@@ -346,7 +327,6 @@
                :arglist [[:sym env] [:map {:keys [dep]}]]
                :body    [{:foo "bar"}]})
            {::pco/inferred-input [:dep]
-            ::pco/input          [:dep]
             ::pco/output         [:foo]}))
 
     (testing "preserve user input when defined"
@@ -401,8 +381,7 @@
              '{:name    foo
                :arglist [[:sym env] [:map {:keys [dep]}]]
                :body    [{:foo "bar"}]})
-           {::pco/params          [:dep]
-            ::pco/inferred-params [:dep]
+           {::pco/inferred-params [:dep]
             ::pco/output          [:foo]}))
 
     (testing "preserve user params when defined, and merges with inferred"
@@ -411,7 +390,7 @@
                  :arglist [[:sym env] [:map {:keys [dep more]}]]
                  :options {::pco/params [:dep :other]}
                  :body    [{:foo "bar"}]})
-             {::pco/params          [:dep :more :other]
+             {::pco/params          [:dep :other]
               ::pco/inferred-params [:dep :more]
               ::pco/output          [:foo]}))))
 
@@ -506,7 +485,6 @@
                  (com.wsscode.pathom3.connect.operation/resolver
                    'user/foo
                    #:com.wsscode.pathom3.connect.operation{:output [:sample],
-                                                           :input  [:dep]
                                                            :inferred-input [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
@@ -519,10 +497,7 @@
                    {:com.wsscode.pathom3.connect.operation/output [:sample],
                     :com.wsscode.pathom3.connect.operation/inferred-input [(clojure.core/list
                                                                              :dep
-                                                                             {:com.wsscode.pathom3.connect.operation/optional? true})],
-                    :com.wsscode.pathom3.connect.operation/input [(clojure.core/list
-                                                                    :dep
-                                                                    {:com.wsscode.pathom3.connect.operation/optional? true})]}
+                                                                             {:com.wsscode.pathom3.connect.operation/optional? true})],}
                    (clojure.core/fn foo [_ {:keys [dep], :or {dep 1}}] {:sample "bar"}))))))
 
      (testing "implicit output, including implicit inputs via destructuring"
@@ -532,7 +507,6 @@
                  (com.wsscode.pathom3.connect.operation/resolver
                    'user/foo
                    #:com.wsscode.pathom3.connect.operation{:output         [{:sample [:thing]}],
-                                                           :input          [:dep]
                                                            :inferred-input [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
@@ -552,7 +526,7 @@
               '(def foo
                  (com.wsscode.pathom3.connect.operation/resolver
                    'user/foo
-                   {:com.wsscode.pathom3.connect.operation/input          [{:foo [:sub]} :bar],
+                   {:com.wsscode.pathom3.connect.operation/input          [{:foo [:sub]}],
                     :com.wsscode.pathom3.connect.operation/inferred-input [:foo :bar],
                     :com.wsscode.pathom3.connect.operation/output         [:bar]}
                    (clojure.core/fn foo [_ {:keys [foo bar]}] {:bar "baz"}))))))
@@ -617,7 +591,6 @@
                  (com.wsscode.pathom3.connect.operation/mutation
                    'user/foo
                    #:com.wsscode.pathom3.connect.operation{:output          [:sample],
-                                                           :params          [:dep]
                                                            :inferred-params [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
@@ -628,7 +601,6 @@
                  (com.wsscode.pathom3.connect.operation/mutation
                    'user/foo
                    #:com.wsscode.pathom3.connect.operation{:output          [:sample],
-                                                           :params          [(clojure.core/list :dep {::pco/optional? true})]
                                                            :inferred-params [(clojure.core/list :dep {::pco/optional? true})]}
                    (clojure.core/fn foo [_ {:keys [dep] :or {dep true}}] {:sample "bar"}))))))
 
@@ -639,7 +611,6 @@
                  (com.wsscode.pathom3.connect.operation/mutation
                    'user/foo
                    #:com.wsscode.pathom3.connect.operation{:output          [{:sample [:thing]}],
-                                                           :params          [:dep]
                                                            :inferred-params [:dep]}
                    (clojure.core/fn foo [_ {:keys [dep]}] {:sample "bar"}))))))
 
