@@ -1,6 +1,6 @@
 (ns com.wsscode.pathom3.format.shape-descriptor-test
   (:require
-    [clojure.test :refer [deftest is are run-tests testing]]
+    [clojure.test :refer [deftest is testing]]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.test.helpers :as h]))
 
@@ -418,3 +418,19 @@
 
   (is (= (pfsd/data->shape-descriptor-shallow {:a {:b {:c {}}}})
          {:a {}})))
+
+(deftest lift-placeholders-first-level-test
+  (is (= (pfsd/lift-placeholders-first-level {} {})
+         {}))
+
+  (is (= (pfsd/lift-placeholders-first-level {} {:a {}})
+         {:a {}}))
+
+  (is (= (pfsd/lift-placeholders-first-level {} {:>/foo {:a {}}})
+         {:a {}}))
+
+  (is (= (pfsd/lift-placeholders-first-level {} {:>/foo {:a {} :>/inner {:b {}}}})
+         {:a {} :b {}}))
+
+  (is (= (pfsd/lift-placeholders-first-level {} {:coll {:>/inner {:a {}}}})
+         {:coll {:>/inner {:a {}}}})))
