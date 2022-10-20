@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2022.10.19-alpha]
 - Fix `:or` destructuring inference when mapping it to a symbol destructuring
 
 ## [2022.10.18-alpha]
