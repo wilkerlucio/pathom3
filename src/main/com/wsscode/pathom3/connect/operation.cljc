@@ -153,14 +153,7 @@
   "Helper to create a resolver. A resolver have at least a name, the output definition
   and the resolve function.
 
-  You can create a resolver using a map:
-
-      (resolver
-        {::op-name 'foo
-         ::output  [:foo]
-         ::resolve (fn [env input] ...)})
-
-  Or with the helper syntax:
+  You can create a resolver using the following syntax:
 
       (resolver 'foo {::output [:foo]} (fn [env input] ...))
 
@@ -210,14 +203,7 @@
 (>defn mutation
   "Helper to create a mutation. A mutation must have a name and the mutate function.
 
-  You can create a mutation using a map:
-
-      (mutation
-        {::op-name 'foo
-         ::output  [:foo]
-         ::mutate  (fn [env params] ...)})
-
-  Or with the helper syntax:
+  You can create a mutation using the following syntax:
 
       (mutation 'foo {} (fn [env params] ...))
 
