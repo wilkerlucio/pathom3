@@ -16,6 +16,7 @@
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
@@ -1106,6 +1107,26 @@
           @weights*
           => {'a1 20
               'a2 100})))))
+
+(deftest run-graph-internal-run
+  (check-serial
+    (-> {}
+        (pci/register
+          [(pco/resolver 'a1 {::pco/output [:a]} (fn [_ _] {:a 1}))
+           (pco/resolver 'b {::pco/output [:b]} (fn [env _] {:b (p.eql/process env [:a])}))]))
+    {}
+    [:b]
+    {:b {:a 1}})
+
+  (testing "lenient mode"
+    (check-serial
+      (-> {::p.error/lenient-mode? true}
+          (pci/register
+            [(pco/resolver 'a1 {::pco/output [:a]} (fn [_ _] {:a 1}))
+             (pco/resolver 'b {::pco/output [:b]} (fn [env _] {:b (p.eql/process env [:a])}))]))
+      {}
+      [:b]
+      {:b {:a 1}})))
 
 (deftest run-graph!-unions-test
   (is (graph-response?
