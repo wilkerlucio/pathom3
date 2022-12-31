@@ -1114,7 +1114,7 @@
 
 (defn setup-root-env [env]
   (cond-> env
-    (::p.error/lenient-mode? env)
+    (and (::p.error/lenient-mode? env) (nil? (pci/resolver env `attribute-errors)))
     (pci/register (attribute-error-resolver))))
 
 (defn setup-runner-env [env entity-tree* cache-type]

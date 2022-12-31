@@ -32,7 +32,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.2.1
         with:
-          babashka-version: 0.3.1
+          babashka-version: 1.0.168
 
       - uses: actions/checkout@v1
 
