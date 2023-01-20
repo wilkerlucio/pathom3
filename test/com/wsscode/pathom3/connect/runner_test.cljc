@@ -118,9 +118,11 @@
           ::geo/half-width 15
           ::geo/center-x   25})))
 
-(defn run-graph [env tree query]
-  (let [ast (eql/query->ast query)]
-    (pcr/run-graph! env ast (p.ent/create-entity tree))))
+(defn run-graph
+  ([env tree query]
+   (let [ast (eql/query->ast query)]
+     (pcr/run-graph! env ast (p.ent/create-entity tree))))
+  ([env tree query _] (run-graph env tree query)))
 
 (defn run-graph-async
   ([env tree query]
