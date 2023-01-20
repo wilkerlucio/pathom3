@@ -2,6 +2,7 @@
 
 ## [2022.10.19-alpha]
 - Fix `:or` destructuring inference when mapping it to a symbol destructuring
+- Fix multiple inclusions of attribute error resolver #175
 
 ## [2022.10.18-alpha]
 - Fix error when user requests `::pcr/attribute-errors` in lenient mode
