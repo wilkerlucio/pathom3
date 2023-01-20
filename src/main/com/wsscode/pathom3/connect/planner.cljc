@@ -273,6 +273,9 @@
     (assoc graph ::root node-id)
     (dissoc graph ::root)))
 
+(defn add-resolvers-trail [env resolvers]
+  (update env ::attr-resolvers-trail #(into (or % #{}) resolvers)))
+
 (>defn node-branches
   "Return node branches, which can be the ::run-and or the ::run-or part of the node."
   [node]
@@ -1038,7 +1041,7 @@
 (>defn shape-reachable?
   "Given an environment, available data and shape, determines if the whole shape
   is reachable (including nested dependencies)."
-  [{::keys [resolvers attr-resolvers-trail] :as env} available shape]
+  [{::keys [resolvers] :as env} available shape]
   [map? ::pfsd/shape-descriptor ::pfsd/shape-descriptor => boolean?]
   (let [missing (pfsd/missing available shape)]
     (if (seq missing)
@@ -1046,9 +1049,9 @@
                     (-> (reset-env env)
                         (push-path env)
                         (inc-snapshot-depth)
+                        (add-resolvers-trail resolvers)
                         (assoc
                           ::optimize-graph? false
-                          ::attr-resolvers-trail (into (or attr-resolvers-trail #{}) resolvers)
                           ::available-data available
                           :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing))))]
         (every?
@@ -1060,7 +1063,8 @@
           shape))
       true)))
 
-(defn compute-attribute-nested-input-require [graph env attr shape nodes]
+(defn compute-attribute-nested-input-require
+  [graph env attr shape nodes]
   (add-snapshot! graph env {::snapshot-message (str "Processing nested requirements " (pr-str {attr shape}))
                             ::highlight-nodes  (into #{} (map ::node-id) nodes)})
   (let [checked-nodes (into []
@@ -1235,6 +1239,7 @@
         graph       (compute-run-graph (-> (reset-env env)
                                            (push-path env)
                                            (inc-snapshot-depth)
+                                           (add-resolvers-trail (::resolvers env))
                                            (assoc
                                              :com.wsscode.pathom3.error/lenient-mode? true
                                              :edn-query-language.ast/node ast
@@ -1406,7 +1411,7 @@
   nodes to execute the resolvers, in case of many resolvers it uses a OR node to combine
   them.
 
-  Them it fetches the dependencies, declared in the process path. If the dependencies
+  Then it fetches the dependencies, declared in the process path. If the dependencies
   are successfully computed, it returns the graph with the root on the node that
   fulfills the request."
   [graph

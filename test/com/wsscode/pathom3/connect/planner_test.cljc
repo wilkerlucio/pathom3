@@ -1239,6 +1239,49 @@
 
              ::eql/query                    [:d]})))))
 
+(deftest compute-run-graph-nested-inputs-cycles-test
+  (testing "basic impossible nested input path"
+    (is
+      (thrown-with-msg?
+        #?(:clj Throwable :cljs :default)
+        #"Pathom can't find a path for the following elements in the query: \[:child] at path \[:parent]"
+        (compute-run-graph
+          {::resolvers [{::pco/op-name 'parent
+                         ::pco/output  [{:parent [:foo]}]}
+                        {::pco/op-name 'child
+                         ::pco/input   [{:parent [:child]}]
+                         ::pco/output  [:child]}]
+           ::eql/query [:child]}))))
+
+  (testing "indirect cycle"
+    (is
+      (thrown-with-msg?
+        #?(:clj Throwable :cljs :default)
+        #"Pathom can't find a path for the following elements in the query: \[:child-dep] at path \[:parent]"
+        (compute-run-graph
+          {::resolvers [{::pco/op-name 'parent
+                         ::pco/output  [{:parent [:foo]}]}
+                        {::pco/op-name 'child
+                         ::pco/input   [{:parent [:child-dep]}]
+                         ::pco/output  [:child]}
+                        {::pco/op-name 'child-dep
+                         ::pco/input   [:child]
+                         ::pco/output  [:child-dep]}]
+           ::eql/query [:child]}))))
+
+  (testing "deep cycle"
+    (is
+      (thrown-with-msg?
+        #?(:clj Throwable :cljs :default)
+        #"Pathom can't find a path for the following elements in the query: \[:child] at path \[:parent]"
+        (compute-run-graph
+          {::resolvers [{::pco/op-name 'parent
+                         ::pco/output  [{:parent [:foo]}]}
+                        {::pco/op-name 'child
+                         ::pco/input   [{:parent [{:parent [:child]}]}]
+                         ::pco/output  [:child]}]
+           ::eql/query [:child]})))))
+
 (deftest compute-run-graph-optional-inputs-test
   (testing "plan continues when optional thing is missing"
     (is (= (compute-run-graph
