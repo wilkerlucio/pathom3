@@ -596,7 +596,7 @@
 
 (defn run-batches-waiting! [env]
   (let [waits* (-> env ::pcr/batch-waiting*)
-        waits  @waits*]
+        waits  (pcr/sort-waiting-by-depth @waits*)]
     (reset! waits* [])
     (reduce-async
       (fn [_ {env' ::pcr/env}]

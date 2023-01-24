@@ -4,6 +4,7 @@
 - Fix `:or` destructuring inference when mapping it to a symbol destructuring
 - Fix multiple inclusions of attribute error resolver (issue #175)
 - Fix stack overflow on nested attribute cycles (issue #168)
+- Fix batch waiting execution order (issue #169)
 
 ## [2022.10.18-alpha]
 - Fix error when user requests `::pcr/attribute-errors` in lenient mode

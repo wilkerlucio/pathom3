@@ -376,7 +376,7 @@
       (->> env ::batch-pending* deref vals
            (into [] cat)
            (map (comp
-                  #(subvec % (count path))
+                  #(subvec % (min (count %) (count path)))
                   ::p.path/path ::env))
            (some
              (fn [path']
@@ -468,7 +468,8 @@
      ::pcp/foreign-ast     (::pcp/foreign-ast node)}
     input-data))
 
-(defn wait-batch-check [env node entity input input+opts op-name input-data]
+(defn wait-batch-check
+  [env node entity input input+opts op-name input-data]
   (let [missing-all (pfsd/missing-from-data entity input+opts)
         wait-batch? (and missing-all
                          (missing-maybe-in-pending-batch? env input+opts))
@@ -1090,9 +1091,12 @@
 
               (merge-entity-to-root-data env env' node))))))))
 
+(defn sort-waiting-by-depth [waits]
+  (sort-by #(-> % ::env ::p.path/path count) #(compare %2 %) waits))
+
 (defn run-batches-waiting! [env]
   (let [waits* (-> env ::batch-waiting*)
-        waits  @waits*]
+        waits  (sort-waiting-by-depth @waits*)]
     (vreset! waits* [])
     (doseq [{env' ::env} waits]
       (p.ent/reset-entity! env' (get-in (p.ent/entity env) (::p.path/path env')))

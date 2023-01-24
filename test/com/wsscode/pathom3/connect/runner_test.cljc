@@ -2233,7 +2233,62 @@
            :appKey                                                "a"
            :ont/attribute-sql-projection                          "blah"
            :ont/events-withs-fn                                   "event-withs-fn"
-           :entity.metric.query.response/unformatted-metric-honey "something"})))))
+           :entity.metric.query.response/unformatted-metric-honey "something"})))
+
+    (testing "issue-169 nested batches out of order"
+      (check-all-runners
+        (pci/register
+          [(pco/resolver 'unauthorized-toy
+             {::pco/input  [:toy/id]
+              ::pco/batch? true
+              ::pco/output [{:toy/unauthorized [:toy/name :toy/id :child/id]}]}
+             (fn [_env _input]
+               [{:toy/unauthorized {:toy/name "Bobby" :toy/id 1 :child/id 1}}]))
+
+           (pco/resolver 'toy
+             {::pco/input  [{:toy/unauthorized [:toy/name :toy/id :child/id :child/authorized?]}]
+              ::pco/batch? true
+              ::pco/output [:toy/name :toy/id :child/id]}
+             (fn [_env input]
+               (mapv :toy/unauthorized input)))
+
+           (pco/resolver 'child-toys
+             {::pco/input  [:child/id]
+              ::pco/batch? true
+              ::pco/output [{:child/toys [:toy/id]}]}
+             (fn [_env _input]
+               [{:child/toys [{:toy/id 1}]}]))
+
+           (pco/resolver 'unauthorized-child
+             {::pco/input  [:child/id]
+              ::pco/batch? true
+              ::pco/output [{:child/unauthorized [:child/name :child/id :parent/id]}]}
+             (fn [_env _input]
+               [{:child/unauthorized {:child/name "Bob" :child/id 1 :parent/id 1}}]))
+
+           (pco/resolver 'child
+             {::pco/input  [{:child/unauthorized [:child/name :child/id :parent/id :parent/authorized?]}]
+              ::pco/batch? true
+              ::pco/output [:child/name :child/id :parent/id]}
+             (fn [_env input]
+               (mapv :child/unauthorized input)))
+
+           (pco/resolver 'auth-child
+             {::pco/input  [:child/id :parent/authorized?]
+              ::pco/batch? true
+              ::pco/output [:child/authorized?]}
+             (fn [_env _input]
+               [{:child/authorized? true}]))
+
+           (pco/resolver 'auth-parent
+             {::pco/input  [:parent/id]
+              ::pco/batch? true
+              ::pco/output [:parent/authorized?]}
+             (fn [_env _input]
+               [{:parent/authorized? true}]))])
+        {}
+        [{[:child/id 1] [:child/name {:child/toys [:toy/id :toy/name]}]}]
+        {[:child/id 1] {:child/name "Bob", :child/toys [{:toy/id 1, :toy/name "Bobby"}]}}))))
 
 (deftest run-graph!batch-optional
   (testing "bug #107"
