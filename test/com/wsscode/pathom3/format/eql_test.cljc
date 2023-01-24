@@ -1,7 +1,8 @@
 (ns com.wsscode.pathom3.format.eql-test
   (:require
-    [clojure.test :refer [deftest is are run-tests testing]]
+    [clojure.test :refer [deftest is testing]]
     [com.wsscode.misc.coll :as coll]
+    [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
     [edn-query-language.core :as eql]))
@@ -79,6 +80,13 @@
                                         3]}
                               [{:foo [:b]}])
            {:foo [{:b 2} {:b 1} {} 3]})))
+
+  (testing "process map container"
+    (is (= (pf.eql/map-select {} {:foo ^::pcr/map-container? {:x {:a 1 :b 2}
+                                                              :y {:a 3 :b 4}}}
+                              [{:foo [:b]}])
+           {:foo {:x {:b 2}
+                  :y {:b 4}}})))
 
   (testing "recursive query"
     (is (= (pf.eql/map-select {}
