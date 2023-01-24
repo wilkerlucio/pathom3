@@ -2061,7 +2061,8 @@
 
         (testing "allows the partial results to flow up in lenient mode"
           (check-all-runners
-            (-> {::p.error/lenient-mode? true}
+            (-> {::p.error/lenient-mode?    true
+                 ::pcrc/batch-hold-delay-ms 100}
                 (pci/register (pco/resolver 'batch-thing
                                 {::pco/input            [:id]
                                  ::pco/output           [:name]
