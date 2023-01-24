@@ -4,7 +4,7 @@
   <packaging>jar</packaging>
   <groupId>com.wsscode</groupId>
   <artifactId>pathom3</artifactId>
-  <version>2022.08.26-alpha</version>
+  <version>2022.10.19-alpha</version>
   <name>pathom3</name>
   <description>A library to unify data sources via attribute modeling in a seamless graph.</description>
   <url>https://github.com/wilkerlucio/pathom3</url>
@@ -18,7 +18,7 @@
     <url>https://github.com/wilkerlucio/pathom3</url>
     <connection>scm:git:git://github.com/wilkerlucio/pathom3.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/wilkerlucio/pathom3.git</developerConnection>
-    <tag>v2022.08.26-alpha</tag>
+    <tag>v2022.10.19-alpha</tag>
   </scm>
   <dependencies>
     <dependency>
