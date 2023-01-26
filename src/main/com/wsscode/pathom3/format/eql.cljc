@@ -251,10 +251,19 @@
                (conj out
                  (cond
                    (map? v)
-                   (let [q (data->query v)]
-                     (if (seq q)
-                       {k q}
-                       k))
+                   (if (-> v meta :com.wsscode.pathom3.connect.runner/map-container?)
+                     (let [shape (reduce-kv
+                                   (fn [q _k v]
+                                     (eql/merge-queries q (data->query v)))
+                                   []
+                                   v)]
+                       (if (seq shape)
+                         {k shape}
+                         k))
+                     (let [q (data->query v)]
+                       (if (seq q)
+                         {k q}
+                         k)))
 
                    (sequential? v)
                    (let [shape (reduce

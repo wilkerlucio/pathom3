@@ -159,7 +159,10 @@
   (is (= (pf.eql/data->query {:foo [{:buz "baz"} {:it "nih"}]}) [{:foo [:buz :it]}]))
   (is (= (pf.eql/data->query {:foo [{:buz "baz"} "abc" {:it "nih"}]}) [{:foo [:buz :it]}]))
   (is (= (pf.eql/data->query {:z 10 :a 1 :b {:d 3 :e 4}}) [:a {:b [:d :e]} :z]))
-  (is (= (pf.eql/data->query {:a {"foo" {:bar "baz"}}}) [:a])))
+  (is (= (pf.eql/data->query {:a {"foo" {:bar "baz"}}}) [:a]))
+  (is (= (pf.eql/data->query {:a ^::pcr/map-container? {"foo" {:bar "baz"}}}) [{:a [:bar]}]))
+  (is (= (pf.eql/data->query {:a ^::pcr/map-container? {"foo" {:bar "baz"}
+                                                        "other" {:z 1}}}) [{:a [:bar :z]}])))
 
 (deftest seq-data->query-test
   (is (= (pf.eql/seq-data->query [{:a 1} {:b 2}]) [:a :b])))
