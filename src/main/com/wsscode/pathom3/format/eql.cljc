@@ -2,7 +2,7 @@
   "Helpers to manipulate EQL."
   (:require
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [<- => >def >defn >fdef ? |]]
+    [com.fulcrologic.guardrails.core :refer [=> >def >defn ?]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.attribute :as p.attr]
@@ -112,7 +112,14 @@
           val
 
           (map? val)
-          (map-select-ast env val ast)
+          (if (-> val meta :com.wsscode.pathom3.connect.runner/map-container?)
+            (into (with-meta {} (meta val))
+                  (map (fn [entry]
+                         (coll/make-map-entry
+                           (clojure.core/key entry)
+                           (map-select-ast env (clojure.core/val entry) ast))))
+                  val)
+            (map-select-ast env val ast))
 
           (coll/collection? val)
           (into (empty val) (map #(map-select-ast env % ast))
@@ -244,10 +251,19 @@
                (conj out
                  (cond
                    (map? v)
-                   (let [q (data->query v)]
-                     (if (seq q)
-                       {k q}
-                       k))
+                   (if (-> v meta :com.wsscode.pathom3.connect.runner/map-container?)
+                     (let [shape (reduce-kv
+                                   (fn [q _k v]
+                                     (eql/merge-queries q (data->query v)))
+                                   []
+                                   v)]
+                       (if (seq shape)
+                         {k shape}
+                         k))
+                     (let [q (data->query v)]
+                       (if (seq q)
+                         {k q}
+                         k)))
 
                    (sequential? v)
                    (let [shape (reduce

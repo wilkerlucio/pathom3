@@ -1,5 +1,9 @@
 # Changelog
 
+## [NEXT]
+- Fix map container handling on runner (issue #176)
+- `pf.eql/data->shape` now takes `::pcr/map-container?` into account
+
 ## [2023.01.24-alpha]
 - Fix multiple inclusions of attribute error resolver (issue #175)
 - Fix stack overflow on nested attribute cycles (issue #168)

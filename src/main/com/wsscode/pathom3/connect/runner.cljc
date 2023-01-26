@@ -181,7 +181,7 @@
   [env ast m]
   (if (pco/final-value? m)
     m
-    (into {}
+    (into (empty m)
           (map (fn [x]
                  (coll/make-map-entry
                    (key x)

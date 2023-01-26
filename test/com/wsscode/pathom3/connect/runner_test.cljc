@@ -15,6 +15,7 @@
     [com.wsscode.pathom3.connect.runner.parallel :as pcrc]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.error :as p.error]
+    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.path :as p.path]
@@ -119,9 +120,12 @@
           ::geo/center-x   25})))
 
 (defn run-graph
-  ([env tree query]
-   (let [ast (eql/query->ast query)]
-     (pcr/run-graph! env ast (p.ent/create-entity tree))))
+  ([{::keys [map-select?] :as env} tree query]
+   (let [ast (eql/query->ast query)
+         res (pcr/run-graph! env ast (p.ent/create-entity tree))]
+     (if map-select?
+       (pf.eql/map-select env res query)
+       res)))
   ([env tree query _] (run-graph env tree query)))
 
 (defn run-graph-async
@@ -366,15 +370,7 @@
           {::p.path/path [],
            ::sequence    [{::p.path/path [::sequence 0]}
                           {::p.path/path [::sequence 1]}],
-           ::hold        {::p.path/path [::hold]}}))
-
-    (testing "map container path"
-      (is (graph-response? (pci/register [(pbir/constantly-resolver ::map-container
-                                                                    ^::pcr/map-container? {:foo {}})
-                                          (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
-            {}
-            [{::map-container [::p.path/path]}]
-            {::map-container {:foo {::p.path/path [::map-container :foo]}}}))))
+           ::hold        {::p.path/path [::hold]}})))
 
   (testing "insufficient data"
     (let [res (run-graph (pci/register
@@ -528,6 +524,78 @@
         {}
         [:a :b :c]
         {:a 1 :b 2 :c 3}))))
+
+(deftest run-graph!-map-container
+  (testing "simple filtering"
+    (testing "on entity data"
+      (check-all-runners
+        {::map-select? true}
+        {:data ^::pcr/map-container? {:x {:b 1 :c 2}}}
+        [{:data [:b]}]
+        {:data {:x {:b 1}}}))
+
+    (testing "on resolver response"
+      (check-all-runners
+        (pci/register
+          {::map-select? true}
+          (pbir/constantly-resolver :data ^::pcr/map-container? {:x {:b 1 :c 2}}))
+        {}
+        [{:data [:b]}]
+        {:data {:x {:b 1}}}))
+
+    (testing "on mutations"
+      (check-all-runners
+        (pci/register
+          {::map-select? true}
+          (pco/mutation 'do-thing
+            {::pco/output [{:data [:b :c]}]}
+            (fn [_ _]
+              {:data ^::pcr/map-container? {:x {:b 1 :c 2}}})))
+        {}
+        '[{(do-thing {}) [{:data [:b]}]}]
+        {'do-thing {:data {:x {:b 1}}}})))
+
+  (testing "processing"
+    (testing "on entity data"
+      (check-all-runners
+        (pci/register
+          {::map-select? true}
+          (pbir/alias-resolver :b :z))
+        {:data ^::pcr/map-container? {:x {:b 1 :c 2}}}
+        [{:data [:z]}]
+        {:data {:x {:z 1}}}))
+
+    (testing "on resolver response"
+      (check-all-runners
+        (pci/register
+          {::map-select? true}
+          [(pbir/constantly-resolver :data ^::pcr/map-container? {:x {:b 1 :c 2}})
+           (pbir/alias-resolver :b :z)])
+        {}
+        [{:data [:z]}]
+        {:data {:x {:z 1}}}))
+
+    (testing "on mutations"
+      (check-all-runners
+        (pci/register
+          {::map-select? true}
+          [(pco/mutation 'do-thing
+             {::pco/output [{:data [:b :c]}]}
+             (fn [_ _]
+               {:data ^::pcr/map-container? {:x {:b 1 :c 2}}}))
+           (pbir/alias-resolver :b :z)])
+        {}
+        '[{(do-thing {}) [{:data [:z]}]}]
+        {'do-thing {:data {:x {:z 1}}}})))
+
+  (testing "path appending"
+    (check-all-runners
+      (pci/register [(pbir/constantly-resolver ::map-container
+                                               ^::pcr/map-container? {:foo {}})
+                     (pbir/constantly-fn-resolver ::p.path/path ::p.path/path)])
+      {}
+      [{::map-container [::p.path/path]}]
+      {::map-container {:foo {::p.path/path [::map-container :foo]}}})))
 
 (deftest run-graph!-fail-cases-test
   (testing "strict mode"
