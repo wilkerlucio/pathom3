@@ -2065,10 +2065,11 @@
     (testing "ensures each call has the correct max number of items"
       (check-all-runners
         (pci/register (pco/resolver 'batch-thing
-                        {::pco/input            [:id]
-                         ::pco/output           [:name]
-                         ::pco/batch?           true
-                         ::pco/batch-chunk-size 3}
+                        {::pco/input                [:id]
+                         ::pco/output               [:name]
+                         ::pco/batch?               true
+                         ::pco/batch-chunk-size     3
+                         ::pcrc/batch-hold-delay-ms 100}
                         (fn [_ items]
                           (assert (<= (count items) 3) "Expected each call to has at max 3 items")
                           (mapv #(assoc % :name (str "Item " (:id %))) items))))
@@ -2089,10 +2090,11 @@
       (testing "missing"
         (check-all-runners
           (pci/register (pco/resolver 'batch-thing
-                          {::pco/input            [:id]
-                           ::pco/output           [:name]
-                           ::pco/batch?           true
-                           ::pco/batch-chunk-size 3}
+                          {::pco/input                [:id]
+                           ::pco/output               [:name]
+                           ::pco/batch?               true
+                           ::pco/batch-chunk-size     3
+                           ::pcrc/batch-hold-delay-ms 100}
                           (fn [_ items]
                             (if (= 1 (count items))
                               [nil]
@@ -2115,10 +2117,11 @@
           ; bigger delay ensuring the batch block will contain all the list items
           (-> {::pcrc/batch-hold-delay-ms 100}
               (pci/register (pco/resolver 'batch-thing
-                              {::pco/input            [:id]
-                               ::pco/output           [:name]
-                               ::pco/batch?           true
-                               ::pco/batch-chunk-size 3}
+                              {::pco/input                [:id]
+                               ::pco/output               [:name]
+                               ::pco/batch?               true
+                               ::pco/batch-chunk-size     3
+                               ::pcrc/batch-hold-delay-ms 100}
                               (fn [_ items]
                                 (if (= 1 (count items))
                                   (throw (ex-info "Error in batch call" {}))
@@ -2132,10 +2135,11 @@
             (-> {::p.error/lenient-mode?    true
                  ::pcrc/batch-hold-delay-ms 100}
                 (pci/register (pco/resolver 'batch-thing
-                                {::pco/input            [:id]
-                                 ::pco/output           [:name]
-                                 ::pco/batch?           true
-                                 ::pco/batch-chunk-size 3}
+                                {::pco/input                [:id]
+                                 ::pco/output               [:name]
+                                 ::pco/batch?               true
+                                 ::pco/batch-chunk-size     3
+                                 ::pcrc/batch-hold-delay-ms 100}
                                 (fn [_ items]
                                   (if (= 1 (count items))
                                     (throw (ex-info "Error in batch call" {}))
