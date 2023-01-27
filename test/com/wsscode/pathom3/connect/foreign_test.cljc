@@ -44,8 +44,11 @@
                       (serialize-boundary))
           env     (-> (pci/register
                         [(pcf/foreign-register foreign)]))]
-      (is (= (p.eql/process env [:child])
-             {}))))
+      (is
+        (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Pathom can't find a path for the following elements in the query: \[:child] at path \[:parent]"
+          (p.eql/process env [:child])))))
 
   (testing "indirect cycle"
     (let [foreign (-> (pci/register
@@ -63,8 +66,11 @@
                       (serialize-boundary))
           env     (-> (pci/register
                         [(pcf/foreign-register foreign)]))]
-      (is (= (p.eql/process env [:child])
-             {}))))
+      (is
+        (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Pathom can't find a path for the following elements in the query: \[:child-dep] at path \[:parent]"
+          (p.eql/process env [:child])))))
 
   (testing "deep cycle"
     (let [foreign (-> (pci/register
@@ -78,9 +84,12 @@
                       (serialize-boundary))
           env     (-> (pci/register
                         [(pcf/foreign-register foreign)]))]
-      (is (= (p.eql/process env [:child])
-             {})))))
 
+      (is
+        (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Pathom can't find a path for the following elements in the query: \[:child] at path \[:parent :parent]"
+          (p.eql/process env [:child]))))))
 
 (deftest compute-foreign-query-test
   (testing "no inputs"
