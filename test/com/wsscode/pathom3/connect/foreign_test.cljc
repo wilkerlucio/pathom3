@@ -35,12 +35,12 @@
   (testing "basic impossible nested input path"
     (let [foreign (-> (pci/register
                         [(pco/resolver 'parent
-                                       {::pco/output [{:parent [:foo]}]}
-                                       (fn [_ _]))
+                           {::pco/output [{:parent [:foo]}]}
+                           (fn [_ _]))
                          (pco/resolver 'child
-                                       {::pco/input  [{:parent [:child]}]
-                                        ::pco/output [:child]}
-                                       (fn [_ _]))])
+                           {::pco/input  [{:parent [:child]}]
+                            ::pco/output [:child]}
+                           (fn [_ _]))])
                       (serialize-boundary))
           env     (-> (pci/register
                         [(pcf/foreign-register foreign)]))]
@@ -53,16 +53,16 @@
   (testing "indirect cycle"
     (let [foreign (-> (pci/register
                         [(pco/resolver 'parent
-                                       {::pco/output [{:parent [:foo]}]}
-                                       (fn [_ _]))
+                           {::pco/output [{:parent [:foo]}]}
+                           (fn [_ _]))
                          (pco/resolver 'child
-                                       {::pco/input  [{:parent [:child-dep]}]
-                                        ::pco/output [:child]}
-                                       (fn [_ _]))
+                           {::pco/input  [{:parent [:child-dep]}]
+                            ::pco/output [:child]}
+                           (fn [_ _]))
                          (pco/resolver 'child-dep
-                                       {::pco/input  [:child]
-                                        ::pco/output [:child-dep]}
-                                       (fn [_ _]))])
+                           {::pco/input  [:child]
+                            ::pco/output [:child-dep]}
+                           (fn [_ _]))])
                       (serialize-boundary))
           env     (-> (pci/register
                         [(pcf/foreign-register foreign)]))]
@@ -75,12 +75,12 @@
   (testing "deep cycle"
     (let [foreign (-> (pci/register
                         [(pco/resolver 'parent
-                                       {::pco/output [{:parent [:foo]}]}
-                                       (fn [_ _]))
+                           {::pco/output [{:parent [:foo]}]}
+                           (fn [_ _]))
                          (pco/resolver 'child
-                                       {::pco/input  [{:parent [{:parent [:child]}]}]
-                                        ::pco/output [:child]}
-                                       (fn [_ _]))])
+                           {::pco/input  [{:parent [{:parent [:child]}]}]
+                            ::pco/output [:child]}
+                           (fn [_ _]))])
                       (serialize-boundary))
           env     (-> (pci/register
                         [(pcf/foreign-register foreign)]))]
