@@ -2667,6 +2667,22 @@
              ::pcp/index-attrs           {:a #{1}},
              ::pcp/root                  1}))))
 
+(deftest compute-run-graph-cache-test
+  (testing "idents"
+    (let [cache* (atom {})
+          _      (compute-run-graph
+                   {::pcp/plan-cache* cache*
+                    ::resolvers       [{::pco/op-name 'a
+                                        ::pco/output  [:a]}]
+                    ::eql/query       [:a [:foo "bar"]]})
+          cache-size (count @cache*)]
+      (compute-run-graph
+        {::pcp/plan-cache* cache*
+         ::resolvers       [{::pco/op-name 'a
+                             ::pco/output  [:a]}]
+         ::eql/query       [:a [:foo "baz"]]})
+      (is (= cache-size (count @cache*))))))
+
 (deftest find-run-next-descendants-test
   (testing "return the node if that's the latest"
     (is (= (pcp/find-run-next-descendants

@@ -351,3 +351,14 @@
   [qa qb]
   (some-> (merge-asts (eql/query->ast qa) (eql/query->ast qb))
           (eql/ast->query)))
+
+(defn cacheable-ast
+  "Transform the AST to remove specific values from idents. This is useful to use the
+  AST as a cache key that doesn't change with the ident value (which is not impactful
+  for planning for example).
+
+  The current implementation does it by removing `:key` from the children at root level."
+  [node]
+  (coll/update-if node :children
+                  (fn [children]
+                    (mapv #(dissoc % :key) children))))
