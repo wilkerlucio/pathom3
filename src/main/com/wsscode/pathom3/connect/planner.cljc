@@ -1715,6 +1715,26 @@
         (assoc graph ::verification-failed? true)))
     (verify-plan!* env graph)))
 
+(defn- pull-idents [ast]
+  (into []
+        (comp (map :key)
+              (filter eql/ident?))
+        (:children ast)))
+
+(defn rehydrate-graph-idents [graph ast]
+  (if (::idents graph)
+    (let [target-idents (pull-idents ast)
+          source-idents (pull-idents (::source-ast graph))
+          pairs         (zipmap source-idents target-idents)]
+      (reduce
+        (fn [graph [source-ident target-ident]]
+          (update graph ::idents #(-> % (disj source-ident) (conj target-ident))))
+        (-> graph
+            (assoc ::source-ast ast)
+            (update ::index-ast set/rename-keys pairs))
+        (map vector source-idents target-idents)))
+    graph))
+
 (>defn compute-run-graph
   "Generates a run plan for a given environment, the environment should contain the
   indexes in it (::pc/index-oir and ::pc/index-resolvers). It computes a plan to execute
@@ -1779,24 +1799,26 @@
 
    (verify-plan!
      env
-     (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
-                                        (::available-data env)
-                                        (:edn-query-language.ast/node env)
-                                        (boolean optimize-graph?)]
-       #(let [env' (-> (merge (base-env) env)
-                       (vary-meta assoc ::original-env env))]
-          (cond->
-            (compute-run-graph*
-              (merge (base-graph)
-                     graph
-                     {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
-                      ::source-ast         (:edn-query-language.ast/node env)
-                      ::available-data     (::available-data env)
-                      ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})
-              env')
+     (rehydrate-graph-idents
+       (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
+                                          (::available-data env)
+                                          (pf.eql/cacheable-ast (:edn-query-language.ast/node env))
+                                          (boolean optimize-graph?)]
+         #(let [env' (-> (merge (base-env) env)
+                         (vary-meta assoc ::original-env env))]
+            (cond->
+              (compute-run-graph*
+                (merge (base-graph)
+                       graph
+                       {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
+                        ::source-ast         (:edn-query-language.ast/node env)
+                        ::available-data     (::available-data env)
+                        ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})
+                env')
 
-            optimize-graph?
-            (optimize-graph env')))))))
+              optimize-graph?
+              (optimize-graph env'))))
+       (:edn-query-language.ast/node env)))))
 
 ; endregion
 
