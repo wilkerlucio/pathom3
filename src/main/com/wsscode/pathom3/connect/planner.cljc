@@ -1781,7 +1781,7 @@
      env
      (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
                                         (::available-data env)
-                                        (pf.eql/cacheable-ast (:edn-query-language.ast/node env))
+                                        (:edn-query-language.ast/node env)
                                         (boolean optimize-graph?)]
        #(let [env' (-> (merge (base-env) env)
                        (vary-meta assoc ::original-env env))]

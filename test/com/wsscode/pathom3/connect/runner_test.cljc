@@ -346,6 +346,19 @@
           [[::geo/x 10]]
           {[::geo/x 10] {::geo/x 10}}))
 
+    (testing "persistent cache"
+      (let [cache* (atom {})
+            env    (assoc full-env ::pcp/plan-cache* cache*)]
+        (is (graph-response? env
+              {}
+              [[::geo/x 10]]
+              {[::geo/x 10] {::geo/x 10}}))
+
+        (is (graph-response? env
+              {}
+              [[::geo/x 11]]
+              {[::geo/x 11] {::geo/x 11}}))))
+
     (is (graph-response? full-env
           {}
           [{[::geo/x 10] [::geo/left]}]
