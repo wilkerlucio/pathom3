@@ -49,6 +49,7 @@
     (try
       (pco/resolver 'foo {::pco/input #{:invalid}} (fn [_ _] {:sample "bar"}))
       (catch #?(:clj Throwable :cljs :default) e
+        (is (= (ex-message e) "Invalid config on resolver foo"))
         (is (= (-> e
                    (ex-data)
                    #?(:clj  (update :explain-data dissoc :clojure.spec.alpha/spec :clojure.spec.alpha/value)
@@ -147,6 +148,7 @@
     (try
       (pco/mutation 'foo {::pco/input #{:invalid}} (fn [_ _] {:sample "bar"}))
       (catch #?(:clj Throwable :cljs :default) e
+        (is (= (ex-message e) "Invalid config on mutation foo"))
         (is (= (-> e
                    (ex-data)
                    #?(:clj  (update :explain-data dissoc :clojure.spec.alpha/spec :clojure.spec.alpha/value)
