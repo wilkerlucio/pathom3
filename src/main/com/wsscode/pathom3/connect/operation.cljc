@@ -184,7 +184,7 @@
                   (cond-> config transform transform))]
      (when-not (s/valid? (s/keys) config)
        (s/explain (s/keys) config)
-       (throw (ex-info (str "Invalid config on resolver " name)
+       (throw (ex-info (str "Invalid config on resolver " (::op-name config))
                        {:explain-data (s/explain-data (s/keys) config)})))
 
      (if (resolver? config)
@@ -238,7 +238,7 @@
     => ::mutation]
    (when-not (s/valid? (s/keys) config)
      (s/explain (s/keys) config)
-     (throw (ex-info (str "Invalid config on mutation " name)
+     (throw (ex-info (str "Invalid config on mutation " (::op-name config))
                      {:explain-data (s/explain-data (s/keys) config)})))
    (if (mutation? config)
      config
