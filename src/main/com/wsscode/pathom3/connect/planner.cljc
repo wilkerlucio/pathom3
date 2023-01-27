@@ -1168,6 +1168,7 @@
   (let [graph        (compute-run-graph (-> (reset-env env)
                                             (push-path env)
                                             (inc-snapshot-depth)
+                                            (add-resolvers-trail (::resolvers env))
                                             (assoc
                                               :edn-query-language.ast/node ast
                                               ::available-data available)))
