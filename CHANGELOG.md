@@ -3,6 +3,7 @@
 ## [NEXT]
 - Fix map container handling on runner (issue #176)
 - `pf.eql/data->shape` now takes `::pcr/map-container?` into account
+- Disregard ident values on cache keys for the planner (issue #182)
 
 ## [2023.01.24-alpha]
 - Fix multiple inclusions of attribute error resolver (issue #175)

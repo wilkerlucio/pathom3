@@ -291,3 +291,12 @@
                     (with-rs {:b 2})
                     (with-rs {:b 3})]})
          {:other {:b {}}, :more [{} {} {}]})))
+
+(deftest cacheable-ast-test
+  (is (= (pf.eql/cacheable-ast
+           (eql/query->ast [{[:foo "bar"] [:x]}]))
+         {:type :root,
+          :children [{:type :join,
+                      :dispatch-key :foo,
+                      :query [:x],
+                      :children [{:type :prop, :dispatch-key :x, :key :x}]}]})))
