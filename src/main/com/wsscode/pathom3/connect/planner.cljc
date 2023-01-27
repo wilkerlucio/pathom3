@@ -1721,7 +1721,12 @@
               (filter eql/ident?))
         (:children ast)))
 
-(defn rehydrate-graph-idents [graph ast]
+(defn rehydrate-graph-idents
+  "To optimize the plan caching Pathom will remove the values of the idents at the cache
+  key. But upon later usage of the cache, the cache key will hit the previous AST, but
+  that AST still has the initial values used on caching. This function will rehydrate
+  the AST replacing the cached ident values with the current ident values."
+  [graph ast]
   (if (::idents graph)
     (let [target-idents (pull-idents ast)
           source-idents (pull-idents (::source-ast graph))
