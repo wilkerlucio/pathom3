@@ -1001,17 +1001,14 @@
                (fn [[inputs result]]
                  (mapv #(vector % result) inputs))))))
 
-(defn merge-entity-to-root-data [env env' node]
+(defn merge-entity-to-root-data [env env' _node]
   (when-not (p.path/root? env')
     (p.ent/swap-entity! env update-in (::p.path/path env')
       (fn [ent]
         (let [ent' (p.ent/entity env')]
           (-> ent
               (coll/merge-defaults ent')
-              (vary-meta merge (meta ent'))
-              (merge
-                (pfsd/select-shape ent' (assoc (::pcp/expects node)
-                                          ::attribute-errors {})))))))))
+              (vary-meta merge (meta ent'))))))))
 
 (defn batch-group-input-groups [batch-items]
   (group-by ::node-resolver-input batch-items))

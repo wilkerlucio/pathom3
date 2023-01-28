@@ -2226,14 +2226,14 @@
             env (pci/register
                   [(pco/resolver 'a
                      {::pco/input  [:a/id]
-                      ::pco/output [:a/id :a/code]
+                      ::pco/output [:a/code]
                       ::pco/batch? true}
                      (fn [_ input]
                        (mapv #(get-in db [:a (:a/id %)]) input)))
 
                    (pco/resolver 'f
                      {::pco/input  [:f/id]
-                      ::pco/output [:f/id :f/code]
+                      ::pco/output [:f/code]
                       ::pco/batch? true}
                      (fn [_ input]
                        (mapv #(get-in db [:f (:f/id %)]) input)))
@@ -2251,16 +2251,17 @@
                       ::pco/output [{:a/c [:f/id]}]}
                      (fn [_ {:keys [a/id]}]
                        {:a/c (get-in db [:c id])}))])]
-        (is (graph-response? env {}
-              [{[:a/id 1]
-                [:a/code
-                 {:a/b [:f/id :f/code]}
-                 {:a/c [:f/id :f/code]}]}]
-              {[:a/id 1]
-               {:a/id   1
-                :a/code "a-1"
-                :a/b    [#:f{:id 1 :code "f-1"}]
-                :a/c    [#:f{:id 2 :code "f-2"}]}}))))
+        (check-all-runners
+          env {}
+          [{[:a/id 1]
+            [:a/code
+             {:a/b [:f/id :f/code]}
+             {:a/c [:f/id :f/code]}]}]
+          {[:a/id 1]
+           {:a/id   1,
+            :a/code "a-1",
+            :a/b    [{:f/id 1, :f/code "f-1"}],
+            :a/c    [{:f/id 2, :f/code "f-2"}]}})))
 
     (testing "issue-52 partial cycle"
       (let [env (pci/register
@@ -2373,7 +2374,35 @@
                [{:parent/authorized? true}]))])
         {}
         [{[:child/id 1] [:child/name {:child/toys [:toy/id :toy/name]}]}]
-        {[:child/id 1] {:child/name "Bob", :child/toys [{:toy/id 1, :toy/name "Bobby"}]}}))))
+        {[:child/id 1] {:child/name "Bob", :child/toys [{:toy/id 1, :toy/name "Bobby"}]}}))
+
+    (testing "issue 177"
+      (check-all-runners
+        (pci/register
+          [(pco/resolver
+             {::pco/op-name 'asami-p3-pers-resolver-diy
+              ::pco/batch?  true
+              ::pco/input   [:person/id]
+              ::pco/output  [:person/x
+                             {:person/addresses [:address/id]}]
+              ::pco/resolve (fn [_ _]
+                              [{:person/id        "ann",
+                                :person/x         1
+                                :person/addresses [{:address/id "a-one", :address/street "First St."}
+                                                   {:address/id "a-two", :address/street "Second St."}]}])})
+           (pco/resolver
+             {::pco/op-name 'asami-p3-addr-resolver-diy
+              ::pco/batch?  true
+              ::pco/input   [:address/id]
+              ::pco/output  [:address/street]
+              ::pco/resolve (fn [_ _]
+                              [{:address/id "a-one", :address/street "First St."}
+                               {:address/id "a-two", :address/street "Second St."}])})])
+        {}
+        [{[:person/id "aann"] [:person/x {:person/addresses [:address/street]}]}]
+        {[:person/id "aann"] {:person/x         1,
+                              :person/addresses [{:address/street "First St."}
+                                                 {:address/street "Second St."}]}}))))
 
 (deftest run-graph!batch-optional
   (testing "bug #107"
