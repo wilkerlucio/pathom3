@@ -30,12 +30,12 @@
 
 ## [2022.08.26-alpha]
 - Fix planning optimization on merging sibling nodes with OR parent
-- New branch optimizations are now opt-in via ::pcp/experimental-branch-optimizations flag at env
-- Fix ::pcr/wrap-mutation-error, now working in all runners
+- New branch optimizations are now opt-in via `::pcp/experimental-branch-optimizations` flag at env
+- Fix `::pcr/wrap-mutation-error`, now working in all runners
 
 ## [2022.08.25-alpha] - BROKEN, DON'T USE
-- Add support for ::pcr/wrap-merge-attribute hook in async and parallel runners
-- Add support for ::pcr/wrap-merge-attribute hook on idents (all runners)
+- Add support for `::pcr/wrap-merge-attribute` hook in async and parallel runners
+- Add support for `::pcr/wrap-merge-attribute` hook on idents (all runners)
 - Fix issue #152 missing shape check when data value is nil
 - Optimize AND siblings with same branches
 - Optimize OR siblings with same branches 🎉
