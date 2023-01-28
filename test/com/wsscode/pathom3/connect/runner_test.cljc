@@ -1499,7 +1499,193 @@
           [{:items
             [:parent-type]}]
           {:items [{:parent {:id 1}, :parent-type "foo"}
-                   {:parent {:other.id 3}, :parent-type "foo"}]}))))
+                   {:parent {:other.id 3}, :parent-type "foo"}]})))
+
+  (testing "repro-170"
+    (check-all-runners
+      (pci/register
+        (->> '[{::pco/op-name db-gravie.member-plan->db-gravie.employer/employer-id->id--alias,
+                ::pco/input   [:db-gravie.member-plan/employer-id],
+                ::pco/output  [:db-gravie.employer/id]}
+               {::pco/op-name db-gravie.member-plan-participant->db-gravie.member-plan/member-plan-id->id--alias,
+                ::pco/input   [:db-gravie.member-plan-participant/member-plan-id],
+                ::pco/output  [:db-gravie.member-plan/id]}
+               {::pco/op-name db-gravie.member-plan-participant->db-gravie.person/participant-id->id--alias,
+                ::pco/input   [:db-gravie.member-plan-participant/participant-id],
+                ::pco/output  [:db-gravie.person/id]}
+               {::pco/op-name db-gravie.member-plan-financial->gravie.member-plan-financial/monthly-employer-contribution--alias,
+                ::pco/input   [:db-gravie.member-plan-financial/monthly-employer-contribution],
+                ::pco/output  [:gravie.member-plan-financial/monthly-employer-contribution]}
+               {::pco/op-name db-gravie.person->gravie.person/ssn--alias,
+                ::pco/input   [:db-gravie.person/ssn],
+                ::pco/output  [:gravie.person/ssn]}
+               {::pco/op-name gravie.person->db-gravie.person/ssn--alias,
+                ::pco/input   [:gravie.person/ssn],
+                ::pco/output  [:db-gravie.person/ssn]}
+               {::pco/op-name db-gravie.member-plan->gravie.member-plan/effective-thru-date--alias,
+                ::pco/input   [:db-gravie.member-plan/effective-thru-date],
+                ::pco/output  [:gravie.member-plan/effective-thru-date]}
+               {::pco/op-name db-gravie.member-plan-financial->gravie.member-plan-financial/monthly-plan-premium--alias,
+                ::pco/input   [:db-gravie.member-plan-financial/monthly-plan-premium],
+                ::pco/output  [:gravie.member-plan-financial/monthly-plan-premium]}
+               {::pco/op-name db-gravie.person->gravie.person/birth-date--alias,
+                ::pco/input   [:db-gravie.person/birth-date],
+                ::pco/output  [:gravie.person/birth-date]}
+               {::pco/op-name gravie.person->db-gravie.person/birth-date--alias,
+                ::pco/input   [:gravie.person/birth-date],
+                ::pco/output  [:db-gravie.person/birth-date]}
+               {::pco/op-name db-gravie.person->gravie.person/external-id--alias,
+                ::pco/input   [:db-gravie.person/external-id],
+                ::pco/output  [:gravie.person/external-id]}
+               {::pco/op-name gravie.person->db-gravie.person/external-id--alias,
+                ::pco/input   [:gravie.person/external-id],
+                ::pco/output  [:db-gravie.person/external-id]}
+               {::pco/op-name db-gravie.member-plan->gravie.member-plan/effective-from-date--alias,
+                ::pco/input   [:db-gravie.member-plan/effective-from-date],
+                ::pco/output  [:gravie.member-plan/effective-from-date]}
+               {::pco/op-name db-gravie.person->gravie.person/last-name--alias,
+                ::pco/input   [:db-gravie.person/last-name],
+                ::pco/output  [:gravie.person/last-name]}
+               {::pco/op-name gravie.person->db-gravie.person/last-name--alias,
+                ::pco/input   [:gravie.person/last-name],
+                ::pco/output  [:db-gravie.person/last-name]}
+               {::pco/op-name db-gravie.member-plan->gravie.member-plan/external-id--alias,
+                ::pco/input   [:db-gravie.member-plan/external-id],
+                ::pco/output  [:gravie.member-plan/external-id]}
+               {::pco/op-name db-gravie.member-plan->gravie.member-plan/status--alias,
+                ::pco/input   [:db-gravie.member-plan/status],
+                ::pco/output  [:gravie.member-plan/status]}
+               {::pco/op-name db-gravie.person->gravie.person/phone--alias,
+                ::pco/input   [:db-gravie.person/phone],
+                ::pco/output  [:gravie.person/phone]}
+               {::pco/op-name gravie.person->db-gravie.person/phone--alias,
+                ::pco/input   [:gravie.person/phone],
+                ::pco/output  [:db-gravie.person/phone]}
+               {::pco/op-name db-gravie.member-plan->gravie.member-plan/member-id--alias,
+                ::pco/input   [:db-gravie.member-plan/member-id],
+                ::pco/output  [:gravie.member-plan/member-id]}
+               {::pco/op-name db-gravie.member-plan->gravie.member-plan/product-type--alias,
+                ::pco/input   [:db-gravie.member-plan/product-type],
+                ::pco/output  [:gravie.member-plan/product-type]}
+               {::pco/op-name db-gravie.member-plan->gravie.member-plan/network-url--alias,
+                ::pco/input   [:db-gravie.member-plan/network-url],
+                ::pco/output  [:gravie.member-plan/network-url]}
+               {::pco/op-name db-gravie.member-plan-financial->gravie.member-plan-financial/monthly-premium-reduction--alias,
+                ::pco/input   [:db-gravie.member-plan-financial/monthly-premium-reduction],
+                ::pco/output  [:gravie.member-plan-financial/monthly-premium-reduction]}
+               {::pco/op-name db-gravie.member-plan->gravie.member-plan/enrollment-location--alias,
+                ::pco/input   [:db-gravie.member-plan/enrollment-location],
+                ::pco/output  [:gravie.member-plan/enrollment-location]}
+               {::pco/op-name db-gravie.person->gravie.person/first-name--alias,
+                ::pco/input   [:db-gravie.person/first-name],
+                ::pco/output  [:gravie.person/first-name]}
+               {::pco/op-name gravie.person->db-gravie.person/first-name--alias,
+                ::pco/input   [:gravie.person/first-name],
+                ::pco/output  [:db-gravie.person/first-name]}
+               {::pco/op-name db-gravie.member-plan->gravie.member-plan/name--alias,
+                ::pco/input   [:db-gravie.member-plan/name],
+                ::pco/output  [:gravie.member-plan/name]}
+               {::pco/op-name db-gravie.member-plan-financial->gravie.member-plan-financial/monthly-federal-subsidy--alias,
+                ::pco/input   [:db-gravie.member-plan-financial/monthly-federal-subsidy],
+                ::pco/output  [:gravie.member-plan-financial/monthly-federal-subsidy]}
+               {::pco/op-name db-gravie.person->gravie.person/virtual-bank-account-id--alias,
+                ::pco/input   [:db-gravie.person/virtual-bank-account-id],
+                ::pco/output  [:gravie.person/virtual-bank-account-id]}
+               {::pco/op-name gravie.person->db-gravie.person/virtual-bank-account-id--alias,
+                ::pco/input   [:gravie.person/virtual-bank-account-id],
+                ::pco/output  [:db-gravie.person/virtual-bank-account-id]}
+               {::pco/op-name db-gravie.person->gravie.person/id--alias,
+                ::pco/input   [:db-gravie.person/id],
+                ::pco/output  [:gravie.person/id]}
+               {::pco/op-name gravie.person->db-gravie.person/id--alias,
+                ::pco/input   [:gravie.person/id],
+                ::pco/output  [:db-gravie.person/id]}
+               {::pco/op-name db-gravie.member-plan-participant->gravie.member-plan-participant/tpa-member-number-p1--alias,
+                ::pco/input   [:db-gravie.member-plan-participant/tpa-member-number-p1],
+                ::pco/output  [:gravie.member-plan-participant/tpa-member-number-p1]}
+               {::pco/op-name gravie.person.resolver/person-external-id->person,
+                ::pco/input   [:gravie.person/external-id],
+                ::pco/output  [:db-gravie.person/bank-account-id
+                               :db-gravie.person/birth-date
+                               :db-gravie.person/class
+                               :db-gravie.person/email
+                               :db-gravie.person/external-id
+                               :db-gravie.person/first-name
+                               :db-gravie.person/hpa-member-number
+                               :db-gravie.person/id
+                               :db-gravie.person/last-name
+                               :db-gravie.person/phone
+                               :db-gravie.person/ssn
+                               :db-gravie.person/timezone
+                               :db-gravie.person/user-id
+                               :db-gravie.person/virtual-bank-account-id]}
+               {::pco/op-name gravie.person.resolver/person-id->person,
+                ::pco/input   [:db-gravie.person/id],
+                ::pco/output  [:db-gravie.person/bank-account-id
+                               :db-gravie.person/birth-date
+                               :db-gravie.person/class
+                               :db-gravie.person/email
+                               :db-gravie.person/external-id
+                               :db-gravie.person/first-name
+                               :db-gravie.person/hpa-member-number
+                               :db-gravie.person/id
+                               :db-gravie.person/last-name
+                               :db-gravie.person/phone
+                               :db-gravie.person/ssn
+                               :db-gravie.person/timezone
+                               :db-gravie.person/user-id
+                               :db-gravie.person/virtual-bank-account-id]}
+               {::pco/op-name gravie.person.resolver/person-exists?,
+                ::pco/input   [:db-gravie.person/class],
+                ::pco/output  [:gravie.person/exists?]}
+               {::pco/op-name gravie.person.resolver/person-is-member?,
+                ::pco/input   [:db-gravie.person/class],
+                ::pco/output  [:gravie.person/member?
+                               :gravie.person/type]}
+               {::pco/op-name gravie.person.resolver/person->id-number,
+                ::pco/input   [:db-gravie.person/hpa-member-number
+                               :gravie.member-plan-participant/tpa-member-number-p1
+                               :gravie.employer-program/is-javelina?],
+                ::pco/output  [:gravie.person/id-number]}
+               {::pco/op-name gravie.person.resolver/person->now-zoned,
+                ::pco/input   [:db-gravie.person/timezone],
+                ::pco/output  [:gravie.person/now-zoned]}
+               {::pco/op-name gravie.person.resolver/person->email,
+                ::pco/input   [:db-gravie.user/username
+                               :db-gravie.person/email],
+                ::pco/output  [:gravie.person/email]}
+               {::pco/op-name gravie.person.resolver/person-birth-date->age,
+                ::pco/input   [:db-gravie.person/birth-date],
+                ::pco/output  [:graive.person/age]}
+               {::pco/op-name gravie.person.resolver/person->full-name,
+                ::pco/input   [:db-gravie.person/first-name
+                               :db-gravie.person/last-name],
+                ::pco/output  [:gravie.person/full-name]}
+               {::pco/op-name gravie.person.resolver/member-external-id->person,
+                ::pco/input   [:gravie.member/external-id],
+                ::pco/output  [:db-gravie.person/bank-account-id
+                               :db-gravie.person/birth-date
+                               :db-gravie.person/class
+                               :db-gravie.person/email
+                               :db-gravie.person/external-id
+                               :db-gravie.person/first-name
+                               :db-gravie.person/hpa-member-number
+                               :db-gravie.person/id
+                               :db-gravie.person/last-name
+                               :db-gravie.person/phone
+                               :db-gravie.person/ssn
+                               :db-gravie.person/timezone
+                               :db-gravie.person/user-id
+                               :db-gravie.person/virtual-bank-account-id]}]
+             (mapv (fn [config]
+                     (assoc config
+                       ::pco/resolve (fn [_env _args]
+                                       (pfsd/query->shape-descriptor
+                                         (::pco/output config))))))
+             (mapv pco/resolver)))
+      {:gravie.member/external-id "10"}
+      [:gravie.person/full-name]
+      {:gravie.person/full-name {}})))
 
 (deftest run-graph!-optional-inputs-test
   (testing "data from resolvers"

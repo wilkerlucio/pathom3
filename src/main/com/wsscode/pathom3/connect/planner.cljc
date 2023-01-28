@@ -2071,6 +2071,30 @@
     graph
     other-chains))
 
+(defn- find-matching-chains
+  "This function will start from a pivot and check which chains are sub-chains, in case
+  the matched chain is longer than the pivot, that chain becomes the pivot. This avoids
+  the issue where the initial pivot is compatible with chains B and C, but B isn't
+  compatible with C.
+
+    A -> X
+    B -> X Y Z
+    C -> X Z Y
+
+  In that example, A will be compatible with B. A is also compatible with C, but B isn't
+  compatible with C. So only B chain must be returned as a matching chain."
+  [pivot chains]
+  (-> (reduce
+        (fn [[p o] chain]
+          (if (matching-chains? p chain)
+            [(if (> (count chain) (count p))
+               chain
+               p) (conj o chain)]
+            [p o]))
+        [pivot #{}]
+        chains)
+      second))
+
 (defn optimize-OR-sub-paths
   "This function looks to match branches of the OR node that are
   sub-paths of each other (eg: A, A -> B, merge to just A -> B). In this case we can
@@ -2092,17 +2116,13 @@
     (loop [graph graph
            [pivot & chains] resolver-chains]
       (if pivot
-        (let [[graph' chains']
-              (let [matching-chains (into #{}
-                                          (filter #(matching-chains? % pivot))
-                                          chains)
-                    merge-chains    (->> (conj matching-chains pivot)
-                                         (sort-by count #(compare %2 %)))
-                    graph'          (cond-> graph
-                                      (seq matching-chains)
-                                      (merge-sibling-or-sub-chains env merge-chains))]
-                [graph' (into #{} (remove matching-chains) chains)])]
-          (recur graph' chains'))
+        (let [matching-chains (find-matching-chains pivot chains)
+              merge-chains    (->> (conj matching-chains pivot)
+                                   (sort-by count #(compare %2 %)))
+              graph'          (cond-> graph
+                                (seq matching-chains)
+                                (merge-sibling-or-sub-chains env merge-chains))]
+          (recur graph' (into #{} (remove matching-chains) chains)))
         graph))))
 
 (defn optimize-nested-OR [graph env node-id]
