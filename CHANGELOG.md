@@ -6,6 +6,7 @@
 - Disregard ident values on cache keys for the planner (issue #182)
 - Fix stack overflow on planning nested attribute cycles on dynamic resolvers (issue #179)
 - Fix name reporting on invalid config for resolvers and mutations (issue #181)
+- Fix missing data on nested batches (issues #173 & #177)
 
 ## [2023.01.24-alpha]
 - Fix multiple inclusions of attribute error resolver (issue #175)
