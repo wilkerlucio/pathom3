@@ -8,6 +8,7 @@
 - Fix name reporting on invalid config for resolvers and mutations (issue #181)
 - Fix missing data on nested batches (issues #173 & #177)
 - Fix planning issue when optimizing `OR` subpaths (issue #170)
+- Index nested attributes (issue #167)
 
 ## [2023.01.24-alpha]
 - Fix multiple inclusions of attribute error resolver (issue #175)

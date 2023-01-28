@@ -1,6 +1,7 @@
 (ns com.wsscode.pathom3.connect.indexes-test
   (:require
-    [clojure.test :refer [deftest is are run-tests testing]]
+    [check.core :refer [=> check]]
+    [clojure.test :refer [deftest is testing]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]))
@@ -26,23 +27,61 @@
 
 (deftest index-attributes-test
   (testing "combinations"
-    (is (= (pci/index-attributes {::pco/op-name  'x
-                                  ::pco/input    [:a :b]
-                                  ::pco/output   [:c]
-                                  ::pco/provides {:c {}}
-                                  ::pco/requires {:a {} :b {}}})
-           '{#{:b :a} #:com.wsscode.pathom3.connect.indexes{:attr-id       #{:b :a},
-                                                            :attr-provides {:c #{x}},
-                                                            :attr-input-in #{x}},
-             :b       #:com.wsscode.pathom3.connect.indexes{:attr-id           :b,
-                                                            :attr-combinations #{#{:b :a}},
-                                                            :attr-input-in     #{x}},
-             :a       #:com.wsscode.pathom3.connect.indexes{:attr-id           :a,
-                                                            :attr-combinations #{#{:b :a}},
-                                                            :attr-input-in     #{x}},
-             :c       #:com.wsscode.pathom3.connect.indexes{:attr-id        :c,
-                                                            :attr-reach-via {#{:b :a} #{x}},
-                                                            :attr-output-in #{x}}}))))
+    (check
+      (=> '{#{:b :a} #::pci{:attr-id       #{:b :a},
+                            :attr-provides {:c #{x}},
+                            :attr-input-in #{x}},
+            :b       #::pci{:attr-id           :b,
+                            :attr-combinations #{#{:b :a}},
+                            :attr-input-in     #{x}},
+            :a       #::pci{:attr-id           :a,
+                            :attr-combinations #{#{:b :a}},
+                            :attr-input-in     #{x}},
+            :c       #::pci{:attr-id        :c,
+                            :attr-reach-via {#{:b :a} #{x}},
+                            :attr-output-in #{x}}}
+          (pci/index-attributes
+            (-> (pco/resolver
+                  {::pco/op-name 'x
+                   ::pco/input   [:a :b]
+                   ::pco/output  [:c]})
+                pco/operation-config))))
+
+    (testing "nested"
+      (testing "output"
+        (is (= (pci/index-attributes
+                 (-> (pco/resolver
+                       {::pco/op-name 'x
+                        ::pco/input   []
+                        ::pco/output  [{:c [:d]}]})
+                     pco/operation-config))
+               '{#{} {::pci/attr-id       #{},
+                      ::pci/attr-provides {:c #{x}},
+                      ::pci/attr-input-in #{x}},
+                 :c  {::pci/attr-id        :c,
+                      ::pci/attr-reach-via {#{} #{x}},
+                      ::pci/attr-output-in #{x},
+                      ::pci/attr-branch-in #{x}},
+                 :d  {::pci/attr-id      :d,
+                      ::pci/attr-leaf-in #{x}}})))
+
+      (testing "input"
+        (is (= (pci/index-attributes
+                 (-> (pco/resolver
+                       {::pco/op-name 'x
+                        ::pco/input   [{:c [:d]}]
+                        ::pco/output  [:e]})
+                     pco/operation-config))
+               '{:c {::pci/attr-id :c,
+                     ::pci/attr-provides {:e #{x}},
+                     ::pci/attr-input-in #{x},
+                     ::pci/attr-branch-in #{x}},
+                 :e {::pci/attr-id :e,
+                     ::pci/attr-reach-via {#{:c} #{x}},
+                     ::pci/attr-output-in #{x},
+                     ::pci/attr-leaf-in #{x}},
+                 :d {::pci/attr-id :d,
+                     ::pci/attr-leaf-in #{x}}}))))))
 
 (deftest register-test
   (testing "resolver"
@@ -54,6 +93,7 @@
                                                    :attr-input-in #{r}
                                                    :attr-provides {:foo #{r}}}
                                        :foo #::pci{:attr-id        :foo
+                                                   :attr-leaf-in   #{r}
                                                    :attr-output-in #{r}
                                                    :attr-reach-via {#{} #{r}}}}
               ::pci/index-io         {#{} {:foo {}}}
@@ -90,7 +130,7 @@
     (testing "dynamic resolver"
       (let [resolver (pco/resolver 'r {::pco/dynamic-resolver? true} (fn [_ _]))]
         (is (= (pci/register resolver)
-               {:com.wsscode.pathom3.connect.indexes/index-resolvers {'r resolver}})))))
+               {::pci/index-resolvers {'r resolver}})))))
 
   (testing "mutation"
     (let [mutation (pco/mutation 'm {::pco/output [:foo]
@@ -117,17 +157,19 @@
       (is (= (pci/register [r1 r2])
              {::pci/index-resolvers  {'r  r1
                                       'r2 r2}
-              ::pci/index-attributes '{#{}   #::pci{:attr-id       #{}
-                                                    :attr-input-in #{r
-                                                                     r2}
-                                                    :attr-provides {:foo  #{r}
-                                                                    :foo2 #{r2}}}
-                                       :foo  #::pci{:attr-id        :foo
-                                                    :attr-output-in #{r}
-                                                    :attr-reach-via {#{} #{r}}}
-                                       :foo2 #::pci{:attr-id        :foo2
-                                                    :attr-output-in #{r2}
-                                                    :attr-reach-via {#{} #{r2}}}}
+              ::pci/index-attributes '{#{}   {::pci/attr-id       #{}
+                                              ::pci/attr-input-in #{r
+                                                                    r2}
+                                              ::pci/attr-provides {:foo  #{r}
+                                                                   :foo2 #{r2}}}
+                                       :foo  {::pci/attr-id        :foo
+                                              ::pci/attr-leaf-in   #{r}
+                                              ::pci/attr-output-in #{r}
+                                              ::pci/attr-reach-via {#{} #{r}}}
+                                       :foo2 {::pci/attr-id        :foo2
+                                              ::pci/attr-leaf-in   #{r2}
+                                              ::pci/attr-output-in #{r2}
+                                              ::pci/attr-reach-via {#{} #{r2}}}}
               ::pci/index-oir        {:foo  {{} #{'r}}
                                       :foo2 {{} #{'r2}}}
               ::pci/index-io         {#{} {:foo  {}
@@ -174,17 +216,19 @@
       (is (= (pci/register [(pci/register r1) r2])
              {::pci/index-resolvers  {'r  r1
                                       'r2 r2}
-              ::pci/index-attributes '{#{}   #::pci{:attr-id       #{}
-                                                    :attr-input-in #{r
-                                                                     r2}
-                                                    :attr-provides {:foo  #{r}
-                                                                    :foo2 #{r2}}}
-                                       :foo  #::pci{:attr-id        :foo
-                                                    :attr-output-in #{r}
-                                                    :attr-reach-via {#{} #{r}}}
-                                       :foo2 #::pci{:attr-id        :foo2
-                                                    :attr-output-in #{r2}
-                                                    :attr-reach-via {#{} #{r2}}}}
+              ::pci/index-attributes '{#{}   {::pci/attr-id       #{}
+                                              ::pci/attr-input-in #{r
+                                                                    r2}
+                                              ::pci/attr-provides {:foo  #{r}
+                                                                   :foo2 #{r2}}}
+                                       :foo  {::pci/attr-id        :foo
+                                              ::pci/attr-leaf-in   #{r}
+                                              ::pci/attr-output-in #{r}
+                                              ::pci/attr-reach-via {#{} #{r}}}
+                                       :foo2 {::pci/attr-id        :foo2
+                                              ::pci/attr-leaf-in   #{r2}
+                                              ::pci/attr-output-in #{r2}
+                                              ::pci/attr-reach-via {#{} #{r2}}}}
               ::pci/index-oir        {:foo  {{} #{'r}}
                                       :foo2 {{} #{'r2}}}
               ::pci/index-io         {#{} {:foo  {}

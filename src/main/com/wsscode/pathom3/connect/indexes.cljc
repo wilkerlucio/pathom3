@@ -6,7 +6,8 @@
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.connect.operation :as pco]
     [com.wsscode.pathom3.format.eql :as pfse]
-    [com.wsscode.pathom3.format.shape-descriptor :as pfsd]))
+    [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
+    [edn-query-language.core :as eql]))
 
 (>def ::indexes (s/keys))
 (>def ::index-attributes map?)
@@ -101,7 +102,12 @@
                  attr)))
         input))
 
-(defn index-attributes [{::pco/keys [op-name requires provides]}]
+(defn normalized-children [{:keys [children]}]
+  (if (some-> children first :type (= :union))
+    (mapcat :children (-> children first :children))
+    children))
+
+(defn index-attributes [{::pco/keys [op-name requires provides output] :as op}]
   (let [input         (into #{} (keys requires))
         provides      (remove #(contains? input %) (keys provides))
         op-group      #{op-name}
@@ -149,17 +155,20 @@
         <>
         provides)
 
-      ; leaf / branches
-      #_(reduce
-          (fn [idx {:keys [key children]}]
-            (cond-> idx
-              key
-              (update key (partial merge-with coll/merge-grow)
-                {(if children ::attr-branch-in ::attr-leaf-in) op-group})))
-          <>
+      ; leaf / branches / nested
+      (reduce
+        (fn [idx {:keys [key children]}]
+          (cond-> idx
+            key
+            (update key (partial merge-with coll/merge-grow)
+              {::attr-id key
+               (if children ::attr-branch-in ::attr-leaf-in) op-group})))
+        <>
+        (concat
+          (tree-seq :children :children (eql/query->ast (::pco/input op)))
           (if (map? output)
             (mapcat #(tree-seq :children normalized-children (eql/query->ast %)) (vals output))
-            (tree-seq :children :children (eql/query->ast output)))))))
+            (tree-seq :children :children (eql/query->ast output))))))))
 
 (defn- register-resolver
   "Low level function to add resolvers to the index. This function adds the resolver
