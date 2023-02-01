@@ -826,7 +826,7 @@
                             " at path " (pr-str path))
                           {:missing        missing
                            ::p.error/phase ::execute
-                           ::p.error/cause ::p.error/missing-output})))))
+                           ::p.error/cause ::p.error/attribute-missing})))))
 
 (defn run-graph-done! [env]
   (check-entity-requires! env)

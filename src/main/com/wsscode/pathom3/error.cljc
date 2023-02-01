@@ -26,9 +26,7 @@
       ::node-errors
       ::node-exception
 
-      ::plugin-missing-id
-
-      ::missing-output}))
+      ::plugin-missing-id}))
 
 (>def ::lenient-mode? boolean?)
 
