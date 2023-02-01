@@ -3318,7 +3318,6 @@
              ::pcr/wrap-merge-attribute
              (fn [merge-attr]
                (fn [env m k v]
-                 (tap> ["X" (-> env ::pcp/graph (pcp/entry-ast k) :params :xx)])
                  (if-let [x (-> env ::pcp/graph (pcp/entry-ast k) :params :xx)]
                    (merge-attr (assoc env :x x) m k v)
                    (merge-attr env m k v))))}))
