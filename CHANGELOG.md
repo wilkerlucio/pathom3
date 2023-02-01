@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- BREAKING: `::p.error/missing-output` is now converged to `::p.error/attribute-missing` (issue #149)
+
 ## [2023.01.31-alpha]
 - Fix map container handling on runner (issue #176)
 - `pf.eql/data->shape` now takes `::pcr/map-container?` into account
