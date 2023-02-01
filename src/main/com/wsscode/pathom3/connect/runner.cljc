@@ -768,6 +768,13 @@
             batch? vector))
         (get key))))
 
+(defn invoke-not-found-mutation! [env ast key]
+  (p.plugin/run-with-plugins
+    env ::wrap-mutate
+    (fn [_ _]
+      (throw (ex-info (str "Mutation " key " not found") {::pco/op-name key})))
+    env ast))
+
 (defn invoke-mutation!
   "Run mutation from AST."
   [env {:keys [key] :as ast}]
@@ -782,7 +789,7 @@
                        (run-foreign-mutation env ast)
                        (p.plugin/run-with-plugins env ::wrap-mutate
                          #(pco.prot/-mutate mutation %1 (:params %2)) env ast))
-                     (throw (ex-info (str "Mutation " key " not found") {::pco/op-name key})))
+                     (invoke-not-found-mutation! env ast key))
                    (catch #?(:clj Throwable :cljs :default) e
                      {::mutation-error
                       (p.plugin/run-with-plugins env ::wrap-mutation-error

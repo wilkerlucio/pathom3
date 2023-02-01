@@ -4,6 +4,7 @@
 - BREAKING: `::p.error/missing-output` is now converged to `::p.error/attribute-missing` (issue #149)
 - BREAKING: Placeholders won't override entity data via params by default (issue #187)
 - New `pbip/placeholder-data-params` plugin to get back the placeholder entity data behavior
+- Mutation not found error goes through `::pcr/wrap-mutate`, allowing the user to capture and transform the not foudn error case
 
 ## [2023.01.31-alpha]
 - Fix map container handling on runner (issue #176)
