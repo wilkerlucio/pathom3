@@ -2,7 +2,7 @@
 
 ## [NEXT]
 - BREAKING: Placeholders won't override entity data via params by default (issue #187)
-- New `pbip/placeholder-data` plugin to get back the placeholder entity data behavior
+- New `pbip/placeholder-data-params` plugin to get back the placeholder entity data behavior
 
 ## [2023.01.31-alpha]
 - Fix map container handling on runner (issue #176)

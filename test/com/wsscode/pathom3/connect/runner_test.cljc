@@ -2974,7 +2974,7 @@
     (check-all-runners
       (-> (pci/register
             [(pbir/single-attr-resolver :x :y #(* 2 %))])
-          (p.plugin/register (pbip/placeholder-data)))
+          (p.plugin/register (pbip/placeholder-data-params)))
       {}
       '[{(:>/path {:x 20}) [:y]}]
       {:>/path {:x 20
@@ -2984,7 +2984,7 @@
       (-> (pci/register
             [(pbir/constantly-resolver :x 10)
              (pbir/single-attr-resolver :x :y #(* 2 %))])
-          (p.plugin/register (pbip/placeholder-data)))
+          (p.plugin/register (pbip/placeholder-data-params)))
       {}
       '[{(:>/path {:x 20}) [:y]}]
       {:>/path {:x 20
@@ -2994,7 +2994,7 @@
       (-> (pci/register
             [(pbir/constantly-resolver :x 10)
              (pbir/single-attr-resolver :x :y #(* 2 %))])
-          (p.plugin/register (pbip/placeholder-data)))
+          (p.plugin/register (pbip/placeholder-data-params)))
       {}
       '[:x
         {(:>/path {:x 20}) [:y]}]
@@ -3006,7 +3006,7 @@
         (-> (pci/register
               [(pbir/constantly-resolver :x 10)
                (pbir/single-attr-with-env-resolver :x :y #(* (:m (pco/params %) 2) %2))])
-            (p.plugin/register (pbip/placeholder-data)))
+            (p.plugin/register (pbip/placeholder-data-params)))
         {}
         '[:x
           {:>/m2 [(:y)]}

@@ -135,9 +135,9 @@
                     ::unexpected-shape unexpected-shape}))
          res)))})
 
-(defn placeholder-data []
+(defn placeholder-data-params []
   {::p.plugin/id
-   `placeholder-data
+   `placeholder-data-params
 
    ::pcr/wrap-placeholder-merge-entity
    (fn placeholder-data-external [_]
