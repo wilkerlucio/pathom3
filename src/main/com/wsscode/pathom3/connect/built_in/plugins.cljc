@@ -15,15 +15,6 @@
     [com.wsscode.pathom3.plugin :as p.plugin]
     [com.wsscode.promesa.macros :refer [clet ctry]]))
 
-(defn ^:deprecated attribute-errors-plugin
-  "DEPRECATED: attribute errors are now built-in, you can just remove it
-  from your setup.
-
-  This plugin makes attributes errors visible in the data."
-  []
-  {::p.plugin/id
-   `attribute-errors-plugin})
-
 (p.plugin/defplugin mutation-resolve-params
   "Remove the run stats from the result meta. Use this in production to avoid sending
   the stats. This is important for performance and security.
@@ -45,7 +36,7 @@
 
 (defn resolver-weight-tracker
   "Starts an atom to track the weight of a resolver. The weight is calculated by measuring
-  the time a resolver takes to run. The time is add to last known time (or 1 in case of
+  the time a resolver takes to run. The time is added to last known time (or 1 in case of
   no previous data) and divided by two to get the new weight.
 
   You should use this plugin to enable weight sorting."
@@ -76,6 +67,26 @@
                (throw e))))))}))
 
 (defn filtered-sequence-items-plugin
+  "By default, in Pathom strict mode, when an error occurs with one item in a sequence
+  that will stop the process completly. This plugin provides a way to add some tolerance
+  there. The way it does it is by filtering out of the output sequence any items that
+  are unable to process fully.
+
+  In is default form, this plugin will only apply to cases where the use sets the meta
+  `::pbip/remove-error-items` in the query join, eg:
+
+      (p.eql/process
+        (p.plugin/register env (pbip/filtered-sequence-items-plugin))
+        [^::pbip/remove-error-items {:some-join [:x :y]}])
+
+  Now the items that can't conform from inside :some-join will get filtered out.
+
+  You can also make this applies everywhere by starting the plugin with the `apply
+  everywhere` configuration:
+
+      (p.eql/process
+        (p.plugin/register env (pbip/filtered-sequence-items-plugin {::pbip/apply-everywhere? true}))
+        [^::pbip/remove-error-items {:some-join [:x :y]}])"
   ([] (filtered-sequence-items-plugin {}))
   ([{::keys [apply-everywhere?]}]
    {::p.plugin/id
@@ -96,7 +107,7 @@
   "Plugin to help extend the environment with something dynamic. This will run once
   around the whole request.
 
-      (p.plugin/register (pbip/env-modify-plugin #(assoc % :data \"bar\")))"
+      (p.plugin/register env (pbip/env-modify-plugin #(assoc % :data \"bar\")))"
   [env-modifier]
   {::p.plugin/id
    `env-wrap-plugin
@@ -134,3 +145,38 @@
                     ::pco/provides     provides
                     ::unexpected-shape unexpected-shape}))
          res)))})
+
+(defn placeholder-data-params
+  "This plugin will make placeholder params change data from the entity they point to.
+  This behavior used to happen by default in the past, but it's now provided in the form
+  of this plugin.
+
+      (p.plugin/register env (pbip/placeholder-data-params))
+
+  Then you can do:
+
+      (p.eql/process env [{'(:>/foo {:some-data \"value\"}) [:some-data]}]
+      => {:some-data \"value\"}"
+  []
+  {::p.plugin/id
+   `placeholder-data-params
+
+   ::pcr/wrap-placeholder-merge-entity
+   (fn placeholder-data-external [_]
+     (fn placeholder-data-internal
+       [{::pcp/keys [graph] ::pcr/keys [source-entity]}]
+       (reduce
+         (fn [out ph]
+           (let [data (:params (pcp/entry-ast graph ph))]
+             (assoc out ph (merge source-entity data))))
+         {}
+         (::pcp/placeholders graph))))})
+
+(defn ^:deprecated attribute-errors-plugin
+  "DEPRECATED: attribute errors are now built-in, you can just remove it
+  from your setup.
+
+  This plugin makes attributes errors visible in the data."
+  []
+  {::p.plugin/id
+   `attribute-errors-plugin})

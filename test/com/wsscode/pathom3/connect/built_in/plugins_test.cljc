@@ -106,3 +106,5 @@
                :com.wsscode.log/level                          :com.wsscode.log/level-warn,
                ::pbip/unexpected-shape                         {:x {:z {}}}}]]
             (spy/calls l/*active-logger*))))))
+
+(deftest placeholder-data-test)

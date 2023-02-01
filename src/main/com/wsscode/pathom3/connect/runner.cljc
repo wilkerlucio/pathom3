@@ -743,20 +743,15 @@
     ::pcp/node-or
     (run-or-node! env node)))
 
+(defn placeholder-merge-entity*
+  "Create an entity to process the placeholder demands."
+  [{::pcp/keys [graph] :as env}]
+  (zipmap (::pcp/placeholders graph) (repeat (p.ent/entity env))))
+
 (defn placeholder-merge-entity
-  "Create an entity to process the placeholder demands. This consider if the placeholder
-  has params, params in placeholders means that you want some specific data at that
-  point."
-  [{::pcp/keys [graph] ::keys [source-entity]}]
-  (reduce
-    (fn [out ph]
-      (let [data (:params (pcp/entry-ast graph ph))]
-        (assoc out ph
-          ; TODO maybe check for possible optimization when there are no conflicts
-          ; between different placeholder levels
-          (merge source-entity data))))
-    {}
-    (::pcp/placeholders graph)))
+  "Create an entity to process the placeholder demands."
+  [env]
+  (p.plugin/run-with-plugins env ::wrap-placeholder-merge-entity placeholder-merge-entity* env))
 
 (defn run-foreign-mutation
   [env {:keys [key] :as ast}]
