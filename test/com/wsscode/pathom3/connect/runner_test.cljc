@@ -3170,6 +3170,29 @@
             '[{(call {:this "thing"}) [:other]}]
             {'call {::pcr/mutation-error err}}))))
 
+  (testing "wrap-mutation"
+    (check-all-runners
+      (-> {:com.wsscode.pathom3.error/lenient-mode? true}
+          (pci/register
+            [(pco/mutation 'foo2
+               {}
+               (fn [_env _params]
+                 (throw (ex-info "Err" {}))))])
+          (p.plugin/register
+            {::p.plugin/id 'err
+             ::pcr/wrap-mutate
+             (fn [mutate]
+               (fn [env params]
+                 (try
+                   (mutate env params)
+                   (catch #?(:clj Throwable :cljs :default) err
+                     {::pcr/mutation-error (ex-message err)}))))}))
+      {}
+      '[(foo {})
+        (foo2 {})]
+      '{foo  {::pcr/mutation-error "Mutation foo not found"},
+        foo2 {::pcr/mutation-error "Err"}}))
+
   (testing "mutation not found"
     (is (graph-response?
           (pci/register

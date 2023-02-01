@@ -482,7 +482,7 @@
                              (run-foreign-mutation env ast)
                              (p.plugin/run-with-plugins env ::pcr/wrap-mutate
                                #(pco.prot/-mutate mutation %1 (:params %2)) env ast))
-                           (throw (ex-info (str "Mutation " key " not found") {::pco/op-name key}))))
+                           (pcr/invoke-not-found-mutation! env ast key)))
                        (p/catch
                          (fn [e]
                            {::pcr/mutation-error
