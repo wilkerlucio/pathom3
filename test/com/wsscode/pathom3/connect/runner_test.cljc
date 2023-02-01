@@ -2001,17 +2001,19 @@
   (testing "run stats"
     (is (some? (-> (run-graph
                      (pci/register
-                       [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
+                       [(pbir/constantly-resolver :id 1)
+                        (batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))])
                      {}
-                     [{'(:>/id {:id 1}) [:v]}])
+                     [{':>/id [:v]}])
                    :>/id meta ::pcr/run-stats)))
 
     (is (nil? (-> (run-graph
                     (-> {::pcr/omit-run-stats? true}
                         (pci/register
-                          [(batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))]))
+                          [(pbir/constantly-resolver :id 1)
+                           (batchfy (pbir/single-attr-resolver :id :v #(* 10 %)))]))
                     {}
-                    [{'(:>/id {:id 1}) [:v]}])
+                    [{':>/id [:v]}])
                   :>/id meta ::pcr/run-stats))))
 
   (testing "different plan"
@@ -2969,26 +2971,30 @@
                   :y 11}})))
 
   (testing "modified data"
-    (is (graph-response? (pci/register
-                           [(pbir/single-attr-resolver :x :y #(* 2 %))])
-          {}
-          '[{(:>/path {:x 20}) [:y]}]
-          {:>/path {:x 20
-                    :y 40}}))
-
     (check-all-runners
-      (pci/register
-        [(pbir/constantly-resolver :x 10)
-         (pbir/single-attr-resolver :x :y #(* 2 %))])
+      (-> (pci/register
+            [(pbir/single-attr-resolver :x :y #(* 2 %))])
+          (p.plugin/register (pbip/placeholder-data)))
       {}
       '[{(:>/path {:x 20}) [:y]}]
       {:>/path {:x 20
                 :y 40}})
 
     (check-all-runners
-      (pci/register
-        [(pbir/constantly-resolver :x 10)
-         (pbir/single-attr-resolver :x :y #(* 2 %))])
+      (-> (pci/register
+            [(pbir/constantly-resolver :x 10)
+             (pbir/single-attr-resolver :x :y #(* 2 %))])
+          (p.plugin/register (pbip/placeholder-data)))
+      {}
+      '[{(:>/path {:x 20}) [:y]}]
+      {:>/path {:x 20
+                :y 40}})
+
+    (check-all-runners
+      (-> (pci/register
+            [(pbir/constantly-resolver :x 10)
+             (pbir/single-attr-resolver :x :y #(* 2 %))])
+          (p.plugin/register (pbip/placeholder-data)))
       {}
       '[:x
         {(:>/path {:x 20}) [:y]}]
@@ -2996,22 +3002,24 @@
                 :y 40}})
 
     (testing "different parameters"
-      (is (graph-response? (pci/register
-                             [(pbir/constantly-resolver :x 10)
-                              (pbir/single-attr-with-env-resolver :x :y #(* (:m (pco/params %) 2) %2))])
-            {}
-            '[:x
-              {:>/m2 [(:y)]}
-              {:>/m3 [(:y {:m 3})]}
-              {:>/m4 [(:y {:m 4})]}]
-            {:x    10
-             :y    30
-             :>/m2 {:x 10
-                    :y 20}
-             :>/m3 {:x 10
-                    :y 30}
-             :>/m4 {:x 10
-                    :y 40}})))))
+      (check-all-runners
+        (-> (pci/register
+              [(pbir/constantly-resolver :x 10)
+               (pbir/single-attr-with-env-resolver :x :y #(* (:m (pco/params %) 2) %2))])
+            (p.plugin/register (pbip/placeholder-data)))
+        {}
+        '[:x
+          {:>/m2 [(:y)]}
+          {:>/m3 [(:y {:m 3})]}
+          {:>/m4 [(:y {:m 4})]}]
+        {:x    10
+         :y    30
+         :>/m2 {:x 10
+                :y 20}
+         :>/m3 {:x 10
+                :y 30}
+         :>/m4 {:x 10
+                :y 40}}))))
 
 (deftest run-graph!-recursive-test
   (testing "unbounded recursive query"
@@ -3310,14 +3318,13 @@
              ::pcr/wrap-merge-attribute
              (fn [merge-attr]
                (fn [env m k v]
+                 (tap> ["X" (-> env ::pcp/graph (pcp/entry-ast k) :params :xx)])
                  (if-let [x (-> env ::pcp/graph (pcp/entry-ast k) :params :xx)]
                    (merge-attr (assoc env :x x) m k v)
                    (merge-attr env m k v))))}))
       {}
-      [:x
-       {'(:>/foo {:xx 42}) [:x]}]
-      {:x nil
-       :>/foo {:x 42}}))
+      [{'(:>/foo {:xx 42}) [:x]}]
+      {:>/foo {:x 42}}))
 
   (testing "works on idents"
     (check-all-runners
@@ -3342,18 +3349,7 @@
               {:x 10})))))
 
 (deftest placeholder-merge-entity-test
-  ; TODO: currently not possible, need to handle conflicts before
-  #_(testing "forward current entity data"
-      (is (= (pcr/placeholder-merge-entity
-               {::pcp/graph          {::pcp/nodes        {}
-                                      ::pcp/placeholders #{:>/p1}
-                                      ::pcp/index-ast    {:>/p1 {:key          :>/p1
-                                                                 :dispatch-key :>/p1}}}
-                ::p.ent/entity-tree* (volatile! {:foo "bar"})
-                ::pcr/source-entity  {}})
-             {:>/p1 {:foo "bar"}})))
-
-  (testing "override with source when params are provided"
+  (testing "forwards data down to placeholders"
     (is (= (pcr/placeholder-merge-entity
              {::pcp/graph          {::pcp/nodes        {}
                                     ::pcp/placeholders #{:>/p1}
@@ -3362,7 +3358,7 @@
                                                                :params       {:x 10}}}}
               ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})
               ::pcr/source-entity  {:z true}})
-           {:>/p1 {:z true :x 10}}))))
+           {:>/p1 {:x 20, :y 40, :z true}}))))
 
 (defn set-done [k]
   (fn [process]

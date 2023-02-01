@@ -134,3 +134,18 @@
                     ::pco/provides     provides
                     ::unexpected-shape unexpected-shape}))
          res)))})
+
+(defn placeholder-data []
+  {::p.plugin/id
+   `placeholder-data
+
+   ::pcr/wrap-placeholder-merge-entity
+   (fn placeholder-data-external [_]
+     (fn placeholder-data-internal
+       [{::pcp/keys [graph] ::pcr/keys [source-entity]}]
+       (reduce
+         (fn [out ph]
+           (let [data (:params (pcp/entry-ast graph ph))]
+             (assoc out ph (merge source-entity data))))
+         {}
+         (::pcp/placeholders graph))))})
