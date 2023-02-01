@@ -3185,7 +3185,7 @@
                (fn [env params]
                  (try
                    (mutate env params)
-                   (catch Throwable err
+                   (catch #?(:clj Throwable :cljs :default) err
                      {::pcr/mutation-error (ex-message err)}))))}))
       {}
       '[(foo {})
