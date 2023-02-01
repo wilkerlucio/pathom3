@@ -96,7 +96,7 @@
   "Plugin to help extend the environment with something dynamic. This will run once
   around the whole request.
 
-      (p.plugin/register (pbip/env-modify-plugin #(assoc % :data \"bar\")))"
+      (p.plugin/register env (pbip/env-modify-plugin #(assoc % :data \"bar\")))"
   [env-modifier]
   {::p.plugin/id
    `env-wrap-plugin
@@ -135,7 +135,18 @@
                     ::unexpected-shape unexpected-shape}))
          res)))})
 
-(defn placeholder-data-params []
+(defn placeholder-data-params
+  "This plugin will make placeholder params change data from the entity they point to.
+  This behavior used to happen by default in the past, but it's now provided in the form
+  of this plugin.
+
+      (p.plugin/register env (pbip/placeholder-data-params))
+
+  Then you can do:
+
+      (p.eql/process env [{'(:>/foo {:some-data \"value\"}) [:some-data]}]
+      => {:some-data \"value\"}"
+  []
   {::p.plugin/id
    `placeholder-data-params
 
