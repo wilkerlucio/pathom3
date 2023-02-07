@@ -1,5 +1,6 @@
 (ns com.wsscode.pathom3.error-test
   (:require
+    [check.core :refer [check =>]]
     [clojure.test :refer [deftest is are run-tests testing]]
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
@@ -80,10 +81,9 @@
             (p.error/attribute-error data :b)))))
 
   (testing "ancestor error missing"
-    (is (mcs/match?
-          {::p.error/cause              ::p.error/node-errors
-           ::p.error/node-error-details {1 {::p.error/cause     ::p.error/node-exception
-                                            ::p.error/exception {:com.wsscode.pathom3.error/error-message "Insufficient data calling resolver '-unqualified/a->b--attr-transform. Missing attrs :a"}}}}
+    (check
+      (=> {::p.error/cause              ::p.error/node-errors
+           ::p.error/node-error-details {1 {::p.error/cause     ::p.error/attribute-missing}}}
           (let [data (p.eql/process
                        (pci/register
                          {::p.error/lenient-mode? true}

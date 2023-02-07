@@ -395,26 +395,11 @@
                               (fn [_ _] {}))])
                          {}
                          [:a])]
-      (is (mcs/match?
-            {:com.wsscode.pathom3.connect.runner/attribute-errors
-             {:a
-              {::p.error/cause              ::p.error/node-errors,
-               ::p.error/node-error-details {1 {::p.error/exception any?}}}}}
-            res))
-      (is (= (-> res meta ::pcr/run-stats
-                 ::pcr/node-run-stats
-                 (get 1)
-                 ::pcr/node-error
-                 ::p.error/error-message)
-             "Insufficient data calling resolver 'a. Missing attrs :b"))
-      (is (= (-> res meta ::pcr/run-stats
-                 ::pcr/node-run-stats
-                 (get 1)
-                 ::pcr/node-error
-                 ::p.error/error-data)
-             {:available {}
-              :missing   {:b {}}
-              :required  {:b {}}}))))
+      (check
+        (=> {:com.wsscode.pathom3.connect.runner/attribute-errors
+             {:a {:com.wsscode.pathom3.error/cause              :com.wsscode.pathom3.error/node-errors,
+                  :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-missing}}}}}
+            res))))
 
   (testing "ending values"
     (is (graph-response?
@@ -3095,49 +3080,44 @@
                        :name+ "c+"}]})))
 
   (testing "recursive nested input"
-    (is (graph-response?
-          (pci/register
-            {::p.error/lenient-mode? true}
-            [(pco/resolver 'nested-input-recursive
-               {::pco/input  [:name {:children '...}]
-                ::pco/output [:names]}
-               (fn [_ input]
-                 {:names
-                  (mapv :name (tree-seq :children :children input))}))
-             (pbir/static-table-resolver :name
-                                         {"a" {:children [{:name "b"}
-                                                          {:name "c"}]}
-                                          "b" {:children [{:name "e"}]}
-                                          "e" {:children [{:name "f"}]}
-                                          "f" {:children [{:name "g"}]}
-                                          "c" {:children [{:name "d"}]}})])
-          {:name "a"}
-          [:names]
-          (fn [res]
-            (mcs/match?
-              {:name     "a",
-               :children [{:name     "b",
-                           :children [{:name     "e",
-                                       :children [{:name     "f",
-                                                   :children [{:name                                                "g",
-                                                               :com.wsscode.pathom3.connect.runner/attribute-errors {:names    {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
-                                                                                                                                :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause                      :com.wsscode.pathom3.error/node-exception,
-                                                                                                                                                                                  :com.wsscode.pathom3.error/exception any?}}},
-                                                                                                                     :children {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
-                                                                                                                                :com.wsscode.pathom3.error/node-error-details {2 {::p.error/cause :com.wsscode.pathom3.error/attribute-missing}}}}}],
-                                                   :names    ["f" "g"]}],
-                                       :names    ["e" "f" "g"]}],
-                           :names    ["b" "e" "f" "g"]}
-                          {:name     "c",
-                           :children [{:name                                                "d",
-                                       :com.wsscode.pathom3.connect.runner/attribute-errors {:names    {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
-                                                                                                        :com.wsscode.pathom3.error/node-error-details {1 {::p.error/cause                      :com.wsscode.pathom3.error/node-exception,
-                                                                                                                                                          :com.wsscode.pathom3.error/exception any?}}},
-                                                                                             :children {::p.error/cause                               :com.wsscode.pathom3.error/node-errors,
-                                                                                                        :com.wsscode.pathom3.error/node-error-details {2 {::p.error/cause :com.wsscode.pathom3.error/attribute-missing}}}}}],
-                           :names    ["c" "d"]}],
-               :names    ["a" "b" "e" "f" "g" "c" "d"]}
-              res))))))
+    (check-all-runners
+      (pci/register
+        {::p.error/lenient-mode? true}
+        [(pco/resolver 'nested-input-recursive
+           {::pco/input  [:name {:children '...}]
+            ::pco/output [:names]}
+           (fn [_ input]
+             {:names
+              (mapv :name (tree-seq :children :children input))}))
+         (pbir/static-table-resolver :name
+                                     {"a" {:children [{:name "b"}
+                                                      {:name "c"}]}
+                                      "b" {:children [{:name "e"}]}
+                                      "e" {:children [{:name "f"}]}
+                                      "f" {:children [{:name "g"}]}
+                                      "c" {:children [{:name "d"}]}})])
+      {:name "a"}
+      [:names]
+      {:name "a",
+       :children [{:name "b",
+                   :children [{:name "e",
+                               :children [{:name "f",
+                                           :children [{:name "g",
+                                                       :com.wsscode.pathom3.connect.runner/attribute-errors {:names {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/node-errors,
+                                                                                                                     :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-missing}}},
+                                                                                                             :children {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/node-errors,
+                                                                                                                        :com.wsscode.pathom3.error/node-error-details {2 {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-missing}}}}}],
+                                           :names ["f" "g"]}],
+                               :names ["e" "f" "g"]}],
+                   :names ["b" "e" "f" "g"]}
+                  {:name "c",
+                   :children [{:name "d",
+                               :com.wsscode.pathom3.connect.runner/attribute-errors {:names {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/node-errors,
+                                                                                             :com.wsscode.pathom3.error/node-error-details {1 {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-missing}}},
+                                                                                     :children {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/node-errors,
+                                                                                                :com.wsscode.pathom3.error/node-error-details {2 {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-missing}}}}}],
+                   :names ["c" "d"]}],
+       :names ["a" "b" "e" "f" "g" "c" "d"]})))
 
 (deftest run-graph!-mutations-test
   (testing "simple call"

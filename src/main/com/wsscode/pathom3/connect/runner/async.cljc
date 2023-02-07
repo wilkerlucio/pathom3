@@ -223,7 +223,7 @@
         resolver-cache* (get env cache-store)
         _               (pcr/merge-node-stats! env node
                           {::pcr/resolver-run-start-ms (time/now-ms)})
-        batch-check     (pcr/wait-batch-check env node entity input input+opts op-name input-data)
+        batch-check     (pcr/wait-batch-check env node entity input input+opts)
         response        (-> (cond
                               batch-check
                               batch-check

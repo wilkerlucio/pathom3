@@ -469,7 +469,7 @@
     input-data))
 
 (defn wait-batch-check
-  [env node entity input input+opts op-name input-data]
+  [env node entity input input+opts]
   (let [missing-all (pfsd/missing-from-data entity input+opts)
         wait-batch? (and missing-all
                          (missing-maybe-in-pending-batch? env input+opts))
@@ -481,13 +481,7 @@
       (wait-batch-response env node)
 
       missing
-      (report-resolver-error
-        (assoc env ::p.error/lenient-mode? true)
-        node
-        (ex-info (str "Insufficient data calling resolver '" op-name ". Missing attrs " (str/join "," (keys missing)))
-                 {:required  input
-                  :available (pfsd/data->shape-descriptor input-data)
-                  :missing   missing})))))
+      ::node-error)))
 
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
@@ -515,7 +509,7 @@
         _               (merge-node-stats! env node
                           {::resolver-run-start-ms (time/now-ms)})
         response        (try
-                          (let [batch-check (wait-batch-check env node entity input input+opts op-name input-data)]
+                          (let [batch-check (wait-batch-check env node entity input input+opts)]
                             (cond
                               batch-check
                               batch-check
