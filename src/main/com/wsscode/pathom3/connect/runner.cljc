@@ -457,8 +457,13 @@
   (mark-node-error-with-plugins env node
                                 (if lenient-mode?
                                   error
-                                  (ex-info (str "Resolver " op-name " exception at path " (pr-str path) ": " (ex-message error))
-                                           (merge (ex-data error) {::p.path/path path})
+                                  (ex-info (cond-> (str "Resolver " op-name " exception")
+                                             (seq path)
+                                             (str " at path " (pr-str path))
+
+                                             true
+                                             (str ": " (ex-message error)))
+                                           (merge (ex-data error) {::p.path/path   path})
                                            error))))
 
 (defn enhance-dynamic-input
@@ -822,9 +827,9 @@
         missing  (pfsd/missing (pfsd/data->shape-descriptor-shallow entity) expected)]
     (if (seq missing)
       (fail-fast env
-                 (ex-info (str
-                            "Required attributes missing: " (pr-str (vec (keys missing)))
-                            " at path " (pr-str path))
+                 (ex-info (cond-> (str "Required attributes missing: " (pr-str (vec (keys missing))))
+                            (seq path)
+                            (str " at path " (pr-str path)))
                           {:missing        missing
                            ::p.error/phase ::execute
                            ::p.error/cause ::p.error/attribute-missing})))))

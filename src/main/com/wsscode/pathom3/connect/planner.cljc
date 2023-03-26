@@ -1693,7 +1693,7 @@
           (throw
             (ex-info
               (cond-> (str "Pathom can't find a path for the following elements in the query: " (pr-str (pfsd/shape-descriptor->query missing)))
-                path
+                (seq path)
                 (str " at path " (pr-str path)))
               {::graph                          graph
                ::unreachable-paths              missing
