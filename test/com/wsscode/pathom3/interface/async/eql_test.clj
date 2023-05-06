@@ -13,7 +13,8 @@
 (def registry
   [geo/full-registry
    (pbir/constantly-resolver :simple "value")
-   (pbir/constantly-fn-resolver :foo ::foo)])
+   (pbir/constantly-fn-resolver :foo ::foo)
+   (pbir/constantly-resolver :false false)])
 
 (defn run-boundary-interface [env request]
   (let [fi (p.a.eql/boundary-interface env)]
@@ -249,7 +250,11 @@
           (meta response)
           => {:com.wsscode.pathom3.connect.runner/run-stats
               {:com.wsscode.pathom3.connect.planner/available-data
-               {:a {}}}})))))
+               {:a {}}}})))
+
+    (testing "returns false"
+      (is (= @(p.a.eql/process-one (pci/register registry) :false)
+             false)))))
 
 (deftest avoid-huge-ex-message
   (let [env (pci/register (pco/resolver `a {::pco/output [:a]}
