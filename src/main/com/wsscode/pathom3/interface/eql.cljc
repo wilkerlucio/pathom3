@@ -105,7 +105,7 @@
           :param ::eql/param-expr)
     => any?]
    (let [response (process env entity [attr])]
-     (if-let [val (some-> response first val)]
+     (if-some [val (some-> response first val)]
        (cond-> val
          (coll? val)
          (vary-meta coll/merge-defaults {::pcr/run-stats (-> response meta ::pcr/run-stats)}))))))

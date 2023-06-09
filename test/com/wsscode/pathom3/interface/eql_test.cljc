@@ -18,7 +18,8 @@
 (def registry
   [geo/full-registry
    coords
-   (pbir/constantly-fn-resolver :foo ::foo)])
+   (pbir/constantly-fn-resolver :foo ::foo)
+   (pbir/constantly-resolver :false false)])
 
 (deftest process-test
   (testing "read"
@@ -133,7 +134,11 @@
           (meta response)
           => {:com.wsscode.pathom3.connect.runner/run-stats
               {:com.wsscode.pathom3.connect.planner/available-data
-               {:a {}}}})))))
+               {:a {}}}})))
+
+    (testing "returns false"
+      (is (= (p.eql/process-one (pci/register registry) :false)
+             false)))))
 
 (defn run-boundary-interface [env request]
   (let [fi (p.eql/boundary-interface env)]
