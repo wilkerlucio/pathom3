@@ -4,7 +4,7 @@
 - BREAKING: `::p.error/missing-output` is now converged to `::p.error/attribute-missing` (issue #149)
 - BREAKING: Placeholders won't override entity data via params by default (issue #187)
 - New `pbip/placeholder-data-params` plugin to get back the placeholder entity data behavior
-- Mutation not found error goes through `::pcr/wrap-mutate`, allowing the user to capture and transform the not foudn error case
+- Mutation not found error goes through `::pcr/wrap-mutate`, allowing the user to capture and transform the not found error case
 - Remove `Insufficient data calling resolver ...` error due to problematic behavior with optionals (issue #192)
 - Improve runner error messages, elide ` at path ` part of the message when at root
 - Fix `process-one` return value when its `false` (previously it would return `nil` instead of `false`) (issue #195)
