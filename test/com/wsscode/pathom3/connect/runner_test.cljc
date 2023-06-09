@@ -609,7 +609,7 @@
 
     (testing "Exception with details"
       (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
-                            #"Resolver foo exception at path \[]: Error"
+                            #"Resolver foo exception: Error"
             (run-graph (pci/register
                          (pco/resolver 'foo
                            {::pco/output [:foo]}
@@ -676,7 +676,7 @@
 
     (testing "resolver missing response"
       (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
-                            #"Required attributes missing: \[:foo] at path \[]"
+                            #"Required attributes missing: \[:foo]"
             (run-graph (pci/register
                          (pco/resolver 'foo
                            {::pco/output [:foo]}
@@ -687,7 +687,7 @@
       #?(:clj
          (testing "async"
            (is (thrown-with-msg? Throwable
-                                 #"Required attributes missing: \[:foo] at path \[]"
+                                 #"Required attributes missing: \[:foo]"
                  @(run-graph-async (pci/register
                                      (pco/resolver 'foo
                                        {::pco/output [:foo]}
@@ -1882,7 +1882,7 @@
   (testing "bug report - infinite loop when batch has cache disabled and misses output"
     (is (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
-          #"Required attributes missing: \[:name] at path \[]"
+          #"Required attributes missing: \[:name]"
           (run-graph
             (pci/register
               [(pco/resolver 'batch-no-cache
@@ -1898,7 +1898,7 @@
     #?(:clj
        (is (thrown-with-msg?
              #?(:clj Throwable :cljs :default)
-             #"Required attributes missing: \[:name] at path \[]"
+             #"Required attributes missing: \[:name]"
              @(run-graph-async
                 (pci/register
                   [(pco/resolver 'batch-no-cache

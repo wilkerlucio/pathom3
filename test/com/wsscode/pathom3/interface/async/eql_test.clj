@@ -52,7 +52,7 @@
 
   (testing "error reporting"
     (check (=>
-             {:com.wsscode.pathom3.error/error-message     "Resolver error exception at path []: Err",
+             {:com.wsscode.pathom3.error/error-message     "Resolver error exception: Err",
               :com.wsscode.pathom3.error/error-stack       #"Resolver error exception"
               :com.wsscode.pathom3.connect.planner/graph   {:com.wsscode.pathom3.connect.planner/source-ast                {:type     :root,
                                                                                                                             :children [{:type         :prop,
@@ -87,7 +87,7 @@
 
     (testing "partial success"
       (check (=>
-               {:com.wsscode.pathom3.error/error-message     "Resolver error exception at path []: Err",
+               {:com.wsscode.pathom3.error/error-message     "Resolver error exception: Err",
                 :com.wsscode.pathom3.error/error-stack       #"Resolver error exception"
                 :com.wsscode.pathom3.connect.planner/graph   {:com.wsscode.pathom3.connect.planner/source-ast                {:type     :root,
                                                                                                                               :children [{:type         :prop,
