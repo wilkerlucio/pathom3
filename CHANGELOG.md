@@ -7,7 +7,7 @@
 - Mutation not found error goes through `::pcr/wrap-mutate`, allowing the user to capture and transform the not foudn error case
 - Remove `Insufficient data calling resolver ...` error due to problematic behavior with optionals (issue #192)
 - Improve runner error messages, elide ` at path ` part of the message when at root
-- Fix `process-one` return value when its `false` (previously it would return `nil` instead of `false`)
+- Fix `process-one` return value when its `false` (previously it would return `nil` instead of `false`) (issue #195)
 
 ## [2023.01.31-alpha]
 - Fix map container handling on runner (issue #176)
