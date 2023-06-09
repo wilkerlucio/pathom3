@@ -104,11 +104,11 @@
           :join ::eql/join
           :param ::eql/param-expr)
     => any?]
-   (let [response (process env entity [attr])
-         val (some-> response first val)]
-     (cond-> val
-       (coll? val)
-       (vary-meta coll/merge-defaults {::pcr/run-stats (-> response meta ::pcr/run-stats)})))))
+   (let [response (process env entity [attr])]
+     (if-some [val (some-> response first val)]
+       (cond-> val
+         (coll? val)
+         (vary-meta coll/merge-defaults {::pcr/run-stats (-> response meta ::pcr/run-stats)}))))))
 
 (>defn satisfy
   "Works like process, but none of the original entity data is filtered out."
