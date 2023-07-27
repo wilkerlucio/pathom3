@@ -128,7 +128,7 @@
 
          (when-let [error (and (refs/kw-identical? (get env ::error-mode) ::error-mode-loud)
                                (p.error/attribute-error @entity-tree* k))]
-           (throw (ex-info "Smart Map fetch error" error)))
+           (throw (ex-info (str "Smart Map fetch error '" k "'") error)))
 
          (wrap-smart-map env (get @entity-tree* k default-value)))))))
 
