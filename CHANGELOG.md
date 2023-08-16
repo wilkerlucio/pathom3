@@ -9,6 +9,7 @@
 - Improve runner error messages, elide ` at path ` part of the message when at root
 - Fix `process-one` return value when its `false` (previously it would return `nil` instead of `false`) (issue #195)
 - Include failing key on smart map errors
+- Support `applyTo` on resolvers and mutations (issue #203)
 
 ## [2023.01.31-alpha]
 - Fix map container handling on runner (issue #176)
