@@ -62,15 +62,16 @@
 
 ; region records
 
-(defn- operation-apply-call [op op-method args]
-  (let [argc (count args)]
-    (cond
-      (zero? argc) (op-method {} {})
-      (= 1 argc) (op-method {} (first args))
-      (= 2 argc) (op-method (first args) (second args))
+#?(:clj
+   (defn- operation-apply-call [op op-method args]
+     (let [argc (count args)]
+       (cond
+         (zero? argc) (op-method {} {})
+         (= 1 argc) (op-method {} (first args))
+         (= 2 argc) (op-method (first args) (second args))
 
-      :else
-      (throw (ex-info (str "Can't call " (operation-type-name op) " with more than 2 arguments.") {:args args})))))
+         :else
+         (throw (ex-info (str "Can't call " (operation-type-name op) " with more than 2 arguments.") {:args args}))))))
 
 (defrecord Resolver [config resolve]
   pop/IOperation
@@ -94,8 +95,7 @@
       [IFn
        (-invoke [_this] (resolve {} {}))
        (-invoke [_this input] (resolve {} input))
-       (-invoke [_this env input] (resolve env input))
-       (-applyTo [this args] (operation-apply-call this resolve args))]))
+       (-invoke [_this env input] (resolve env input))]))
 
 (defrecord Mutation [config mutate]
   pop/IOperation
@@ -119,8 +119,7 @@
       [IFn
        (-invoke [_this] (mutate {} {}))
        (-invoke [_this input] (mutate {} input))
-       (-invoke [_this env input] (mutate env input))
-       (-applyTo [this args] (operation-apply-call this mutate args))]))
+       (-invoke [_this env input] (mutate env input))]))
 
 ; endregion
 
