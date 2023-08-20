@@ -45,6 +45,31 @@
               ::pco/provides {:foo {}}
               ::pco/requires {}}))))
 
+  (testing "user can call resolver via apply"
+    (let [resolver (pco/resolver 'foo {::pco/output [:foo]} (fn [env input]
+                                                              (cond-> {:foo "bar"}
+                                                                (seq env) (assoc :env env)
+                                                                (seq input) (assoc :input input))))]
+      (is (= (apply resolver [])
+             {:foo "bar"}))
+
+      (is (= (apply resolver [{:x 1}])
+             {:foo "bar"
+              :input {:x 1}}))
+
+      (is (= (apply resolver [{:z 3} {:x 1}])
+             {:foo "bar"
+              :input {:x 1}
+              :env {:z 3}}))
+
+      #?(:clj
+         (try
+           (apply resolver [{:z 3} {:x 1} {:not :ok}])
+           (is false "Error expected to be thrown")
+           (catch #?(:clj Throwable :cljs :default) e
+             (is (= (ex-message e) "Can't call resolver with more than 2 arguments."))
+             (is (= (ex-data e) {:args [{:z 3} {:x 1} {:not :ok}]})))))))
+
   (testing "validates configuration map"
     (try
       (pco/resolver 'foo {::pco/input #{:invalid}} (fn [_ _] {:sample "bar"}))
@@ -143,6 +168,31 @@
              {::pco/op-name  'foo
               ::pco/output   [:foo]
               ::pco/provides {:foo {}}}))))
+
+  (testing "user can call mutations via apply"
+    (let [resolver (pco/mutation 'foo {::pco/output [:foo]} (fn [env params]
+                                                              (cond-> {:foo "bar"}
+                                                                (seq env) (assoc :env env)
+                                                                (seq params) (assoc :params params))))]
+      (is (= (apply resolver [])
+             {:foo "bar"}))
+
+      (is (= (apply resolver [{:x 1}])
+             {:foo "bar"
+              :params {:x 1}}))
+
+      (is (= (apply resolver [{:z 3} {:x 1}])
+             {:foo "bar"
+              :params {:x 1}
+              :env {:z 3}}))
+
+      #?(:clj
+         (try
+           (apply resolver [{:z 3} {:x 1} {:not :ok}])
+           (is false "Error expected to be thrown")
+           (catch #?(:clj Throwable :cljs :default) e
+             (is (= (ex-message e) "Can't call mutation with more than 2 arguments."))
+             (is (= (ex-data e) {:args [{:z 3} {:x 1} {:not :ok}]})))))))
 
   (testing "validates configuration map"
     (try

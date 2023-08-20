@@ -15,6 +15,12 @@
      (:require-macros
        [com.wsscode.pathom3.connect.operation])))
 
+; region declare
+
+(declare operation-type-name)
+
+; endregion
+
 ; region type predicates
 
 (defn operation? [x] (satisfies? pop/IOperation x))
@@ -56,6 +62,17 @@
 
 ; region records
 
+#?(:clj
+   (defn- operation-apply-call [op op-method args]
+     (let [argc (count args)]
+       (cond
+         (zero? argc) (op-method {} {})
+         (= 1 argc) (op-method {} (first args))
+         (= 2 argc) (op-method (first args) (second args))
+
+         :else
+         (throw (ex-info (str "Can't call " (operation-type-name op) " with more than 2 arguments.") {:args args}))))))
+
 (defrecord Resolver [config resolve]
   pop/IOperation
   (-operation-config [_] config)
@@ -71,7 +88,8 @@
       [clojure.lang.IFn
        (invoke [_this] (resolve {} {}))
        (invoke [_this input] (resolve {} input))
-       (invoke [_this env input] (resolve env input))]
+       (invoke [_this env input] (resolve env input))
+       (applyTo [this args] (operation-apply-call this resolve args))]
 
       :cljs
       [IFn
@@ -94,7 +112,8 @@
       [clojure.lang.IFn
        (invoke [_this] (mutate {} {}))
        (invoke [_this input] (mutate {} input))
-       (invoke [_this env input] (mutate env input))]
+       (invoke [_this env input] (mutate env input))
+       (applyTo [this args] (operation-apply-call this mutate args))]
 
       :cljs
       [IFn
@@ -119,6 +138,12 @@
 (>defn operation-type [operation]
   [::operation => ::operation-type]
   (pop/-operation-type operation))
+
+(>defn operation-type-name [operation]
+  [::operation => string?]
+  (case (operation-type operation)
+    ::operation-type-resolver "resolver"
+    ::operation-type-mutation "mutation"))
 
 (defn describe-input*
   [ast path outs* opt-parent?]
