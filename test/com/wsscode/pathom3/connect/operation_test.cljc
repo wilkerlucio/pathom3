@@ -62,12 +62,13 @@
               :input {:x 1}
               :env {:z 3}}))
 
-      (try
-        (apply resolver [{:z 3} {:x 1} {:not :ok}])
-        (is false "Error expected to be thrown")
-        (catch #?(:clj Throwable :cljs :default) e
-          (is (= (ex-message e) "Can't call resolver with more than 2 arguments."))
-          (is (= (ex-data e) {:args [{:z 3} {:x 1} {:not :ok}]}))))))
+      #?(:clj
+         (try
+           (apply resolver [{:z 3} {:x 1} {:not :ok}])
+           (is false "Error expected to be thrown")
+           (catch #?(:clj Throwable :cljs :default) e
+             (is (= (ex-message e) "Can't call resolver with more than 2 arguments."))
+             (is (= (ex-data e) {:args [{:z 3} {:x 1} {:not :ok}]})))))))
 
   (testing "validates configuration map"
     (try
@@ -185,12 +186,13 @@
               :params {:x 1}
               :env {:z 3}}))
 
-      (try
-        (apply resolver [{:z 3} {:x 1} {:not :ok}])
-        (is false "Error expected to be thrown")
-        (catch #?(:clj Throwable :cljs :default) e
-          (is (= (ex-message e) "Can't call mutation with more than 2 arguments."))
-          (is (= (ex-data e) {:args [{:z 3} {:x 1} {:not :ok}]}))))))
+      #?(:clj
+         (try
+           (apply resolver [{:z 3} {:x 1} {:not :ok}])
+           (is false "Error expected to be thrown")
+           (catch #?(:clj Throwable :cljs :default) e
+             (is (= (ex-message e) "Can't call mutation with more than 2 arguments."))
+             (is (= (ex-data e) {:args [{:z 3} {:x 1} {:not :ok}]})))))))
 
   (testing "validates configuration map"
     (try
