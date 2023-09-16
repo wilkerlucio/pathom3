@@ -2939,6 +2939,29 @@
         {:foo    "baz"
          :>/path {:foo "baz"}}))
 
+  (testing "keep split when placeholder uses different parameters"
+    (check-all-runners
+      (pci/register
+        (pco/resolver 'param-dep-resolver
+          {::pco/output [:x]}
+          (fn [env _]
+            {:x (str "foo - " (:foo (pco/params env)))})))
+      {}
+      ['(:x {:foo 1})
+       {:>/b ['(:x {:foo 2})]}]
+      {:x "foo - 1", :>/b {:x "foo - 2"}})
+
+    (check-all-runners
+      (pci/register
+        (pco/resolver 'param-dep-resolver
+          {::pco/output [:x]}
+          (fn [env _]
+            {:x (str "foo - " (:foo (pco/params env)))})))
+      {}
+      [{:>/a ['(:x {:foo 1})]}
+       {:>/b ['(:x {:foo 2})]}]
+      {:>/a {:x "foo - 1"}, :>/b {:x "foo - 2"}}))
+
   (testing "with batch"
     (is (graph-response? (pci/register
                            [(pco/resolver 'batch
@@ -2955,7 +2978,7 @@
            :>/go {:x 10
                   :y 11}})))
 
-  (testing "modified data"
+  (testing "placeholder-data-params"
     (check-all-runners
       (-> (pci/register
             [(pbir/single-attr-resolver :x :y #(* 2 %))])

@@ -742,10 +742,26 @@
     ::pcp/node-or
     (run-or-node! env node)))
 
+(defn ast-contains-params? [{:keys [children]}]
+  (some #(seq (:params %)) children))
+
+(defn fast-placeholder-merge?
+  [placeholder-ast]
+  (not (ast-contains-params? placeholder-ast)))
+
 (defn placeholder-merge-entity*
   "Create an entity to process the placeholder demands."
-  [{::pcp/keys [graph] :as env}]
-  (zipmap (::pcp/placeholders graph) (repeat (p.ent/entity env))))
+  [{::pcp/keys [graph] ::keys [source-entity] :as env}]
+  (let [current-entity (p.ent/entity env)
+        index-ast      (::pcp/index-ast graph)]
+    (reduce
+      (fn [out ph]
+        (assoc out ph
+          (if (fast-placeholder-merge? (get index-ast ph))
+            current-entity
+            source-entity)))
+      {}
+      (::pcp/placeholders graph))))
 
 (defn placeholder-merge-entity
   "Create an entity to process the placeholder demands."

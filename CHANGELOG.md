@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Fix placeholders using different parameters
+
 ## [2023.08.22-alpha]
 - BREAKING: `::p.error/missing-output` is now converged to `::p.error/attribute-missing` (issue #149)
 - BREAKING: Placeholders won't override entity data via params by default (issue #187)
