@@ -194,6 +194,12 @@
   for example to keep only a subset of the node data, to enable direct comparison."
   fn?)
 
+(>def ::fast-placeholder-merge?
+  "Flag to say if we can use the parent fully computed entity for the placeholder processing,
+  in cases like when there are different params we can't, and we need to send the source
+  data and reprocess (but leveraging caches)."
+  boolean?)
+
 ; endregion
 
 (declare add-snapshot! compute-run-graph compute-run-graph* compute-attribute-graph
@@ -1740,6 +1746,23 @@
         (map vector source-idents target-idents)))
     graph))
 
+(defn ast-contains-params? [{:keys [children]}]
+  (some #(seq (:params %)) children))
+
+(defn fast-placeholder-merge?
+  [placeholder-ast]
+  (not (ast-contains-params? placeholder-ast)))
+
+(defn mark-fast-placeholder-processes [graph env]
+  (update graph ::index-ast
+    (fn [index-ast]
+      (coll/map-vals
+        (fn [ast]
+          (cond-> ast
+            (and (pph/placeholder-key? env (:key ast)) (fast-placeholder-merge? ast))
+            (assoc ::fast-placeholder-merge? true)))
+        index-ast))))
+
 (>defn compute-run-graph
   "Generates a run plan for a given environment, the environment should contain the
   indexes in it (::pc/index-oir and ::pc/index-resolvers). It computes a plan to execute
@@ -1822,7 +1845,10 @@
                 env')
 
               optimize-graph?
-              (optimize-graph env'))))
+              (optimize-graph env')
+
+              true
+              (mark-fast-placeholder-processes env'))))
        (:edn-query-language.ast/node env)))))
 
 ; endregion

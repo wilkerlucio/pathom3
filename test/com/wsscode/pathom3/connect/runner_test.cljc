@@ -3374,13 +3374,25 @@
               {:x 10})))))
 
 (deftest placeholder-merge-entity-test
-  (testing "forwards data down to placeholders"
+  (testing "forwards source entity data down  "
     (is (= (pcr/placeholder-merge-entity
              {::pcp/graph          {::pcp/nodes        {}
                                     ::pcp/placeholders #{:>/p1}
                                     ::pcp/index-ast    {:>/p1 {:key          :>/p1
                                                                :dispatch-key :>/p1
                                                                :params       {:x 10}}}}
+              ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})
+              ::pcr/source-entity  {:z true}})
+           {:>/p1 {:z true}})))
+
+  (testing "forwards data down to placeholders on fast merge"
+    (is (= (pcr/placeholder-merge-entity
+             {::pcp/graph          {::pcp/nodes        {}
+                                    ::pcp/placeholders #{:>/p1}
+                                    ::pcp/index-ast    {:>/p1 {:key          :>/p1
+                                                               :dispatch-key :>/p1
+                                                               :params       {:x 10}
+                                                               ::pcp/fast-placeholder-merge? true}}}
               ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})
               ::pcr/source-entity  {:z true}})
            {:>/p1 {:x 20, :y 40, :z true}}))))
