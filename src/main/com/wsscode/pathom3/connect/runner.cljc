@@ -750,9 +750,9 @@
     (reduce
       (fn [out ph]
         (assoc out ph
-          (if (::pcp/fast-placeholder-merge? (get index-ast ph))
-            current-entity
-            source-entity)))
+          (if (::pcp/placeholder-use-source-entity? (get index-ast ph))
+            source-entity
+            current-entity)))
       {}
       (::pcp/placeholders graph))))
 

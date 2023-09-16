@@ -4556,13 +4556,13 @@
               (eql/query->ast '[{:a [(:b {:p 1})]}])))))))
 
 (deftest mark-fast-placeholder-processes-test
-  (check (=> {::pcp/index-ast {:>/a {::pcp/fast-placeholder-merge? true}}}
+  (check (=> {::pcp/index-ast {:>/a {::pcp/placeholder-use-source-entity? m/absent}}}
              (compute-run-graph
                {::resolvers [{::pco/op-name 'x
                               ::pco/output  [:x]}]
                 ::eql/query [{:>/a [:x]}]})))
 
-  (check (=> {::pcp/index-ast {:>/a {::pcp/fast-placeholder-merge? m/absent}}}
+  (check (=> {::pcp/index-ast {:>/a {::pcp/placeholder-use-source-entity? true}}}
              (compute-run-graph
                {::resolvers [{::pco/op-name 'x
                               ::pco/output  [:x]}]

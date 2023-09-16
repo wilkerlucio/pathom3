@@ -3380,7 +3380,8 @@
                                     ::pcp/placeholders #{:>/p1}
                                     ::pcp/index-ast    {:>/p1 {:key          :>/p1
                                                                :dispatch-key :>/p1
-                                                               :params       {:x 10}}}}
+                                                               :params       {:x 10}
+                                                               ::pcp/placeholder-use-source-entity? true}}}
               ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})
               ::pcr/source-entity  {:z true}})
            {:>/p1 {:z true}})))
@@ -3391,8 +3392,7 @@
                                     ::pcp/placeholders #{:>/p1}
                                     ::pcp/index-ast    {:>/p1 {:key          :>/p1
                                                                :dispatch-key :>/p1
-                                                               :params       {:x 10}
-                                                               ::pcp/fast-placeholder-merge? true}}}
+                                                               :params       {:x 10}}}}
               ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})
               ::pcr/source-entity  {:z true}})
            {:>/p1 {:x 20, :y 40, :z true}}))))

@@ -194,7 +194,7 @@
   for example to keep only a subset of the node data, to enable direct comparison."
   fn?)
 
-(>def ::fast-placeholder-merge?
+(>def ::placeholder-use-source-entity?
   "Flag to say if we can use the parent fully computed entity for the placeholder processing,
   in cases like when there are different params we can't, and we need to send the source
   data and reprocess (but leveraging caches)."
@@ -1749,18 +1749,14 @@
 (defn ast-contains-params? [{:keys [children]}]
   (some #(seq (:params %)) children))
 
-(defn fast-placeholder-merge?
-  [placeholder-ast]
-  (not (ast-contains-params? placeholder-ast)))
-
 (defn mark-fast-placeholder-processes [graph env]
   (update graph ::index-ast
     (fn [index-ast]
       (coll/map-vals
         (fn [ast]
           (cond-> ast
-            (and (pph/placeholder-key? env (:key ast)) (fast-placeholder-merge? ast))
-            (assoc ::fast-placeholder-merge? true)))
+            (and (pph/placeholder-key? env (:key ast)) (ast-contains-params? ast))
+            (assoc ::placeholder-use-source-entity? true)))
         index-ast))))
 
 (>defn compute-run-graph
