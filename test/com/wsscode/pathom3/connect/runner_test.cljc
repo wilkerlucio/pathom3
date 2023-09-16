@@ -3374,7 +3374,7 @@
               {:x 10})))))
 
 (deftest placeholder-merge-entity-test
-  (testing "forwards source entity data down  "
+  (testing "forwards source entity data down"
     (is (= (pcr/placeholder-merge-entity
              {::pcp/graph          {::pcp/nodes        {}
                                     ::pcp/placeholders #{:>/p1}
