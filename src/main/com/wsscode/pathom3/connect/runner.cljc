@@ -744,8 +744,17 @@
 
 (defn placeholder-merge-entity*
   "Create an entity to process the placeholder demands."
-  [{::pcp/keys [graph] :as env}]
-  (zipmap (::pcp/placeholders graph) (repeat (p.ent/entity env))))
+  [{::pcp/keys [graph] ::keys [source-entity] :as env}]
+  (let [current-entity (p.ent/entity env)
+        index-ast      (::pcp/index-ast graph)]
+    (reduce
+      (fn [out ph]
+        (assoc out ph
+          (if (::pcp/placeholder-use-source-entity? (get index-ast ph))
+            source-entity
+            current-entity)))
+      {}
+      (::pcp/placeholders graph))))
 
 (defn placeholder-merge-entity
   "Create an entity to process the placeholder demands."

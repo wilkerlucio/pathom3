@@ -2939,6 +2939,29 @@
         {:foo    "baz"
          :>/path {:foo "baz"}}))
 
+  (testing "keep split when placeholder uses different parameters"
+    (check-all-runners
+      (pci/register
+        (pco/resolver 'param-dep-resolver
+          {::pco/output [:x]}
+          (fn [env _]
+            {:x (str "foo - " (:foo (pco/params env)))})))
+      {}
+      ['(:x {:foo 1})
+       {:>/b ['(:x {:foo 2})]}]
+      {:x "foo - 1", :>/b {:x "foo - 2"}})
+
+    (check-all-runners
+      (pci/register
+        (pco/resolver 'param-dep-resolver
+          {::pco/output [:x]}
+          (fn [env _]
+            {:x (str "foo - " (:foo (pco/params env)))})))
+      {}
+      [{:>/a ['(:x {:foo 1})]}
+       {:>/b ['(:x {:foo 2})]}]
+      {:>/a {:x "foo - 1"}, :>/b {:x "foo - 2"}}))
+
   (testing "with batch"
     (is (graph-response? (pci/register
                            [(pco/resolver 'batch
@@ -2955,7 +2978,7 @@
            :>/go {:x 10
                   :y 11}})))
 
-  (testing "modified data"
+  (testing "placeholder-data-params"
     (check-all-runners
       (-> (pci/register
             [(pbir/single-attr-resolver :x :y #(* 2 %))])
@@ -3351,7 +3374,19 @@
               {:x 10})))))
 
 (deftest placeholder-merge-entity-test
-  (testing "forwards data down to placeholders"
+  (testing "forwards source entity data down"
+    (is (= (pcr/placeholder-merge-entity
+             {::pcp/graph          {::pcp/nodes        {}
+                                    ::pcp/placeholders #{:>/p1}
+                                    ::pcp/index-ast    {:>/p1 {:key          :>/p1
+                                                               :dispatch-key :>/p1
+                                                               :params       {:x 10}
+                                                               ::pcp/placeholder-use-source-entity? true}}}
+              ::p.ent/entity-tree* (volatile! {:x 20 :y 40 :z true})
+              ::pcr/source-entity  {:z true}})
+           {:>/p1 {:z true}})))
+
+  (testing "forwards data down to placeholders on fast merge"
     (is (= (pcr/placeholder-merge-entity
              {::pcp/graph          {::pcp/nodes        {}
                                     ::pcp/placeholders #{:>/p1}
