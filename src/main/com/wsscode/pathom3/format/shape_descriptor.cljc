@@ -296,7 +296,9 @@
       (into (empty v)
             (keep #(let [s' (select-shape-filtering % sub sub-req)]
                      (if (every? (fn [x] (contains? s' x)) sub-keys)
-                       s'))) v))))
+                       s')))
+            (cond-> v
+              (coll/coll-append-at-head? v) (reverse))))))
 
 (>defn select-shape-filtering
   "Like select-shape, but in case of collections, if some item doesn't have all the

@@ -3364,6 +3364,18 @@
       [{[:a 1] [:x]}]
       {[:a 1] "mudei"})))
 
+(deftest run-graph!-list-input-order
+  (check-all-runners
+    (pci/register
+      (pco/resolver
+        'reverse-inputs
+        {::pco/input  [{:a [:b]}]
+         ::pco/output [:input]}
+        (fn [_ input] {:input input})))
+    {:a (list {:b 1} {:b 2})}
+    [:input]
+    {:input {:a [{:b 1} {:b 2}]}}))
+
 #?(:clj
    (deftest run-graph!-async-tests
      (testing "async env"
