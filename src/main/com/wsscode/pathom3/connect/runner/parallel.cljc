@@ -149,8 +149,8 @@
 
   If there is ident data already, it gets merged with the ident value."
   [env idents]
-  (-> (reduce-async
-        (fn [_ k]
+  (-> (mapv
+        (fn [k]
           (p/let [entity  (p.ent/entity env)
                   entity' (p.plugin/run-with-plugins env ::pcr/wrap-merge-attribute
                             (fn process-idents-merge-attr--internal [env m k v]
@@ -158,8 +158,8 @@
                                 (assoc m k sub-value)))
                             env {} k (assoc (get entity k) (first k) (second k)))]
             (p.ent/swap-entity! env #(assoc % k (get entity' k)))))
-        nil
         idents)
+      (p/all)
       (p/then (constantly nil))))
 
 (defn run-next-node!
