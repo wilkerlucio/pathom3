@@ -57,7 +57,7 @@
   cache-key is how you decide, in that cache container, what key should be used for
   this cache try.
 
-  f needs to a function of zero arguments.
+  f needs to be a function of zero arguments.
 
   Example:
 
