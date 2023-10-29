@@ -4,6 +4,7 @@
 - Fix placeholders using different parameters
 - Idents run in parallel when using parallel processor (issue #208)
 - Fix wrong input order on nested resolvers (issue #205)
+- Fix `pf.eql/map-select` case on map container at query
 
 ## [2023.08.22-alpha]
 - BREAKING: `::p.error/missing-output` is now converged to `::p.error/attribute-missing` (issue #149)

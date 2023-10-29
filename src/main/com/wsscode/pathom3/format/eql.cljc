@@ -98,7 +98,7 @@
   (or (= '... query) (int? query)))
 
 (defn map-select-entry
-  [env source {:keys [key query type] :as ast}]
+  [env source {:keys [key query type params] :as ast}]
   (if-let [x (find source key)]
     (let [val (val x)
           ast (if (recursive-query? query) (:parent-ast ast) ast)
@@ -112,7 +112,8 @@
           val
 
           (map? val)
-          (if (-> val meta :com.wsscode.pathom3.connect.runner/map-container?)
+          (if (or (-> val meta :com.wsscode.pathom3.connect.runner/map-container?)
+                  (-> params :com.wsscode.pathom3.connect.runner/map-container?))
             (into (with-meta {} (meta val))
                   (map (fn [entry]
                          (coll/make-map-entry

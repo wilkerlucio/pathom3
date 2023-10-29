@@ -86,7 +86,14 @@
                                                               :y {:a 3 :b 4}}}
                               [{:foo [:b]}])
            {:foo {:x {:b 2}
-                  :y {:b 4}}})))
+                  :y {:b 4}}}))
+
+    (testing "from query"
+      (is (= (pf.eql/map-select {} {:foo {:x {:a 1 :b 2}
+                                          :y {:a 3 :b 4}}}
+                                [{'(:foo {::pcr/map-container? true}) [:b]}])
+             {:foo {:x {:b 2}
+                    :y {:b 4}}}))))
 
   (testing "recursive query"
     (is (= (pf.eql/map-select {}
