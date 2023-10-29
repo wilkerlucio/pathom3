@@ -8,7 +8,12 @@
          Volatile))))
 
 (defprotocol CacheStore
-  (-cache-lookup-or-miss [this cache-key f])
+  (-cache-lookup-or-miss [this cache-key f]
+    "Implement the main functionality of a cache, this receives a cache key and a function
+    that computes the value in case its uncached. When cache misses, the implementation
+    should run f to compute the result and cache it. This method should always return a
+    value (reading from cache or calling f). A cache store can also support async, in such
+    cases it's ok for the cache store to return a promise.")
   (-cache-find [this cache-key]
     "Implement a way to read a cache key from the cache. If there is a hit, you must
     return a map entry for the result, otherwise return nil. The map-entry can make
