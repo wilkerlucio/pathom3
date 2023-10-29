@@ -553,6 +553,10 @@
      :args ::defmutation-args
      :ret any?))
 
+; endregion
+
+; region helpers
+
 (defn update-config
   "Returns a new resolver with the modified config. You can use this to change anything
   in the resolver configuration map. The only thing you can't change from here is the
