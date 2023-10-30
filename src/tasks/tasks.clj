@@ -52,7 +52,7 @@
 (defn cljstyle [& args]
   (if (native-cljstyle?)
     (apply cljstyle-native args)
-    (apply clojure "-Sdeps" "{:deps {mvxcvi/cljstyle {:mvn/version \"0.15.0\"}}}" "-m" "cljstyle.main" args)))
+    (apply clojure "-Sdeps" "{:aliases {:cljstyle {:replace-deps {mvxcvi/cljstyle {:mvn/version \"0.15.0\"}}}}}" "-M:cljstyle" "-m" "cljstyle.main" args)))
 
 ; endregion
 
