@@ -2,7 +2,8 @@
   (:require
     [clojure.test :refer [deftest is testing]]
     [com.wsscode.misc.time :as time]
-    [com.wsscode.pathom3.trace :as t]))
+    [com.wsscode.pathom3.trace :as t]
+    [promesa.core :as p]))
 
 (deftest add-signal!-test
   (testing "adds when trace* is present"
@@ -73,7 +74,18 @@
                 {:com.wsscode.pathom3.trace/close-span-id  "span-id"
                  :com.wsscode.pathom3.trace/parent-span-id nil
                  :com.wsscode.pathom3.trace/timestamp      123
-                 :com.wsscode.pathom3.trace/type           :com.wsscode.pathom3.trace/type-close-span}]))))))
+                 :com.wsscode.pathom3.trace/type           :com.wsscode.pathom3.trace/type-close-span}])))))
+
+  #?(:clj
+     (testing "supports async body"
+       (let [trace* (atom [])
+             env    {::t/trace* trace*}]
+         @(t/with-span! [env {::t/env env}]
+            (p/do!
+              (p/delay 200)
+              (t/log! env {::t/name "test"})))
+         (is (= 3 (count @trace*)))
+         (is (apply < (map ::t/timestamp @trace*)))))))
 
 (deftest log!-test
   (testing "adds a log entry"

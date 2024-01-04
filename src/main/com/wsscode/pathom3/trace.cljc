@@ -5,7 +5,8 @@
     [com.fulcrologic.guardrails.core :refer [>def]]
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
-    [com.wsscode.misc.time :as time])
+    [com.wsscode.misc.time :as time]
+    #?(:clj [com.wsscode.promesa.macros :refer [clet]]))
   #?(:clj
      (:import
        (java.security
@@ -91,16 +92,21 @@
    (defmacro with-span!
      "Opens a new span and closes it after the body is executed. The span id is bound to the environment.
 
+     This macro supports async body, in such cases the span will be closed after the body is executed and
+     it will return a promise.
+
         (t/with-span! [env {::t/env env}]
           (do-something))"
      [[sym span] & body]
      `(if-let [env# (get ~span ::env)]
-        (let [span#    (dissoc ~span ::env)
-              span-id# (open-span! env# span#)
-              res#     (let [~sym (under-span env# span-id#)]
-                         ~@body)]
-          (close-span! env# span-id#)
-          res#)
+        (if (contains? env# ::trace*)
+          (let [span#    (dissoc ~span ::env)
+                span-id# (open-span! env# span#)]
+            (clet [res# (let [~sym (under-span env# span-id#)]
+                          ~@body)]
+              (close-span! env# span-id#)
+              res#))
+          (do ~@body))
         (throw (ex-info "With span requires environment as part of the data" {})))))
 
 #?(:clj
