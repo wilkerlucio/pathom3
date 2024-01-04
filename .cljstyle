@@ -66,6 +66,7 @@
     smart-map                          [[:inner 0]]
     some                               [[:inner 0]]
     swap!                              [[:inner 0]]
+    t/with-span!                       [[:inner 0]]
     update                             [[:inner 0]]
     update-in                          [[:inner 0]]}}
 
