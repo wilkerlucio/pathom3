@@ -107,7 +107,7 @@
               (close-span! env# span-id#)
               res#))
           (do ~@body))
-        (throw (ex-info "With span requires environment as part of the data" {})))))
+        (throw (ex-info "with-span! requires environment as part of the data" {})))))
 
 #?(:clj
    (s/fdef with-span!
