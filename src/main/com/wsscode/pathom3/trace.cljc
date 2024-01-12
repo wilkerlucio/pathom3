@@ -160,3 +160,23 @@
                  entry
                  props)
                entry))))))
+
+(defn denormalize-span [span-index span-id]
+  (let [span (get span-index span-id)]
+    (coll/update-if
+      span ::children
+      (fn [child-span-id] (mapv #(denormalize-span span-index %) child-span-id)))))
+
+(defn trace->tree
+  "Converts a folded trace into a tree structure. Returns a vector of top-level spans."
+  [trace]
+  (let [{:keys [top-level spans]}
+        (reduce
+          (fn [out {::keys [span-id parent-span-id]}]
+            (if parent-span-id
+              (update-in out [:spans parent-span-id ::children] coll/vconj span-id)
+              (update out :top-level conj span-id)))
+          {:top-level []
+           :spans     (coll/index-by ::span-id trace)}
+          trace)]
+    (mapv #(denormalize-span spans %) top-level)))

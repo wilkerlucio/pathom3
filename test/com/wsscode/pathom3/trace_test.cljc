@@ -10,8 +10,8 @@
     (with-redefs [time/now-ms (constantly 123)]
       (let [trace* (atom [])
             env    {::t/trace* trace*}]
-        (t/add-signal! env {::t/log "test"})
-        (is (= @trace* [{::t/log            "test"
+        (t/add-signal! env {::t/name "test"})
+        (is (= @trace* [{::t/name           "test"
                          ::t/timestamp      123
                          ::t/parent-span-id nil}])))))
 
@@ -19,7 +19,7 @@
     (with-redefs [time/now-ms (constantly 123)]
       (let [trace* (atom [])
             env    {}]
-        (t/add-signal! env {::t/log "test"})
+        (t/add-signal! env {::t/name "test"})
         (is (= @trace* []))))))
 
 (deftest open-span!-test
@@ -28,9 +28,9 @@
                   time/now-ms   (constantly 123)]
       (let [trace* (atom [])
             env    {::t/trace* trace*}]
-        (is (= (t/open-span! env {::t/log "test"})
+        (is (= (t/open-span! env {::t/name "test"})
                "span-id"))
-        (is (= @trace* [{::t/log            "test"
+        (is (= @trace* [{::t/name           "test"
                          ::t/timestamp      123
                          ::t/parent-span-id nil
                          ::t/attributes     {:com.wsscode.pathom3.path/path []}
