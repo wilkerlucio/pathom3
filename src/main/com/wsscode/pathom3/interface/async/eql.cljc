@@ -10,9 +10,9 @@
     [com.wsscode.pathom3.connect.runner.parallel :as pcrc]
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.error :as p.error]
-    [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.pathom3.trace :as t]
     [edn-query-language.core :as eql]
     [promesa.core :as p]))
 
@@ -21,8 +21,7 @@
           result    (if (::parallel? env)
                       (pcrc/run-graph! env ast ent-tree*)
                       (pcra/run-graph! env ast ent-tree*))]
-    (as-> result <>
-      (pf.eql/map-select-ast (p.eql/select-ast-env env) <> ast))))
+    (p.eql/cleanup-transient-data env result ast)))
 
 (>defn process-ast
   [env ast]
@@ -57,15 +56,17 @@
   ([env tx]
    [::pcra/env ::eql/query => p/promise?]
    (p/let [env env]
-     (process-ast (assoc env ::pcr/root-query tx) (eql/query->ast tx))))
+     (t/with-span! [env {::t/env env ::t/name "EQL Process"}]
+       (process-ast (assoc env ::pcr/root-query tx) (p.eql/traced-parse-ast env tx)))))
   ([env entity tx]
    [::pcra/env map? ::eql/query => p/promise?]
    (assert (map? entity) "Entity data must be a map.")
    (p/let [env env]
-     (process-ast (-> env
-                      (assoc ::pcr/root-query tx)
-                      (p.ent/with-entity entity))
-                  (eql/query->ast tx)))))
+     (t/with-span! [env {::t/env env ::t/name "EQL Process"}]
+       (process-ast (-> env
+                        (assoc ::pcr/root-query tx)
+                        (p.ent/with-entity entity))
+                    (p.eql/traced-parse-ast env tx))))))
 
 (>defn process-one
   "Similar to process, but returns a single value instead of a map.

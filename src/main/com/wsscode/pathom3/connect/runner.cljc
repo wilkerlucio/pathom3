@@ -19,7 +19,8 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.placeholder :as pph]
-    [com.wsscode.pathom3.plugin :as p.plugin])
+    [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.pathom3.trace :as t])
   #?(:clj
      (:import
        (clojure.lang
@@ -291,13 +292,15 @@
 
   If there is ident data already, it gets merged with the ident value."
   [env idents]
-  (doseq [[k v :as ident] idents]
-    (p.ent/swap-entity! env
-      (fn [entity]
-        (p.plugin/run-with-plugins env ::wrap-merge-attribute
-          (fn process-idents-merge-attr--internal [env m k v]
-            (assoc m k (process-attr-subquery env {} k v)))
-          env entity ident (assoc (get entity ident) k v))))))
+  (t/with-span! [env {::t/env  env
+                      ::t/name "Process idents"}]
+    (doseq [[k v :as ident] idents]
+      (p.ent/swap-entity! env
+        (fn [entity]
+          (p.plugin/run-with-plugins env ::wrap-merge-attribute
+            (fn process-idents-merge-attr--internal [env m k v]
+              (assoc m k (process-attr-subquery env {} k v)))
+            env entity ident (assoc (get entity ident) k v)))))))
 
 (defn run-next-node!
   "Runs the next node associated with the node, in case it exists."
@@ -328,6 +331,8 @@
   [{::keys [node-run-stats*] :as env}
    {::pcp/keys [node-id]}
    error]
+  (t/log! env {::t/name  ::resolver-error
+               ::t/error (ex-message error)})
   (if node-run-stats*
     (doto node-run-stats*
       (refs/gswap! assoc-in [node-id ::node-error] (p.error/datafy-processor-error error))
@@ -499,46 +504,53 @@
    {::pco/keys [op-name]
     ::pcp/keys [input]
     :as        node}]
-  (let [resolver        (pci/resolver env op-name)
-        {::pco/keys [op-name batch? cache? cache-store optionals]
-         :or        {cache? true}
-         :as        r-config} (pco/operation-config resolver)
-        env             (assoc env ::pcp/node node)
-        entity          (p.ent/entity env)
-        input+opts      (pfsd/merge-shapes input optionals)
-        input-data      (pfsd/select-shape-filtering entity input+opts input)
-        input-data      (enhance-dynamic-input r-config node input-data)
-        params          (pco/params env)
-        cache-store     (choose-cache-store env cache-store)
-        resolver-cache* (get env cache-store)
-        _               (merge-node-stats! env node
-                          {::resolver-run-start-ms (time/now-ms)})
-        response        (try
-                          (let [batch-check (wait-batch-check env node entity input input+opts)]
-                            (cond
-                              batch-check
-                              batch-check
+  (t/with-span! [env {::t/env        env
+                      ::t/name       (str "Run resolver " op-name)
+                      ::t/attributes {::pcp/node node}}]
+    (let [resolver        (pci/resolver env op-name)
+          {::pco/keys [op-name batch? cache? cache-store optionals]
+           :or        {cache? true}
+           :as        r-config} (pco/operation-config resolver)
+          env             (assoc env ::pcp/node node)
+          entity          (p.ent/entity env)
+          input+opts      (pfsd/merge-shapes input optionals)
+          input-data      (pfsd/select-shape-filtering entity input+opts input)
+          input-data      (enhance-dynamic-input r-config node input-data)
+          params          (pco/params env)
+          cache-store     (choose-cache-store env cache-store)
+          resolver-cache* (get env cache-store)
+          _               (merge-node-stats! env node
+                            {::resolver-run-start-ms (time/now-ms)})
+          _               (t/set-attributes! env (cond-> {}
+                                                   (seq params) (assoc ::node-resolver-params params)
+                                                   (seq input-data) (assoc ::node-resolver-input input-data)))
+          response        (try
+                            (let [batch-check (wait-batch-check env node entity input input+opts)]
+                              (cond
+                                batch-check
+                                batch-check
 
-                              batch?
-                              (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
-                                (val x)
-                                (if (::unsupported-batch? env)
-                                  (invoke-resolver-cached-batch
-                                    env cache? op-name resolver cache-store input-data params)
-                                  (batch-hold-token env cache? op-name node cache-store input-data params)))
+                                batch?
+                                (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
+                                  (val x)
+                                  (if (::unsupported-batch? env)
+                                    (invoke-resolver-cached-batch
+                                      env cache? op-name resolver cache-store input-data params)
+                                    (batch-hold-token env cache? op-name node cache-store input-data params)))
 
-                              :else
-                              (invoke-resolver-cached
-                                env cache? op-name resolver cache-store input-data params)))
-                          (catch #?(:clj Throwable :cljs :default) e
-                            (report-resolver-error env node e)))
-        finish          (time/now-ms)
-        response        (validate-response! env node response)]
-    (merge-node-stats! env node
-      (cond-> {::resolver-run-finish-ms finish}
-        (not (::batch-hold response))
-        (merge (report-resolver-io-stats env input-data response))))
-    response))
+                                :else
+                                (invoke-resolver-cached
+                                  env cache? op-name resolver cache-store input-data params)))
+                            (catch #?(:clj Throwable :cljs :default) e
+                              (report-resolver-error env node e)))
+          finish          (time/now-ms)
+          response        (validate-response! env node response)]
+      (t/set-attributes! env ::node-resolver-output response)
+      (merge-node-stats! env node
+        (cond-> {::resolver-run-finish-ms finish}
+          (not (::batch-hold response))
+          (merge (report-resolver-io-stats env input-data response))))
+      response)))
 
 (defn user-demand-completed? [env]
   (empty? (pfsd/missing-from-data (p.ent/entity env) (-> env ::pcp/graph ::pcp/user-request-shape))))
@@ -817,8 +829,11 @@
 (defn process-mutations!
   "Runs the mutations gathered by the planner."
   [{::pcp/keys [graph] :as env}]
-  (doseq [ast (::pcp/mutations graph)]
-    (invoke-mutation! env ast)))
+  (when (seq (::pcp/mutations graph))
+    (t/with-span! [env {::t/env  env
+                        ::t/name "Run mutations"}]
+      (doseq [ast (::pcp/mutations graph)]
+        (invoke-mutation! env ast)))))
 
 (defn check-entity-requires!
   "Verify if entity contains all required keys from graph index-ast. This is
@@ -855,8 +870,7 @@
   (if (-> env ::pcp/graph ::pcp/placeholders)
     (merge-resolver-response! env (placeholder-merge-entity env)))
   ; entity ready
-  (p.plugin/run-with-plugins env ::wrap-entity-ready! run-graph-done!
-    env))
+  (p.plugin/run-with-plugins env ::wrap-entity-ready! run-graph-done! env))
 
 (defn run-root-node!
   [{::pcp/keys [graph] :as env}]
@@ -885,14 +899,18 @@
 
     ; compute nested available fields
     (if-let [nested (::pcp/nested-process graph)]
-      (merge-resolver-response! env (select-keys (p.ent/entity env) nested)))
+      (t/with-span! [env {::t/env  env
+                          ::t/name "Run nested fields"}]
+        (merge-resolver-response! env (select-keys (p.ent/entity env) nested))))
 
     ; process idents
     (if-let [idents (::pcp/idents graph)]
       (process-idents! env idents))
 
     ; now run the nodes
-    (run-root-node! env)
+    (t/with-span! [env {::t/env  env
+                        ::t/name "Run graph nodes"}]
+      (run-root-node! env))
 
     env))
 
@@ -1176,7 +1194,9 @@
   [(s/keys) (s/or :ast :edn-query-language.ast/node
                   :graph ::pcp/graph) ::p.ent/entity-tree*
    => (s/keys)]
-  (run-graph-with-plugins env ast-or-graph entity-tree* run-graph-impl!))
+  (t/with-span! [env {::t/env  env
+                      ::t/name ::trace-plan-and-run}]
+    (run-graph-with-plugins env ast-or-graph entity-tree* run-graph-impl!)))
 
 (>defn with-resolver-cache
   ([env] [map? => map?] (with-resolver-cache env (atom {})))

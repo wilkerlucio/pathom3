@@ -20,6 +20,7 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.pathom3.trace :as t]
     [com.wsscode.promesa.macros :refer [ctry]]
     [promesa.core :as p]))
 
@@ -149,18 +150,20 @@
 
   If there is ident data already, it gets merged with the ident value."
   [env idents]
-  (-> (mapv
-        (fn [k]
-          (p/let [entity  (p.ent/entity env)
-                  entity' (p.plugin/run-with-plugins env ::pcr/wrap-merge-attribute
-                            (fn process-idents-merge-attr--internal [env m k v]
-                              (p/let [sub-value (process-attr-subquery env entity k v)]
-                                (assoc m k sub-value)))
-                            env {} k (assoc (get entity k) (first k) (second k)))]
-            (p.ent/swap-entity! env #(assoc % k (get entity' k)))))
-        idents)
-      (p/all)
-      (p/then (constantly nil))))
+  (t/with-span! [env {::t/env  env
+                      ::t/name "Process idents"}]
+    (-> (mapv
+          (fn [k]
+            (p/let [entity  (p.ent/entity env)
+                    entity' (p.plugin/run-with-plugins env ::pcr/wrap-merge-attribute
+                              (fn process-idents-merge-attr--internal [env m k v]
+                                (p/let [sub-value (process-attr-subquery env entity k v)]
+                                  (assoc m k sub-value)))
+                              env {} k (assoc (get entity k) (first k) (second k)))]
+              (p.ent/swap-entity! env #(assoc % k (get entity' k)))))
+          idents)
+        (p/all)
+        (p/then (constantly nil)))))
 
 (defn run-next-node!
   "Runs the next node associated with the node, in case it exists."
@@ -299,40 +302,47 @@
    {::pco/keys [op-name]
     ::pcp/keys [input]
     :as        node}]
-  (let [resolver        (pci/resolver env op-name)
-        {::pco/keys [op-name batch? cache? cache-store optionals]
-         :or        {cache? true}
-         :as        r-config} (pco/operation-config resolver)
-        env             (assoc env ::pcp/node node)
-        entity          (p.ent/entity env)
-        input-data      (pfsd/select-shape-filtering entity (pfsd/merge-shapes input optionals) input)
-        input-data      (pcr/enhance-dynamic-input r-config node input-data)
-        params          (pco/params env)
-        cache-store     (pcr/choose-cache-store env cache-store)
-        resolver-cache* (get env cache-store)]
-    (pcr/merge-node-stats! env node
-      {::pcr/resolver-run-start-ms (time/now-ms)})
-    (p/let [response (-> (if (pfsd/missing-from-data entity input)
-                           ::pcr/node-error
-                           (cond
-                             batch?
-                             (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
-                               (val x)
-                               (invoke-async-batch
-                                 env cache? op-name node cache-store input-data params))
+  (t/with-span! [env {::t/env        env
+                      ::t/name       (str "Run resolver " op-name)
+                      ::t/attributes {::pcp/node node}}]
+    (let [resolver        (pci/resolver env op-name)
+          {::pco/keys [op-name batch? cache? cache-store optionals]
+           :or        {cache? true}
+           :as        r-config} (pco/operation-config resolver)
+          env             (assoc env ::pcp/node node)
+          entity          (p.ent/entity env)
+          input-data      (pfsd/select-shape-filtering entity (pfsd/merge-shapes input optionals) input)
+          input-data      (pcr/enhance-dynamic-input r-config node input-data)
+          params          (pco/params env)
+          cache-store     (pcr/choose-cache-store env cache-store)
+          resolver-cache* (get env cache-store)]
+      (pcr/merge-node-stats! env node
+        {::pcr/resolver-run-start-ms (time/now-ms)})
+      (t/set-attributes! env (cond-> {}
+                               (seq params) (assoc ::node-resolver-params params)
+                               (seq input-data) (assoc ::node-resolver-input input-data)))
+      (p/let [response (-> (if (pfsd/missing-from-data entity input)
+                             ::pcr/node-error
+                             (cond
+                               batch?
+                               (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
+                                 (val x)
+                                 (invoke-async-batch
+                                   env cache? op-name node cache-store input-data params))
 
-                             :else
-                             (invoke-resolver-cached
-                               env cache? op-name resolver cache-store input-data params)))
-                         (p/catch
-                           (fn [error]
-                             (pcr/report-resolver-error env node error))))
-            response (pcr/validate-response! env node response)]
-      (let [finish (time/now-ms)]
-        (pcr/merge-node-stats! env node
-          (-> {::pcr/resolver-run-finish-ms finish}
-              (merge (pcr/report-resolver-io-stats env input-data response)))))
-      response)))
+                               :else
+                               (invoke-resolver-cached
+                                 env cache? op-name resolver cache-store input-data params)))
+                           (p/catch
+                             (fn [error]
+                               (pcr/report-resolver-error env node error))))
+              response (pcr/validate-response! env node response)]
+        (let [finish (time/now-ms)]
+          (t/set-attributes! env ::node-resolver-output response)
+          (pcr/merge-node-stats! env node
+            (-> {::pcr/resolver-run-finish-ms finish}
+                (merge (pcr/report-resolver-io-stats env input-data response)))))
+        response))))
 
 (defn run-resolver-node!
   "This function evaluates the resolver associated with the node.
@@ -498,11 +508,14 @@
 (defn process-mutations!
   "Runs the mutations gathered by the planner."
   [{::pcp/keys [graph] :as env}]
-  (reduce-async
-    (fn [_ ast]
-      (invoke-mutation! env ast))
-    nil
-    (::pcp/mutations graph)))
+  (when (seq (::pcp/mutations graph))
+    (t/with-span! [env {::t/env  env
+                        ::t/name "Run mutations"}]
+      (reduce-async
+        (fn [_ ast]
+          (invoke-mutation! env ast))
+        nil
+        (::pcp/mutations graph)))))
 
 (defn run-graph-entity-done [env]
   (p/do!
@@ -533,14 +546,18 @@
 
       ; compute nested available fields
       (if-let [nested (::pcp/nested-process graph)]
-        (merge-resolver-response! env (select-keys (p.ent/entity env) nested)))
+        (t/with-span! [env {::t/env  env
+                            ::t/name "Run nested fields"}]
+          (merge-resolver-response! env (select-keys (p.ent/entity env) nested))))
 
       ; process idents
       (if-let [idents (::pcp/idents graph)]
         (process-idents! env idents))
 
       ; now run the nodes
-      (run-root-node! env)
+      (t/with-span! [env {::t/env  env
+                          ::t/name "Run graph nodes"}]
+        (run-root-node! env))
 
       env)))
 
@@ -593,7 +610,9 @@
          :graph ::pcp/graph) ::p.ent/entity-tree*
    => p/promise?]
   (p/let [env env]
-    (pcr/run-graph-with-plugins
-      (assoc env :com.wsscode.pathom3.connect.runner.async/async-runner? true)
-      ast-or-graph
-      entity-tree* run-graph-impl!)))
+    (t/with-span! [env {::t/env  env
+                        ::t/name ::pcr/trace-plan-and-run}]
+      (pcr/run-graph-with-plugins
+        (assoc env :com.wsscode.pathom3.connect.runner.async/async-runner? true)
+        ast-or-graph
+        entity-tree* run-graph-impl!))))

@@ -10,6 +10,7 @@
     [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.pathom3.trace :as t]
     [edn-query-language.core :as eql]))
 
 (>def :pathom/eql ::eql/query)
@@ -20,17 +21,26 @@
 (defn select-ast-env [{::p.error/keys [lenient-mode?] :as env}]
   (cond-> env lenient-mode? (update ::pf.eql/map-select-include coll/sconj ::pcr/attribute-errors)))
 
+(defn cleanup-transient-data [env result ast]
+  (t/with-span! [env {::t/env  env
+                      ::t/name "Cleanup transient data"}]
+    (pf.eql/map-select-ast (select-ast-env env) result ast)))
+
 (defn process-ast* [env ast]
   (let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
         result    (pcr/run-graph! env ast ent-tree*)]
-    (as-> result <>
-      (pf.eql/map-select-ast (select-ast-env env) <> ast))))
+    (cleanup-transient-data env result ast)))
 
 (>defn process-ast
   [env ast]
   [(s/keys) :edn-query-language.ast/node => map?]
   (p.plugin/run-with-plugins env ::wrap-process-ast
     process-ast* env ast))
+
+(defn traced-parse-ast [env tx]
+  (t/with-span! [_ {::t/env  env
+                    ::t/name "Parse EQL to AST"}]
+    (eql/query->ast tx)))
 
 (>defn process
   "Evaluate EQL expression.
@@ -54,17 +64,16 @@
         {:eql \"initial data\"}
         [:eql :request])
 
-  For more options around processing check the docs on the connect runner."
+  For more options around processing, check the docs on the connect runner."
   ([env tx]
    [(s/keys) ::eql/query => map?]
-   (process-ast (assoc env ::pcr/root-query tx) (eql/query->ast tx)))
+   (t/with-span! [env {::t/env env ::t/name "EQL Process"}]
+     (process-ast (assoc env ::pcr/root-query tx)
+                  (traced-parse-ast env tx))))
   ([env entity tx]
    [(s/keys) map? ::eql/query => map?]
    (assert (map? entity) "Entity data must be a map.")
-   (process-ast (-> env
-                    (assoc ::pcr/root-query tx)
-                    (p.ent/with-entity entity))
-                (eql/query->ast tx))))
+   (process (p.ent/with-entity env entity) tx)))
 
 (>defn process-one
   "Similar to process, but returns a single value instead of a map.

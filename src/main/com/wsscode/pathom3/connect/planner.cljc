@@ -14,6 +14,7 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.placeholder :as pph]
+    [com.wsscode.pathom3.trace :as t]
     [edn-query-language.core :as eql])
   #?(:cljs
      (:require-macros
@@ -1057,6 +1058,7 @@
                         (inc-snapshot-depth)
                         (add-resolvers-trail resolvers)
                         (assoc
+                          ::sub-graph-compute-reason "shape reachable?"
                           ::optimize-graph? false
                           ::available-data available
                           :edn-query-language.ast/node (pfsd/shape-descriptor->ast missing))))]
@@ -1176,6 +1178,7 @@
                                             (inc-snapshot-depth)
                                             (add-resolvers-trail (::resolvers env))
                                             (assoc
+                                              ::sub-graph-compute-reason "dynamic nested requirements"
                                               :edn-query-language.ast/node ast
                                               ::available-data available)))
         root-res     (find-root-resolver-nodes graph)
@@ -1248,6 +1251,7 @@
                                            (inc-snapshot-depth)
                                            (add-resolvers-trail (::resolvers env))
                                            (assoc
+                                             ::sub-graph-compute-reason "nested requirements"
                                              :com.wsscode.pathom3.error/lenient-mode? true
                                              :edn-query-language.ast/node ast
                                              ::available-data (pfsd/merge-shapes available-data provide-sub))))
@@ -1717,7 +1721,8 @@
   (if lenient-mode?
     (try
       (verify-plan!* env graph)
-      (catch #?(:clj Throwable :cljs :default) _
+      (catch #?(:clj Throwable :cljs :default) e
+        (t/log! env {::t/name ::plan-verify-failed ::t/error (ex-message e)})
         (assoc graph ::verification-failed? true)))
     (verify-plan!* env graph)))
 
@@ -1728,7 +1733,7 @@
         (:children ast)))
 
 (defn rehydrate-graph-idents
-  "To optimize the plan caching Pathom will remove the values of the idents at the cache
+  "To optimize the plan caching, Pathom will remove the values of the idents at the cache
   key. But upon later usage of the cache, the cache key will hit the previous AST, but
   that AST still has the initial values used on caching. This function will rehydrate
   the AST replacing the cached ident values with the current ident values."
@@ -1806,10 +1811,12 @@
     => ::graph]
    (compute-run-graph {} env))
 
-  ([graph {::keys [optimize-graph?]
+  ([graph {::keys [optimize-graph?
+                   sub-graph-compute-reason]
            :or    {optimize-graph? true}
            :as    env}]
-   [(? (s/keys))
+   [(? (s/keys :opt [::optimize-graph?
+                     ::sub-graph-compute-reason]))
     (s/keys
       :req [:edn-query-language.ast/node]
       :opt [::available-data
@@ -1821,31 +1828,38 @@
    (add-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
                              ::snapshot-message "=== Start query plan ==="})
 
-   (verify-plan!
-     env
-     (rehydrate-graph-idents
-       (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
-                                          (::available-data env)
-                                          (pf.eql/cacheable-ast (:edn-query-language.ast/node env))
-                                          (boolean optimize-graph?)]
-         #(let [env' (-> (merge (base-env) env)
-                         (vary-meta assoc ::original-env env))]
-            (cond->
-              (compute-run-graph*
-                (merge (base-graph)
-                       graph
-                       {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
-                        ::source-ast         (:edn-query-language.ast/node env)
-                        ::available-data     (::available-data env)
-                        ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})
-                env')
+   (t/with-span! [env {::t/env  env
+                       ::t/name (if sub-graph-compute-reason
+                                  (str "Secondary plan: " sub-graph-compute-reason)
+                                  "Plan")}]
+     (let [plan
+           (verify-plan!
+             env
+             (rehydrate-graph-idents
+               (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
+                                                  (::available-data env)
+                                                  (pf.eql/cacheable-ast (:edn-query-language.ast/node env))
+                                                  (boolean optimize-graph?)]
+                 #(let [env' (-> (merge (base-env) env)
+                                 (vary-meta assoc ::original-env env))]
+                    (cond->
+                      (compute-run-graph*
+                        (merge (base-graph)
+                               graph
+                               {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
+                                ::source-ast         (:edn-query-language.ast/node env)
+                                ::available-data     (::available-data env)
+                                ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})
+                        env')
 
-              optimize-graph?
-              (optimize-graph env')
+                      optimize-graph?
+                      (optimize-graph env')
 
-              true
-              (mark-fast-placeholder-processes env'))))
-       (:edn-query-language.ast/node env)))))
+                      true
+                      (mark-fast-placeholder-processes env'))))
+               (:edn-query-language.ast/node env)))]
+       (t/set-attributes! env {::graph plan})
+       plan))))
 
 ; endregion
 
