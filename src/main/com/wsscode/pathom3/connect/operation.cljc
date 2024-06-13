@@ -128,7 +128,7 @@
 (>defn ?
   "Make an attribute optional"
   [attr]
-  [::p.attr/attribute => any?]
+  [::p.attr/attribute-maybe-parameterized => any?]
   (eql/update-property-param attr assoc ::optional? true))
 
 (>defn operation-config [operation]
