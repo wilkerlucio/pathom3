@@ -702,6 +702,11 @@
 (defn combine-expects [na nb]
   (update na ::expects pfsd/merge-shapes (::expects nb)))
 
+(defn combine-params [na nb]
+  (cond-> na
+    (or (::params na) (::params nb))
+    (update ::params merge (::params nb))))
+
 (defn combine-inputs [na nb]
   (if (::input nb)
     (update na ::input pfsd/merge-shapes (::input nb))
@@ -809,6 +814,7 @@
     (-> graph
         ; merge any extra keys from source node, but without overriding anything
         (update-node target-node-id nil coll/merge-defaults source-node)
+        (update-node target-node-id nil combine-params source-node)
         (update-node target-node-id nil combine-expects source-node)
         (update-node target-node-id nil combine-inputs source-node)
         (update-node target-node-id nil combine-foreign-ast source-node)
