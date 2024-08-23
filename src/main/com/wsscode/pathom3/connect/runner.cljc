@@ -1077,7 +1077,7 @@
               (merge-entity-to-root-data env env' node)))
           (do
             (if (not= (count inputs) (count responses))
-              (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {:inputs inputs 
+              (throw (ex-info "Batch results must be a sequence and have the same length as the inputs." {:inputs inputs
                                                                                                           :op-name batch-op})))
 
             (doseq [[{env'       ::env
