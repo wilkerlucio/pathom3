@@ -1593,7 +1593,24 @@
                                                ::pcp/input   {}
                                                ::pcp/node-id 1
                                                ::pcp/params  {:x 1}}}
-               ::pcp/root                  1})))))
+               ::pcp/root                  1}))))
+
+  (testing "params should merge when different attributes are related to same node call"
+    (is (= (compute-run-graph
+             {::resolvers [{::pco/op-name 'a
+                            ::pco/output  [:a :b]}]
+              ::eql/query [(list :a {:x "y"}) (list :b {:z "foo"})]})
+           '{:com.wsscode.pathom3.connect.planner/nodes {1 {:com.wsscode.pathom3.connect.operation/op-name a,
+                                                            :com.wsscode.pathom3.connect.planner/expects {:a {}, :b {}},
+                                                            :com.wsscode.pathom3.connect.planner/input {},
+                                                            :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                            :com.wsscode.pathom3.connect.planner/params {:x "y", :z "foo"}}},
+             :com.wsscode.pathom3.connect.planner/index-ast {:a {:type :prop, :dispatch-key :a, :key :a, :params {:x "y"}},
+                                                             :b {:type :prop, :dispatch-key :b, :key :b, :params {:z "foo"}}},
+             :com.wsscode.pathom3.connect.planner/user-request-shape {:a {}, :b {}},
+             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
+             :com.wsscode.pathom3.connect.planner/index-attrs {:a #{1}, :b #{1}},
+             :com.wsscode.pathom3.connect.planner/root 1}))))
 
 (deftest compute-run-graph-optimize-test
   (testing "optimize AND nodes"

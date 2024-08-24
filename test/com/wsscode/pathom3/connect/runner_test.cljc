@@ -2927,17 +2927,17 @@
            :y 20}))))
 
 (deftest run-graph!-placeholders-test
-  (is (graph-response? (pci/register (pbir/constantly-resolver :foo "bar"))
-        {}
-        [{:>/path [:foo]}]
-        {:foo    "bar"
-         :>/path {:foo "bar"}}))
+  (check-all-runners
+    (pci/register (pbir/constantly-resolver :foo "bar"))
+    {}
+    [{:>/path [:foo]}]
+    {:>/path {:foo "bar"}})
 
-  (is (graph-response? (pci/register (pbir/constantly-resolver :foo "bar"))
-        {:foo "baz"}
-        [{:>/path [:foo]}]
-        {:foo    "baz"
-         :>/path {:foo "baz"}}))
+  (check-all-runners (pci/register (pbir/constantly-resolver :foo "bar"))
+    {:foo "baz"}
+    [{:>/path [:foo]}]
+    {:foo    "baz"
+     :>/path {:foo "baz"}})
 
   (testing "keep split when placeholder uses different parameters"
     (check-all-runners
@@ -2963,20 +2963,21 @@
       {:>/a {:x "foo - 1"}, :>/b {:x "foo - 2"}}))
 
   (testing "with batch"
-    (is (graph-response? (pci/register
-                           [(pco/resolver 'batch
-                              {::pco/batch? true
-                               ::pco/input  [:x]
-                               ::pco/output [:y]}
-                              (fn [_ xs]
-                                (mapv #(array-map :y (inc (:x %))) xs)))])
-          {:x 10}
-          '[:y
-            {:>/go [:y]}]
-          {:x    10
-           :y    11
-           :>/go {:x 10
-                  :y 11}})))
+    (check-all-runners
+      (pci/register
+        [(pco/resolver 'batch
+           {::pco/batch? true
+            ::pco/input  [:x]
+            ::pco/output [:y]}
+           (fn [_ xs]
+             (mapv #(array-map :y (inc (:x %))) xs)))])
+      {:x 10}
+      '[:y
+        {:>/go [:y]}]
+      {:x    10
+       :y    11
+       :>/go {:x 10
+              :y 11}}))
 
   (testing "placeholder-data-params"
     (check-all-runners
@@ -3021,7 +3022,7 @@
           {:>/m3 [(:y {:m 3})]}
           {:>/m4 [(:y {:m 4})]}]
         {:x    10
-         :y    30
+         :y    20
          :>/m2 {:x 10
                 :y 20}
          :>/m3 {:x 10

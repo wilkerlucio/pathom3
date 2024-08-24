@@ -702,6 +702,11 @@
 (defn combine-expects [na nb]
   (update na ::expects pfsd/merge-shapes (::expects nb)))
 
+(defn combine-params [na nb]
+  (cond-> na
+    (or (::params na) (::params nb))
+    (update ::params merge (::params nb))))
+
 (defn combine-inputs [na nb]
   (if (::input nb)
     (update na ::input pfsd/merge-shapes (::input nb))
@@ -809,6 +814,7 @@
     (-> graph
         ; merge any extra keys from source node, but without overriding anything
         (update-node target-node-id nil coll/merge-defaults source-node)
+        (update-node target-node-id nil combine-params source-node)
         (update-node target-node-id nil combine-expects source-node)
         (update-node target-node-id nil combine-inputs source-node)
         (update-node target-node-id nil combine-foreign-ast source-node)
@@ -1584,6 +1590,9 @@
               index-ast
               (coll/filter-vals (comp seq :children) (pf.eql/index-ast placeholder-ast))))
 
+(defn remove-parameterized-attributes [ast]
+  (eql/transduce-children (remove #(seq (:params %))) ast))
+
 (defn compute-non-index-attribute
   "This function deals with attributes that are not part of the index execution. The
   cases here are:
@@ -1611,7 +1620,7 @@
     (-> (add-placeholder-entry graph attr)
         (cond->
           (empty? (:params ast))
-          (-> (compute-run-graph* env)
+          (-> (compute-run-graph* (update env :edn-query-language.ast/node remove-parameterized-attributes))
               (update ::index-ast merge-placeholder-ast ast))))))
 
 (defn plan-mutation-nested-query [env {:keys [key] :as ast}]
