@@ -1774,11 +1774,7 @@
       (if (> (count node-ids) 1)
         (let [params (transduce (map #(get-node graph' % ::params)) merge node-ids)]
           (if (seq params)
-            (reduce
-              (fn [graph'' node-id]
-                (assoc-node graph'' node-id ::params params))
-              graph'
-              node-ids)
+            (reduce #(assoc-node % %2 ::params params) graph' node-ids)
             graph'))
         graph'))
     graph
