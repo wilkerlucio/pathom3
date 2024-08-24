@@ -1768,6 +1768,22 @@
             (assoc ::placeholder-use-source-entity? true)))
         index-ast))))
 
+(defn ensure-resolver-consistent-params [graph]
+  (reduce
+    (fn [graph' node-ids]
+      (if (> (count node-ids) 1)
+        (let [params (transduce (map #(get-node graph' % ::params)) merge node-ids)]
+          (if (seq params)
+            (reduce
+              (fn [graph'' node-id]
+                (assoc-node graph'' node-id ::params params))
+              graph'
+              node-ids)
+            graph'))
+        graph'))
+    graph
+    (vals (::index-resolver->nodes graph))))
+
 (>defn compute-run-graph
   "Generates a run plan for a given environment, the environment should contain the
   indexes in it (::pc/index-oir and ::pc/index-resolvers). It computes a plan to execute
@@ -1853,7 +1869,10 @@
               (optimize-graph env')
 
               true
-              (mark-fast-placeholder-processes env'))))
+              (mark-fast-placeholder-processes env')
+
+              true
+              (ensure-resolver-consistent-params))))
        (:edn-query-language.ast/node env)))))
 
 ; endregion
