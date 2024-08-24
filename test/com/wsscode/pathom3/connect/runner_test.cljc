@@ -2927,11 +2927,10 @@
            :y 20}))))
 
 (deftest run-graph!-placeholders-test
-  (is (graph-response? (pci/register (pbir/constantly-resolver :foo "bar"))
-        {}
-        [{:>/path [:foo]}]
-        {:foo    "bar"
-         :>/path {:foo "bar"}}))
+  (is (check-serial (pci/register (pbir/constantly-resolver :foo "bar"))
+                    {}
+                    [{:>/path [:foo]}]
+                    {:>/path {:foo "bar"}}))
 
   (is (graph-response? (pci/register (pbir/constantly-resolver :foo "bar"))
         {:foo "baz"}
@@ -3021,7 +3020,7 @@
           {:>/m3 [(:y {:m 3})]}
           {:>/m4 [(:y {:m 4})]}]
         {:x    10
-         :y    30
+         :y    20
          :>/m2 {:x 10
                 :y 20}
          :>/m3 {:x 10

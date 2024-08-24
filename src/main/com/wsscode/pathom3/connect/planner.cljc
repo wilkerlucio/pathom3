@@ -1590,6 +1590,9 @@
               index-ast
               (coll/filter-vals (comp seq :children) (pf.eql/index-ast placeholder-ast))))
 
+(defn remove-parameterized-attributes [ast]
+  (eql/transduce-children (remove #(seq (:params %))) ast))
+
 (defn compute-non-index-attribute
   "This function deals with attributes that are not part of the index execution. The
   cases here are:
@@ -1617,7 +1620,7 @@
     (-> (add-placeholder-entry graph attr)
         (cond->
           (empty? (:params ast))
-          (-> (compute-run-graph* env)
+          (-> (compute-run-graph* (update env :edn-query-language.ast/node remove-parameterized-attributes))
               (update ::index-ast merge-placeholder-ast ast))))))
 
 (defn plan-mutation-nested-query [env {:keys [key] :as ast}]
