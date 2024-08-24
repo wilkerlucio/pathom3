@@ -7,6 +7,7 @@
 - Fix `pf.eql/map-select` case on map container at query
 - Fix spec for `pco/?`
 - Merge params when merging nodes on planner (issue #216)
+- Ensure all instances of same resolver in same graph have same params (issue #211)
 
 ## [2023.08.22-alpha]
 - BREAKING: `::p.error/missing-output` is now converged to `::p.error/attribute-missing` (issue #149)

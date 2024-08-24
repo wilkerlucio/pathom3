@@ -1610,7 +1610,59 @@
              :com.wsscode.pathom3.connect.planner/user-request-shape {:a {}, :b {}},
              :com.wsscode.pathom3.connect.planner/index-resolver->nodes {a #{1}},
              :com.wsscode.pathom3.connect.planner/index-attrs {:a #{1}, :b #{1}},
-             :com.wsscode.pathom3.connect.planner/root 1}))))
+             :com.wsscode.pathom3.connect.planner/root 1})))
+
+  (testing "all resolver calls from same resolver must have consistent parameters"
+    (check (=> '{:com.wsscode.pathom3.connect.planner/nodes {1 {:com.wsscode.pathom3.connect.operation/op-name email-body,
+                                                                :com.wsscode.pathom3.connect.planner/expects {:email/body {}},
+                                                                :com.wsscode.pathom3.connect.planner/input {},
+                                                                :com.wsscode.pathom3.connect.planner/node-id 1,
+                                                                :com.wsscode.pathom3.connect.planner/params {:text? true},
+                                                                :com.wsscode.pathom3.connect.planner/node-parents #{6}},
+                                                             2 {:com.wsscode.pathom3.connect.operation/op-name email-valid?,
+                                                                :com.wsscode.pathom3.connect.planner/expects {:email/valid? {}},
+                                                                :com.wsscode.pathom3.connect.planner/input {:email/body {},
+                                                                                                            :email/subject {}},
+                                                                :com.wsscode.pathom3.connect.planner/node-id 2,
+                                                                :com.wsscode.pathom3.connect.planner/node-parents #{5}},
+                                                             3 {:com.wsscode.pathom3.connect.operation/op-name email-body,
+                                                                :com.wsscode.pathom3.connect.planner/expects {:email/body {}},
+                                                                :com.wsscode.pathom3.connect.planner/input {},
+                                                                :com.wsscode.pathom3.connect.planner/node-id 3,
+                                                                :com.wsscode.pathom3.connect.planner/params {:text? true},
+                                                                :com.wsscode.pathom3.connect.planner/node-parents #{5}},
+                                                             4 {:com.wsscode.pathom3.connect.operation/op-name email-subject,
+                                                                :com.wsscode.pathom3.connect.planner/expects {:email/subject {}},
+                                                                :com.wsscode.pathom3.connect.planner/input {},
+                                                                :com.wsscode.pathom3.connect.planner/node-id 4,
+                                                                :com.wsscode.pathom3.connect.planner/node-parents #{5}},
+                                                             5 {:com.wsscode.pathom3.connect.planner/node-id 5,
+                                                                :com.wsscode.pathom3.connect.planner/run-and #{4 3},
+                                                                :com.wsscode.pathom3.connect.planner/run-next 2,
+                                                                :com.wsscode.pathom3.connect.planner/node-parents #{6}},
+                                                             6 {:com.wsscode.pathom3.connect.planner/node-id 6,
+                                                                :com.wsscode.pathom3.connect.planner/run-and #{1 5}}},
+                 :com.wsscode.pathom3.connect.planner/index-ast {:email/body {:type :prop,
+                                                                              :dispatch-key :email/body,
+                                                                              :key :email/body,
+                                                                              :params {:text? true}},
+                                                                 :email/valid? {:type :prop,
+                                                                                :dispatch-key :email/valid?,
+                                                                                :key :email/valid?}},
+                 :com.wsscode.pathom3.connect.planner/user-request-shape {:email/body {}, :email/valid? {}},
+                 :com.wsscode.pathom3.connect.planner/index-resolver->nodes {email-body #{1 3}, email-valid? #{2}, email-subject #{4}},
+                 :com.wsscode.pathom3.connect.planner/index-attrs {:email/body #{1 3}, :email/valid? #{2}, :email/subject #{4}},
+                 :com.wsscode.pathom3.connect.planner/root 6}
+               (compute-run-graph
+                 {::pci/index-oir '{:email/body
+                                    {{} #{email-body}},
+                                    :email/subject
+                                    {{} #{email-subject}},
+                                    :email/valid?
+                                    {{:email/body {}, :email/subject {}}
+                                     #{email-valid?}}}
+                  ::eql/query     ['(:email/body {:text? true})
+                                   :email/valid?]})))))
 
 (deftest compute-run-graph-optimize-test
   (testing "optimize AND nodes"
