@@ -8,6 +8,7 @@
 - Fix spec for `pco/?`
 - Merge params when merging nodes on planner (issue #216)
 - Ensure all instances of same resolver in same graph have same params (issue #211)
+- In case of priority draw, pick the node with the most number of inputs already available (issue #202)
 
 ## [2023.08.22-alpha]
 - BREAKING: `::p.error/missing-output` is now converged to `::p.error/attribute-missing` (issue #149)
