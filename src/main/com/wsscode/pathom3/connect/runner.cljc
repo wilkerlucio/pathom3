@@ -573,10 +573,11 @@
           (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
           nil)))))
 
-(defn priority-sort
-  "Find the node path with the highest priority to run. Returns a set of the candidates
-  with the same priority level."
-  [{::pcp/keys [graph] :as env} or-node node-ids]
+(defn pick-node-highest
+  "Starting from possible paths, find the nodes responsible for the attribute required by the
+  OR node. Now compute the criteria from each node config it must result in a number. Keep only
+  the nodes that have the highest criteria value."
+  [{::pcp/keys [graph] :as env} or-node node-ids criteria]
   (let [expects (-> or-node ::pcp/expects keys)
         nodes   (for [id        node-ids
                       successor (pcp/node-successors graph id)
@@ -585,12 +586,25 @@
                       :when (and provides (every? provides expects))]
                   [id config])]
     (if (seq nodes)
-      (let [[id config] (apply max-key #(-> % second (::pco/priority 0)) nodes)]
+      (let [[id config] (apply max-key #(-> % second criteria) nodes)]
         (if id
-          (into #{} (comp (filter #(= (::pco/priority config) (::pco/priority (second %))))
+          (into #{} (comp (filter #(= (criteria config) (criteria (second %))))
                           (map first)) nodes)
           node-ids))
       #{})))
+
+(defn priority-sort
+  "Find the node path with the highest priority to run. Returns a set of the candidates
+  with the same priority level."
+  [env or-node node-ids]
+  (pick-node-highest env or-node node-ids #(::pco/priority % 0)))
+
+(defn input-size-sort
+  "Find the nodes with highest input size and removes any node with sizes smaller than it."
+  [env or-node node-ids]
+  (let [available (-> env p.ent/entity pfsd/data->shape-descriptor-shallow)]
+    (pick-node-highest env or-node node-ids
+                       #(-> % ::pcp/input (pfsd/intersection available) count))))
 
 (defn node-weight
   "Sums up the weight of a node and its successors"
@@ -619,7 +633,9 @@
     (first candidates)))
 
 (defn default-choose-path [env or-node node-ids]
-  (let [candidates (priority-sort env or-node node-ids)
+  (let [candidates (->> node-ids
+                        (priority-sort env or-node)
+                        (input-size-sort env or-node))
         cc         (count candidates)]
     (cond
       (> cc 1)
