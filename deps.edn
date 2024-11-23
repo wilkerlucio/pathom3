@@ -56,7 +56,7 @@
                   :sync-pom    true}}
 
   :deploy
-  {:replace-deps {slipset/deps-deploy {:mvn/version "0.1.5"}}
+  {:replace-deps {slipset/deps-deploy {:mvn/version "0.2.2"}}
    :exec-fn      deps-deploy.deps-deploy/deploy
    :exec-args    {:installer      :remote
                   :sign-releases? true}}}}
