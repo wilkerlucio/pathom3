@@ -274,8 +274,8 @@
 
   Resolver: adds a single resolver
   Mutation: adds a single mutation
-  Map: assumes its a map containing indexes, merges in using merge-indexes functionality
-  Sequentials: a vector containing any of the operators (including other sequentials)"
+  Map: assumes it is a map containing indexes, merges in using merge-indexes functionality
+  Sequential: a vector containing any of the operators (including other sequentials)"
   ([operation-or-operations]
    [::operations => ::indexes]
    (register {} operation-or-operations))
