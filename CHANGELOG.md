@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2024.11.23-alpha]
 - Fix placeholders using different parameters
 - Idents run in parallel when using parallel processor (issue #208)
 - Fix wrong input order on nested resolvers (issue #205)
