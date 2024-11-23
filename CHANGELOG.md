@@ -7,9 +7,10 @@
 - Fix `pf.eql/map-select` case on map container at query
 - Fix spec for `pco/?`
 - Merge params when merging nodes on planner (issue #216)
-- Ensure all instances of same resolver in same graph have same params (issue #211)
+- Ensure all instances of the same resolver in the same graph have the same params (issue #211)
 - In case of priority draw, pick the node with the most number of inputs already available (issue #202)
 - Parameterized attributes on placeholders are not processed at during parent planning
+- Add `::pcp/wrap-compute-run-graph` plugin entry point
 
 ## [2023.08.22-alpha]
 - BREAKING: `::p.error/missing-output` is now converged to `::p.error/attribute-missing` (issue #149)

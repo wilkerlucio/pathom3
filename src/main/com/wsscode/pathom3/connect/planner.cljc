@@ -14,6 +14,7 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.placeholder :as pph]
+    [com.wsscode.pathom3.plugin :as p.plugin]
     [edn-query-language.core :as eql])
   #?(:cljs
      (:require-macros
@@ -1842,34 +1843,36 @@
    (add-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
                              ::snapshot-message "=== Start query plan ==="})
 
-   (verify-plan!
-     env
-     (rehydrate-graph-idents
-       (p.cache/cached ::plan-cache* env [(hash (::pci/index-oir env))
-                                          (::available-data env)
-                                          (pf.eql/cacheable-ast (:edn-query-language.ast/node env))
-                                          (boolean optimize-graph?)]
-         #(let [env' (-> (merge (base-env) env)
-                         (vary-meta assoc ::original-env env))]
-            (cond->
-              (compute-run-graph*
-                (merge (base-graph)
-                       graph
-                       {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
-                        ::source-ast         (:edn-query-language.ast/node env)
-                        ::available-data     (::available-data env)
-                        ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})
-                env')
+   (p.plugin/run-with-plugins env ::wrap-compute-run-graph
+     (fn compute-run-graph-internal [graph env]
+       (as-> env <>
+         (p.cache/cached ::plan-cache* <> [(hash (::pci/index-oir env))
+                                           (::available-data env)
+                                           (pf.eql/cacheable-ast (:edn-query-language.ast/node env))
+                                           (boolean optimize-graph?)]
+           #(let [env' (-> (merge (base-env) env)
+                           (vary-meta assoc ::original-env env))]
+              (cond->
+                (compute-run-graph*
+                  (merge (base-graph)
+                         graph
+                         {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
+                          ::source-ast         (:edn-query-language.ast/node env)
+                          ::available-data     (::available-data env)
+                          ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})
+                  env')
 
-              optimize-graph?
-              (optimize-graph env')
+                optimize-graph?
+                (optimize-graph env')
 
-              true
-              (mark-fast-placeholder-processes env')
+                true
+                (mark-fast-placeholder-processes env')
 
-              true
-              (ensure-resolver-consistent-params))))
-       (:edn-query-language.ast/node env)))))
+                true
+                (ensure-resolver-consistent-params))))
+         (rehydrate-graph-idents <> (:edn-query-language.ast/node env))
+         (verify-plan! env <>)))
+     graph env)))
 
 ; endregion
 
