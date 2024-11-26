@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Add `p.path/at-path-string` helper
+
 ## [2024.11.23-alpha]
 - Fix placeholders using different parameters
 - Idents run in parallel when using parallel processor (issue #208)

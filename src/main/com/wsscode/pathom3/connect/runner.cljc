@@ -457,13 +457,10 @@
   (mark-node-error-with-plugins env node
                                 (if lenient-mode?
                                   error
-                                  (ex-info (cond-> (str "Resolver " op-name " exception")
-                                             (seq path)
-                                             (str " at path " (pr-str path))
-
-                                             true
-                                             (str ": " (ex-message error)))
-                                           (merge (ex-data error) {::p.path/path   path})
+                                  (ex-info (str "Resolver " op-name " exception"
+                                                (p.path/at-path-string env)
+                                                ": " (ex-message error))
+                                           (merge (ex-data error) {::p.path/path path})
                                            error))))
 
 (defn enhance-dynamic-input
@@ -839,9 +836,8 @@
 (defn check-entity-requires!
   "Verify if entity contains all required keys from graph index-ast. This is
   shallow check (don't visit nested entities)."
-  [{::pcp/keys    [graph]
-    ::p.path/keys [path]
-    :as           env}]
+  [{::pcp/keys [graph]
+    :as        env}]
   (let [entity   (p.ent/entity env)
         expected (zipmap
                    (into []
@@ -852,9 +848,9 @@
         missing  (pfsd/missing (pfsd/data->shape-descriptor-shallow entity) expected)]
     (if (seq missing)
       (fail-fast env
-                 (ex-info (cond-> (str "Required attributes missing: " (pr-str (vec (keys missing))))
-                            (seq path)
-                            (str " at path " (pr-str path)))
+                 (ex-info (str "Required attributes missing: "
+                               (pr-str (vec (keys missing)))
+                               (p.path/at-path-string env))
                           {:missing        missing
                            ::p.error/phase ::execute
                            ::p.error/cause ::p.error/attribute-missing})))))

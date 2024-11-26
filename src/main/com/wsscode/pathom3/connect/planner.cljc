@@ -1708,9 +1708,8 @@
         (let [path (get env ::p.path/path)]
           (throw
             (ex-info
-              (cond-> (str "Pathom can't find a path for the following elements in the query: " (pr-str (pfsd/shape-descriptor->query missing)))
-                (seq path)
-                (str " at path " (pr-str path)))
+              (str "Pathom can't find a path for the following elements in the query: "
+                   (pr-str (pfsd/shape-descriptor->query missing)) (p.path/at-path-string env))
               {::graph                          graph
                ::unreachable-paths              missing
                ::p.path/path                    path
