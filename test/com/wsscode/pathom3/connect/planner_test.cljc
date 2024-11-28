@@ -33,6 +33,14 @@
     out
     env))
 
+(defn exception-capture [f]
+  (try
+    (f)
+    (throw (ex-info "Expected error wasn't thrown" {}))
+    (catch #?(:clj Throwable :cljs :default) e
+      {:ex/message (ex-message e)
+       :ex/data    (ex-data e)})))
+
 (defn compute-env
   [{::keys     [resolvers dynamics]
     ::pcp/keys [snapshots*]
@@ -83,6 +91,9 @@
     (if snapshots*
       @snapshots*
       graph)))
+
+(defn compute-run-graph-ex [config]
+  (exception-capture #(compute-run-graph config)))
 
 #?(:clj
    (defn debug-compute-run-graph
@@ -242,27 +253,45 @@
 
 (deftest compute-run-graph-no-path-test
   (testing "no path"
-    (is (thrown-with-msg?
-          #?(:clj Throwable :cljs js/Error)
-          #"Pathom can't find a path for the following elements in the query: \[:a]"
-          (compute-run-graph
-            {::pci/index-oir '{}
-             ::eql/query     [:a]})))
+    (check (=> {:ex/message
+                "Pathom can't find a path for the following elements in the query: [:a]"
 
-    (is (thrown-with-msg?
-          #?(:clj Throwable :cljs js/Error)
-          #"Pathom can't find a path for the following elements in the query: \[:a :b]"
-          (compute-run-graph
-            {::pci/index-oir '{}
-             ::eql/query     [:a :b]})))
+                :ex/data
+                {::pcp/unreachable-paths   {:a {}}
+                 ::pcp/unreachable-details {:a {::pcp/unreachable-cause ::pcp/unreachable-cause-unknown-attribute}}
+                 ::p.error/phase           ::pcp/plan
+                 ::p.error/cause           ::p.error/attribute-unreachable}}
+               (compute-run-graph-ex
+                 {::resolvers []
+                  ::eql/query [:a]})))
+
+    (check (=> {:ex/message
+                "Pathom can't find a path for the following elements in the query: [:a :b]"
+
+                :ex/data
+                {::pcp/unreachable-paths   {:a {} :b {}}
+                 ::pcp/unreachable-details {:a {::pcp/unreachable-cause ::pcp/unreachable-cause-unknown-attribute}
+                                            :b {::pcp/unreachable-cause ::pcp/unreachable-cause-unknown-attribute}}
+                 ::p.error/phase           ::pcp/plan
+                 ::p.error/cause           ::p.error/attribute-unreachable}}
+               (compute-run-graph-ex
+                 {::resolvers []
+                  ::eql/query [:a :b]})))
 
     (testing "broken chain"
-      (is (thrown-with-msg?
-            #?(:clj Throwable :cljs js/Error)
-            #"Pathom can't find a path for the following elements in the query: \[:b]"
-            (compute-run-graph
-              {::pci/index-oir '{:b {{:a {}} #{b}}}
-               ::eql/query     [:b]})))
+      (check (=> {:ex/message
+                  "Pathom can't find a path for the following elements in the query: [:b]"
+
+                  :ex/data
+                  {::pcp/unreachable-paths   {:b {}}
+                   ::pcp/unreachable-details {:b {::pcp/unreachable-cause ::pcp/unreachable-cause-missing-dependencies}}
+                   ::p.error/phase           ::pcp/plan
+                   ::p.error/cause           ::p.error/attribute-unreachable}}
+                 (compute-run-graph-ex
+                   {::resolvers [{::pco/op-name 'b
+                                  ::pco/input   [:a]
+                                  ::pco/output  [:b]}]
+                    ::eql/query [:b]})))
 
       (is (thrown-with-msg?
             #?(:clj Throwable :cljs js/Error)
@@ -297,7 +326,7 @@
 
       (is (thrown-with-msg?
             #?(:clj Throwable :cljs js/Error)
-            #""
+            #"Pathom can't find a path for the following elements in the query: \[:c]"
             (compute-run-graph
               {::resolvers [{::pco/op-name 'b
                              ::pco/input   [:a]

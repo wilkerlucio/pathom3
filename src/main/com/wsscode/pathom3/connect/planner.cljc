@@ -1698,6 +1698,15 @@
   (update source-ast :children
     #(into (with-meta [] (meta %)) keep-required-transducer %)))
 
+(defn unreachable-details [{::pci/keys [index-oir]} _graph missing]
+  (into {}
+        (map (fn [[k]]
+               (let [cause (if (not (contains? index-oir k))
+                             {::unreachable-cause ::unreachable-cause-unknown-attribute}
+                             {::unreachable-cause ::unreachable-cause-missing-dependencies})]
+                 [k cause])))
+        missing))
+
 (defn verify-plan!*
   [env
    {::keys [unreachable-paths]
@@ -1706,16 +1715,16 @@
     (let [user-required (pfsd/ast->shape-descriptor (required-ast-from-index-ast graph))
           missing       (pfsd/intersection unreachable-paths user-required)]
       (if (seq missing)
-        (let [path (get env ::p.path/path)]
-          (throw
-            (ex-info
-              (str "Pathom can't find a path for the following elements in the query: "
-                   (pr-str (pfsd/shape-descriptor->query missing)) (p.path/at-path-string env))
-              {::graph                          (ev/elided-value graph)
-               ::unreachable-paths              missing
-               ::p.path/path                    path
-               :com.wsscode.pathom3.error/phase ::plan
-               :com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable})))
+        (throw
+          (ex-info
+            (str "Pathom can't find a path for the following elements in the query: "
+                 (pr-str (pfsd/shape-descriptor->query missing)) (p.path/at-path-string env))
+            {::graph                          (ev/elided-value graph)
+             ::unreachable-paths              missing
+             ::unreachable-details            (unreachable-details env graph missing)
+             ::p.path/path                    (get env ::p.path/path)
+             :com.wsscode.pathom3.error/phase ::plan
+             :com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}))
         graph))
     graph))
 
