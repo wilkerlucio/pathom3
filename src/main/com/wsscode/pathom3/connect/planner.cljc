@@ -995,7 +995,7 @@
 (defn find-leaf-node
   "Traverses all run-next still it reaches a leaf."
   [graph node]
-  [::graph ::node => ::node]
+  ;[::graph ::node => ::node]
   (peek (find-run-next-descendants graph node)))
 
 (>defn find-root-resolver-nodes
@@ -1920,7 +1920,9 @@
             node-ids))
         graph))))
 
-(defn optimize-branch-items [graph env branch-node-id]
+(defn optimize-branch-items
+  "Simple walker to optimize branch nodes from a node."
+  [graph env branch-node-id]
   (let [branches (node-branches (get-node graph branch-node-id))]
     (reduce
       (fn [graph node-id]
@@ -2010,7 +2012,40 @@
 
 (defn optimize-siblings-with-same-branches
   "When sibling branch nodes are of the same type and have the same branch structure we
-  can merge then."
+  can merge then, for example:
+
+  AND -> OR -> A
+            -> B
+      -> OR -> A
+            -> B
+
+  Will merge to (don't worry about the repeated resolvers, they will be
+  optimized later):
+
+  AND -> OR -> A
+            -> B
+            -> A
+            -> B
+
+  In the case of run-next on multiple branches, it will merge those too:
+
+  AND -> OR -> A
+            -> B
+            ->> C
+      -> OR -> A
+            -> B
+            ->> D
+
+  Becomes:
+
+  AND -> OR -> A
+            -> B
+            -> A
+            -> B
+            ->> AND -> C
+                    -> D
+
+  "
   [graph env node-id]
   (if (::experimental-branch-optimizations env)
     (let [branches           (-> (get-node graph node-id) node-branches)
@@ -2146,8 +2181,15 @@
 
 (defn optimize-OR-sub-paths
   "This function looks to match branches of the OR node that are
-  sub-paths of each other (eg: A, A -> B, merge to just A -> B). In this case we can
-  merge those chains and return the number of branches in the OR node.
+  sub-paths of each other, for example:
+
+  OR -> A
+     -> A -> B
+
+  In this case, we can merge those chains and return the number of branches in the OR node,
+  resulting in:
+
+  OR -> A -> B
 
   At this moment this fn only deals with paths that have only resolvers,
   it may look for paths with sub-branches in the future."
@@ -2174,7 +2216,17 @@
           (recur graph' (into #{} (remove matching-chains) chains)))
         graph))))
 
-(defn optimize-nested-OR [graph env node-id]
+(defn optimize-nested-OR
+  "OR -> B
+      -> OR -> A1
+            -> A2
+
+   turns into
+
+   OR -> B
+      -> A1
+      -> A2"
+  [graph env node-id]
   (let [{::keys [run-or]} (get-node graph node-id)
 
         nested-candidates
