@@ -5,6 +5,7 @@
     [clojure.string :as str]
     [com.fulcrologic.guardrails.core :refer [>def >defn >fdef => | <- ?]]
     [com.wsscode.misc.coll :as coll]
+    [com.wsscode.misc.elided-value :as ev]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.cache :as p.cache]
@@ -1710,7 +1711,7 @@
             (ex-info
               (str "Pathom can't find a path for the following elements in the query: "
                    (pr-str (pfsd/shape-descriptor->query missing)) (p.path/at-path-string env))
-              {::graph                          graph
+              {::graph                          (ev/elided-value graph)
                ::unreachable-paths              missing
                ::p.path/path                    path
                :com.wsscode.pathom3.error/phase ::plan
