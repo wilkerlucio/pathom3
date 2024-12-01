@@ -217,7 +217,8 @@
                        (let [res# (ctry
                                     (runner# ~env ~entity ~tx)
                                     (catch #?(:clj Throwable :cljs :default) e#
-                                      (ex-data e#)))]
+                                      {:ex/message (ex-message e#)
+                                       :ex/data    (ex-data e#)}))]
                          (if (p/promise? res#)
                            @res# res#)))))))
 
@@ -229,7 +230,8 @@
                     (let [res (ctry
                                 (runner env entity tx)
                                 (catch #?(:clj Throwable :cljs :default) e
-                                  (ex-data e)))]
+                                  {:ex/message (ex-message e)
+                                   :ex/data    (ex-data e)}))]
                       (if (p/promise? res)
                         @res res))))))))
 
@@ -598,14 +600,15 @@
 (deftest run-graph!-fail-cases-test
   (testing "strict mode"
     (testing "invalid resolver response"
-      (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
-                            #"Resolver foo returned an invalid response: 123"
-            (run-graph (pci/register
-                         (pco/resolver 'foo
-                           {::pco/output [:foo]}
-                           (fn [_ _] 123)))
-                       {}
-                       [:foo]))))
+      (check-all-runners-ex
+        (pci/register
+          (pco/resolver 'foo
+            {::pco/output [:foo]}
+            (fn [_ _] 123)))
+        {}
+        [:foo]
+        {:ex/message "Resolver foo returned an invalid response: 123"
+         :ex/data    {::pcr/invalid-response 123}}))
 
     (testing "Exception with details"
       (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
@@ -2314,7 +2317,8 @@
                                   (mapv #(assoc % :name (str "Item " (:id %))) items))))))
           {:items (mapv #(array-map :id %) (range 10))}
           [{:items [(pco/? :name)]}]
-          {::pcr/processor-error? true})
+          {:ex/message (m/regex #".*Batch error on resolver batch-thing at path \[:items]: Error in batch call")
+           :ex/data    {::pcr/batch-error? true}})
 
         (testing "allows the partial results to flow up in lenient mode"
           (check-all-runners

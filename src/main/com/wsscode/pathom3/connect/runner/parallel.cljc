@@ -230,15 +230,17 @@
                              (pcra/invoke-async-maybe-split-batches max-size resolver batch-env batch-op input-groups inputs))
                            (p/catch (fn [e]
                                       (try
-                                        (pcr/mark-batch-errors e env batch-op batch-items)
-                                        (catch #?(:clj Throwable :cljs :default) _ nil))
-                                      {::pcr/node-error e})))
+                                        (pcr/mark-batch-errors e batch-env batch-op batch-items)
+                                        {::pcr/node-error e}
+                                        (catch #?(:clj Throwable :cljs :default) e {::pcr/node-error e})))))
           finish       (time/now-ms)]
 
     (if-let [err (::pcr/node-error responses)]
-      (doseq [{::keys [batch-response-promise]}
-              (into [] cat (vals input-groups))]
-        (p/reject! batch-response-promise err))
+      (do
+        (doseq [{::keys [batch-response-promise]}
+                (into [] cat (vals input-groups))]
+          (p/reject! batch-response-promise err))
+        err)
 
       (do
         (if (not= (count inputs) (count responses))
@@ -571,7 +573,7 @@
           (run-graph-entity-done env)
           env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (pcr/processor-exception env e))))))
+        (throw e)))))
 
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]

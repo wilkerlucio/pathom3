@@ -508,7 +508,7 @@
           (run-graph-entity-done env)
           env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (pcr/processor-exception env e))))))
+        (throw e)))))
 
 (defn invoke-batch-block [resolver batch-env batch-op input-groups inputs]
   (if (::p.error/lenient-mode? batch-env)
@@ -551,8 +551,7 @@
                 responses    (-> (p/do!
                                    (invoke-async-maybe-split-batches max-size resolver batch-env batch-op input-groups inputs))
                                  (p/catch (fn [e]
-                                            (pcr/fail-fast env e)
-                                            (pcr/mark-batch-errors e env batch-op batch-items))))
+                                            (pcr/mark-batch-errors e batch-env batch-op batch-items))))
                 finish       (time/now-ms)]
 
           (if (refs/kw-identical? ::pcr/node-error responses)
@@ -633,7 +632,7 @@
             (pcr/include-meta-stats env)))
 
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (pcr/processor-exception env e))))))
+        (throw e)))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST

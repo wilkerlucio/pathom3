@@ -445,7 +445,7 @@
   (if (or (special-resolver-signal? response)
           (valid-resolver-response? response))
     response
-    (mark-node-error-with-plugins env node (ex-info (str "Resolver " op-name " returned an invalid response: " (pr-str response)) {:response response}))))
+    (mark-node-error-with-plugins env node (ex-info (str "Resolver " op-name " returned an invalid response: " (pr-str response)) {::invalid-response response}))))
 
 (defn report-resolver-error
   [{::p.path/keys  [path]
@@ -972,7 +972,7 @@
           (run-graph-entity-done env)
           env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (processor-exception env e))))))
+        (throw e)))))
 
 (defn assoc-end-plan-stats [{::pcp/keys [graph] :as env}]
   (assoc graph
@@ -995,7 +995,7 @@
   (doseq [{env'       ::env
            ::pcp/keys [node]} batch-items]
     (p.plugin/run-with-plugins env' ::wrap-resolver-error
-      mark-node-error env' node (ex-info (str "Batch error: " (ex-message error)) {::batch-error? true} error)))
+      mark-node-error env' node (ex-info (str "Batch error on resolver " batch-op (p.path/at-path-string env) ": " (ex-message error)) {::batch-error? true} error)))
 
   ::node-error)
 
@@ -1077,8 +1077,7 @@
                                    (partition-all max-size inputs))
                              (invoke-resolver-with-plugins resolver batch-env inputs))
                            (catch #?(:clj Throwable :cljs :default) e
-                             (fail-fast env e)
-                             (mark-batch-errors e env batch-op batch-items)))
+                             (mark-batch-errors e batch-env batch-op batch-items)))
             finish       (time/now-ms)]
 
         (if (refs/kw-identical? ::node-error responses)
@@ -1170,7 +1169,7 @@
       (-> (p.ent/entity env)
           (include-meta-stats env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (processor-exception env e))))))
+        (throw e)))))
 
 (defn run-graph-with-plugins [env ast-or-graph entity-tree* impl!]
   (if (p.path/root? env)
