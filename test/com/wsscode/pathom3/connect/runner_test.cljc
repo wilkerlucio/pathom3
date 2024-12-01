@@ -620,44 +620,6 @@
                        {}
                        [{:>/inside [:foo]}]))))
 
-    #_(testing "Exception during run includes graph"
-        (check-all-runners-ex
-          (pci/register
-            [(pco/resolver 'bar
-               {::pco/output [:bar]}
-               (fn [_ _] {:bar "x"}))
-             (pco/resolver 'foo
-               {::pco/input  [:bar]
-                ::pco/output [:foo]}
-               (fn [_ _] (throw (ex-info "Error" {}))))])
-          {}
-          [:foo]
-          '{:com.wsscode.pathom3.connect.planner/graph
-            {:com.wsscode.pathom3.connect.planner/source-ast
-             {:children [{:key :foo, :type :prop, :dispatch-key :foo}],
-              :type     :root},
-             :com.wsscode.pathom3.connect.planner/index-attrs
-             {:bar #{2}, :foo #{1}},
-             :com.wsscode.pathom3.connect.planner/root           2,
-             :com.wsscode.pathom3.connect.planner/available-data {},
-             :com.wsscode.pathom3.connect.planner/index-ast
-             {:foo {:key :foo, :type :prop, :dispatch-key :foo}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-             {bar #{2}, foo #{1}},
-             :com.wsscode.pathom3.connect.planner/nodes
-             {1
-              {:com.wsscode.pathom3.connect.operation/op-name    foo,
-               :com.wsscode.pathom3.connect.planner/expects      {:foo {}},
-               :com.wsscode.pathom3.connect.planner/input        {:bar {}},
-               :com.wsscode.pathom3.connect.planner/node-id      1,
-               :com.wsscode.pathom3.connect.planner/node-parents #{2}},
-              2
-              {:com.wsscode.pathom3.connect.operation/op-name bar,
-               :com.wsscode.pathom3.connect.planner/expects   {:bar {}},
-               :com.wsscode.pathom3.connect.planner/input     {},
-               :com.wsscode.pathom3.connect.planner/run-next  1,
-               :com.wsscode.pathom3.connect.planner/node-id   2}}}}))
-
     (testing "optionals"
       (testing "not on index"
         (is (graph-response? {} {} [(pco/? :foo)] {})))
@@ -669,34 +631,32 @@
               [(pco/? :foo)] {})))
 
       (testing "error"
-        (is (thrown-with-msg?
-              #?(:clj Throwable :cljs :default)
-              #"error"
-              (run-graph
-                (pci/register (pbir/constantly-fn-resolver :err (fn [_] (throw (ex-info "error" {})))))
-                {}
-                [(pco/? :err)])))))
+        (check-all-runners-ex
+          (pci/register (pbir/constantly-fn-resolver :err (fn [_] (throw (ex-info "error" {})))))
+          {}
+          [(pco/? :err)]
+          {:ex/message "Resolver -unqualified/err--const-fn exception: error"})))
 
     (testing "resolver missing response"
-      (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
-                            #"Required attributes missing: \[:foo]"
-            (run-graph (pci/register
-                         (pco/resolver 'foo
-                           {::pco/output [:foo]}
-                           (fn [_ _] {})))
-                       {}
-                       [:foo])))
+      (check-all-runners-ex
+        (pci/register
+          (pco/resolver 'foo
+            {::pco/output [:foo]}
+            (fn [_ _] {})))
+        {}
+        [:foo]
+        {:ex/message "Required attributes missing: [:foo]"
+         :ex/data    {::pcr/attributes-missing {:foo {}}}})
 
-      #?(:clj
-         (testing "async"
-           (is (thrown-with-msg? Throwable
-                                 #"Required attributes missing: \[:foo]"
-                 @(run-graph-async (pci/register
-                                     (pco/resolver 'foo
-                                       {::pco/output [:foo]}
-                                       (fn [_ _] {})))
-                                   {}
-                                   [:foo])))))
+      (check-all-runners-ex
+        (pci/register
+          (pco/resolver 'foo
+            {::pco/output [:foo]}
+            (fn [_ _] {})))
+        {:container {}}
+        [{:container [:foo]}]
+        {:ex/message "Required attributes missing at path [:container]: [:foo]"
+         :ex/data    {::pcr/attributes-missing {:foo {}}}})
 
       (testing "bug report #120"
         (check-all-runners

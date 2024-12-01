@@ -22,6 +22,7 @@
     [com.wsscode.pathom3.plugin :as p.plugin]))
 
 (>def ::attribute-errors (s/map-of ::p.attr/attribute any?))
+(>def ::attributes-missing ::pfsd/shape-descriptor)
 
 (>def ::choose-path
   "A function to determine which path to take when picking a path for a OR node."
@@ -844,12 +845,13 @@
         missing  (pfsd/missing (pfsd/data->shape-descriptor-shallow entity) expected)]
     (if (seq missing)
       (fail-fast env
-                 (ex-info (str "Required attributes missing: "
-                               (pr-str (vec (keys missing)))
-                               (p.path/at-path-string env))
-                          {:missing        missing
-                           ::p.error/phase ::execute
-                           ::p.error/cause ::p.error/attribute-missing})))))
+                 (ex-info (str "Required attributes missing"
+                               (p.path/at-path-string env)
+                               ": "
+                               (pr-str (vec (keys missing))))
+                          {::attributes-missing missing
+                           ::p.error/phase      ::execute
+                           ::p.error/cause      ::p.error/attribute-missing})))))
 
 (defn run-graph-done! [env]
   (check-entity-requires! env)
