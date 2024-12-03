@@ -223,10 +223,12 @@
         resolver-cache* (get env cache-store)
         _               (pcr/merge-node-stats! env node
                           {::pcr/resolver-run-start-ms (time/now-ms)})
-        batch-check     (pcr/wait-batch-check env node entity input input+opts)
+        missing-check   (try
+                          (pcr/input-missing-check env node entity input input+opts)
+                          (catch #?(:clj Throwable :cljs :default) e (p/rejected e)))
         response        (-> (cond
-                              batch-check
-                              batch-check
+                              missing-check
+                              missing-check
 
                               batch?
                               (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
@@ -327,7 +329,7 @@
         (::pcr/batch-hold res)
         res
 
-        (and (::pcr/or-option-error res)
+        (and (seq (::pcr/or-option-error res))
              (not (pcr/or-expected-optional? env or-node)))
         (pcr/handle-or-error env or-node res)
 

@@ -467,7 +467,45 @@
      ::pcp/foreign-ast     (::pcp/foreign-ast node)}
     input-data))
 
-(defn wait-batch-check
+(defn input-missing-error-message [nodes attr]
+  (if (> (count nodes) 1)
+    (str "- Attribute " attr " was expected to be returned from resolvers "
+         (str/join ", " (distinct (map ::pco/op-name nodes)))
+         " but all of them failed to provide it.")
+    (str "- Attribute " attr " was expected to be returned from resolver " (::pco/op-name (first nodes)) " but it failed to provide it.")))
+
+(defn input-missing-detail-OR
+  [{::pcp/keys [graph]} or-node attr]
+  (let [resolver-nodes (->> (pcp/node-successors graph (::pcp/node-id or-node))
+                            (map #(pcp/get-node graph %))
+                            (filter #(and
+                                       (contains? (::pcp/expects %) attr)
+                                       (::pco/op-name %))))]
+    (input-missing-error-message resolver-nodes attr)))
+
+(defn input-missing-detail
+  [{::pcp/keys [graph] :as env} node attr]
+  (tap> ["G" graph])
+  (if-let [missed-parent (->> (pcp/node-ancestors graph (::pcp/node-id node))
+                              (map #(pcp/get-node graph %))
+                              (filter #(contains? (::pcp/expects %) attr))
+                              first)]
+    (if (::pcp/run-or missed-parent)
+      (input-missing-detail-OR env missed-parent attr)
+      (input-missing-error-message [missed-parent] attr))
+    (str "Can't find parent node that should provide attribute " attr ", this is likely a bug in Pathom, please report it.")))
+
+(defn missing-input-exception [env node missing]
+  (ex-info
+    (str "Resolver " (::pco/op-name node) " can't be called due to missing required dependencies:\n"
+         (str/join "\n" (map #(input-missing-detail env node %) (keys missing))))
+    {::attributes-missing missing}))
+
+(defn input-missing-check
+  "This will verify if all dependencies required by a resolver are satisfied.
+
+  One special case here might be a dependency from a batch process that's pending to run. In this case,
+  we return a special block of data that tells Pathom to wait for the batch to run and try it again."
   [env node entity input input+opts]
   (let [missing-all (pfsd/missing-from-data entity input+opts)
         wait-batch? (and missing-all
@@ -480,7 +518,7 @@
       (wait-batch-response env node)
 
       missing
-      ::node-error)))
+      (throw (missing-input-exception env node missing)))))
 
 (defn invoke-resolver-from-node
   "Evaluates a resolver using node information.
@@ -493,6 +531,7 @@
    {::pco/keys [op-name]
     ::pcp/keys [input]
     :as        node}]
+  (tap> ["invoke" op-name])
   (let [resolver        (pci/resolver env op-name)
         {::pco/keys [op-name batch? cache? cache-store optionals]
          :or        {cache? true}
@@ -508,10 +547,10 @@
         _               (merge-node-stats! env node
                           {::resolver-run-start-ms (time/now-ms)})
         response        (try
-                          (let [batch-check (wait-batch-check env node entity input input+opts)]
+                          (let [missing-check (input-missing-check env node entity input input+opts)]
                             (cond
-                              batch-check
-                              batch-check
+                              missing-check
+                              missing-check
 
                               batch?
                               (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
@@ -528,6 +567,7 @@
                             (report-resolver-error env node e)))
         finish          (time/now-ms)
         response        (validate-response! env node response)]
+    (tap> ["response" op-name response])
     (merge-node-stats! env node
       (cond-> {::resolver-run-finish-ms finish}
         (not (::batch-hold response))
@@ -645,14 +685,14 @@
   [{::keys [node-run-stats*]} {::pcp/keys [node-id]} taken-path-id]
   (refs/gswap! node-run-stats* update-in [node-id ::taken-paths] coll/vconj taken-path-id))
 
-(defn fail-or-error [or-node errors]
+(defn or-error-exception [or-node errors]
   (ex-info
     (str "All paths from an OR node failed. Expected: " (::pcp/expects or-node) "\n"
          (str/join "\n" (mapv ex-message errors)))
     {:errors errors}))
 
 (defn handle-or-error [env or-node res]
-  (let [error (fail-or-error or-node (::or-option-error res))]
+  (let [error (or-error-exception or-node (::or-option-error res))]
     (mark-node-error-with-plugins env or-node error)
     (fail-fast env error)))
 
@@ -677,16 +717,17 @@
                   (let [picked-node-id (choose-path env or-node nodes)
                         node-id        (if (contains? nodes picked-node-id)
                                          picked-node-id
-                                         (do
+                                         (let [actual-node (first nodes)]
                                            (l/warn ::event-invalid-chosen-path
                                                    {:expected-one-of nodes
                                                     :chosen-attempt  picked-node-id
-                                                    :actual-used     (first nodes)})
-                                           (first nodes)))]
+                                                    :actual-used     actual-node})
+                                           actual-node))]
                     (add-taken-path! env or-node node-id)
                     (let [res (try
                                 (run-node! env (pcp/get-node graph node-id))
                                 (catch #?(:clj Throwable :cljs :default) e
+
                                   {::or-option-error e}))]
                       (cond
                         (::batch-hold res)
@@ -704,7 +745,7 @@
       (::batch-hold res)
       res
 
-      (and (::or-option-error res)
+      (and (seq (::or-option-error res))
            (not (or-expected-optional? env or-node)))
       (handle-or-error env or-node res)
 
@@ -830,9 +871,18 @@
   (doseq [ast (::pcp/mutations graph)]
     (invoke-mutation! env ast)))
 
+(defn entity-missing-attribute-details
+  [{::pcp/keys [graph]
+    ::keys     [node-run-stats*]}
+   attr]
+  (let [nodes (->> (get-in graph [::pcp/index-attrs attr])
+                   (filter #(get-in @node-run-stats* [% ::node-done?]))
+                   (map #(pcp/get-node graph %)))]
+    (input-missing-error-message nodes attr)))
+
 (defn check-entity-requires!
   "Verify if entity contains all required keys from graph index-ast. This is
-  shallow check (don't visit nested entities)."
+  a shallow check (don't visit nested entities)."
   [{::pcp/keys [graph]
     :as        env}]
   (let [entity   (p.ent/entity env)
@@ -847,8 +897,8 @@
       (fail-fast env
                  (ex-info (str "Required attributes missing"
                                (p.path/at-path-string env)
-                               ": "
-                               (pr-str (vec (keys missing))))
+                               ":\n"
+                               (str/join "\n" (map #(entity-missing-attribute-details env %) (keys missing))))
                           {::attributes-missing missing
                            ::p.error/phase      ::execute
                            ::p.error/cause      ::p.error/attribute-missing})))))
