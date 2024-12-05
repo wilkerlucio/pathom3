@@ -314,8 +314,10 @@
         resolver-cache* (get env cache-store)]
     (pcr/merge-node-stats! env node
       {::pcr/resolver-run-start-ms (time/now-ms)})
-    (p/let [response (-> (if (pfsd/missing-from-data entity input)
-                           ::pcr/node-error
+    (p/let [response (-> (if-let [missing (pfsd/missing-from-data entity input)]
+                           (do
+                             (pcr/merge-node-stats! env node {::pcr/node-missing-required-inputs missing})
+                             ::pcr/node-error)
                            (cond
                              batch?
                              (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
@@ -409,7 +411,7 @@
         (::pcr/batch-hold res)
         res
 
-        (and (::pcr/or-option-error res)
+        (and (seq (::pcr/or-option-error res))
              (not (pcr/or-expected-optional? env or-node)))
         (pcr/handle-or-error env or-node res)
 

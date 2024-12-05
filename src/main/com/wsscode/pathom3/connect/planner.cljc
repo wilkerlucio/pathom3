@@ -575,15 +575,6 @@
         op-name
         (update-in [::index-resolver->nodes op-name] coll/sconj node-id))))
 
-(defn create-and [graph env node-ids]
-  (if (= 1 (count node-ids))
-    (get-node graph (first node-ids))
-    (let [{and-node-id ::node-id
-           :as         and-node} (new-node env {})]
-      (-> graph
-          (include-node and-node)
-          (add-node-branches and-node-id ::run-and node-ids)))))
-
 (defn create-root-and [graph env node-ids]
   (if (= 1 (count node-ids))
     (set-root-node graph (first node-ids))
