@@ -5,7 +5,6 @@
     [clojure.string :as str]
     [com.fulcrologic.guardrails.core :refer [>def >defn >fdef => | <- ?]]
     [com.wsscode.misc.coll :as coll]
-    [com.wsscode.misc.elided-value :as ev]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.pathom3.attribute :as p.attr]
     [com.wsscode.pathom3.cache :as p.cache]
@@ -34,6 +33,10 @@
 (>def ::graph
   "The graph container, requires nodes."
   (s/keys :req [::nodes]))
+
+(>def ::graph-fn
+  "A function that returns a graph, used to hide the graph from long error messages"
+  any?)
 
 (>def ::available-data
   "An shape descriptor declaring which data is already available when the planner starts."
@@ -1710,7 +1713,7 @@
           (ex-info
             (str "Pathom can't find a path for the following elements in the query: "
                  (pr-str (pfsd/shape-descriptor->query missing)) (p.path/at-path-string env))
-            {::graph                          (ev/elided-value graph)
+            {::graph-fn                       (fn [] graph)
              ::unreachable-paths              missing
              ::unreachable-details            (unreachable-details env graph missing)
              ::p.path/path                    (get env ::p.path/path)
