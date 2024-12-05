@@ -1701,6 +1701,14 @@
                  [k cause])))
         missing))
 
+(defn unreachable-detail-string [_env attr cause]
+  (case (::unreachable-cause cause)
+    ::unreachable-cause-unknown-attribute
+    (str "- Attribute " attr " is unknown, there is not any resolver that outputs it.")
+
+    ::unreachable-cause-missing-dependencies
+    (str "- Attribute " attr " dependencies can't be met, details: WIP")))
+
 (defn verify-plan!*
   [env
    {::keys [unreachable-paths]
@@ -1710,15 +1718,16 @@
           missing       (pfsd/intersection unreachable-paths user-required)]
       (if (seq missing)
         (throw
-          (ex-info
-            (str "Pathom can't find a path for the following elements in the query: "
-                 (pr-str (pfsd/shape-descriptor->query missing)) (p.path/at-path-string env))
-            {::graph-fn                       (fn [] graph)
-             ::unreachable-paths              missing
-             ::unreachable-details            (unreachable-details env graph missing)
-             ::p.path/path                    (get env ::p.path/path)
-             :com.wsscode.pathom3.error/phase ::plan
-             :com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}))
+          (let [details (unreachable-details env graph missing)]
+            (ex-info
+              (str "Pathom can't find a path for the following elements in the query" (p.path/at-path-string env) ":\n"
+                   (str/join "\n" (map #(unreachable-detail-string env (key %) (val %)) details)))
+              {::graph-fn                       (fn [] graph)
+               ::unreachable-paths              missing
+               ::unreachable-details            details
+               ::p.path/path                    (get env ::p.path/path)
+               :com.wsscode.pathom3.error/phase ::plan
+               :com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable})))
         graph))
     graph))
 
