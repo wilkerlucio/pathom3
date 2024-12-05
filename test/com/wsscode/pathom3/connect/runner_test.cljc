@@ -793,7 +793,7 @@
         [:a]
         {:ex/message (str
                        "Required attributes missing:\n"
-                       "- Attribute :a was expected to be returned from resolvers a2, a1 but all of them failed to provide it.")
+                       "- Attribute :a was expected to be returned from resolvers a1, a2 but all of them failed to provide it.")
          :ex/data    {::pcr/attributes-missing {:a {}}}})))
 
   (testing "multiple attributes"

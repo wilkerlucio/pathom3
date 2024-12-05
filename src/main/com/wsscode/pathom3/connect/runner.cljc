@@ -474,7 +474,7 @@
 (defn input-missing-error-message [nodes attr]
   (if (> (count nodes) 1)
     (str "- Attribute " attr " was expected to be returned from resolvers "
-         (str/join ", " (distinct (map ::pco/op-name nodes)))
+         (str/join ", " (sort (distinct (map ::pco/op-name nodes))))
          " but all of them failed to provide it.")
     (str "- Attribute " attr " was expected to be returned from resolver " (::pco/op-name (first nodes)) " but it failed to provide it.")))
 
