@@ -94,6 +94,17 @@
                           [{::coords [:right]}])
            {::coords #{{:right 35} {:right 25}}}))))
 
+(deftest process-error-test
+  (is (thrown-with-msg?
+        #?(:clj Throwable :cljs js/Error)
+        #"Error while processing request \[:a] for entity \{}"
+        (p.eql/process
+          (pci/register
+            (pco/resolver 'a
+              {::pco/output [:a]}
+              (fn [_ _] {})))
+          [:a]))))
+
 (deftest process-one-test
   (is (= (p.eql/process-one (pci/register registry) {:left 10 :right 30} :width)
          20))

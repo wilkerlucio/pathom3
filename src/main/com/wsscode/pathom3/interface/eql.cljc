@@ -26,11 +26,26 @@
     (as-> result <>
       (pf.eql/map-select-ast (select-ast-env env) <> ast))))
 
+(defn- string-cap [s max-size]
+  (if (> (count s) max-size)
+    (str (subs s 0 (- max-size 3)) "...")
+    s))
+
+(defn process-error [env ast e]
+  (let [entity (p.ent/entity env)]
+    (ex-info
+      (str "Error while processing request " (string-cap (pr-str (eql/ast->query ast)) 20) " for entity " (pr-str (or entity {})))
+      {:entity entity}
+      e)))
+
 (>defn process-ast
   [env ast]
   [(s/keys) :edn-query-language.ast/node => map?]
-  (p.plugin/run-with-plugins env ::wrap-process-ast
-    process-ast* env ast))
+  (try
+    (p.plugin/run-with-plugins env ::wrap-process-ast
+      process-ast* env ast)
+    (catch #?(:clj Throwable :cljs :default) e
+      (throw (process-error env ast e)))))
 
 (>defn process
   "Evaluate EQL expression.

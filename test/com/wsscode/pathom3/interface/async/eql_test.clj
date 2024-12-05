@@ -19,6 +19,17 @@
   (let [fi (p.a.eql/boundary-interface env)]
     @(fi request)))
 
+(deftest process-error-test
+  (is (thrown-with-msg?
+        Throwable
+        #"Error while processing request \[:a] for entity \{}"
+        @(p.a.eql/process
+           (pci/register
+             (pco/resolver 'a
+               {::pco/output [:a]}
+               (fn [_ _] {})))
+           [:a]))))
+
 (deftest boundary-interface-test
   (let [fi (p.a.eql/boundary-interface (pci/register registry))]
     (testing "call with just tx"
@@ -131,4 +142,4 @@
              1e3)))
     (testing
       "uses same error message"
-      (is (= msg "clojure.lang.ExceptionInfo: Resolver com.wsscode.pathom3.interface.async.eql-test/a exception: hello {:world 42, :com.wsscode.pathom3.path/path []}")))))
+      (is (= msg "clojure.lang.ExceptionInfo: Error while processing request [:a] for entity {} {:entity nil}")))))

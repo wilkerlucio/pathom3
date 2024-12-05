@@ -47,7 +47,7 @@
       (is
         (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
-          #"Pathom can't find a path for the following elements in the query: \[:child] at path \[:parent]"
+          #"Error while processing request \[:child] for entity \{}"
           (p.eql/process env [:child])))))
 
   (testing "indirect cycle"
@@ -69,7 +69,7 @@
       (is
         (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
-          #"Pathom can't find a path for the following elements in the query: \[:child-dep] at path \[:parent]"
+          #"Error while processing request \[:child] for entity \{}"
           (p.eql/process env [:child])))))
 
   (testing "deep cycle"
@@ -88,7 +88,7 @@
       (is
         (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
-          #"Pathom can't find a path for the following elements in the query: \[:child] at path \[:parent :parent]"
+          #"Error while processing request \[:child] for entity \{}"
           (p.eql/process env [:child]))))))
 
 (deftest compute-foreign-query-test
