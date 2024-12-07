@@ -1389,7 +1389,7 @@
 (defn compute-missing-chain
   "Start a recursive call to process the dependencies required by the resolver."
   [graph env missing missing-optionals]
-  (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (::p.attr/attribute env) " dependencies: " (pr-str missing))})
+  (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (::p.attr/attribute env) " inputs: " (pr-str missing))})
         [graph' node-map] (compute-missing-chain-deps graph env missing)]
     (if (some? node-map)
       ;; add new optional nodes (and maybe nested processes)
@@ -1413,7 +1413,7 @@
           (dissoc ::root)
           (merge-unreachable graph')
           (add-snapshot! env {::snapshot-event   ::compute-missing-failed
-                              ::snapshot-message (str "Failed to compute dependencies " (pr-str missing))})))))
+                              ::snapshot-message (str "Failed to compute inputs " (pr-str missing))})))))
 
 (defn compute-input-resolvers-graph
   "This function computes the graph for a given `process path`. It creates the resolver
@@ -1692,22 +1692,23 @@
   (update source-ast :children
     #(into (with-meta [] (meta %)) keep-required-transducer %)))
 
-(defn unreachable-details [{::pci/keys [index-oir]} _graph missing]
+(defn unreachable-details [{::pci/keys [index-oir]} graph missing]
   (into {}
         (map (fn [[k]]
-               (let [cause (if (not (contains? index-oir k))
-                             {::unreachable-cause ::unreachable-cause-unknown-attribute}
-                             {::unreachable-cause ::unreachable-cause-missing-dependencies})]
+               (let [cause (if (contains? index-oir k)
+                             {::unreachable-cause ::unreachable-cause-missing-inputs
+                              ::unreachable-missing-inputs {}}
+                             {::unreachable-cause ::unreachable-cause-unknown-attribute})]
                  [k cause])))
         missing))
 
 (defn unreachable-detail-string [_env attr cause]
   (case (::unreachable-cause cause)
-    ::unreachable-cause-unknown-attribute
-    (str "- Attribute " attr " is unknown, there is not any resolver that outputs it.")
+    ::unreachable-cause-missing-inputs
+    (str "- Attribute " attr " inputs can't be met, details: WIP")
 
-    ::unreachable-cause-missing-dependencies
-    (str "- Attribute " attr " dependencies can't be met, details: WIP")))
+    ::unreachable-cause-unknown-attribute
+    (str "- Attribute " attr " is unknown, there is not any resolver that outputs it.")))
 
 (defn verify-plan!*
   [env

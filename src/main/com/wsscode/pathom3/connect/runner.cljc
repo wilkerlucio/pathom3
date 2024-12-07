@@ -892,7 +892,7 @@
                      :as node}]
                  (let [missing (or (get-in @node-run-stats* [node-id ::node-missing-required-inputs])
                                    (pfsd/missing-from-data (p.ent/entity env) input))]
-                   (str "- Attribute " attr " was expected to be returned from resolver " op-name " but dependencies were missing:\n"
+                   (str "- Attribute " attr " was expected to be returned from resolver " op-name " but inputs were missing:\n"
                         (str/join "\n" (map #(str "  " (input-missing-detail env node %)) (keys missing)))))))
           nodes-missing-inputs)))))
 

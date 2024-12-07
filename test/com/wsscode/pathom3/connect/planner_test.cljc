@@ -270,7 +270,8 @@
     (check (=> {:ex/message
                 (str
                   "Pathom can't find a path for the following elements in the query:\n"
-                  "- Attribute :a is unknown, there is not any resolver that outputs it.\n- Attribute :b is unknown, there is not any resolver that outputs it.")
+                  "- Attribute :a is unknown, there is not any resolver that outputs it.\n"
+                  "- Attribute :b is unknown, there is not any resolver that outputs it.")
 
                 :ex/data
                 {::pcp/unreachable-paths   {:a {} :b {}}
@@ -290,7 +291,7 @@
 
                   :ex/data
                   {::pcp/unreachable-paths   {:b {}}
-                   ::pcp/unreachable-details {:b {::pcp/unreachable-cause ::pcp/unreachable-cause-missing-dependencies}}
+                   ::pcp/unreachable-details {:b {::pcp/unreachable-cause ::pcp/unreachable-cause-missing-inputs}}
                    ::p.error/phase           ::pcp/plan
                    ::p.error/cause           ::p.error/attribute-unreachable}}
                  (compute-run-graph-ex
@@ -724,7 +725,7 @@
     (testing "nested cycles"
       (is (thrown-with-msg?
             #?(:clj Throwable :cljs js/Error)
-            #"Pathom can't find a path for the following elements in the query at path \[:a]:\n- Attribute :b dependencies can't be met, details: WIP"
+            #"Pathom can't find a path for the following elements in the query at path \[:a]:\n- Attribute :b inputs can't be met, details: WIP"
             (compute-run-graph
               {::resolvers [{::pco/op-name 'cycle-a
                              ::pco/output  [:a]}
@@ -735,7 +736,7 @@
 
       (is (thrown-with-msg?
             #?(:clj Throwable :cljs js/Error)
-            #"Pathom can't find a path for the following elements in the query at path \[:a]:\n- Attribute :c dependencies can't be met, details: WIP"
+            #"Pathom can't find a path for the following elements in the query at path \[:a]:\n- Attribute :c inputs can't be met, details: WIP"
             (compute-run-graph
               {::resolvers [{::pco/op-name 'cycle-a
                              ::pco/output  [:a]}
@@ -1284,7 +1285,7 @@
     (is
       (thrown-with-msg?
         #?(:clj Throwable :cljs :default)
-        #"Pathom can't find a path for the following elements in the query at path \[:parent]:\n- Attribute :child dependencies can't be met, details: WIP"
+        #"Pathom can't find a path for the following elements in the query at path \[:parent]:\n- Attribute :child inputs can't be met, details: WIP"
         (compute-run-graph
           {::resolvers [{::pco/op-name 'parent
                          ::pco/output  [{:parent [:foo]}]}
@@ -1297,7 +1298,7 @@
     (is
       (thrown-with-msg?
         #?(:clj Throwable :cljs :default)
-        #"Pathom can't find a path for the following elements in the query at path \[:parent]:\n- Attribute :child-dep dependencies can't be met, details: WIP"
+        #"Pathom can't find a path for the following elements in the query at path \[:parent]:\n- Attribute :child-dep inputs can't be met, details: WIP"
         (compute-run-graph
           {::resolvers [{::pco/op-name 'parent
                          ::pco/output  [{:parent [:foo]}]}
@@ -1313,7 +1314,7 @@
     (is
       (thrown-with-msg?
         #?(:clj Throwable :cljs :default)
-        #"Pathom can't find a path for the following elements in the query at path \[:parent]:\n- Attribute :child dependencies can't be met, details: WIP"
+        #"Pathom can't find a path for the following elements in the query at path \[:parent]:\n- Attribute :child inputs can't be met, details: WIP"
         (compute-run-graph
           {::resolvers [{::pco/op-name 'parent
                          ::pco/output  [{:parent [:foo]}]}

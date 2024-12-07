@@ -843,7 +843,7 @@
         [:b]
         {:ex/message (str
                        "Required attributes missing:\n"
-                       "- Attribute :b was expected to be returned from resolver b but dependencies were missing:\n"
+                       "- Attribute :b was expected to be returned from resolver b but inputs were missing:\n"
                        "  - Attribute :a was expected to be returned from resolver a but it failed to provide it.")
          :ex/data    {::pcr/attributes-missing {:b {}}}})
 
@@ -869,7 +869,7 @@
           [:c]
           {:ex/message (str
                          "Required attributes missing:\n"
-                         "- Attribute :b was expected to be returned from resolver b but dependencies were missing:\n"
+                         "- Attribute :b was expected to be returned from resolver b but inputs were missing:\n"
                          "  - Attribute :a was expected to be returned from resolver a but it failed to provide it.")
            :ex/data    {::pcr/attributes-missing {:c {}}}})))
 
@@ -893,7 +893,7 @@
         [:d]
         {:ex/message (str
                        "Required attributes missing:\n"
-                       "- Attribute :d was expected to be returned from resolver d but dependencies were missing:\n"
+                       "- Attribute :d was expected to be returned from resolver d but inputs were missing:\n"
                        "  - Attribute :b was expected to be returned from resolver ab but it failed to provide it.")
          :ex/data    {::pcr/attributes-missing {:d {}}}}))
 
@@ -917,7 +917,7 @@
         {:ex/message (str
                        "Required attributes missing:\n"
                        "- Attribute :b was expected to be returned from resolver b-direct but it failed to provide it.\n"
-                       "- Attribute :b was expected to be returned from resolver b-dep but dependencies were missing:\n"
+                       "- Attribute :b was expected to be returned from resolver b-dep but inputs were missing:\n"
                        "  - Attribute :a was expected to be returned from resolver a but it failed to provide it.")
          :ex/data    {::pcr/attributes-missing {:b {}}}}))
 
@@ -940,7 +940,7 @@
         [:b]
         {:ex/message (str
                        "Required attributes missing:\n"
-                       "- Attribute :b was expected to be returned from resolver b but dependencies were missing:\n"
+                       "- Attribute :b was expected to be returned from resolver b but inputs were missing:\n"
                        "  - Attribute :a was expected to be returned from resolvers a1, a2 but all of them failed to provide it.")
          :ex/data    {::pcr/attributes-missing {:b {}}}}))
 
