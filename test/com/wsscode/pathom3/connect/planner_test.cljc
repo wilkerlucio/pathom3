@@ -299,50 +299,54 @@
                                   ::pco/output  [:b]}]
                     ::eql/query [:b]})))
 
-      (is (thrown-with-msg?
-            #?(:clj Throwable :cljs js/Error)
-            #"Pathom can't find a path for the following elements in the query:\n- Attribute :b dependencies can't be met, details: WIP"
-            (compute-run-graph
-              {::pci/index-oir '{:b {{:a {}} #{b1 b}}}
-               ::eql/query     [:b]})))
+      (check (=> {:ex/message
+                  (str
+                    "Pathom can't find a path for the following elements in the query:\n"
+                    "- Attribute :b dependencies can't be met, details: WIP")}
+                 (compute-run-graph-ex
+                   {::pci/index-oir '{:b {{:a {}} #{b1 b}}}
+                    ::eql/query     [:b]})))
 
-      (is (thrown-with-msg?
-            #?(:clj Throwable :cljs js/Error)
-            #"Pathom can't find a path for the following elements in the query:\n- Attribute :b dependencies can't be met, details: WIP"
-            (compute-run-graph
-              {::resolvers [{::pco/op-name 'a
-                             ::pco/output  [:a]}
-                            {::pco/op-name 'b
-                             ::pco/input   [:a]
-                             ::pco/output  [:b]}]
-               ::eql/query [:b]
-               ::out       {::pcp/unreachable-paths {:a {}}}})))
+      (check (=> {:ex/message
+                  (str
+                    "Pathom can't find a path for the following elements in the query:\n"
+                    "- Attribute :b dependencies can't be met, details: WIP")}
+                 (compute-run-graph-ex
+                   {::resolvers [{::pco/op-name 'a
+                                  ::pco/output  [:a]}
+                                 {::pco/op-name 'b
+                                  ::pco/input   [:a]
+                                  ::pco/output  [:b]}]
+                    ::eql/query [:b]
+                    ::out       {::pcp/unreachable-paths {:a {}}}})))
 
-      (is (thrown-with-msg?
-            #?(:clj Throwable :cljs js/Error)
-            #"Pathom can't find a path for the following elements in the query:\n- Attribute :c dependencies can't be met, details: WIP"
-            (compute-run-graph
-              {::resolvers [{::pco/op-name 'b
-                             ::pco/input   [:a]
-                             ::pco/output  [:b]}
-                            {::pco/op-name 'c
-                             ::pco/input   [:b]
-                             ::pco/output  [:c]}]
-               ::eql/query [:c]})))
+      (check (=> {:ex/message
+                  (str
+                    "Pathom can't find a path for the following elements in the query:\n"
+                    "- Attribute :c dependencies can't be met, details: WIP")}
+                 (compute-run-graph-ex
+                   {::resolvers [{::pco/op-name 'b
+                                  ::pco/input   [:a]
+                                  ::pco/output  [:b]}
+                                 {::pco/op-name 'c
+                                  ::pco/input   [:b]
+                                  ::pco/output  [:c]}]
+                    ::eql/query [:c]})))
 
-      (is (thrown-with-msg?
-            #?(:clj Throwable :cljs js/Error)
-            #"Pathom can't find a path for the following elements in the query:\n- Attribute :c dependencies can't be met, details: WIP"
-            (compute-run-graph
-              {::resolvers [{::pco/op-name 'b
-                             ::pco/input   [:a]
-                             ::pco/output  [:b]}
-                            {::pco/op-name 'd
-                             ::pco/output  [:d]}
-                            {::pco/op-name 'c
-                             ::pco/input   [:b :d]
-                             ::pco/output  [:c]}]
-               ::eql/query [:c]}))))
+      (check (=> {:ex/message
+                  (str
+                    "Pathom can't find a path for the following elements in the query:\n"
+                    "- Attribute :c dependencies can't be met, details: WIP")}
+                 (compute-run-graph-ex
+                   {::resolvers [{::pco/op-name 'b
+                                  ::pco/input   [:a]
+                                  ::pco/output  [:b]}
+                                 {::pco/op-name 'd
+                                  ::pco/output  [:d]}
+                                 {::pco/op-name 'c
+                                  ::pco/input   [:b :d]
+                                  ::pco/output  [:c]}]
+                    ::eql/query [:c]}))))
 
     (testing "currently available data"
       (is (= (compute-run-graph
