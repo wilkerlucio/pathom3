@@ -1692,15 +1692,14 @@
   (update source-ast :children
     #(into (with-meta [] (meta %)) keep-required-transducer %)))
 
-(defn unreachable-details [{::pci/keys [index-oir]} graph missing]
-  (into {}
-        (map (fn [[k]]
-               (let [cause (if (contains? index-oir k)
-                             {::unreachable-cause ::unreachable-cause-missing-inputs
-                              ::unreachable-missing-inputs {}}
-                             {::unreachable-cause ::unreachable-cause-unknown-attribute})]
-                 [k cause])))
-        missing))
+(defn unreachable-attr-cause [{::pci/keys [index-oir]} _graph attr]
+  (if (contains? index-oir attr)
+    {::unreachable-cause          ::unreachable-cause-missing-inputs
+     ::unreachable-missing-inputs {}}
+    {::unreachable-cause ::unreachable-cause-unknown-attribute}))
+
+(defn unreachable-details [env graph missing]
+  (into {} (map (fn [[k]] [k (unreachable-attr-cause env graph k)])) missing))
 
 (defn unreachable-detail-string [_env attr cause]
   (case (::unreachable-cause cause)
