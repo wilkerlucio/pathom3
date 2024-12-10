@@ -492,9 +492,9 @@
     (node-missing-input-error-details env node attr)
     (input-missing-error-message-leaf [node] attr)))
 
-(defn input-missing-detail-OR
-  [{::pcp/keys [graph]} or-node attr]
-  (let [resolver-nodes (->> (pcp/node-successors graph (::pcp/node-id or-node))
+(defn input-missing-detail-branch-node
+  [{::pcp/keys [graph]} branch-node attr]
+  (let [resolver-nodes (->> (pcp/node-successors graph (::pcp/node-id branch-node))
                             (map #(pcp/get-node graph %))
                             (filter #(and
                                        (contains? (::pcp/expects %) attr)
@@ -507,8 +507,8 @@
                                    (map #(pcp/get-node graph %))
                                    (filter #(contains? (::pcp/expects %) attr))
                                    first)]
-    (if (::pcp/run-or missed-parent-node)
-      (input-missing-detail-OR env missed-parent-node attr)
+    (if (pcp/branch-node? missed-parent-node)
+      (input-missing-detail-branch-node env missed-parent-node attr)
       (input-missing-error-message env missed-parent-node attr))
     (str "Can't find parent node that should provide attribute " attr ", this is likely a bug in Pathom, please report it.")))
 

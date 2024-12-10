@@ -966,32 +966,31 @@
          :ex/data    {::pcr/attributes-missing {:c {}}}}))
 
     (testing "missed attribute comes from AND node"
-      (comment
-        (check-all-runners-ex
-          (pci/register
-            [(pco/resolver 'a
-               {::pco/output [:a]}
-               (fn [_ _]
-                 {}))
+      (check-all-runners-ex
+        (pci/register
+          [(pco/resolver 'a
+             {::pco/output [:a]}
+             (fn [_ _]
+               {}))
 
-             (pco/resolver 'b
-               {::pco/output [:b]}
-               (fn [_ _]
-                 {}))
+           (pco/resolver 'b
+             {::pco/output [:b]}
+             (fn [_ _]
+               {}))
 
-             (pco/resolver 'c
-               {::pco/input  [:a :b]
-                ::pco/output [:c]}
-               (fn [_ _]
-                 {}))])
-          {}
-          [:c]
-          {:ex/message (str
-                         "Required attributes missing:\n"
-                         "- Attribute :c was expected to be returned from resolver c but inputs were missing:\n"
-                         "  - Attribute :a was expected to be returned from resolver a but it failed to provide it.\n"
-                         "  - Attribute :b was expected to be returned from resolver b but it failed to provide it.")
-           :ex/data    {::pcr/attributes-missing {:c {}}}})))))
+           (pco/resolver 'c
+             {::pco/input  [:a :b]
+              ::pco/output [:c]}
+             (fn [_ _]
+               {}))])
+        {}
+        [:c]
+        {:ex/message (str
+                       "Required attributes missing:\n"
+                       "- Attribute :c was expected to be returned from resolver c but inputs were missing:\n"
+                       "  - Attribute :a was expected to be returned from resolver a but it failed to provide it.\n"
+                       "  - Attribute :b was expected to be returned from resolver b but it failed to provide it.")
+         :ex/data    {::pcr/attributes-missing {:c {}}}}))))
 
 (deftest run-graph!-final-test
   (testing "map value"
