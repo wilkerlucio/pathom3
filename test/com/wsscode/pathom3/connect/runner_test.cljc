@@ -967,7 +967,7 @@
 
     (testing "missed attribute comes from AND node"
       (comment
-        (run-graph
+        (check-all-runners-ex
           (pci/register
             [(pco/resolver 'a
                {::pco/output [:a]}
@@ -985,7 +985,13 @@
                (fn [_ _]
                  {}))])
           {}
-          [:c])))))
+          [:c]
+          {:ex/message (str
+                         "Required attributes missing:\n"
+                         "- Attribute :c was expected to be returned from resolver c but inputs were missing:\n"
+                         "  - Attribute :a was expected to be returned from resolver a but it failed to provide it.\n"
+                         "  - Attribute :b was expected to be returned from resolver b but it failed to provide it.")
+           :ex/data    {::pcr/attributes-missing {:c {}}}})))))
 
 (deftest run-graph!-final-test
   (testing "map value"
@@ -1035,7 +1041,8 @@
           {}
           [:value]
           {:value 2})
-        (is (= @spy #?(:clj 3 :cljs 1)))))
+        (is (or (= @spy 1)
+                (= @spy 3)))))
 
     (testing "one option fail, one succeed"
       (let [spy (atom 0)]

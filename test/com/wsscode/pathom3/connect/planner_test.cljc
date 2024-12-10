@@ -212,6 +212,7 @@
                                              ::pcp/input        {}
                                              ::pcp/node-parents #{3}}
                                           3 {::pcp/node-id 3
+                                             ::pcp/expects {:a {} :b {}}
                                              ::pcp/run-and #{2 1}}}
              ::pcp/index-resolver->nodes {a #{1} b #{2}}
              ::pcp/index-attrs           {:b #{2}, :a #{1}}
@@ -1457,6 +1458,8 @@
                                              ::pcp/node-parents #{4}
                                              ::pcp/params       {::pco/optional? true}}
                                           4 {::pcp/node-id  4
+                                             ::pcp/expects  {:x {}
+                                                             :y {}}
                                              ::pcp/run-and  #{2
                                                               3}
                                              ::pcp/run-next 1}}
@@ -1847,6 +1850,12 @@
                                                ::pcp/node-id      4,
                                                ::pcp/node-parents #{7}},
                                             7 #::pcp{:node-id 7,
+                                                     :expects {:a {}
+                                                               :b {}
+                                                               :c {}
+                                                               :d {}
+                                                               :e {}
+                                                               :f {}}
                                                      :run-and #{1
                                                                 4
                                                                 2}}},
@@ -3793,7 +3802,9 @@
                                                                           :com.wsscode.pathom3.connect.planner/run-and  #{1
                                                                                                                           2},
                                                                           :com.wsscode.pathom3.connect.planner/run-next 3,
-                                                                          :com.wsscode.pathom3.connect.planner/expects  nil}},
+                                                                          :com.wsscode.pathom3.connect.planner/expects  {:a {}
+                                                                                                                         :b {}
+                                                                                                                         :c {}}}},
            :com.wsscode.pathom3.connect.planner/index-ast             {:a {:type         :prop,
                                                                            :dispatch-key :a,
                                                                            :key          :a},
@@ -3850,7 +3861,7 @@
                                                           :com.wsscode.pathom3.connect.planner/run-and #{3
                                                                                                          2},
                                                           :com.wsscode.pathom3.connect.planner/run-next 4,
-                                                          :com.wsscode.pathom3.connect.planner/expects nil}},
+                                                          :com.wsscode.pathom3.connect.planner/expects {:a {}, :b {}}}},
            :com.wsscode.pathom3.connect.planner/index-ast {:d {:type :prop,
                                                                :dispatch-key :d,
                                                                :key :d}},

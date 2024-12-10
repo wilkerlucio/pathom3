@@ -6,6 +6,7 @@
 - BREAKING: Removed usage of `processor-error`, now the runner will not wrap the errors, this will generate simpler errors.
 - Expose query and entity on errors during eql interface calls
 - Expose planner failure details on error message
+- Track `::pcp/expects` on AND nodes, it includes all expects from the node chain
 
 ## [2024.11.23-alpha]
 - Fix placeholders using different parameters

@@ -208,7 +208,8 @@
 ; endregion
 
 (declare add-snapshot! compute-run-graph compute-run-graph* compute-attribute-graph
-         optimize-graph optimize-node remove-node-expects-index-attrs find-leaf-node)
+         optimize-graph optimize-node remove-node-expects-index-attrs find-leaf-node
+         expects-from-node-chains)
 
 ; region node helpers
 
@@ -582,7 +583,7 @@
   (if (= 1 (count node-ids))
     (set-root-node graph (first node-ids))
     (let [{and-node-id ::node-id
-           :as         and-node} (new-node env {})]
+           :as         and-node} (new-node env {::expects (expects-from-node-chains graph node-ids)})]
       (-> graph
           (include-node and-node)
           (add-node-branches and-node-id ::run-and node-ids)
@@ -793,9 +794,6 @@
             (::run-next node)
             (move-run-next-to-edge target-node-id (::run-next node)))
           (transfer-node-parents target-node-id node-id)
-          (cond->
-            (= ::run-and branch-type)
-            (update-node target-node-id nil combine-expects node))
           (remove-node-edges node-id)
           (remove-node node-id)
           (add-snapshot! env {::snapshot-message "Simplification done"
@@ -935,7 +933,7 @@
 ; region node traversal
 
 (>defn find-direct-node-successors
-  "Direct successors of node, branch nodes and run-next, in case of branch nodes the
+  "Direct successors of node, branch nodes, and run-next, in case of branch nodes the
   branches will always come before the run-next."
   [{::keys [run-next] :as node}]
   [::node => (s/coll-of ::node-id)]
@@ -964,7 +962,7 @@
 
 (>defn node-successors
   "Find successor nodes of node-id, node-id is included in the list. This will add
-  branch nodes before run-next nodes. Returns a lazy sequence that traverse the graph
+  branch nodes before run-next nodes. Returns a lazy sequence that traverses the graph
   as items are requested."
   [graph node-id]
   [::graph ::node-id => (s/coll-of ::node-id)]
@@ -1007,6 +1005,20 @@
           (recur (conj! nodes node-id) (pop queue))
           (recur nodes (into (pop queue) (node-branches node)))))
       (persistent! nodes))))
+
+(defn expects-from-node-chain [graph node-id]
+  (transduce
+    (keep ::expects)
+    (completing pfsd/merge-shapes)
+    {}
+    (find-run-next-descendants graph (get-node graph node-id))))
+
+(defn expects-from-node-chains [graph node-ids]
+  (transduce
+    (map #(expects-from-node-chain graph %))
+    (completing pfsd/merge-shapes)
+    {}
+    node-ids))
 
 ; endregion
 
