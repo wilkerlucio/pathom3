@@ -142,7 +142,7 @@
   (let [entity (p.ent/entity env)]
     (every? #(contains? entity %) (keys expects))))
 
-(declare run-node! run-graph! merge-node-stats! include-meta-stats assoc-end-plan-stats)
+(declare run-node! run-graph! merge-node-stats! include-meta-stats assoc-end-plan-stats node-missing-input-error-details)
 
 (defn union-key-on-data? [{:keys [union-key]} m]
   (contains? m union-key))
@@ -471,12 +471,26 @@
      ::pcp/foreign-ast     (::pcp/foreign-ast node)}
     input-data))
 
-(defn input-missing-error-message [nodes attr]
+(defn node-failed-due-to-missing-inputs?
+  "Checks via stats if a node had failed inputs, or if wasn't invoked at all (which also indicates
+  lack of inputs)."
+  [{::keys [node-run-stats*]}
+   {::pcp/keys [node-id]}]
+  (or
+    (contains? (get @node-run-stats* node-id) ::node-missing-required-inputs)
+    (not (contains? @node-run-stats* node-id))))
+
+(defn input-missing-error-message-leaf [nodes attr]
   (if (> (count nodes) 1)
     (str "- Attribute " attr " was expected to be returned from resolvers "
          (str/join ", " (sort (distinct (map ::pco/op-name nodes))))
          " but all of them failed to provide it.")
     (str "- Attribute " attr " was expected to be returned from resolver " (::pco/op-name (first nodes)) " but it failed to provide it.")))
+
+(defn input-missing-error-message [env node attr]
+  (if (node-failed-due-to-missing-inputs? env node)
+    (node-missing-input-error-details env node attr)
+    (input-missing-error-message-leaf [node] attr)))
 
 (defn input-missing-detail-OR
   [{::pcp/keys [graph]} or-node attr]
@@ -485,18 +499,39 @@
                             (filter #(and
                                        (contains? (::pcp/expects %) attr)
                                        (::pco/op-name %))))]
-    (input-missing-error-message resolver-nodes attr)))
+    (input-missing-error-message-leaf resolver-nodes attr)))
 
 (defn input-missing-detail
   [{::pcp/keys [graph] :as env} node attr]
-  (if-let [missed-parent (->> (pcp/node-ancestors graph (::pcp/node-id node))
-                              (map #(pcp/get-node graph %))
-                              (filter #(contains? (::pcp/expects %) attr))
-                              first)]
-    (if (::pcp/run-or missed-parent)
-      (input-missing-detail-OR env missed-parent attr)
-      (input-missing-error-message [missed-parent] attr))
+  (if-let [missed-parent-node (->> (pcp/node-ancestors graph (::pcp/node-id node))
+                                   (map #(pcp/get-node graph %))
+                                   (filter #(contains? (::pcp/expects %) attr))
+                                   first)]
+    (if (::pcp/run-or missed-parent-node)
+      (input-missing-detail-OR env missed-parent-node attr)
+      (input-missing-error-message env missed-parent-node attr))
     (str "Can't find parent node that should provide attribute " attr ", this is likely a bug in Pathom, please report it.")))
+
+(defn node-error-indent [{::keys [node-error-indent-level]
+                          :or    {node-error-indent-level 1}}]
+  (apply str (repeat node-error-indent-level "  ")))
+
+(defn increase-error-indent [{::keys [node-error-indent-level]
+                              :or    {node-error-indent-level 1}
+                              :as env}]
+  (assoc env ::node-error-indent-level (inc node-error-indent-level)))
+
+(defn node-missing-input-error-details
+  [{::keys [node-run-stats*]
+    :as    env}
+   {::pcp/keys [node-id input]
+    ::pco/keys [op-name]
+    :as        node}
+   attr]
+  (let [missing (or (get-in @node-run-stats* [node-id ::node-missing-required-inputs])
+                    (pfsd/missing-from-data (p.ent/entity env) input))]
+    (str "- Attribute " attr " was expected to be returned from resolver " op-name " but inputs were missing:\n"
+         (str/join "\n" (map #(str (node-error-indent env) (input-missing-detail (increase-error-indent env) node %)) (keys missing))))))
 
 (defn input-missing-check
   "This will verify if all dependencies required by a resolver are satisfied.
@@ -869,31 +904,22 @@
     (invoke-mutation! env ast)))
 
 (defn entity-missing-attribute-details
-  [{::pcp/keys [graph]
-    ::keys     [node-run-stats*]
-    :as env}
+  [{::pcp/keys [graph] :as env}
    attr]
   (let [{nodes-missing-inputs                true
          nodes-missing-attribute-in-response false}
         (->> (get-in graph [::pcp/index-attrs attr])
              (map #(pcp/get-node graph %))
-             (group-by #(or (contains? (get @node-run-stats* (::pcp/node-id %)) ::node-missing-required-inputs)
-                            (not (contains? @node-run-stats* (::pcp/node-id %))))))]
+             (group-by #(node-failed-due-to-missing-inputs? env %)))]
     (str/join
       "\n"
       (cond-> []
         (seq nodes-missing-attribute-in-response)
-        (conj (input-missing-error-message nodes-missing-attribute-in-response attr))
+        (conj (input-missing-error-message-leaf nodes-missing-attribute-in-response attr))
 
         (seq nodes-missing-inputs)
         (into
-          (map (fn [{::pcp/keys [node-id input]
-                     ::pco/keys [op-name]
-                     :as node}]
-                 (let [missing (or (get-in @node-run-stats* [node-id ::node-missing-required-inputs])
-                                   (pfsd/missing-from-data (p.ent/entity env) input))]
-                   (str "- Attribute " attr " was expected to be returned from resolver " op-name " but inputs were missing:\n"
-                        (str/join "\n" (map #(str "  " (input-missing-detail env node %)) (keys missing)))))))
+          (map #(node-missing-input-error-details env % attr))
           nodes-missing-inputs)))))
 
 (defn check-entity-requires!

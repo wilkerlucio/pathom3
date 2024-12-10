@@ -34,7 +34,7 @@
 
 (declare thrown-with-msg?)
 
-(def ^:dynamic *test-only-serial* false)
+(defonce ^:dynamic *test-only-serial* false)
 
 (comment
   (alter-var-root #'*test-only-serial* (constantly true))
@@ -848,8 +848,6 @@
          :ex/data    {::pcr/attributes-missing {:b {}}}})
 
       (testing "longer chain"
-        ; WIP
-        #_
         (check-all-runners-ex
           (pci/register
             [(pco/resolver 'a
@@ -869,8 +867,9 @@
           [:c]
           {:ex/message (str
                          "Required attributes missing:\n"
-                         "- Attribute :b was expected to be returned from resolver b but inputs were missing:\n"
-                         "  - Attribute :a was expected to be returned from resolver a but it failed to provide it.")
+                         "- Attribute :c was expected to be returned from resolver c but inputs were missing:\n"
+                         "  - Attribute :b was expected to be returned from resolver b but inputs were missing:\n"
+                         "    - Attribute :a was expected to be returned from resolver a but it failed to provide it.")
            :ex/data    {::pcr/attributes-missing {:c {}}}})))
 
     (testing "missed on indirect dependency"
