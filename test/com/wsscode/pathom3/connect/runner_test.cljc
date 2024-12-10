@@ -943,6 +943,28 @@
                        "  - Attribute :a was expected to be returned from resolvers a1, a2 but all of them failed to provide it.")
          :ex/data    {::pcr/attributes-missing {:b {}}}}))
 
+    (testing "missed multiple from parent node"
+      (check-all-runners-ex
+        (pci/register
+          [(pco/resolver 'ab
+             {::pco/output [:a :b]}
+             (fn [_ _]
+               {}))
+
+           (pco/resolver 'c
+             {::pco/input  [:a :b]
+              ::pco/output [:c]}
+             (fn [_ _]
+               {}))])
+        {}
+        [:c]
+        {:ex/message (str
+                       "Required attributes missing:\n"
+                       "- Attribute :c was expected to be returned from resolver c but inputs were missing:\n"
+                       "  - Attribute :a was expected to be returned from resolver ab but it failed to provide it.\n"
+                       "  - Attribute :b was expected to be returned from resolver ab but it failed to provide it.")
+         :ex/data    {::pcr/attributes-missing {:c {}}}}))
+
     (testing "missed attribute comes from AND node"
       (comment
         (run-graph
