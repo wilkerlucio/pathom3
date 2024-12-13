@@ -5,6 +5,8 @@
     [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
     [com.wsscode.pathom3.connect.indexes :as pci]
     [com.wsscode.pathom3.connect.operation :as pco]
+    [com.wsscode.pathom3.connect.planner :as pcp]
+    [com.wsscode.pathom3.connect.runner :as pcr]
     [com.wsscode.pathom3.interface.async.eql :as p.a.eql]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
     [promesa.core :as p]))
@@ -69,7 +71,7 @@
                   [(pbir/constantly-resolver :a 10)])
                 {:pathom/eql [:a]})
               meta
-              :com.wsscode.pathom3.connect.runner/run-stats))))
+              ::pcr/run-stats))))
 
   (testing "include when requested"
     (is (some?
@@ -79,7 +81,7 @@
                 {:pathom/eql            [:a]
                  :pathom/include-stats? true})
               meta
-              :com.wsscode.pathom3.connect.runner/run-stats)))))
+              ::pcr/run-stats)))))
 
 (deftest process-one-test
   (is (= @(p.a.eql/process-one (pci/register registry) {:left 10 :right 30} :width)
@@ -98,17 +100,18 @@
       (is (= response [{:a 1}]))
       (check
         (meta response)
-        => {:com.wsscode.pathom3.connect.runner/run-stats
-            {:com.wsscode.pathom3.connect.planner/source-ast            {},
-             :com.wsscode.pathom3.connect.planner/index-attrs           {},
-             :com.wsscode.pathom3.connect.planner/user-request-shape    {},
-             :com.wsscode.pathom3.connect.planner/root                  number?,
-             :com.wsscode.pathom3.connect.planner/available-data        {},
-             :com.wsscode.pathom3.connect.runner/node-run-stats         {},
-             :com.wsscode.pathom3.connect.planner/index-ast             {},
-             :com.wsscode.pathom3.connect.runner/transient-stats        {},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes {},
-             :com.wsscode.pathom3.connect.planner/nodes                 {}}}))
+        => {::pcr/run-stats
+            {::pcp/available-data        {}
+             ::pcp/index-ast             {}
+             ::pcp/index-attrs           {}
+             ::pcp/index-resolver->nodes {}
+             ::pcp/nodes                 {}
+             ::pcp/root                  number?
+             ::pcp/source-ast            {}
+             ::pcp/user-request-shape    {}
+
+             ::pcr/node-run-stats        {}
+             ::pcr/transient-stats       {}}}))
 
     (testing "don't change data when its already there"
       (let [response @(p.a.eql/process-one
@@ -119,8 +122,8 @@
         (is (= response {:b 1}))
         (check
           (meta response)
-          => {:com.wsscode.pathom3.connect.runner/run-stats
-              {:com.wsscode.pathom3.connect.planner/available-data
+          => {::pcr/run-stats
+              {::pcp/available-data
                {:a {}}}})))
 
     (testing "returns false"
@@ -142,4 +145,4 @@
              1e3)))
     (testing
       "uses same error message"
-      (is (= msg "clojure.lang.ExceptionInfo: Error while processing request [:a] for entity {} {:entity nil}")))))
+      (is (= msg "clojure.lang.ExceptionInfo: Error while processing request [:a] for entity {} {:entity {}, :tx [:a]}")))))

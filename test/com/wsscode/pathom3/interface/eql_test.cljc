@@ -8,6 +8,7 @@
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
+    [com.wsscode.pathom3.test.helpers :as h]
     [edn-query-language.core :as eql]))
 
 (pco/defresolver coords []
@@ -95,15 +96,63 @@
            {::coords #{{:right 35} {:right 25}}}))))
 
 (deftest process-error-test
-  (is (thrown-with-msg?
-        #?(:clj Throwable :cljs js/Error)
-        #"Error while processing request \[:a] for entity \{}"
+  (check
+    (h/catch-exception
+      (p.eql/process
+        (pci/register
+          (pco/resolver 'a
+            {::pco/output [:a]}
+            (fn [_ _] {})))
+        [:a]))
+    => {:ex/message "Error while processing request [:a] for entity {}"
+        :ex/data    {:entity {}
+                     :tx     [:a]}})
+
+  (testing "caps request on ex message"
+    (check
+      (h/catch-exception
         (p.eql/process
           (pci/register
             (pco/resolver 'a
               {::pco/output [:a]}
               (fn [_ _] {})))
-          [:a]))))
+          [:having-a-query {:that-goes [:long]} :in-fact {:very [:long]}]))
+      => {:ex/message "Error while processing request [:having-a-query {:that-goes [:long]}... for entity {}"
+          :ex/data    {:entity {}
+                       :tx     [:having-a-query {:that-goes [:long]} :in-fact {:very [:long]}]}}))
+
+  (testing "caps entity on ex message"
+    (check
+      (h/catch-exception
+        (p.eql/process
+          (pci/register
+            (pco/resolver 'a
+              {::pco/output [:a]}
+              (fn [_ _] {})))
+          {:some "Lorem Ipsum is simply dummy text of the printing and typesetting"}
+          [:a]))
+      => {:ex/message "Error while processing request [:a] for entity {:some \"Lorem Ipsum is simply dummy t...",
+          :ex/data    {:entity {:some "Lorem Ipsum is simply dummy text of the printing and typesetting"}
+                       :tx     [:a]}}))
+
+  (testing "ex data entity contains accumulated data while ex message shows the input entity"
+    (check
+      (h/catch-exception
+        (p.eql/process
+          (pci/register
+            [(pco/resolver 'b
+               {::pco/input  [:a]
+                ::pco/output [:b]}
+               (fn [_ _] {:b 2}))
+             (pco/resolver 'c
+               {::pco/input  [:b]
+                ::pco/output [:c]}
+               (fn [_ _] {}))])
+          {:a 1}
+          [:c]))
+      => {:ex/message "Error while processing request [:c] for entity {:a 1}"
+          :ex/data    {:entity {:a 1 :b 2}
+                       :tx     [:c]}})))
 
 (deftest process-one-test
   (is (= (p.eql/process-one (pci/register registry) {:left 10 :right 30} :width)

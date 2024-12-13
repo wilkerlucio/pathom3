@@ -31,21 +31,27 @@
     (str (subs s 0 (- max-size 3)) "...")
     s))
 
-(defn process-error [env ast e]
-  (let [entity (p.ent/entity env)]
+(defn process-error [env ast source-entity error]
+  (let [entity (or (p.ent/entity env) {})
+        tx     (eql/ast->query ast)]
     (ex-info
-      (str "Error while processing request " (string-cap (pr-str (eql/ast->query ast)) 20) " for entity " (pr-str (or entity {})))
-      {:entity entity}
-      e)))
+      (str "Error while processing request "
+           (string-cap (pr-str tx) 40)
+           " for entity "
+           (string-cap (pr-str source-entity) 40))
+      {:entity entity
+       :tx     tx}
+      error)))
 
 (>defn process-ast
   [env ast]
   [(s/keys) :edn-query-language.ast/node => map?]
-  (try
-    (p.plugin/run-with-plugins env ::wrap-process-ast
-      process-ast* env ast)
-    (catch #?(:clj Throwable :cljs :default) e
-      (throw (process-error env ast e)))))
+  (let [source-entity (or (p.ent/entity env) {})]
+    (try
+      (p.plugin/run-with-plugins env ::wrap-process-ast
+        process-ast* env ast)
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (process-error env ast source-entity e))))))
 
 (>defn process
   "Evaluate EQL expression.
