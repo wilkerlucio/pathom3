@@ -6,6 +6,7 @@
 - BREAKING: Removed usage of `processor-error`, now the runner will not wrap the errors, this will generate simpler errors.
 - Expose query and entity on errors during eql interface calls
 - Expose planner failure details on error message
+- Much richer error details for when some user required attribute is missing
 - Track `::pcp/expects` on AND nodes, it includes all expects from the node chain
 - BREAKING: removed `p->` and `p->>` helpers from `com.wsscode.promesa.macros`. These were old macros and currently Promesa has them in the library.
 
