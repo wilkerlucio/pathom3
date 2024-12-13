@@ -34,9 +34,18 @@
         x))
     x))
 
-(defmacro catch-exception [& body]
-  `(try
-     ~@body
-     (catch #?(:clj Throwable :cljs :default) e#
-       {:ex/message (ex-message e#)
-        :ex/data    (ex-data e#)})))
+(defn error->data [error]
+  {:ex/message (ex-message error)
+   :ex/data    (ex-data error)})
+
+#?(:clj
+   (defmacro catch-exception [& body]
+     (if (:ns &env)
+       `(try
+          ~@body
+          (catch :default e#
+            (error->data e#)))
+       `(try
+          ~@body
+          (catch Throwable e#
+            (error->data e#))))))
