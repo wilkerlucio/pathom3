@@ -58,29 +58,3 @@
               (p/catch res# (fn [~ex-sym] ~@ex-body))
               res#))
           (catch ~ex-kind ~ex-sym ~@ex-body)))))
-
-#?(:bb
-   (defmacro p-> [& forms]
-     `(-> ~@forms))
-
-   :clj
-   (defmacro p-> [x & forms]
-     (let [fns (mapv (fn [arg]
-                       (let [[f & args] (if (sequential? arg)
-                                          arg
-                                          (list arg))]
-                         `(fn [p#] (~f p# ~@args)))) forms)]
-       `(p/chain (p/promise ~x) ~@fns))))
-
-#?(:bb
-   (defmacro p->> [& forms]
-     `(->> ~@forms))
-
-   :clj
-   (defmacro p->> [x & forms]
-     (let [fns (mapv (fn [arg]
-                       (let [[f & args] (if (sequential? arg)
-                                          arg
-                                          (list arg))]
-                         `(fn [p#] (~f ~@args p#)))) forms)]
-       `(p/chain (p/promise ~x) ~@fns))))
