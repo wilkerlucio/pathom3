@@ -63,7 +63,7 @@
   the whole request at once (different from Smart Map, which always plans for one
   attribute at a time).
 
-  At minimum you need to build an index to use this.
+  At minimum, you need to build an index to use this.
 
       (p.eql/process (pci/register some-resolvers)
         [:eql :request])
@@ -75,7 +75,7 @@
         {:eql \"initial data\"}
         [:eql :request])
 
-  For more options around processing check the docs on the connect runner."
+  For more options around processing, check the docs on the connect runner."
   ([env tx]
    [(s/keys) ::eql/query => map?]
    (process-ast (assoc env ::pcr/root-query tx) (eql/query->ast tx)))
@@ -88,7 +88,7 @@
                 (eql/query->ast tx))))
 
 (>defn process-one
-  "Similar to process, but returns a single value instead of a map.
+  "Similar to `process`, but returns a single value instead of a map.
 
   This is a convenience method to read a single attribute.
 
@@ -140,11 +140,11 @@
     (process env entity tx)))
 
 (>defn normalize-input
-  "Normalize a remote interface input. In case of vector it makes a map. Otherwise
-  returns as is.
+  "Normalize a remote interface input. In the case of vector, it makes a map.
+  Otherwise, returns as is.
 
-  IMPORTANT: :pathom/tx is deprecated and its going to be dropped, if you are using it please
-  replace it with :pathom/eql to avoid breakages in the future."
+  IMPORTANT: `:pathom/tx` is deprecated, and it's going to be dropped, if you are using it, please
+  replace it with `:pathom/eql` to avoid breakages in the future."
   [env input]
   [map?
    (s/or :query ::eql/query
@@ -175,10 +175,10 @@
 (>defn boundary-interface
   "Returns a function that wraps the environment. When exposing Pathom to some external
   system, this is the recommended way to do it. The format here makes your API compatible
-  with Pathom Foreign process, which allows the integration of distributed environments.
+  with a Pathom Foreign process, which allows the integration of distributed environments.
 
-  When calling the remote interface the user can send a query or a map containing the
-  query and the initial entity data. This map is open and you can use as a way to extend
+  When calling the remote interface, the user can send a query or a map containing the
+  query and the initial entity data. This map is open, and you can use as a way to extend
   the API.
 
   Boundary interface:
@@ -188,7 +188,7 @@
 
   Request is one of:
 
-  1. An EQL request
+  1. EQL request
   2. A map, supported keys:
       :pathom/eql
       :pathom/ast
