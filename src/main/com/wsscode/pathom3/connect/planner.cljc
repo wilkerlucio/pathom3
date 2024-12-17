@@ -1724,7 +1724,7 @@
   attribute"
   [{:com.wsscode.pathom3.error/keys [lenient-mode?]
     :as                             env} graph]
-  (if lenient-mode?
+  (if true #_lenient-mode?
     (try
       (verify-plan!* env graph)
       (catch #?(:clj Throwable :cljs :default) _
@@ -1780,6 +1780,8 @@
         graph'))
     graph
     (vals (::index-resolver->nodes graph))))
+
+(defonce compute-run-graph-state-atom (atom 0))
 
 (>defn compute-run-graph
   "Generates a run plan for a given environment, the environment should contain the
@@ -1843,36 +1845,47 @@
    (add-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
                              ::snapshot-message "=== Start query plan ==="})
 
-   (p.plugin/run-with-plugins env ::wrap-compute-run-graph
-     (fn compute-run-graph-internal [graph env]
-       (as-> env <>
-         (p.cache/cached ::plan-cache* <> [(hash (::pci/index-oir env))
-                                           (::available-data env)
-                                           (pf.eql/cacheable-ast (:edn-query-language.ast/node env))
-                                           (boolean optimize-graph?)]
-           #(let [env' (-> (merge (base-env) env)
-                           (vary-meta assoc ::original-env env))]
-              (cond->
-                (compute-run-graph*
-                  (merge (base-graph)
-                         graph
-                         {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
-                          ::source-ast         (:edn-query-language.ast/node env)
-                          ::available-data     (::available-data env)
-                          ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})
-                  env')
+   (swap! compute-run-graph-state-atom inc)
+   (let [g2 (p.plugin/run-with-plugins env ::wrap-compute-run-graph
+              (fn compute-run-graph-internal [graph env]
+                (as-> env <>
+                  (p.cache/cached ::plan-cache* <> [(hash (::pci/index-oir env))
+                                                    (::available-data env)
+                                                    (pf.eql/cacheable-ast (:edn-query-language.ast/node env))
+                                                    (boolean optimize-graph?)]
+                    #(let [env' (-> (merge (base-env) env)
+                                    (vary-meta assoc ::original-env env))]
+                       (cond->
+                         (compute-run-graph*
+                           (merge (base-graph)
+                                  graph
+                                  {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
+                                   ::source-ast         (:edn-query-language.ast/node env)
+                                   ::available-data     (::available-data env)
+                                   ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})
+                           env')
 
-                optimize-graph?
-                (optimize-graph env')
+                         optimize-graph?
+                         (optimize-graph env')
 
-                true
-                (mark-fast-placeholder-processes env')
+                         true
+                         (mark-fast-placeholder-processes env')
 
-                true
-                (ensure-resolver-consistent-params))))
-         (rehydrate-graph-idents <> (:edn-query-language.ast/node env))
-         (verify-plan! env <>)))
-     graph env)))
+                         true
+                         (ensure-resolver-consistent-params))))
+                  (rehydrate-graph-idents <> (:edn-query-language.ast/node env))
+                  (verify-plan! env <>)))
+              graph env)]
+
+     (let []
+       (if (= 0 (swap! compute-run-graph-state-atom dec))
+         (if (:com.wsscode.pathom3.error/lenient-mode? env)
+           (try
+             (verify-plan!* env g2)
+             (catch #?(:clj Throwable :cljs :default) _
+               (assoc g2 ::verification-failed? true)))
+           (verify-plan!* env g2))
+         g2)))))
 
 ; endregion
 
