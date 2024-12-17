@@ -4636,3 +4636,29 @@
                {::resolvers [{::pco/op-name 'x
                               ::pco/output  [:x]}]
                 ::eql/query [{:>/a ['(:x {:foo 1})]}]}))))
+
+(deftest missing-but-uneccessary-nested-inputs
+  (let [env (-> (pci/register
+                  [(pco/resolver
+                     {::pco/op-name 'temp-from-sensors
+                      ::pco/input   [{:room/sensors [:sensor/high :sensor/low]}]
+                      ::pco/output  [::temperature]
+                      ::pco/resolve (fn [_ input]
+                                      (let [{:sensor/keys [high low]} (get input :room/sensors)]
+                                        {::temperature (/ (+ high low) 2)}))})
+
+                   (pco/resolver
+                     {::pco/op-name 'temp-from-direct
+                      ::pco/priority 100 ;;adding priority doesn't help
+                      ::pco/input   [:room/temperature]
+                      ::pco/output  [::temperature]
+                      ::pco/resolve (fn [_ input]
+                                      {::temperature (:room/temperature input)})})]))]
+
+
+    (is (= {}
+           (p.eql/process env
+             {
+              :room/temperature 72
+              :room/sensors     {}}
+             [::temperature])))))
