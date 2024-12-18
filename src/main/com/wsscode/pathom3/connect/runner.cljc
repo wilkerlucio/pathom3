@@ -481,11 +481,12 @@
     (not (contains? @node-run-stats* node-id))))
 
 (defn input-missing-error-message-leaf [nodes attr]
-  (if (> (count nodes) 1)
-    (str "- Attribute " attr " was expected to be returned from resolvers "
-         (str/join ", " (sort (distinct (map ::pco/op-name nodes))))
-         " but all of them failed to provide it.")
-    (str "- Attribute " attr " was expected to be returned from resolver " (::pco/op-name (first nodes)) " but it failed to provide it.")))
+  (let [resolvers (sort (distinct (map ::pco/op-name nodes)))]
+    (if (> (count resolvers) 1)
+      (str "- Attribute " attr " was expected to be returned from resolvers "
+           (str/join ", " resolvers)
+           " but all of them failed to provide it.")
+      (str "- Attribute " attr " was expected to be returned from resolver " (::pco/op-name (first nodes)) " but it failed to provide it."))))
 
 (defn input-missing-error-message [env node attr]
   (if (node-failed-due-to-missing-inputs? env node)
