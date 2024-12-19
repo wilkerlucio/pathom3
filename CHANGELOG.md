@@ -11,6 +11,7 @@
 - BREAKING: removed `p->` and `p->>` helpers from `com.wsscode.promesa.macros`. These were old macros and currently Promesa has them in the library.
 - Bump `com.wsscode/cljc-misc` to `2024.12.18`
 - Expose missing attributes during planner error
+- During planning, while computing dependencies, removed short-circuit to allow the planner to have complete information about unreachable attributes
 
 ## [2024.11.23-alpha]
 - Fix placeholders using different parameters
