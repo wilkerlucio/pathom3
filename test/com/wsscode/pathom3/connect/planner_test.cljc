@@ -284,18 +284,17 @@
                  {::resolvers []
                   ::eql/query [:a :b]})))
 
-    ;; WIP - figuring out the format, will comment for now so CI passes
-    #_
     (testing "broken chain"
       (check (=> {:ex/message
                   (str
                     "Pathom can't find a path for the following elements in the query:\n"
                     "- Attribute :b inputs can't be met, details:\n"
-                    "  - Missing attribute :a")
+                    "  - Can't reach attribute :a")
 
                   :ex/data
                   {::pcp/unreachable-paths   {:b {}}
-                   ::pcp/unreachable-details {:b {::pcp/unreachable-cause ::pcp/unreachable-cause-missing-inputs}}
+                   ::pcp/unreachable-details {:b {::pcp/unreachable-cause ::pcp/unreachable-cause-missing-inputs
+                                                  ::pcp/unreachable-missing-inputs {{:a {}} #{'b}}}}
                    ::p.error/phase           ::pcp/plan
                    ::p.error/cause           ::p.error/attribute-unreachable}}
                  (compute-run-graph-ex
@@ -309,7 +308,16 @@
                     (str
                       "Pathom can't find a path for the following elements in the query:\n"
                       "- Attribute :b inputs can't be met, details:\n"
-                      "  - Missing attribute :a")}
+                      "  - Can't reach attribute :a")
+
+                    :ex/data
+                    '{::pcp/unreachable-paths {:b {}}
+                      ::pcp/unreachable-details
+                      {:b
+                       {::pcp/unreachable-cause
+                        ::pcp/unreachable-cause-missing-inputs
+                        ::pcp/unreachable-missing-inputs
+                        {{:a {}} #{b}}}}}}
                    (compute-run-graph-ex
                      {::resolvers [{::pco/op-name 'b
                                     ::pco/input   [:a :c]
@@ -322,7 +330,16 @@
                     (str
                       "Pathom can't find a path for the following elements in the query:\n"
                       "- Attribute :b inputs can't be met, details:\n"
-                      "  - Missing attribute :a")}
+                      "  - Can't reach attribute :a")
+
+                    :ex/data
+                    '{::pcp/unreachable-paths {:b {}}
+                      ::pcp/unreachable-details
+                      {:b
+                       {::pcp/unreachable-cause
+                        ::pcp/unreachable-cause-missing-inputs
+                        ::pcp/unreachable-missing-inputs
+                        {{:a {}} #{b}}}}}}
                    (compute-run-graph-ex
                      {::resolvers [{::pco/op-name 'b
                                     ::pco/input   [:a :c]
@@ -335,7 +352,16 @@
                     (str
                       "Pathom can't find a path for the following elements in the query:\n"
                       "- Attribute :b inputs can't be met, details:\n"
-                      "  - Missing attribute :a")}
+                      "  - Can't reach attribute :a")
+
+                    :ex/data
+                    '{::pcp/unreachable-paths {:b {}}
+                      ::pcp/unreachable-details
+                      {:b
+                       {::pcp/unreachable-cause
+                        ::pcp/unreachable-cause-missing-inputs
+                        ::pcp/unreachable-missing-inputs
+                        {{:a {}} #{b b1}}}}}}
                    (compute-run-graph-ex
                      {::resolvers [{::pco/op-name 'b
                                     ::pco/input   [:a]
@@ -350,8 +376,16 @@
                     (str
                       "Pathom can't find a path for the following elements in the query:\n"
                       "- Attribute :c inputs can't be met, details:\n"
-                      "  - Missing attribute :b\n"
-                      "    - Provide :a to use path: :a -> :b")}
+                      "  - Can't reach attribute :b")
+
+                    :ex/data
+                    '{::pcp/unreachable-paths {:c {}},
+                      ::pcp/unreachable-details
+                      {:c
+                       {::pcp/unreachable-cause
+                        ::pcp/unreachable-cause-missing-inputs
+                        ::pcp/unreachable-missing-inputs
+                        {{:b {}} #{c}}}}}}
                    (compute-run-graph-ex
                      {::resolvers [{::pco/op-name 'b
                                     ::pco/input   [:a]
@@ -365,9 +399,7 @@
                     (str
                       "Pathom can't find a path for the following elements in the query:\n"
                       "- Attribute :d inputs can't be met, details:\n"
-                      "  - Missing attribute :c\n"
-                      "    - Provide :b to use path: :b -> :c\n"
-                      "    - Provide :a to use path: :a -> :b -> :c")}
+                      "  - Can't reach attribute :c")}
                    (compute-run-graph-ex
                      {::resolvers [{::pco/op-name 'b
                                     ::pco/input   [:a]
@@ -385,15 +417,12 @@
                     (str
                       "Pathom can't find a path for the following elements in the query:\n"
                       "- Attribute :c inputs can't be met, details:\n"
-                      "  - Missing attribute :b\n"
-                      "    - Provide :a to use path: :a -> :b\n"
-                      "  - Missing attribute :d")}
+                      "  - Can't reach attribute :b\n"
+                      "  - Can't reach attribute :d")}
                    (compute-run-graph-ex
                      {::resolvers [{::pco/op-name 'b
                                     ::pco/input   [:a]
                                     ::pco/output  [:b]}
-                                   {::pco/op-name 'd
-                                    ::pco/output  [:d]}
                                    {::pco/op-name 'c
                                     ::pco/input   [:b :d]
                                     ::pco/output  [:c]}]
@@ -403,11 +432,9 @@
         (check (=> {:ex/message
                     (str
                       "Pathom can't find a path for the following elements in the query:\n"
-                      "- Attribute :d dependencies can't be met, details:\n"
-                      "  - Missing attribute :b\n"
-                      "    - Provide :a to use path: :a -> :b\n"
-                      "  - Missing attribute :c\n"
-                      "    - Provide :a to use path: :a -> :c")}
+                      "- Attribute :d inputs can't be met, details:\n"
+                      "  - Can't reach attribute :b\n"
+                      "  - Can't reach attribute :c")}
                    (compute-run-graph-ex
                      {::resolvers [{::pco/op-name 'a->bc
                                     ::pco/input   [:a]
@@ -415,7 +442,24 @@
                                    {::pco/op-name 'd
                                     ::pco/input   [:b :c]
                                     ::pco/output  [:d]}]
-                      ::eql/query [:d]})))))
+                      ::eql/query [:d]}))))
+
+      (testing "multiple input paths to reach missing attribute"
+        (check (=> {:ex/message
+                    (str
+                      "Pathom can't find a path for the following elements in the query:\n"
+                      "- Attribute :c inputs can't be met, details:\n"
+                      "  - Can't reach attribute :a\n"
+                      "  OR\n"
+                      "  - Can't reach attribute :b")}
+                   (compute-run-graph-ex
+                     {::resolvers [{::pco/op-name 'a->c
+                                    ::pco/input   [:a]
+                                    ::pco/output  [:c]}
+                                   {::pco/op-name 'b->c
+                                    ::pco/input   [:b]
+                                    ::pco/output  [:c]}]
+                      ::eql/query [:c]})))))
 
     (testing "currently available data"
       (is (= (compute-run-graph
@@ -791,30 +835,33 @@
                      :root                  4})))
 
     (testing "nested cycles"
-      (is (thrown-with-msg?
-            #?(:clj Throwable :cljs js/Error)
-            #"Pathom can't find a path for the following elements in the query at path \[:a]:\n- Attribute :b inputs can't be met, details: WIP"
-            (compute-run-graph
-              {::resolvers [{::pco/op-name 'cycle-a
-                             ::pco/output  [:a]}
-                            {::pco/op-name 'cycle-b
-                             ::pco/input   [{:a [:b]}]
-                             ::pco/output  [:b]}]
-               ::eql/query [:b]})))
+      (check (=> {:ex/message
+                  (str
+                    "Pathom can't find a path for the following elements in the query at path [:a]:\n"
+                    "- Attribute :b inputs can't be met, details:\n")}
+                 (compute-run-graph-ex
+                   {::resolvers [{::pco/op-name 'cycle-a
+                                  ::pco/output  [:a]}
+                                 {::pco/op-name 'cycle-b
+                                  ::pco/input   [{:a [:b]}]
+                                  ::pco/output  [:b]}]
+                    ::eql/query [:b]})))
 
-      (is (thrown-with-msg?
-            #?(:clj Throwable :cljs js/Error)
-            #"Pathom can't find a path for the following elements in the query at path \[:a]:\n- Attribute :c inputs can't be met, details: WIP"
-            (compute-run-graph
-              {::resolvers [{::pco/op-name 'cycle-a
-                             ::pco/output  [:a]}
-                            {::pco/op-name 'cycle-b
-                             ::pco/input   [{:a [:c]}]
-                             ::pco/output  [:b]}
-                            {::pco/op-name 'cycle-c
-                             ::pco/input   [:b]
-                             ::pco/output  [:c]}]
-               ::eql/query [:b]}))))))
+      (check (=> {:ex/message
+                  (str
+                    "Pathom can't find a path for the following elements in the query at path [:a]:\n"
+                    "- Attribute :c inputs can't be met, details:\n"
+                    "  - Can't reach attribute :b")}
+                 (compute-run-graph-ex
+                   {::resolvers [{::pco/op-name 'cycle-a
+                                  ::pco/output  [:a]}
+                                 {::pco/op-name 'cycle-b
+                                  ::pco/input   [{:a [:c]}]
+                                  ::pco/output  [:b]}
+                                 {::pco/op-name 'cycle-c
+                                  ::pco/input   [:b]
+                                  ::pco/output  [:c]}]
+                    ::eql/query [:b]}))))))
 
 (deftest compute-run-graph-nested-inputs-test
   (testing "discard non available paths on nesting"
@@ -1350,24 +1397,28 @@
 
 (deftest compute-run-graph-nested-inputs-cycles-test
   (testing "basic impossible nested input path"
-    (is
-      (thrown-with-msg?
-        #?(:clj Throwable :cljs :default)
-        #"Pathom can't find a path for the following elements in the query at path \[:parent]:\n- Attribute :child inputs can't be met, details: WIP"
-        (compute-run-graph
-          {::resolvers [{::pco/op-name 'parent
-                         ::pco/output  [{:parent [:foo]}]}
-                        {::pco/op-name 'child
-                         ::pco/input   [{:parent [:child]}]
-                         ::pco/output  [:child]}]
-           ::eql/query [:child]}))))
+    (check (=>
+             {:ex/message
+              (str
+                "Pathom can't find a path for the following elements in the query at path [:parent]:\n"
+                "- Attribute :child inputs can't be met, details:\n")}
+             (compute-run-graph-ex
+               {::resolvers [{::pco/op-name 'parent
+                              ::pco/output  [{:parent [:foo]}]}
+                             {::pco/op-name 'child
+                              ::pco/input   [{:parent [:child]}]
+                              ::pco/output  [:child]}]
+                ::eql/query [:child]}))))
 
   (testing "indirect cycle"
-    (is
-      (thrown-with-msg?
-        #?(:clj Throwable :cljs :default)
-        #"Pathom can't find a path for the following elements in the query at path \[:parent]:\n- Attribute :child-dep inputs can't be met, details: WIP"
-        (compute-run-graph
+    (check
+      (=>
+        {:ex/message
+         (str
+           "Pathom can't find a path for the following elements in the query at path [:parent]:\n"
+           "- Attribute :child-dep inputs can't be met, details:\n"
+           "  - Can't reach attribute :child")}
+        (compute-run-graph-ex
           {::resolvers [{::pco/op-name 'parent
                          ::pco/output  [{:parent [:foo]}]}
                         {::pco/op-name 'child
@@ -1379,11 +1430,13 @@
            ::eql/query [:child]}))))
 
   (testing "deep cycle"
-    (is
-      (thrown-with-msg?
-        #?(:clj Throwable :cljs :default)
-        #"Pathom can't find a path for the following elements in the query at path \[:parent]:\n- Attribute :child inputs can't be met, details: WIP"
-        (compute-run-graph
+    (check
+      (=>
+        {:ex/message
+         (str
+           "Pathom can't find a path for the following elements in the query at path [:parent]:\n"
+           "- Attribute :child inputs can't be met, details:\n")}
+        (compute-run-graph-ex
           {::resolvers [{::pco/op-name 'parent
                          ::pco/output  [{:parent [:foo]}]}
                         {::pco/op-name 'child

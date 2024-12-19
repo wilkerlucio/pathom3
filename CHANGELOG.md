@@ -10,6 +10,7 @@
 - Track `::pcp/expects` on AND nodes, it includes all expects from the node chain
 - BREAKING: removed `p->` and `p->>` helpers from `com.wsscode.promesa.macros`. These were old macros and currently Promesa has them in the library.
 - Bump `com.wsscode/cljc-misc` to `2024.12.18`
+- Expose missing attributes during planner error
 
 ## [2024.11.23-alpha]
 - Fix placeholders using different parameters

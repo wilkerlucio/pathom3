@@ -1359,13 +1359,12 @@
         (let [[graph' extended?] (extend-available-attribute-nested graph env attr shape)]
           (if extended?
             [graph' node-map]
-            (reduced [graph' nil])))
+            [graph' nil]))
 
         (let [graph' (compute-attribute-dependency-graph graph env attr shape)]
           (if-let [root (::root graph')]
-            [graph'
-             (assoc node-map attr root)]
-            (reduced [(merge-unreachable graph graph') nil])))))
+            [graph' (if node-map (assoc node-map attr root))]
+            [(merge-unreachable graph graph') nil]))))
     [graph {}]
     missing))
 
@@ -1704,19 +1703,31 @@
   (update source-ast :children
     #(into (with-meta [] (meta %)) keep-required-transducer %)))
 
-(defn unreachable-attr-cause [{::pci/keys [index-oir]} _graph attr]
-  (if (contains? index-oir attr)
-    {::unreachable-cause          ::unreachable-cause-missing-inputs
-     ::unreachable-missing-inputs {}}
+(defn unreachable-attr-cause [{::pci/keys [index-oir]} graph attr]
+  (if-let [paths (get index-oir attr)]
+    (let [unreachable-paths (::unreachable-paths graph)]
+      {::unreachable-cause          ::unreachable-cause-missing-inputs
+       ::unreachable-missing-inputs (into {}
+                                          (map (fn [[k v]]
+                                                 [(pfsd/intersection unreachable-paths k) v]))
+                                          paths)})
     {::unreachable-cause ::unreachable-cause-unknown-attribute}))
 
 (defn unreachable-details [env graph missing]
   (into {} (map (fn [[k]] [k (unreachable-attr-cause env graph k)])) missing))
 
+(defn unreachable-attr-str [attr]
+  (str "  - Can't reach attribute " attr))
+
+(defn unreachable-attr-inputs [inputs]
+  (str/join "\n" (map unreachable-attr-str (keys (key inputs)))))
+
 (defn unreachable-detail-string [_env attr cause]
   (case (::unreachable-cause cause)
     ::unreachable-cause-missing-inputs
-    (str "- Attribute " attr " inputs can't be met, details: WIP")
+    (str "- Attribute " attr " inputs can't be met, details:\n"
+         (str/join "\n  OR\n"
+                   (map unreachable-attr-inputs (::unreachable-missing-inputs cause))))
 
     ::unreachable-cause-unknown-attribute
     (str "- Attribute " attr " is unknown, there is not any resolver that outputs it.")))
