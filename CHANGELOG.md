@@ -1,6 +1,6 @@
 # Changelog
 
-## [NEXT]
+## [2025.01.06-alpha]
 - Add `p.path/at-path-string` helper
 - BREAKING: Error from plan now envelops the graph value to avoid printing too much. You need to deref the value to get it now.
 - BREAKING: Removed usage of `processor-error`, now the runner will not wrap the errors, this will generate simpler errors.
