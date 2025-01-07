@@ -25,3 +25,9 @@
   [{::keys [path]}]
   [(s/keys :opt [::path]) => boolean?]
   (empty? path))
+
+(>defn at-path-string
+  [{::keys [path]}]
+  [(s/keys :opt [::path]) => (? string?)]
+  (if (seq path)
+    (str " at path " (pr-str path))))

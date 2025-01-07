@@ -34,6 +34,12 @@
 
 (declare thrown-with-msg?)
 
+(defonce ^:dynamic *test-only-serial* false)
+
+(comment
+  (alter-var-root #'*test-only-serial* (constantly true))
+  (alter-var-root #'*test-only-serial* (constantly false)))
+
 (defn match-keys? [ks]
   (fn [m]
     (reduce
@@ -165,6 +171,11 @@
 
 (def all-runners [run-graph #?@(:clj [run-graph-async run-graph-parallel])])
 
+(defn check-runners []
+  (if *test-only-serial*
+    [run-graph]
+    all-runners))
+
 #?(:clj
    (defmacro check-serial [env entity tx expected]
      `(check
@@ -191,7 +202,7 @@
 
 #?(:clj
    (defmacro check-all-runners [env entity tx expected]
-     `(doseq [runner# all-runners]
+     `(doseq [runner# (check-runners)]
         (testing (str runner#)
           (check
             (let [res# (runner# ~env ~entity ~tx)]
@@ -201,7 +212,7 @@
 
    :cljs
    (defn check-all-runners [env entity tx expected]
-     (doseq [runner all-runners]
+     (doseq [runner (check-runners)]
        (testing (str runner)
          (check
            (let [res (runner env entity tx)]
@@ -211,25 +222,27 @@
 
 #?(:clj
    (defmacro check-all-runners-ex [env entity tx expected]
-     `(doseq [runner# all-runners]
+     `(doseq [runner# (check-runners)]
         (testing (str runner#)
           (check (~'=> ~expected
                        (let [res# (ctry
                                     (runner# ~env ~entity ~tx)
                                     (catch #?(:clj Throwable :cljs :default) e#
-                                      (ex-data e#)))]
+                                      {:ex/message (ex-message e#)
+                                       :ex/data    (ex-data e#)}))]
                          (if (p/promise? res#)
                            @res# res#)))))))
 
    :cljs
    (defn check-all-runners-ex [env entity tx expected]
-     (doseq [runner all-runners]
+     (doseq [runner (check-runners)]
        (testing (str runner)
          (check (=> expected
                     (let [res (ctry
                                 (runner env entity tx)
                                 (catch #?(:clj Throwable :cljs :default) e
-                                  (ex-data e)))]
+                                  {:ex/message (ex-message e)
+                                   :ex/data    (ex-data e)}))]
                       (if (p/promise? res)
                         @res res))))))))
 
@@ -598,14 +611,15 @@
 (deftest run-graph!-fail-cases-test
   (testing "strict mode"
     (testing "invalid resolver response"
-      (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
-                            #"Resolver foo returned an invalid response: 123"
-            (run-graph (pci/register
-                         (pco/resolver 'foo
-                           {::pco/output [:foo]}
-                           (fn [_ _] 123)))
-                       {}
-                       [:foo]))))
+      (check-all-runners-ex
+        (pci/register
+          (pco/resolver 'foo
+            {::pco/output [:foo]}
+            (fn [_ _] 123)))
+        {}
+        [:foo]
+        {:ex/message "Resolver foo returned an invalid response: 123"
+         :ex/data    {::pcr/invalid-response 123}}))
 
     (testing "Exception with details"
       (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
@@ -616,44 +630,6 @@
                            (fn [_ _] (throw (ex-info "Error" {})))))
                        {}
                        [{:>/inside [:foo]}]))))
-
-    #_(testing "Exception during run includes graph"
-        (check-all-runners-ex
-          (pci/register
-            [(pco/resolver 'bar
-               {::pco/output [:bar]}
-               (fn [_ _] {:bar "x"}))
-             (pco/resolver 'foo
-               {::pco/input  [:bar]
-                ::pco/output [:foo]}
-               (fn [_ _] (throw (ex-info "Error" {}))))])
-          {}
-          [:foo]
-          '{:com.wsscode.pathom3.connect.planner/graph
-            {:com.wsscode.pathom3.connect.planner/source-ast
-             {:children [{:key :foo, :type :prop, :dispatch-key :foo}],
-              :type     :root},
-             :com.wsscode.pathom3.connect.planner/index-attrs
-             {:bar #{2}, :foo #{1}},
-             :com.wsscode.pathom3.connect.planner/root           2,
-             :com.wsscode.pathom3.connect.planner/available-data {},
-             :com.wsscode.pathom3.connect.planner/index-ast
-             {:foo {:key :foo, :type :prop, :dispatch-key :foo}},
-             :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-             {bar #{2}, foo #{1}},
-             :com.wsscode.pathom3.connect.planner/nodes
-             {1
-              {:com.wsscode.pathom3.connect.operation/op-name    foo,
-               :com.wsscode.pathom3.connect.planner/expects      {:foo {}},
-               :com.wsscode.pathom3.connect.planner/input        {:bar {}},
-               :com.wsscode.pathom3.connect.planner/node-id      1,
-               :com.wsscode.pathom3.connect.planner/node-parents #{2}},
-              2
-              {:com.wsscode.pathom3.connect.operation/op-name bar,
-               :com.wsscode.pathom3.connect.planner/expects   {:bar {}},
-               :com.wsscode.pathom3.connect.planner/input     {},
-               :com.wsscode.pathom3.connect.planner/run-next  1,
-               :com.wsscode.pathom3.connect.planner/node-id   2}}}}))
 
     (testing "optionals"
       (testing "not on index"
@@ -666,75 +642,52 @@
               [(pco/? :foo)] {})))
 
       (testing "error"
-        (is (thrown-with-msg?
-              #?(:clj Throwable :cljs :default)
-              #"error"
-              (run-graph
-                (pci/register (pbir/constantly-fn-resolver :err (fn [_] (throw (ex-info "error" {})))))
-                {}
-                [(pco/? :err)])))))
+        (check-all-runners-ex
+          (pci/register (pbir/constantly-fn-resolver :err (fn [_] (throw (ex-info "error" {})))))
+          {}
+          [(pco/? :err)]
+          {:ex/message "Resolver -unqualified/err--const-fn exception: error"})))
 
-    (testing "resolver missing response"
-      (is (thrown-with-msg? #?(:clj Throwable :cljs js/Error)
-                            #"Required attributes missing: \[:foo]"
-            (run-graph (pci/register
-                         (pco/resolver 'foo
-                           {::pco/output [:foo]}
-                           (fn [_ _] {})))
-                       {}
-                       [:foo])))
+    (testing "bug report #120"
+      (check-all-runners
+        (-> (pci/register [(pco/resolver 'dashboard-chartObjects-1
+                             {::pco/input  [:portfolioKey :appKey :data-source/friendlyName]
+                              ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
+                             (fn [_ _]
+                               {:dashboard {:dashboard/chartObjects []}}))
 
-      #?(:clj
-         (testing "async"
-           (is (thrown-with-msg? Throwable
-                                 #"Required attributes missing: \[:foo]"
-                 @(run-graph-async (pci/register
-                                     (pco/resolver 'foo
-                                       {::pco/output [:foo]}
-                                       (fn [_ _] {})))
-                                   {}
-                                   [:foo])))))
+                           (pco/resolver 'dashboard-chartObjects-2
+                             {::pco/input  [:portfolioKey :appKey {:data-sources [:data-source/friendlyName]}]
+                              ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
+                             (fn [_ _]
+                               {:dashboard {:dashboard/chartObjects []}}))
 
-      (testing "bug report #120"
-        (check-all-runners
-          (-> (pci/register [(pco/resolver 'dashboard-chartObjects-1
-                               {::pco/input  [:portfolioKey :appKey :data-source/friendlyName]
-                                ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
-                               (fn [_ _]
-                                 {:dashboard {:dashboard/chartObjects []}}))
+                           (pco/resolver 'data-source
+                             {::pco/input  [:portfolioKey :appKey]
+                              ::pco/output [:appName :platform]}
+                             (fn [_ _]
+                               {:appName nil :platform nil}))
 
-                             (pco/resolver 'dashboard-chartObjects-2
-                               {::pco/input  [:portfolioKey :appKey {:data-sources [:data-source/friendlyName]}]
-                                ::pco/output [{:dashboard [:dashboard/chartObjects]}]}
-                               (fn [_ _]
-                                 {:dashboard {:dashboard/chartObjects []}}))
+                           (pco/resolver 'data-sources
+                             {::pco/input       [:portfolioKey]
+                              ::pco/output      [{:data-sources [:portfolioKey :appKey :appName :platform]}]
+                              ::pco/cache-store :thirty-sec-ttl-cache*}
+                             (fn [_ _]
+                               {:data-sources []}))
 
-                             (pco/resolver 'data-source
-                               {::pco/input  [:portfolioKey :appKey]
-                                ::pco/output [:appName :platform]}
-                               (fn [_ _]
-                                 {:appName nil :platform nil}))
-
-                             (pco/resolver 'data-sources
-                               {::pco/input       [:portfolioKey]
-                                ::pco/output      [{:data-sources [:portfolioKey :appKey :appName :platform]}]
-                                ::pco/cache-store :thirty-sec-ttl-cache*}
-                               (fn [_ _]
-                                 {:data-sources []}))
-
-                             (pco/resolver 'data-source-friendlyName
-                               {::pco/input  [:appName]
-                                ::pco/output [:data-source/friendlyName]}
-                               (fn [_ _]
-                                 {:data-source/friendlyName "appName"}))]))
-          {:portfolioKey "portfolioKey", :appKey "appKey"}
-          [:data-source/friendlyName {:dashboard [:dashboard/chartObjects]}]
-          {:portfolioKey             "portfolioKey",
-           :appKey                   "appKey",
-           :appName                  nil,
-           :platform                 nil,
-           :data-source/friendlyName "appName",
-           :dashboard                {:dashboard/chartObjects []}})))
+                           (pco/resolver 'data-source-friendlyName
+                             {::pco/input  [:appName]
+                              ::pco/output [:data-source/friendlyName]}
+                             (fn [_ _]
+                               {:data-source/friendlyName "appName"}))]))
+        {:portfolioKey "portfolioKey", :appKey "appKey"}
+        [:data-source/friendlyName {:dashboard [:dashboard/chartObjects]}]
+        {:portfolioKey             "portfolioKey",
+         :appKey                   "appKey",
+         :appName                  nil,
+         :platform                 nil,
+         :data-source/friendlyName "appName",
+         :dashboard                {:dashboard/chartObjects []}}))
 
     (testing "mutations"
       (let [err (ex-info "Fail fast" {})]
@@ -797,6 +750,248 @@
            (m/equals
              {:err {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}})})))))
 
+(deftest run-graph!-fail-resolver-missing-data
+  (testing "single resolver graph"
+    (check-all-runners-ex
+      (pci/register
+        (pco/resolver 'my-resolver
+          {::pco/output [:foo]}
+          (fn [_ _] {})))
+      {}
+      [:foo]
+      {:ex/message (str
+                     "Required attributes missing:\n"
+                     "- Attribute :foo was expected to be returned from resolver my-resolver but it failed to provide it.")
+       :ex/data    {::pcr/attributes-missing {:foo {}}}})
+
+    (testing "at path"
+      (check-all-runners-ex
+        (pci/register
+          (pco/resolver 'my-resolver
+            {::pco/output [:foo]}
+            (fn [_ _] {})))
+        {:container {}}
+        [{:container [:foo]}]
+        {:ex/message (str
+                       "Required attributes missing at path [:container]:\n"
+                       "- Attribute :foo was expected to be returned from resolver my-resolver but it failed to provide it.")
+         :ex/data    {::pcr/attributes-missing {:foo {}}}}))
+
+    (testing "multiple options"
+      (check-all-runners-ex
+        (pci/register
+          [(pco/resolver 'a1
+             {::pco/output [:a]}
+             (fn [_ _]
+               {}))
+
+           (pco/resolver 'a2
+             {::pco/output [:a]}
+             (fn [_ _]
+               {}))])
+        {}
+        [:a]
+        {:ex/message (str
+                       "Required attributes missing:\n"
+                       "- Attribute :a was expected to be returned from resolvers a1, a2 but all of them failed to provide it.")
+         :ex/data    {::pcr/attributes-missing {:a {}}}})))
+
+  (testing "multiple attributes"
+    (check-all-runners-ex
+      (pci/register
+        (pco/resolver 'my-resolver
+          {::pco/output [:foo :bar]}
+          (fn [_ _] {})))
+      {}
+      [:foo :bar]
+      {:ex/message (str
+                     "Required attributes missing:\n"
+                     "- Attribute :foo was expected to be returned from resolver my-resolver but it failed to provide it.\n"
+                     "- Attribute :bar was expected to be returned from resolver my-resolver but it failed to provide it.")
+       :ex/data    {::pcr/attributes-missing {:foo {} :bar {}}}})
+
+    (check-all-runners-ex
+      (pci/register
+        [(pco/resolver 'my-resolver-foo
+           {::pco/output [:foo]}
+           (fn [_ _] {}))
+
+         (pco/resolver 'my-resolver-bar
+           {::pco/output [:bar]}
+           (fn [_ _] {}))])
+      {}
+      [:foo :bar]
+      {:ex/message (str
+                     "Required attributes missing:\n"
+                     "- Attribute :foo was expected to be returned from resolver my-resolver-foo but it failed to provide it.\n"
+                     "- Attribute :bar was expected to be returned from resolver my-resolver-bar but it failed to provide it.")
+       :ex/data    {::pcr/attributes-missing {:foo {} :bar {}}}}))
+
+  (testing "missing dependency"
+    (testing "missed attribute comes from resolver node"
+      (check-all-runners-ex
+        (pci/register
+          [(pco/resolver 'a
+             {::pco/output [:a]}
+             (fn [_ _] {}))
+
+           (pco/resolver 'b
+             {::pco/input  [:a]
+              ::pco/output [:b]}
+             (fn [_ _] {}))])
+        {}
+        [:b]
+        {:ex/message (str
+                       "Required attributes missing:\n"
+                       "- Attribute :b was expected to be returned from resolver b but inputs were missing:\n"
+                       "  - Attribute :a was expected to be returned from resolver a but it failed to provide it.")
+         :ex/data    {::pcr/attributes-missing {:b {}}}})
+
+      (testing "longer chain"
+        (check-all-runners-ex
+          (pci/register
+            [(pco/resolver 'a
+               {::pco/output [:a]}
+               (fn [_ _] {}))
+
+             (pco/resolver 'b
+               {::pco/input  [:a]
+                ::pco/output [:b]}
+               (fn [_ _] {}))
+
+             (pco/resolver 'c
+               {::pco/input  [:b]
+                ::pco/output [:c]}
+               (fn [_ _] {}))])
+          {}
+          [:c]
+          {:ex/message (str
+                         "Required attributes missing:\n"
+                         "- Attribute :c was expected to be returned from resolver c but inputs were missing:\n"
+                         "  - Attribute :b was expected to be returned from resolver b but inputs were missing:\n"
+                         "    - Attribute :a was expected to be returned from resolver a but it failed to provide it.")
+           :ex/data    {::pcr/attributes-missing {:c {}}}})))
+
+    (testing "missed on indirect dependency"
+      (check-all-runners-ex
+        (pci/register
+          [(pco/resolver 'ab
+             {::pco/output [:a :b]}
+             (fn [_ _] {:a 1}))
+
+           (pco/resolver 'c
+             {::pco/input  [:a]
+              ::pco/output [:c]}
+             (fn [_ _] {:c 2}))
+
+           (pco/resolver 'd
+             {::pco/input  [:b :c]
+              ::pco/output [:d]}
+             (fn [_ _] {}))])
+        {}
+        [:d]
+        {:ex/message (str
+                       "Required attributes missing:\n"
+                       "- Attribute :d was expected to be returned from resolver d but inputs were missing:\n"
+                       "  - Attribute :b was expected to be returned from resolver ab but it failed to provide it.")
+         :ex/data    {::pcr/attributes-missing {:d {}}}}))
+
+    (testing "missing with both resolver not returning and missing dependency"
+      (check-all-runners-ex
+        (pci/register
+          [(pco/resolver 'a
+             {::pco/output [:a]}
+             (fn [_ _] {}))
+
+           (pco/resolver 'b-dep
+             {::pco/input  [:a]
+              ::pco/output [:b]}
+             (fn [_ _] {}))
+
+           (pco/resolver 'b-direct
+             {::pco/output [:b]}
+             (fn [_ _] {}))])
+        {}
+        [:b]
+        {:ex/message (str
+                       "Required attributes missing:\n"
+                       "- Attribute :b was expected to be returned from resolver b-direct but it failed to provide it.\n"
+                       "- Attribute :b was expected to be returned from resolver b-dep but inputs were missing:\n"
+                       "  - Attribute :a was expected to be returned from resolver a but it failed to provide it.")
+         :ex/data    {::pcr/attributes-missing {:b {}}}}))
+
+    (testing "missed attribute comes from OR node"
+      (check-all-runners-ex
+        (pci/register
+          [(pco/resolver 'a1
+             {::pco/output [:a]}
+             (fn [_ _] {}))
+
+           (pco/resolver 'a2
+             {::pco/output [:a]}
+             (fn [_ _] {}))
+
+           (pco/resolver 'b
+             {::pco/input  [:a]
+              ::pco/output [:b]}
+             (fn [_ _] {}))])
+        {}
+        [:b]
+        {:ex/message (str
+                       "Required attributes missing:\n"
+                       "- Attribute :b was expected to be returned from resolver b but inputs were missing:\n"
+                       "  - Attribute :a was expected to be returned from resolvers a1, a2 but all of them failed to provide it.")
+         :ex/data    {::pcr/attributes-missing {:b {}}}}))
+
+    (testing "missed multiple from parent node"
+      (check-all-runners-ex
+        (pci/register
+          [(pco/resolver 'ab
+             {::pco/output [:a :b]}
+             (fn [_ _]
+               {}))
+
+           (pco/resolver 'c
+             {::pco/input  [:a :b]
+              ::pco/output [:c]}
+             (fn [_ _]
+               {}))])
+        {}
+        [:c]
+        {:ex/message (str
+                       "Required attributes missing:\n"
+                       "- Attribute :c was expected to be returned from resolver c but inputs were missing:\n"
+                       "  - Attribute :a was expected to be returned from resolver ab but it failed to provide it.\n"
+                       "  - Attribute :b was expected to be returned from resolver ab but it failed to provide it.")
+         :ex/data    {::pcr/attributes-missing {:c {}}}}))
+
+    (testing "missed attribute comes from AND node"
+      (check-all-runners-ex
+        (pci/register
+          [(pco/resolver 'a
+             {::pco/output [:a]}
+             (fn [_ _]
+               {}))
+
+           (pco/resolver 'b
+             {::pco/output [:b]}
+             (fn [_ _]
+               {}))
+
+           (pco/resolver 'c
+             {::pco/input  [:a :b]
+              ::pco/output [:c]}
+             (fn [_ _]
+               {}))])
+        {}
+        [:c]
+        {:ex/message (str
+                       "Required attributes missing:\n"
+                       "- Attribute :c was expected to be returned from resolver c but inputs were missing:\n"
+                       "  - Attribute :a was expected to be returned from resolver a but it failed to provide it.\n"
+                       "  - Attribute :b was expected to be returned from resolver b but it failed to provide it.")
+         :ex/data    {::pcr/attributes-missing {:c {}}}}))))
+
 (deftest run-graph!-final-test
   (testing "map value"
     (is (graph-response? (pci/register geo/registry)
@@ -845,7 +1040,8 @@
           {}
           [:value]
           {:value 2})
-        (is (= @spy #?(:clj 3 :cljs 1)))))
+        (is (or (= @spy 1)
+                (= @spy 3)))))
 
     (testing "one option fail, one succeed"
       (let [spy (atom 0)]
@@ -1731,8 +1927,7 @@
              :foo 42}))))
 
   (testing "bug report #126"
-    (is
-      (graph-response? (pci/register [(pco/resolver 'bar
+    (check-all-runners (pci/register [(pco/resolver 'bar
                                         {::pco/input  [::email]
                                          ::pco/output [::bar]}
                                         (fn [_ _] nil))
@@ -1747,10 +1942,10 @@
                                          ::pco/output [::display-name]}
                                         (fn [_ _]
                                           {::display-name "Octocat"}))])
-        {::email "bar@acme.com"}
-        [::email
-         (pco/? ::display-name)]
-        {::email "bar@acme.com"})))
+      {::email "bar@acme.com"}
+      [::email
+       (pco/? ::display-name)]
+      {::email "bar@acme.com"}))
 
   (testing "multiple options on optional, issue #138"
     (check-all-runners
@@ -1880,36 +2075,21 @@
             {:id 3 :v 30}]})))
 
   (testing "bug report - infinite loop when batch has cache disabled and misses output"
-    (is (thrown-with-msg?
-          #?(:clj Throwable :cljs :default)
-          #"Required attributes missing: \[:name]"
-          (run-graph
-            (pci/register
-              [(pco/resolver 'batch-no-cache
-                 {::pco/batch? true
-                  ::pco/cache? false
-                  ::pco/input  [:id]
-                  ::pco/output [:name]}
-                 (fn [_ input]
-                   input))])
-            {:id 1}
-            [:name])))
-
-    #?(:clj
-       (is (thrown-with-msg?
-             #?(:clj Throwable :cljs :default)
-             #"Required attributes missing: \[:name]"
-             @(run-graph-async
-                (pci/register
-                  [(pco/resolver 'batch-no-cache
-                     {::pco/batch? true
-                      ::pco/cache? false
-                      ::pco/input  [:id]
-                      ::pco/output [:name]}
-                     (fn [_ input]
-                       input))])
-                {:id 1}
-                [:name])))))
+    (check-all-runners-ex
+      (pci/register
+        [(pco/resolver 'batch-no-cache
+           {::pco/batch? true
+            ::pco/cache? false
+            ::pco/input  [:id]
+            ::pco/output [:name]}
+           (fn [_ input]
+             input))])
+      {:id 1}
+      [:name]
+      {:ex/message (str
+                     "Required attributes missing:\n"
+                     "- Attribute :name was expected to be returned from resolver batch-no-cache but it failed to provide it.")
+       :ex/data    {::pcr/attributes-missing {:name {}}}}))
 
   (testing "distinct inputs"
     (is (graph-response?
@@ -2314,7 +2494,8 @@
                                   (mapv #(assoc % :name (str "Item " (:id %))) items))))))
           {:items (mapv #(array-map :id %) (range 10))}
           [{:items [(pco/? :name)]}]
-          {::pcr/processor-error? true})
+          {:ex/message (m/regex #".*Batch error on resolver batch-thing at path \[:items]: Error in batch call")
+           :ex/data    {::pcr/batch-error? true}})
 
         (testing "allows the partial results to flow up in lenient mode"
           (check-all-runners

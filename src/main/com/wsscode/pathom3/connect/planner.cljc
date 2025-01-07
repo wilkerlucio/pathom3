@@ -34,6 +34,10 @@
   "The graph container, requires nodes."
   (s/keys :req [::nodes]))
 
+(>def ::graph-fn
+  "A function that returns a graph, used to hide the graph from long error messages"
+  any?)
+
 (>def ::available-data
   "An shape descriptor declaring which data is already available when the planner starts."
   (? ::pfsd/shape-descriptor))
@@ -204,7 +208,8 @@
 ; endregion
 
 (declare add-snapshot! compute-run-graph compute-run-graph* compute-attribute-graph
-         optimize-graph optimize-node remove-node-expects-index-attrs find-leaf-node)
+         optimize-graph optimize-node remove-node-expects-index-attrs find-leaf-node
+         expects-from-node-chains)
 
 ; region node helpers
 
@@ -574,20 +579,11 @@
         op-name
         (update-in [::index-resolver->nodes op-name] coll/sconj node-id))))
 
-(defn create-and [graph env node-ids]
-  (if (= 1 (count node-ids))
-    (get-node graph (first node-ids))
-    (let [{and-node-id ::node-id
-           :as         and-node} (new-node env {})]
-      (-> graph
-          (include-node and-node)
-          (add-node-branches and-node-id ::run-and node-ids)))))
-
 (defn create-root-and [graph env node-ids]
   (if (= 1 (count node-ids))
     (set-root-node graph (first node-ids))
     (let [{and-node-id ::node-id
-           :as         and-node} (new-node env {})]
+           :as         and-node} (new-node env {::expects (expects-from-node-chains graph node-ids)})]
       (-> graph
           (include-node and-node)
           (add-node-branches and-node-id ::run-and node-ids)
@@ -798,9 +794,6 @@
             (::run-next node)
             (move-run-next-to-edge target-node-id (::run-next node)))
           (transfer-node-parents target-node-id node-id)
-          (cond->
-            (= ::run-and branch-type)
-            (update-node target-node-id nil combine-expects node))
           (remove-node-edges node-id)
           (remove-node node-id)
           (add-snapshot! env {::snapshot-message "Simplification done"
@@ -940,7 +933,7 @@
 ; region node traversal
 
 (>defn find-direct-node-successors
-  "Direct successors of node, branch nodes and run-next, in case of branch nodes the
+  "Direct successors of node, branch nodes, and run-next, in case of branch nodes the
   branches will always come before the run-next."
   [{::keys [run-next] :as node}]
   [::node => (s/coll-of ::node-id)]
@@ -969,7 +962,7 @@
 
 (>defn node-successors
   "Find successor nodes of node-id, node-id is included in the list. This will add
-  branch nodes before run-next nodes. Returns a lazy sequence that traverse the graph
+  branch nodes before run-next nodes. Returns a lazy sequence that traverses the graph
   as items are requested."
   [graph node-id]
   [::graph ::node-id => (s/coll-of ::node-id)]
@@ -1012,6 +1005,20 @@
           (recur (conj! nodes node-id) (pop queue))
           (recur nodes (into (pop queue) (node-branches node)))))
       (persistent! nodes))))
+
+(defn expects-from-node-chain [graph node-id]
+  (transduce
+    (keep ::expects)
+    (completing pfsd/merge-shapes)
+    {}
+    (find-run-next-descendants graph (get-node graph node-id))))
+
+(defn expects-from-node-chains [graph node-ids]
+  (transduce
+    (map #(expects-from-node-chain graph %))
+    (completing pfsd/merge-shapes)
+    {}
+    node-ids))
 
 ; endregion
 
@@ -1352,13 +1359,12 @@
         (let [[graph' extended?] (extend-available-attribute-nested graph env attr shape)]
           (if extended?
             [graph' node-map]
-            (reduced [graph' nil])))
+            [graph' nil]))
 
         (let [graph' (compute-attribute-dependency-graph graph env attr shape)]
           (if-let [root (::root graph')]
-            [graph'
-             (assoc node-map attr root)]
-            (reduced [(merge-unreachable graph graph') nil])))))
+            [graph' (if node-map (assoc node-map attr root))]
+            [(merge-unreachable graph graph') nil]))))
     [graph {}]
     missing))
 
@@ -1394,7 +1400,7 @@
 (defn compute-missing-chain
   "Start a recursive call to process the dependencies required by the resolver."
   [graph env missing missing-optionals]
-  (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (::p.attr/attribute env) " dependencies: " (pr-str missing))})
+  (let [_ (add-snapshot! graph env {::snapshot-message (str "Computing " (::p.attr/attribute env) " inputs: " (pr-str missing))})
         [graph' node-map] (compute-missing-chain-deps graph env missing)]
     (if (some? node-map)
       ;; add new optional nodes (and maybe nested processes)
@@ -1418,7 +1424,7 @@
           (dissoc ::root)
           (merge-unreachable graph')
           (add-snapshot! env {::snapshot-event   ::compute-missing-failed
-                              ::snapshot-message (str "Failed to compute dependencies " (pr-str missing))})))))
+                              ::snapshot-message (str "Failed to compute inputs " (pr-str missing))})))))
 
 (defn compute-input-resolvers-graph
   "This function computes the graph for a given `process path`. It creates the resolver
@@ -1697,6 +1703,35 @@
   (update source-ast :children
     #(into (with-meta [] (meta %)) keep-required-transducer %)))
 
+(defn unreachable-attr-cause [{::pci/keys [index-oir]} graph attr]
+  (if-let [paths (get index-oir attr)]
+    (let [unreachable-paths (::unreachable-paths graph)]
+      {::unreachable-cause          ::unreachable-cause-missing-inputs
+       ::unreachable-missing-inputs (into {}
+                                          (map (fn [[k v]]
+                                                 [(pfsd/intersection unreachable-paths k) v]))
+                                          paths)})
+    {::unreachable-cause ::unreachable-cause-unknown-attribute}))
+
+(defn unreachable-details [env graph missing]
+  (into {} (map (fn [[k]] [k (unreachable-attr-cause env graph k)])) missing))
+
+(defn unreachable-attr-str [attr]
+  (str "  - Can't reach attribute " attr))
+
+(defn unreachable-attr-inputs [inputs]
+  (str/join "\n" (map unreachable-attr-str (keys (key inputs)))))
+
+(defn unreachable-detail-string [_env attr cause]
+  (case (::unreachable-cause cause)
+    ::unreachable-cause-missing-inputs
+    (str "- Attribute " attr " inputs can't be met, details:\n"
+         (str/join "\n  OR\n"
+                   (map unreachable-attr-inputs (::unreachable-missing-inputs cause))))
+
+    ::unreachable-cause-unknown-attribute
+    (str "- Attribute " attr " is unknown, there is not any resolver that outputs it.")))
+
 (defn verify-plan!*
   [env
    {::keys [unreachable-paths]
@@ -1705,15 +1740,15 @@
     (let [user-required (pfsd/ast->shape-descriptor (required-ast-from-index-ast graph))
           missing       (pfsd/intersection unreachable-paths user-required)]
       (if (seq missing)
-        (let [path (get env ::p.path/path)]
-          (throw
+        (throw
+          (let [details (unreachable-details env graph missing)]
             (ex-info
-              (cond-> (str "Pathom can't find a path for the following elements in the query: " (pr-str (pfsd/shape-descriptor->query missing)))
-                (seq path)
-                (str " at path " (pr-str path)))
-              {::graph                          graph
+              (str "Pathom can't find a path for the following elements in the query" (p.path/at-path-string env) ":\n"
+                   (str/join "\n" (map #(unreachable-detail-string env (key %) (val %)) details)))
+              {::graph-fn                       (fn [] graph)
                ::unreachable-paths              missing
-               ::p.path/path                    path
+               ::unreachable-details            details
+               ::p.path/path                    (get env ::p.path/path)
                :com.wsscode.pathom3.error/phase ::plan
                :com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable})))
         graph))

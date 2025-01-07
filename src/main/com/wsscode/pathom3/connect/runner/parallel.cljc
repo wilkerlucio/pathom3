@@ -230,15 +230,17 @@
                              (pcra/invoke-async-maybe-split-batches max-size resolver batch-env batch-op input-groups inputs))
                            (p/catch (fn [e]
                                       (try
-                                        (pcr/mark-batch-errors e env batch-op batch-items)
-                                        (catch #?(:clj Throwable :cljs :default) _ nil))
-                                      {::pcr/node-error e})))
+                                        (pcr/mark-batch-errors e batch-env batch-op batch-items)
+                                        {::pcr/node-error e}
+                                        (catch #?(:clj Throwable :cljs :default) e {::pcr/node-error e})))))
           finish       (time/now-ms)]
 
     (if-let [err (::pcr/node-error responses)]
-      (doseq [{::keys [batch-response-promise]}
-              (into [] cat (vals input-groups))]
-        (p/reject! batch-response-promise err))
+      (do
+        (doseq [{::keys [batch-response-promise]}
+                (into [] cat (vals input-groups))]
+          (p/reject! batch-response-promise err))
+        err)
 
       (do
         (if (not= (count inputs) (count responses))
@@ -312,8 +314,10 @@
         resolver-cache* (get env cache-store)]
     (pcr/merge-node-stats! env node
       {::pcr/resolver-run-start-ms (time/now-ms)})
-    (p/let [response (-> (if (pfsd/missing-from-data entity input)
-                           ::pcr/node-error
+    (p/let [response (-> (if-let [missing (pfsd/missing-from-data entity input)]
+                           (do
+                             (pcr/merge-node-stats! env node {::pcr/node-missing-required-inputs missing})
+                             ::pcr/node-error)
                            (cond
                              batch?
                              (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
@@ -407,7 +411,7 @@
         (::pcr/batch-hold res)
         res
 
-        (and (::pcr/or-option-error res)
+        (and (seq (::pcr/or-option-error res))
              (not (pcr/or-expected-optional? env or-node)))
         (pcr/handle-or-error env or-node res)
 
@@ -571,7 +575,7 @@
           (run-graph-entity-done env)
           env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (pcr/processor-exception env e))))))
+        (throw e)))))
 
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]

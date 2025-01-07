@@ -223,10 +223,12 @@
         resolver-cache* (get env cache-store)
         _               (pcr/merge-node-stats! env node
                           {::pcr/resolver-run-start-ms (time/now-ms)})
-        batch-check     (pcr/wait-batch-check env node entity input input+opts)
+        missing-check   (try
+                          (pcr/input-missing-check env node entity input input+opts)
+                          (catch #?(:clj Throwable :cljs :default) e (p/rejected e)))
         response        (-> (cond
-                              batch-check
-                              batch-check
+                              missing-check
+                              missing-check
 
                               batch?
                               (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
@@ -327,7 +329,7 @@
         (::pcr/batch-hold res)
         res
 
-        (and (::pcr/or-option-error res)
+        (and (seq (::pcr/or-option-error res))
              (not (pcr/or-expected-optional? env or-node)))
         (pcr/handle-or-error env or-node res)
 
@@ -508,7 +510,7 @@
           (run-graph-entity-done env)
           env))
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (pcr/processor-exception env e))))))
+        (throw e)))))
 
 (defn invoke-batch-block [resolver batch-env batch-op input-groups inputs]
   (if (::p.error/lenient-mode? batch-env)
@@ -551,8 +553,7 @@
                 responses    (-> (p/do!
                                    (invoke-async-maybe-split-batches max-size resolver batch-env batch-op input-groups inputs))
                                  (p/catch (fn [e]
-                                            (pcr/fail-fast env e)
-                                            (pcr/mark-batch-errors e env batch-op batch-items))))
+                                            (pcr/mark-batch-errors e batch-env batch-op batch-items))))
                 finish       (time/now-ms)]
 
           (if (refs/kw-identical? ::pcr/node-error responses)
@@ -633,7 +634,7 @@
             (pcr/include-meta-stats env)))
 
       (catch #?(:clj Throwable :cljs :default) e
-        (throw (pcr/processor-exception env e))))))
+        (throw e)))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST

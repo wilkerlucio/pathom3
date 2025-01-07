@@ -4,7 +4,7 @@
  :deps
  {com.fulcrologic/guardrails {:mvn/version "1.1.11"}
   org.clojure/core.async     {:mvn/version "1.3.610"}
-  com.wsscode/cljc-misc      {:mvn/version "2022.03.07"}
+  com.wsscode/cljc-misc      {:mvn/version "2024.12.18"}
   com.wsscode/log            {:git/url "https://github.com/wilkerlucio/log"
                               :sha     "325675d8d2871e74e789e836713ea769139e9c61"}
   funcool/promesa            {:mvn/version "8.0.450"}

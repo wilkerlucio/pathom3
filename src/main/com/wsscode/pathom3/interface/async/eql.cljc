@@ -27,9 +27,13 @@
 (>defn process-ast
   [env ast]
   [::pcra/env :edn-query-language.ast/node => p/promise?]
-  (p/let [env env]
-    (p.plugin/run-with-plugins env ::p.eql/wrap-process-ast
-      process-ast* env ast)))
+  (let [source-entity (or (p.ent/entity env) {})]
+    (-> (p/let [env env]
+          (p.plugin/run-with-plugins env ::p.eql/wrap-process-ast
+            process-ast* env ast))
+        (p/catch
+          (fn [e]
+            (throw (p.eql/process-error env ast source-entity e)))))))
 
 (>defn process
   "Evaluate EQL expression using async runner.

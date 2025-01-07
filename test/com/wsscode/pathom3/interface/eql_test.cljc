@@ -8,6 +8,7 @@
     [com.wsscode.pathom3.entity-tree :as p.ent]
     [com.wsscode.pathom3.interface.eql :as p.eql]
     [com.wsscode.pathom3.test.geometry-resolvers :as geo]
+    [com.wsscode.pathom3.test.helpers :as h]
     [edn-query-language.core :as eql]))
 
 (pco/defresolver coords []
@@ -94,6 +95,65 @@
                           [{::coords [:right]}])
            {::coords #{{:right 35} {:right 25}}}))))
 
+(deftest process-error-test
+  (check
+    (h/catch-exception
+      (p.eql/process
+        (pci/register
+          (pco/resolver 'a
+            {::pco/output [:a]}
+            (fn [_ _] {})))
+        [:a]))
+    => {:ex/message "Error while processing request [:a] for entity {}"
+        :ex/data    {:entity {}
+                     :tx     [:a]}})
+
+  (testing "caps request on ex message"
+    (check
+      (h/catch-exception
+        (p.eql/process
+          (pci/register
+            (pco/resolver 'a
+              {::pco/output [:a]}
+              (fn [_ _] {})))
+          [:having-a-query {:that-goes [:long]} :in-fact {:very [:long]}]))
+      => {:ex/message "Error while processing request [:having-a-query {:that-goes [:long]}... for entity {}"
+          :ex/data    {:entity {}
+                       :tx     [:having-a-query {:that-goes [:long]} :in-fact {:very [:long]}]}}))
+
+  (testing "caps entity on ex message"
+    (check
+      (h/catch-exception
+        (p.eql/process
+          (pci/register
+            (pco/resolver 'a
+              {::pco/output [:a]}
+              (fn [_ _] {})))
+          {:some "Lorem Ipsum is simply dummy text of the printing and typesetting"}
+          [:a]))
+      => {:ex/message "Error while processing request [:a] for entity {:some \"Lorem Ipsum is simply dummy t...",
+          :ex/data    {:entity {:some "Lorem Ipsum is simply dummy text of the printing and typesetting"}
+                       :tx     [:a]}}))
+
+  (testing "ex data entity contains accumulated data while ex message shows the input entity"
+    (check
+      (h/catch-exception
+        (p.eql/process
+          (pci/register
+            [(pco/resolver 'b
+               {::pco/input  [:a]
+                ::pco/output [:b]}
+               (fn [_ _] {:b 2}))
+             (pco/resolver 'c
+               {::pco/input  [:b]
+                ::pco/output [:c]}
+               (fn [_ _] {}))])
+          {:a 1}
+          [:c]))
+      => {:ex/message "Error while processing request [:c] for entity {:a 1}"
+          :ex/data    {:entity {:a 1 :b 2}
+                       :tx     [:c]}})))
+
 (deftest process-one-test
   (is (= (p.eql/process-one (pci/register registry) {:left 10 :right 30} :width)
          20))
@@ -178,149 +238,6 @@
     (testing "modify env"
       (is (= (fi #(pci/register % (pbir/constantly-resolver :new "value")) [:new])
              {:new "value"})))
-
-    (testing "error reporting"
-      (check (=>
-               {:com.wsscode.pathom3.error/error-data        {:error/code :err}
-                :com.wsscode.pathom3.error/error-message     "Resolver error exception: Err",
-                :com.wsscode.pathom3.error/error-stack       #"Resolver error exception"
-                :com.wsscode.pathom3.connect.planner/graph   {:com.wsscode.pathom3.connect.planner/source-ast                {:type     :root,
-                                                                                                                              :children [{:type         :prop,
-                                                                                                                                          :dispatch-key :error,
-                                                                                                                                          :key          :error}]},
-                                                              :com.wsscode.pathom3.connect.planner/index-attrs               {:error #{1}},
-                                                              :com.wsscode.pathom3.connect.runner/compute-plan-run-finish-ms number?,
-                                                              :com.wsscode.pathom3.connect.runner/graph-run-finish-ms        number?,
-                                                              :com.wsscode.pathom3.connect.runner/compute-plan-run-start-ms  number?,
-                                                              :com.wsscode.pathom3.connect.planner/root                      1,
-                                                              :com.wsscode.pathom3.connect.planner/available-data            {},
-                                                              :com.wsscode.pathom3.connect.runner/node-run-stats             {1 {:com.wsscode.pathom3.connect.runner/node-run-start-ms     number?,
-                                                                                                                                 :com.wsscode.pathom3.connect.runner/resolver-run-start-ms number?}},
-                                                              :com.wsscode.pathom3.connect.planner/index-ast                 {:error {:type         :prop,
-                                                                                                                                      :dispatch-key :error,
-                                                                                                                                      :key          :error}},
-                                                              :com.wsscode.pathom3.connect.runner/graph-run-start-ms         number?,
-                                                              :com.wsscode.pathom3.connect.planner/index-resolver->nodes     {'error #{1}},
-                                                              :com.wsscode.pathom3.connect.planner/nodes                     {1 {:com.wsscode.pathom3.connect.operation/op-name 'error,
-                                                                                                                                 :com.wsscode.pathom3.connect.planner/expects   {:error {}},
-                                                                                                                                 :com.wsscode.pathom3.connect.planner/input     {},
-                                                                                                                                 :com.wsscode.pathom3.connect.planner/node-id   1}}},
-                :com.wsscode.pathom3.entity-tree/entity-tree {},
-                :com.wsscode.pathom3.path/path               []}
-               (run-boundary-interface
-                 (pci/register
-                   (pco/resolver 'error
-                     {::pco/output [:error]}
-                     (fn [_ _]
-                       (throw (ex-info "Err" {:error/code :err})))))
-                 {:pathom/eql [:error]})))
-
-      (testing "partial success"
-        (check (=>
-                 {:com.wsscode.pathom3.error/error-data        {:error/code :err}
-                  :com.wsscode.pathom3.error/error-message     "Resolver error exception: Err",
-                  :com.wsscode.pathom3.error/error-stack       #"Resolver error exception"
-                  :com.wsscode.pathom3.connect.planner/graph   {:com.wsscode.pathom3.connect.planner/source-ast                {:type     :root,
-                                                                                                                                :children [{:type         :prop,
-                                                                                                                                            :dispatch-key :error,
-                                                                                                                                            :key          :error}]},
-                                                                :com.wsscode.pathom3.connect.planner/index-attrs               {:error #{1},
-                                                                                                                                :input #{2}},
-                                                                :com.wsscode.pathom3.connect.runner/compute-plan-run-finish-ms number?,
-                                                                :com.wsscode.pathom3.connect.runner/graph-run-finish-ms        number?,
-                                                                :com.wsscode.pathom3.connect.runner/compute-plan-run-start-ms  number?,
-                                                                :com.wsscode.pathom3.connect.planner/root                      2,
-                                                                :com.wsscode.pathom3.connect.planner/available-data            {},
-                                                                :com.wsscode.pathom3.connect.runner/node-run-stats             {2 {:com.wsscode.pathom3.connect.runner/node-run-start-ms      number?,
-                                                                                                                                   :com.wsscode.pathom3.connect.runner/resolver-run-start-ms  number?,
-                                                                                                                                   :com.wsscode.pathom3.connect.runner/resolver-run-finish-ms number?,
-                                                                                                                                   :com.wsscode.pathom3.connect.runner/node-resolver-input    {},
-                                                                                                                                   :com.wsscode.pathom3.connect.runner/node-resolver-output   {:input "in"},
-                                                                                                                                   :com.wsscode.pathom3.connect.runner/node-done?             true,
-                                                                                                                                   :com.wsscode.pathom3.connect.runner/node-run-finish-ms     number?},
-                                                                                                                                1 {:com.wsscode.pathom3.connect.runner/node-run-start-ms     number?,
-                                                                                                                                   :com.wsscode.pathom3.connect.runner/resolver-run-start-ms number?}},
-                                                                :com.wsscode.pathom3.connect.planner/index-ast                 {:error {:type         :prop,
-                                                                                                                                        :dispatch-key :error,
-                                                                                                                                        :key          :error}},
-                                                                :com.wsscode.pathom3.connect.runner/graph-run-start-ms         number?,
-                                                                :com.wsscode.pathom3.connect.planner/index-resolver->nodes     {'error                     #{1},
-                                                                                                                                '-unqualified/input--const #{2}},
-                                                                :com.wsscode.pathom3.connect.planner/nodes                     {1 {:com.wsscode.pathom3.connect.operation/op-name    'error,
-                                                                                                                                   :com.wsscode.pathom3.connect.planner/expects      {:error {}},
-                                                                                                                                   :com.wsscode.pathom3.connect.planner/input        {:input {}},
-                                                                                                                                   :com.wsscode.pathom3.connect.planner/node-id      1,
-                                                                                                                                   :com.wsscode.pathom3.connect.planner/node-parents #{2}},
-                                                                                                                                2 {:com.wsscode.pathom3.connect.operation/op-name '-unqualified/input--const,
-                                                                                                                                   :com.wsscode.pathom3.connect.planner/expects   {:input {}},
-                                                                                                                                   :com.wsscode.pathom3.connect.planner/input     {},
-                                                                                                                                   :com.wsscode.pathom3.connect.planner/node-id   2,
-                                                                                                                                   :com.wsscode.pathom3.connect.planner/run-next  1}}},
-                  :com.wsscode.pathom3.entity-tree/entity-tree {:input "in"},
-                  :com.wsscode.pathom3.path/path               []}
-                 (run-boundary-interface
-                   (pci/register
-                     [(pbir/constantly-resolver :input "in")
-                      (pco/resolver 'error
-                        {::pco/input  [:input]
-                         ::pco/output [:error]}
-                        (fn [_ _]
-                          (throw (ex-info "Err" {:error/code :err}))))])
-                   {:pathom/eql    [:error]
-                    :pathom/entity {}}))))
-
-      (testing "nested error"
-        (check
-          (=> {:com.wsscode.pathom3.connect.planner/graph
-               {:com.wsscode.pathom3.connect.planner/source-ast
-                {:children [{:key :error, :type :prop, :dispatch-key :error}],
-                 :key :foo,
-                 :type :join,
-                 :dispatch-key :foo,
-                 :query [:error]},
-                :com.wsscode.pathom3.connect.planner/index-attrs {:error #{1}},
-                :com.wsscode.pathom3.connect.runner/compute-plan-run-finish-ms
-                number?,
-                :com.wsscode.pathom3.connect.runner/graph-run-finish-ms
-                number?,
-                :com.wsscode.pathom3.connect.runner/compute-plan-run-start-ms
-                number?,
-                :com.wsscode.pathom3.connect.planner/root 1,
-                :com.wsscode.pathom3.connect.planner/available-data {:x {}},
-                :com.wsscode.pathom3.connect.runner/node-run-stats
-                {1
-                 {:com.wsscode.pathom3.connect.runner/node-run-start-ms
-                  number?,
-                  :com.wsscode.pathom3.connect.runner/resolver-run-start-ms
-                  number?}},
-                :com.wsscode.pathom3.connect.planner/index-ast
-                {:error {:key :error, :type :prop, :dispatch-key :error}},
-                :com.wsscode.pathom3.connect.runner/graph-run-start-ms
-                number?,
-                :com.wsscode.pathom3.connect.planner/index-resolver->nodes
-                {'error #{1}},
-                :com.wsscode.pathom3.connect.planner/nodes
-                {1
-                 {:com.wsscode.pathom3.connect.operation/op-name 'error,
-                  :com.wsscode.pathom3.connect.planner/expects   {:error {}},
-                  :com.wsscode.pathom3.connect.planner/input     {},
-                  :com.wsscode.pathom3.connect.planner/node-id   1}}},
-               :com.wsscode.pathom3.path/path               [:foo],
-               :com.wsscode.pathom3.error/error-data
-               {:error/code :err}
-               :com.wsscode.pathom3.error/error-message
-               "Resolver error exception at path [:foo]: Err",
-               :com.wsscode.pathom3.error/error-stack
-               #"Resolver error exception"
-               :com.wsscode.pathom3.entity-tree/entity-tree {:x 10}}
-              (run-boundary-interface
-                (pci/register
-                  [(pco/resolver 'error
-                     {::pco/output [:error]}
-                     (fn [_ _]
-                       (throw (ex-info "Err" {:error/code :err}))))])
-                {:pathom/eql    [{:foo [:error]}]
-                 :pathom/entity {:foo {:x 10}}})))))
 
     (testing "lenient mode"
       (is (= (fi {:pathom/eql           [:invalid]

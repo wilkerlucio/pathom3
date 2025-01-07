@@ -1,5 +1,18 @@
 # Changelog
 
+## [NEXT]
+- Add `p.path/at-path-string` helper
+- BREAKING: Error from plan now envelops the graph value to avoid printing too much. You need to deref the value to get it now.
+- BREAKING: Removed usage of `processor-error`, now the runner will not wrap the errors, this will generate simpler errors.
+- Expose query and entity on errors during eql interface calls
+- Expose planner failure details on error message
+- Much richer error details for when some user required attribute is missing
+- Track `::pcp/expects` on AND nodes, it includes all expects from the node chain
+- BREAKING: removed `p->` and `p->>` helpers from `com.wsscode.promesa.macros`. These were old macros and currently Promesa has them in the library.
+- Bump `com.wsscode/cljc-misc` to `2024.12.18`
+- Expose missing attributes during planner error
+- During planning, while computing dependencies, removed short-circuit to allow the planner to have complete information about unreachable attributes
+
 ## [2024.11.23-alpha]
 - Fix placeholders using different parameters
 - Idents run in parallel when using parallel processor (issue #208)
