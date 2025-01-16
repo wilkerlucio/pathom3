@@ -1,8 +1,8 @@
 # Changelog
 
-## [2025.01.06-alpha]
+## [2025.01.16-alpha]
 - Add `p.path/at-path-string` helper
-- BREAKING: Error from plan now envelops the graph value to avoid printing too much. You need to deref the value to get it now.
+- BREAKING: Error from plan now envelops the graph value to avoid printing too much. You need to call the `:graph-fn` key to get the value now.
 - BREAKING: Removed usage of `processor-error`, now the runner will not wrap the errors, this will generate simpler errors.
 - Expose query and entity on errors during eql interface calls
 - Expose planner failure details on error message
