@@ -1120,7 +1120,7 @@
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
-    (vreset! batches* {})
+    (refs/greset! batches* {})
     (doseq [[{batch-op ::pco/op-name} batch-items] batches]
       (let [resolver     (pci/resolver env batch-op)
             input-groups (batch-group-input-groups batch-items)
@@ -1180,7 +1180,7 @@
 (defn run-batches-waiting! [env]
   (let [waits* (-> env ::batch-waiting*)
         waits  (sort-waiting-by-depth @waits*)]
-    (vreset! waits* [])
+    (refs/greset! waits* [])
     (doseq [{env' ::env} waits]
       (p.ent/reset-entity! env' (get-in (p.ent/entity env) (::p.path/path env')))
 
