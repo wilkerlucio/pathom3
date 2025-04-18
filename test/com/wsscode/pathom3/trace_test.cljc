@@ -217,33 +217,34 @@
                       ::p.trace/start-time 1}}))))
 
 (deftest trace->tree-test
-  (with-redefs [time/now-ms (fn [] 123)
-                gensym      (fn [_] 'span-id)]
-    (testing "blank example"
-      (is (= (p.trace/trace->tree [])
-             '{::p.trace/span-children ()})))
+  (let [n (atom 0)]
+    (with-redefs [time/now-ms (fn [] (swap! n inc))
+                  gensym      (fn [_] 'span-id)]
+      (testing "blank example"
+        (is (= (p.trace/trace->tree [])
+               '{::p.trace/span-children ()})))
 
-    (testing "properly group children, making the tree"
-      (let [trace (atom [])]
-        (p.trace/with-span! [env {::p.trace/env {::p.trace/trace* trace}}]
-          (p.trace/with-span! [_ {::p.trace/env env ::p.trace/span-type :c1 ::p.trace/span-id 'c1}] (+ 1 2))
-          (p.trace/with-span! [_ {::p.trace/env env ::p.trace/span-type :c2 ::p.trace/span-id 'c2}] (+ 1 2)))
-        (is (= (p.trace/trace->tree @trace)
-               '{::p.trace/span-children ({::p.trace/attributes    {:com.wsscode.pathom3.path/path []}
-                                           ::p.trace/end-time      123
-                                           ::p.trace/span-children ({::p.trace/attributes     {:com.wsscode.pathom3.path/path []}
-                                                                     ::p.trace/end-time       123
-                                                                     ::p.trace/parent-span-id span-id
-                                                                     ::p.trace/span-children  ()
-                                                                     ::p.trace/span-id        c2
-                                                                     ::p.trace/span-type      :c2
-                                                                     ::p.trace/start-time     123}
-                                                                    {::p.trace/attributes     {:com.wsscode.pathom3.path/path []}
-                                                                     ::p.trace/end-time       123
-                                                                     ::p.trace/parent-span-id span-id
-                                                                     ::p.trace/span-children  ()
-                                                                     ::p.trace/span-id        c1
-                                                                     ::p.trace/span-type      :c1
-                                                                     ::p.trace/start-time     123})
-                                           ::p.trace/span-id       span-id
-                                           ::p.trace/start-time    123})}))))))
+      (testing "properly group children, making the tree"
+        (let [trace (atom [])]
+          (p.trace/with-span! [env {::p.trace/env {::p.trace/trace* trace}}]
+            (p.trace/with-span! [_ {::p.trace/env env ::p.trace/span-type :c1 ::p.trace/span-id 'c1}] (+ 1 2))
+            (p.trace/with-span! [_ {::p.trace/env env ::p.trace/span-type :c2 ::p.trace/span-id 'c2}] (+ 1 2)))
+          (is (= (p.trace/trace->tree @trace)
+                 '{:com.wsscode.pathom3.trace/span-children ({:com.wsscode.pathom3.trace/attributes    {:com.wsscode.pathom3.path/path []}
+                                                              :com.wsscode.pathom3.trace/end-time      6
+                                                              :com.wsscode.pathom3.trace/span-children ({:com.wsscode.pathom3.trace/attributes     {:com.wsscode.pathom3.path/path []}
+                                                                                                         :com.wsscode.pathom3.trace/end-time       3
+                                                                                                         :com.wsscode.pathom3.trace/parent-span-id span-id
+                                                                                                         :com.wsscode.pathom3.trace/span-children  ()
+                                                                                                         :com.wsscode.pathom3.trace/span-id        c1
+                                                                                                         :com.wsscode.pathom3.trace/span-type      :c1
+                                                                                                         :com.wsscode.pathom3.trace/start-time     2}
+                                                                                                        {:com.wsscode.pathom3.trace/attributes     {:com.wsscode.pathom3.path/path []}
+                                                                                                         :com.wsscode.pathom3.trace/end-time       5
+                                                                                                         :com.wsscode.pathom3.trace/parent-span-id span-id
+                                                                                                         :com.wsscode.pathom3.trace/span-children  ()
+                                                                                                         :com.wsscode.pathom3.trace/span-id        c2
+                                                                                                         :com.wsscode.pathom3.trace/span-type      :c2
+                                                                                                         :com.wsscode.pathom3.trace/start-time     4})
+                                                              :com.wsscode.pathom3.trace/span-id       span-id
+                                                              :com.wsscode.pathom3.trace/start-time    1})})))))))

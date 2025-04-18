@@ -5,8 +5,7 @@
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.misc.time :as time]
-    [com.wsscode.pathom3.path :as p.path]
-    [com.wsscode.promesa.macros :refer [clet]]))
+    [com.wsscode.pathom3.path :as p.path]))
 
 (>def ::span-id symbol?)
 (>def ::span-type "Type of a span" qualified-keyword?)
@@ -160,37 +159,12 @@
     (update span ::span-children
       (fn [children]
         (->> (mapv #(trace->tree* normalized %) children)
-             (sort-by ::timestamp))))))
+             (sort-by ::start-time))))))
 
 (defn trace->tree
   "Convert the trace events into a trace tree."
   [trace]
   (trace->tree* (normalize-trace trace) nil))
-
-(defn wrap-parser-trace [wrap-root-run-graph]
-  (fn wrap-parser-trace-internal [env ast-or-graph entity]
-    (let [ast (or (:edn-query-language.ast/node ast-or-graph)
-                  ast-or-graph)]
-      (if (some #(-> % :key (= ::trace)) (:children ast))
-        (let [trace* (or (::trace* env) (atom []))
-              env'   (assoc env ::trace* trace*)]
-          (clet [res (wrap-root-run-graph env' ast-or-graph entity)]
-            (add-signal! env' {::span-type ::trace-done})
-            #_(assoc res ::trace (trace->viz @trace*))
-            res))
-        (wrap-root-run-graph env ast-or-graph entity)))))
-
-(def trace-plugin
-  {:com.wsscode.pathom3.plugin/id
-   `trace-plugin
-
-   :com.wsscode.pathom3.connect.runner/wrap-root-run-graph!
-   wrap-parser-trace
-
-   :com.wsscode.pathom.connect/register
-   [{:com.wsscode.pathom.connect/sym     `add-signal!
-     :com.wsscode.pathom.connect/output  [:com.wsscode.pathom/trace]
-     :com.wsscode.pathom.connect/resolve (fn [_env _] {:com.wsscode.pathom/trace nil})}]})
 
 (defn live-trace!
   "Helper to react to trace changes and immediately print them
