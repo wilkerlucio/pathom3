@@ -4,73 +4,7 @@
     [com.wsscode.misc.time :as time]
     [com.wsscode.pathom3.trace :as p.trace]))
 
-(def example-trace
-  '[{::p.trace/span-type
-     :com.wsscode.pathom3.interface.eql/process-eql-request,
-     ::p.trace/direction
-     ::p.trace/direction-enter,
-     ::p.trace/span-id   pathom-trace-24742,
-     ::p.trace/timestamp 1703036073.860333}
-    {::p.trace/span-type
-     :com.wsscode.pathom3.interface.eql/process-query->ast,
-     ::p.trace/direction
-     ::p.trace/direction-enter,
-     ::p.trace/span-id        pathom-trace-24743,
-     ::p.trace/timestamp      1703036073.87175,
-     ::p.trace/parent-span-id pathom-trace-24742}
-    {::p.trace/span-type
-     :com.wsscode.pathom3.interface.eql/process-query->ast,
-     ::p.trace/direction
-     ::p.trace/direction-leave,
-     ::p.trace/span-id        pathom-trace-24743,
-     ::p.trace/timestamp      1703036073.891166,
-     ::p.trace/parent-span-id pathom-trace-24742}
-    {::p.trace/span-type
-     :com.wsscode.pathom3.interface.eql/process-request,
-     ::p.trace/direction
-     ::p.trace/direction-enter,
-     ::p.trace/span-id        pathom-trace-24744,
-     ::p.trace/timestamp      1703036073.896958,
-     ::p.trace/parent-span-id pathom-trace-24742}
-    {::p.trace/span-type
-     :com.wsscode.pathom3.connect.runner/process-entity,
-     ::p.trace/direction
-     ::p.trace/direction-enter,
-     ::p.trace/span-id        pathom-trace-24745,
-     ::p.trace/timestamp      1703036073.909833,
-     ::p.trace/parent-span-id pathom-trace-24744}
-    {::p.trace/span-type
-     :com.wsscode.pathom3.connect.planner/compute-plan,
-     ::p.trace/attributes
-     {:com.wsscode.pathom3.connect.planner/cached? false},
-     ::p.trace/mode
-     ::p.trace/mode-internal,
-     ::p.trace/direction
-     ::p.trace/direction-enter,
-     ::p.trace/span-id        pathom-trace-24746,
-     ::p.trace/timestamp      1703036073.970291,
-     ::p.trace/parent-span-id pathom-trace-24745}
-    {::p.trace/direction
-     ::p.trace/direction-leave,
-     ::p.trace/span-id        pathom-trace-24746,
-     ::p.trace/timestamp      1703036074.183583,
-     ::p.trace/parent-span-id pathom-trace-24745}
-    {::p.trace/direction
-     ::p.trace/direction-leave,
-     ::p.trace/span-id        pathom-trace-24745,
-     ::p.trace/timestamp      1703036074.348375,
-     ::p.trace/parent-span-id pathom-trace-24744}
-    {::p.trace/direction
-     ::p.trace/direction-leave,
-     ::p.trace/span-id        pathom-trace-24744,
-     ::p.trace/timestamp      1703036074.399958,
-     ::p.trace/parent-span-id pathom-trace-24742}
-    {::p.trace/direction
-     ::p.trace/direction-leave,
-     ::p.trace/span-id   pathom-trace-24742,
-     ::p.trace/timestamp 1703036074.402083}])
-
-(deftest trace-test
+(deftest add-signal!-test
   (with-redefs [time/now-ms (fn [] 123)
                 gensym      (fn [_] 'span-id)]
     (testing "does nothing when there is no trace on env"
@@ -143,7 +77,7 @@
                   ::p.trace/signal-type ::p.trace/signal-close-span
                   ::p.trace/span-id     new-sym}]))))))
 
-(deftest span-fields-test
+(deftest set-attributes!-test
   (with-redefs [time/now-ms (fn [] 123)]
     (testing "add a new trace record to finish the span"
       (let [trace (atom [])]
@@ -160,6 +94,25 @@
                  '[{::p.trace/attributes  {:com.wsscode.pathom3.trace-test/label "With label"}
                     ::p.trace/signal-type ::p.trace/signal-attributes
                     ::p.trace/span-id     span-id}])))))))
+
+(deftest log-event!-test
+  (with-redefs [time/now-ms (fn [] 123)]
+    (let [trace (atom [])]
+      (p.trace/log-event! {::p.trace/trace* trace} 'span-id {::p.trace/log-type ::foo})
+      (is (= @trace
+             '[{:com.wsscode.pathom3.trace/log-type    :com.wsscode.pathom3.trace-test/foo
+                :com.wsscode.pathom3.trace/signal-type :com.wsscode.pathom3.trace/signal-log-event
+                :com.wsscode.pathom3.trace/span-id     span-id
+                :com.wsscode.pathom3.trace/timestamp   123}])))
+
+    (testing "uses span-id from env"
+      (let [trace (atom [])]
+        (p.trace/log-event! {::p.trace/trace* trace ::p.trace/parent-span-id 'parent-id} {::p.trace/log-type ::foo})
+        (is (= @trace
+               '[{:com.wsscode.pathom3.trace/log-type    :com.wsscode.pathom3.trace-test/foo
+                  :com.wsscode.pathom3.trace/signal-type :com.wsscode.pathom3.trace/signal-log-event
+                  :com.wsscode.pathom3.trace/span-id     parent-id
+                  :com.wsscode.pathom3.trace/timestamp   123}]))))))
 
 (deftest with-span!-test
   (with-redefs [time/now-ms (fn [] 123)

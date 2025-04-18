@@ -105,6 +105,7 @@
                      ::attributes  fields})))
 
 (defn log-event!
+  ([env log] (log-event! env (::parent-span-id env) log))
   ([env span-id log]
    (add-signal! env
                 (assoc log
