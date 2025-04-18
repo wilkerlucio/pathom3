@@ -12,6 +12,7 @@
 (>def ::span-type "Type of a span" qualified-keyword?)
 (>def ::log-type "Type of a log event" qualified-keyword?)
 (>def ::parent-span-id ::span-id)
+(>def ::error string?)
 (>def ::timestamp nat-int?)
 (>def ::start-time ::timestamp)
 (>def ::end-time ::timestamp)
