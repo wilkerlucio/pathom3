@@ -3,76 +3,130 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [=> >def >defn]]
     [com.wsscode.misc.coll :as coll]
+    [com.wsscode.misc.refs :as refs]
     [com.wsscode.misc.time :as time]
+    [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.promesa.macros :refer [clet]]))
 
 (>def ::span-id symbol?)
-(>def ::parent-id ::span-id)
-(>def ::event-type keyword?)
-(>def ::direction #{::direction-enter ::direction-leave})
+(>def ::span-type "Type of a span" qualified-keyword?)
+(>def ::log-type "Type of a log event" qualified-keyword?)
+(>def ::parent-span-id ::span-id)
 (>def ::timestamp nat-int?)
-(>def ::duration nat-int?)
-(>def ::fields map?)
-(>def ::event (s/keys :req [::span-id ::event-type] :opt [::timestamp ::fields ::direction]))
+(>def ::start-time ::timestamp)
+(>def ::end-time ::timestamp)
+(>def ::attributes (s/keys))
 
-(>def ::trace (s/coll-of ::event :kind vector?))
-(>def ::trace* "Atom with ::details." any?)
+(>def ::span (s/keys
+               :req [::span-id ::span-type ::start-time]
+               :opt [::end-time ::attributes ::parent-span-id]))
 
-;; special known fields
-(>def ::label string?)
+(>def ::log-event
+  (s/keys :req [::timestamp] :opt [::attributes]))
+
+(>def ::trace (s/coll-of ::signal :kind vector?))
+(>def ::trace* "Atom with ::details." refs/atom?)
+
+; region signal
+
+(>def ::signal-type #{::signal-open-span ::signal-close-span ::signal-log-event ::signal-attributes})
+
+(defmulti signal-type ::signal-type)
+
+(defmethod signal-type ::signal-open-span [_]
+  (s/keys :req [::signal-type ::span-id ::span-type ::start-time]
+          :opt [::parent-span-id]))
+
+(defmethod signal-type ::signal-close-span [_]
+  (s/keys :req [::signal-type ::span-id ::end-time]))
+
+(defmethod signal-type ::signal-log-event [_]
+  (s/keys :req [::signal-type ::span-id ::log-type ::timestamp]))
+
+(defmethod signal-type ::signal-attributes [_]
+  (s/keys :req [::signal-type ::span-id ::attributes]))
+
+(>def ::signal (s/multi-spec signal-type ::signal-type))
+
+; endregion
+
+; region built-in attribute ontology
+
+(>def ::label "A string (usually short) describing the span." string?)
 (>def ::style "Map with CSS styles to apply in the trace bar." map?)
 
-(defmacro span-sym [] `(gensym "pathom3-span-"))
+; endregion
 
-(defn trace [{::keys [trace* parent-id]} event]
+(defn new-span-id [] (gensym "pathom3-span-"))
+
+(>defn add-signal!
+  "Adds a signal to the trace. This is a low-level function, you should use the other functions to add signals to the trace."
+  [{::keys [trace*]} signal]
+  [map? ::signal => ::span-id]
   (when trace*
-    (let [event' (-> event
-                     (assoc ::timestamp (time/now-ms))
-                     (cond->
-                       (not (::span-id event)) (assoc ::span-id (span-sym))
-                       (and parent-id (not (::parent-id event))) (assoc ::parent-id parent-id)))]
-      (swap! trace* conj event')
-      (::span-id event'))))
+    (swap! trace* conj signal)
+    (::span-id signal)))
 
-(defn start-span [env event]
-  (trace env (assoc event ::direction ::direction-enter)))
+(defn open-span!
+  "Opens a new span and adds it to the trace. Returns the span id."
+  [{::keys        [parent-span-id]
+    ::p.path/keys [path]
+    :as           env} span]
+  (add-signal! env
+               (-> span
+                   (assoc ::signal-type ::signal-open-span, ::start-time (time/now-ms))
+                   (assoc-in [::attributes ::p.path/path] (or path []))
+                   (cond->
+                     (not (::span-id span)) (assoc ::span-id (new-span-id))
+                     (and parent-span-id (not (::parent-span-id span))) (assoc ::parent-span-id parent-span-id)))))
 
-(defn finish-span [env span-id]
-  (trace env {::direction ::direction-leave ::span-id span-id})
+(defn close-span!
+  "Closes a span and adds it to the trace."
+  [env span-id]
+  (add-signal! env {::signal-type ::signal-close-span
+                    ::span-id     span-id
+                    ::end-time    (time/now-ms)})
   span-id)
 
-(defn span-fields
+(defn under-span
+  "Returns a new environment setting the context span id."
+  [env span-id]
+  (assoc env ::parent-span-id span-id))
+
+(defn set-attributes!
   "Create a new entry to add/update fields from a span. It will use
-  the ::parent-id from env to find the span, unless the user specifies it."
+  the ::parent-span-id from env to find the span, unless the user specifies it."
   ([env fields]
-   (span-fields env (::parent-id env) fields))
+   (set-attributes! env (::parent-span-id env) fields))
   ([env span-id fields]
    (assert span-id "Can't set fields without an span-id")
-   (trace (dissoc env ::parent-id) {::span-id span-id ::fields fields})))
+   (add-signal! env {::signal-type ::signal-attributes
+                     ::span-id     span-id
+                     ::attributes  fields})))
+
+(defn log-event!
+  ([env span-id log]
+   (add-signal! env
+                (assoc log
+                  ::signal-type ::signal-log-event
+                  ::span-id span-id
+                  ::timestamp (time/now-ms)))))
 
 #?(:clj
-   (defmacro tracing
-     "Track the body with a new span. Use this version when you don't expect children
-     spans. If you have children spans, use `tracing-with-parent`."
-     [env event & body]
-     `(if (get ~env ::trace*)
-        (let [span-id# (start-span ~env ~event)
-              res#     (do ~@body)]
-          (finish-span ~env span-id#)
-          res#)
-        (do ~@body))))
+   (defmacro with-span!
+     "Opens a new span and closes it after the body is executed. The span id is bound to the environment.
 
-(defn tracing-with-parent
-  "Trace the body setting the parent-id. This will help, so the env inside the f
-  will have parent-id set to the newly created span. So any new spans will automatically
-  have the parent-id assigned."
-  [env event f]
-  (if (get env ::trace*)
-    (let [span-id (start-span env event)
-          res     (f (assoc env ::parent-id span-id))]
-      (finish-span env span-id)
-      res)
-    (f env)))
+        (t/with-span! [env {::t/env env}]
+          (do-something))"
+     [[sym span] & body]
+     `(if-let [env# (get ~span ::env)]
+        (let [span#    (dissoc ~span ::env)
+              span-id# (open-span! env# span#)
+              res#     (let [~sym (under-span env# span-id#)]
+                         ~@body)]
+          (close-span! env# span-id#)
+          res#)
+        (throw (ex-info "With span requires environment as part of the data" {})))))
 
 (>defn normalize-trace
   "Normalize the trace, this will accumulate the fields and find the duration of an event.
@@ -82,17 +136,20 @@
   [trace]
   [::trace => any?]
   (reduce
-    (fn [tree {::keys [span-id parent-id direction] :as event}]
-      (cond
-        (= ::direction-enter direction)
-        (-> (assoc tree span-id event)
-            (update-in [parent-id ::span-children] coll/sconj span-id))
+    (fn [tree {::keys [span-id parent-span-id signal-type] :as signal}]
+      (case signal-type
+        ::signal-open-span
+        (-> (assoc tree span-id (dissoc signal ::signal-type))
+            (update-in [parent-span-id ::span-children] coll/sconj span-id))
 
-        (= ::direction-leave direction)
-        (assoc-in tree [span-id ::duration] (- (::timestamp event) (get-in tree [span-id ::timestamp])))
+        ::signal-close-span
+        (assoc-in tree [span-id ::end-time] (::end-time signal))
 
-        :else
-        (update-in tree [span-id ::fields] merge (::fields event))))
+        ::signal-attributes
+        (update-in tree [span-id ::attributes] merge (::attributes signal))
+
+        ::signal-log-event
+        (update-in tree [span-id ::events] coll/vconj signal)))
     {}
     trace))
 
@@ -106,17 +163,7 @@
 (defn trace->tree
   "Convert the trace events into a trace tree."
   [trace]
-  (let [normalized (normalize-trace trace)]
-    (trace->tree* normalized nil)))
-
-(defn live-trace!
-  "Helper to react to trace changes and immediately print them
-  to the output as they come."
-  [trace-atom]
-  (add-watch trace-atom :live
-    (fn [_ _ _ n]
-      (let [evt (peek n)]
-        (print (str (pr-str [(::event-type evt) (dissoc evt ::event-type)]) "\n"))))))
+  (trace->tree* (normalize-trace trace) nil))
 
 (defn wrap-parser-trace [wrap-root-run-graph]
   (fn wrap-parser-trace-internal [env ast-or-graph entity]
@@ -126,7 +173,7 @@
         (let [trace* (or (::trace* env) (atom []))
               env'   (assoc env ::trace* trace*)]
           (clet [res (wrap-root-run-graph env' ast-or-graph entity)]
-            (trace env' {::event-type ::trace-done})
+            (add-signal! env' {::span-type ::trace-done})
             #_(assoc res ::trace (trace->viz @trace*))
             res))
         (wrap-root-run-graph env ast-or-graph entity)))))
@@ -139,6 +186,15 @@
    wrap-parser-trace
 
    :com.wsscode.pathom.connect/register
-   [{:com.wsscode.pathom.connect/sym     `trace
+   [{:com.wsscode.pathom.connect/sym     `add-signal!
      :com.wsscode.pathom.connect/output  [:com.wsscode.pathom/trace]
      :com.wsscode.pathom.connect/resolve (fn [_env _] {:com.wsscode.pathom/trace nil})}]})
+
+(defn live-trace!
+  "Helper to react to trace changes and immediately print them
+  to the output as they come."
+  [trace-atom]
+  (add-watch trace-atom :live
+    (fn [_ _ _ n]
+      (let [evt (peek n)]
+        (print (str (pr-str [(::span-type evt) (dissoc evt ::span-type)]) "\n"))))))
