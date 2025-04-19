@@ -54,6 +54,7 @@
 
 (>def ::label "A string (usually short) describing the span." string?)
 (>def ::style "Map with CSS styles to apply in the trace bar." map?)
+(>def ::internal-span? "Tell the visualizer to render the span internally inside the parent span." boolean?)
 
 ; endregion
 
@@ -96,13 +97,17 @@
 (defn set-attributes!
   "Create a new entry to add/update fields from a span. It will use
   the ::parent-span-id from env to find the span, unless the user specifies it."
-  ([env fields]
-   (set-attributes! env (::parent-span-id env) fields))
-  ([env span-id fields]
-   (assert span-id "Can't set fields without an span-id")
+  ([env attributes]
+   (set-attributes! env (::parent-span-id env) attributes))
+  ([env span-id attributes]
    (add-signal! env {::signal-type ::signal-attributes
                      ::span-id     span-id
-                     ::attributes  fields})))
+                     ::attributes  attributes})))
+
+(defn mark-error!
+  "Helper to set error attribute."
+  [env e]
+  (set-attributes! env {::error (ex-message e)}))
 
 (defn log-event!
   ([env log] (log-event! env (::parent-span-id env) log))
