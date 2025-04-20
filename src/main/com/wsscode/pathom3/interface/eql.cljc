@@ -10,6 +10,7 @@
     [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.pathom3.trace :as p.trace]
     [edn-query-language.core :as eql]))
 
 (>def :pathom/eql ::eql/query)
@@ -24,7 +25,8 @@
   (let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
         result    (pcr/run-graph! env ast ent-tree*)]
     (as-> result <>
-      (pf.eql/map-select-ast (select-ast-env env) <> ast))))
+      (p.trace/with-span! [env {::p.trace/env env ::p.trace/span-type ::trace-mask-output}]
+        (pf.eql/map-select-ast (select-ast-env env) <> ast)))))
 
 (defn- string-cap [s max-size]
   (if (> (count s) max-size)
@@ -78,14 +80,19 @@
   For more options around processing, check the docs on the connect runner."
   ([env tx]
    [(s/keys) ::eql/query => map?]
-   (process-ast (assoc env ::pcr/root-query tx) (eql/query->ast tx)))
+   (process-ast (assoc env ::pcr/root-query tx)
+                (p.trace/with-span! [_ {::p.trace/env       env
+                                        ::p.trace/span-type ::trace-query->ast}]
+                  (eql/query->ast tx))))
   ([env entity tx]
    [(s/keys) map? ::eql/query => map?]
    (assert (map? entity) "Entity data must be a map.")
    (process-ast (-> env
                     (assoc ::pcr/root-query tx)
                     (p.ent/with-entity entity))
-                (eql/query->ast tx))))
+                (p.trace/with-span! [_ {::p.trace/env       env
+                                        ::p.trace/span-type ::trace-query->ast}]
+                  (eql/query->ast tx)))))
 
 (>defn process-one
   "Similar to `process`, but returns a single value instead of a map.
@@ -207,17 +214,23 @@
              (normalize-input env request)
              env'    (-> env'
                          (boundary-env request)
+                         (p.trace/start-tracing!)
                          (extend-env env-extension)
                          (assoc
                            ::source-request request'
                            ::pcr/omit-run-stats? (not include-stats?)))
+
              entity' (or entity {})]
 
          (try
-           (if ast
-             (process-ast (p.ent/with-entity env' entity') ast)
-             (process env' entity' (or eql (:pathom/tx request'))))
+           (let [res (if ast
+                       (process-ast (p.ent/with-entity env' entity') ast)
+                       (process env' entity' (or eql (:pathom/tx request'))))]
+
+             (cond-> res
+               include-stats? (assoc ::p.trace/trace (p.trace/trace->tree (p.trace/end-tracing! env')))))
            (catch #?(:clj Throwable :cljs :default) err
-             (p.error/datafy-processor-error err)))))
+             (cond-> (p.error/datafy-processor-error err)
+               include-stats? (assoc ::p.trace/trace (p.trace/trace->tree (p.trace/end-tracing! env'))))))))
       ([request]
        (boundary-interface-internal nil request)))))
