@@ -19,7 +19,8 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.placeholder :as pph]
-    [com.wsscode.pathom3.plugin :as p.plugin]))
+    [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.pathom3.trace :as p.trace]))
 
 ; region specs
 
@@ -566,46 +567,51 @@
    {::pco/keys [op-name]
     ::pcp/keys [input]
     :as        node}]
-  (let [resolver        (pci/resolver env op-name)
-        {::pco/keys [op-name batch? cache? cache-store optionals]
-         :or        {cache? true}
-         :as        r-config} (pco/operation-config resolver)
-        env             (assoc env ::pcp/node node)
-        entity          (p.ent/entity env)
-        input+opts      (pfsd/merge-shapes input optionals)
-        input-data      (pfsd/select-shape-filtering entity input+opts input)
-        input-data      (enhance-dynamic-input r-config node input-data)
-        params          (pco/params env)
-        cache-store     (choose-cache-store env cache-store)
-        resolver-cache* (get env cache-store)
-        _               (merge-node-stats! env node
-                          {::resolver-run-start-ms (time/now-ms)})
-        response        (try
-                          (let [missing-check (input-missing-check env node entity input input+opts)]
-                            (cond
-                              missing-check
-                              missing-check
+  (p.trace/with-span! [env {::p.trace/env        env
+                            ::p.trace/span-type  ::trace-resolver-invoke
+                            ::p.trace/attributes {::pco/op-name            op-name
+                                                  ::p.trace/internal-span? true}}]
+    (let [resolver        (pci/resolver env op-name)
+          {::pco/keys [op-name batch? cache? cache-store optionals]
+           :or        {cache? true}
+           :as        r-config} (pco/operation-config resolver)
+          env             (assoc env ::pcp/node node)
+          entity          (p.ent/entity env)
+          input+opts      (pfsd/merge-shapes input optionals)
+          input-data      (pfsd/select-shape-filtering entity input+opts input)
+          input-data      (enhance-dynamic-input r-config node input-data)
+          params          (pco/params env)
+          cache-store     (choose-cache-store env cache-store)
+          resolver-cache* (get env cache-store)
+          _               (merge-node-stats! env node
+                            {::resolver-run-start-ms (time/now-ms)})
+          response        (try
+                            (let [missing-check (input-missing-check env node entity input input+opts)]
+                              (cond
+                                missing-check
+                                missing-check
 
-                              batch?
-                              (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
-                                (val x)
-                                (if (::unsupported-batch? env)
-                                  (invoke-resolver-cached-batch
-                                    env cache? op-name resolver cache-store input-data params)
-                                  (batch-hold-token env cache? op-name node cache-store input-data params)))
+                                batch?
+                                (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
+                                  (val x)
+                                  (if (::unsupported-batch? env)
+                                    (invoke-resolver-cached-batch
+                                      env cache? op-name resolver cache-store input-data params)
+                                    (batch-hold-token env cache? op-name node cache-store input-data params)))
 
-                              :else
-                              (invoke-resolver-cached
-                                env cache? op-name resolver cache-store input-data params)))
-                          (catch #?(:clj Throwable :cljs :default) e
-                            (report-resolver-error env node e)))
-        finish          (time/now-ms)
-        response        (validate-response! env node response)]
-    (merge-node-stats! env node
-      (cond-> {::resolver-run-finish-ms finish}
-        (not (::batch-hold response))
-        (merge (report-resolver-io-stats env input-data response))))
-    response))
+                                :else
+                                (invoke-resolver-cached
+                                  env cache? op-name resolver cache-store input-data params)))
+                            (catch #?(:clj Throwable :cljs :default) e
+                              (p.trace/mark-error! env e)
+                              (report-resolver-error env node e)))
+          finish          (time/now-ms)
+          response        (validate-response! env node response)]
+      (merge-node-stats! env node
+        (cond-> {::resolver-run-finish-ms finish}
+          (not (::batch-hold response))
+          (merge (report-resolver-io-stats env input-data response))))
+      response)))
 
 (defn user-demand-completed? [env]
   (empty? (pfsd/missing-from-data (p.ent/entity env) (-> env ::pcp/graph ::pcp/user-request-shape))))
@@ -613,32 +619,41 @@
 (defn run-resolver-node!
   "This function evaluates the resolver associated with the node.
 
-  First it checks if the expected results from the resolver are already available. In
+  First, it checks if the expected results from the resolver are already available. In
   case they are, the resolver call is skipped."
   [env node]
-  (if (or (resolver-already-ran? env node) (all-requires-ready? env node))
-    (run-next-node! env node)
-    (let [_ (merge-node-stats! env node {::node-run-start-ms (time/now-ms)})
-          {::keys [batch-hold] :as response}
-          (invoke-resolver-from-node env node)]
-      (cond
-        ; propagate batch hold up, this will make all nodes to stop running
-        ; so they can wait for the batch result
-        batch-hold response
+  (let [[env sid] (p.trace/open-env-span! env {::p.trace/span-type  ::trace-resolver-node
+                                               ::p.trace/attributes {::pcp/node      node
+                                                                     ::p.trace/label (-> node ::pco/op-name str)}})]
+    (if (or (resolver-already-ran? env node) (all-requires-ready? env node))
+      (do
+        (p.trace/set-attributes! env sid {::node-skipped? true})
+        (p.trace/close-span! env sid)
+        (run-next-node! env node))
+      (let [_ (merge-node-stats! env node {::node-run-start-ms (time/now-ms)})
+            {::keys [batch-hold] :as response}
+            (invoke-resolver-from-node env node)]
+        (cond
+          ; propagate batch hold up, this will make all nodes to stop running
+          ; so they can wait for the batch result
+          batch-hold response
 
-        (or (not (refs/kw-identical? ::node-error response))
-            (pcp/node-optional? node))
-        (do
-          (merge-resolver-response! env response)
-          (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
-          (if-not (and (::pcp/node-resolution-checkpoint? node)
-                       (user-demand-completed? env))
-            (run-next-node! env node)))
+          (or (not (refs/kw-identical? ::node-error response))
+              (pcp/node-optional? node))
+          (do
+            (merge-resolver-response! env response)
+            (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
+            (p.trace/close-span! env sid)
+            (if-not (and (::pcp/node-resolution-checkpoint? node)
+                         (user-demand-completed? env))
 
-        :else
-        (do
-          (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
-          nil)))))
+              (run-next-node! env node)))
+
+          :else
+          (do
+            (p.trace/close-span! env sid)
+            (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
+            nil))))))
 
 (defn pick-node-highest
   "Starting from possible paths, find the nodes responsible for the attribute required by the
@@ -1237,11 +1252,16 @@
 
 (defn run-graph-with-plugins [env ast-or-graph entity-tree* impl!]
   (if (p.path/root? env)
-    (p.plugin/run-with-plugins env ::wrap-root-run-graph!
-      (fn [e a t]
-        (p.plugin/run-with-plugins env ::wrap-run-graph!
-          impl! (setup-root-env e) a t))
-      env ast-or-graph entity-tree*)
+    (p.trace/with-span! [env {::p.trace/env env ::p.trace/span-type ::trace-run}]
+      (try
+        (p.plugin/run-with-plugins env ::wrap-root-run-graph!
+          (fn [e a t]
+            (p.plugin/run-with-plugins env ::wrap-run-graph!
+              impl! (setup-root-env e) a t))
+          env ast-or-graph entity-tree*)
+        (catch #?(:clj Throwable :cljs :default) e
+          (p.trace/mark-error! env e)
+          (throw e))))
     (p.plugin/run-with-plugins env ::wrap-run-graph!
       impl! env ast-or-graph entity-tree*)))
 
