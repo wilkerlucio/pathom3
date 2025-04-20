@@ -1885,11 +1885,11 @@
          (let [plan-cache-key [(hash (::pci/index-oir env))
                                (::available-data env)
                                (pf.eql/cacheable-ast (:edn-query-language.ast/node env))
-                               (boolean optimize-graph?)]]
-           (p.trace/set-attributes! env {::plan-cached?
-                                         (and
-                                           (::plan-cache* env)
-                                           (boolean (p.cache/cache-find (::plan-cache* env) plan-cache-key)))})
+                               (boolean optimize-graph?)]
+               is-cached?     (and
+                                (::plan-cache* env)
+                                (boolean (p.cache/cache-find (::plan-cache* env) plan-cache-key)))]
+           (p.trace/set-attributes! env {::plan-cached? is-cached?})
            (as-> env <>
              (p.cache/cached ::plan-cache* <> plan-cache-key
                #(let [env' (-> (merge (base-env) env)
