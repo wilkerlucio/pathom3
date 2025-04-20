@@ -11,6 +11,7 @@
 (>def ::span-type "Type of a span" qualified-keyword?)
 (>def ::log-type "Type of a log event" qualified-keyword?)
 (>def ::parent-span-id ::span-id)
+(>def ::root-span-id ::span-id)
 (>def ::error string?)
 (>def ::timestamp nat-int?)
 (>def ::start-time ::timestamp)
@@ -81,6 +82,12 @@
                      (not (::span-id span)) (assoc ::span-id (new-span-id))
                      (and parent-span-id (not (::parent-span-id span))) (assoc ::parent-span-id parent-span-id)))))
 
+(defn open-env-span!
+  "Open a new span, returns env with updated parent-span-id and new span id"
+  [env span]
+  (let [sid (open-span! env span)]
+    [(assoc env ::parent-span-id sid) sid]))
+
 (defn close-span!
   "Closes a span and adds it to the trace."
   [env span-id]
@@ -133,6 +140,29 @@
           (close-span! env# span-id#)
           res#)
         (throw (ex-info "With span requires environment as part of the data" {})))))
+
+(defn start-tracing!
+  "Helper to set up the tracing requirements. This will include the trace atom in env (unless its already there) and
+  create the root span for the tracing (also set it as the parent-span-id).
+
+  This function is idempotent, if it sees a root-span-id already in the environment, it will just return env
+  as-is."
+  [env]
+  (if (::root-span-id env)
+    env
+    (let [env'         (assoc env ::trace* (or (::trace* env) (atom [])))
+          root-span-id (open-span! env' {::span-type  ::trace-root
+                                         ::attributes {::label ""}})
+          env'         (assoc env'
+                         ::parent-span-id root-span-id
+                         ::root-span-id root-span-id)]
+      env')))
+
+(defn end-tracing!
+  "Closes up the tracing, it will finish the root span and return the trace data."
+  [{::keys [root-span-id trace*] :as env}]
+  (close-span! env root-span-id)
+  (some-> trace* deref))
 
 (>defn normalize-trace
   "Normalize the trace, this will accumulate the fields and find the duration of an event.
