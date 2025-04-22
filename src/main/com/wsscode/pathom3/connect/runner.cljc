@@ -603,7 +603,6 @@
                                 (invoke-resolver-cached
                                   env cache? op-name resolver cache-store input-data params)))
                             (catch #?(:clj Throwable :cljs :default) e
-                              (p.trace/mark-error! env e)
                               (report-resolver-error env node e)))
           finish          (time/now-ms)
           response        (validate-response! env node response)]
@@ -1253,15 +1252,11 @@
 (defn run-graph-with-plugins [env ast-or-graph entity-tree* impl!]
   (if (p.path/root? env)
     (p.trace/with-span! [env {::p.trace/env env ::p.trace/span-type ::trace-run}]
-      (try
-        (p.plugin/run-with-plugins env ::wrap-root-run-graph!
-          (fn [e a t]
-            (p.plugin/run-with-plugins env ::wrap-run-graph!
-              impl! (setup-root-env e) a t))
-          env ast-or-graph entity-tree*)
-        (catch #?(:clj Throwable :cljs :default) e
-          (p.trace/mark-error! env e)
-          (throw e))))
+      (p.plugin/run-with-plugins env ::wrap-root-run-graph!
+        (fn [e a t]
+          (p.plugin/run-with-plugins env ::wrap-run-graph!
+            impl! (setup-root-env e) a t))
+        env ast-or-graph entity-tree*))
     (p.plugin/run-with-plugins env ::wrap-run-graph!
       impl! env ast-or-graph entity-tree*)))
 

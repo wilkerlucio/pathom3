@@ -133,12 +133,19 @@
           (do-something))"
      [[sym span] & body]
      `(if-let [env# (get ~span ::env)]
-        (let [span#    (dissoc ~span ::env)
-              span-id# (open-span! env# span#)
-              res#     (let [~sym (under-span env# span-id#)]
-                         ~@body)]
-          (close-span! env# span-id#)
-          res#)
+        (if (::trace* env#)
+          (let [span#    (dissoc ~span ::env)
+                span-id# (open-span! env# span#)
+                res#     (let [~sym (under-span env# span-id#)]
+                           (try
+                             ~@body
+                             (catch #?(:clj Throwable :cljs :default) error#
+                               (mark-error! ~sym error#)
+                               (throw error#))
+                             (finally
+                               (close-span! ~sym span-id#))))]
+            res#)
+          (let [~sym env#] ~@body))
         (throw (ex-info "With span requires environment as part of the data" {})))))
 
 (defn start-tracing!

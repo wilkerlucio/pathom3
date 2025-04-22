@@ -205,49 +205,51 @@
     (fi request)))
 
 (deftest boundary-interface-test
-  (let [fi (p.eql/boundary-interface (pci/register registry))]
+  (let [bi (p.eql/boundary-interface (pci/register registry))]
     (testing "call with just tx"
-      (is (= (fi [::coords])
+      (is (= (bi [::coords])
              {::coords
               [{:x 10 :y 20}
                {::geo/left 20 ::geo/width 5}]})))
 
     (testing "call with ast"
-      (is (= (fi {:pathom/ast (eql/query->ast [::coords])})
+      (is (= (bi {:pathom/ast (eql/query->ast [::coords])})
              {::coords
               [{:x 10 :y 20}
                {::geo/left 20 ::geo/width 5}]})))
 
     (testing "call with entity and eql"
-      (is (= (fi {:pathom/entity {:left 10}
+      (is (= (bi {:pathom/entity {:left 10}
                   :pathom/eql    [:x]})
              {:x 10})))
 
     (testing "call with entity and tx"
-      (is (= (fi {:pathom/entity {:left 10}
+      (is (= (bi {:pathom/entity {:left 10}
                   :pathom/tx     [:x]})
              {:x 10})))
 
     (testing "merge env"
-      (is (= (fi [:foo])
+      (is (= (bi [:foo])
              {:foo nil}))
 
-      (is (= (fi {::foo "bar"} [:foo])
+      (is (= (bi {::foo "bar"} [:foo])
              {:foo "bar"})))
 
     (testing "modify env"
-      (is (= (fi #(pci/register % (pbir/constantly-resolver :new "value")) [:new])
+      (is (= (bi #(pci/register % (pbir/constantly-resolver :new "value")) [:new])
              {:new "value"})))
 
     (testing "lenient mode"
-      (is (= (fi {:pathom/eql           [:invalid]
-                  :pathom/lenient-mode? true})
-             {:com.wsscode.pathom3.connect.runner/attribute-errors {:invalid {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}}}))
+      (check
+        (bi {:pathom/eql           [:invalid]
+             :pathom/lenient-mode? true})
+        => {:com.wsscode.pathom3.connect.runner/attribute-errors {:invalid {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}}})
 
       (testing "lenient mode from env"
         (let [fi (p.eql/boundary-interface (assoc (pci/register registry) :com.wsscode.pathom3.error/lenient-mode? true))]
-          (is (= (fi {:pathom/eql [:invalid]})
-                 {:com.wsscode.pathom3.connect.runner/attribute-errors {:invalid {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}}})))))))
+          (check
+            (fi {:pathom/eql [:invalid]})
+            => {:com.wsscode.pathom3.connect.runner/attribute-errors {:invalid {:com.wsscode.pathom3.error/cause :com.wsscode.pathom3.error/attribute-unreachable}}}))))))
 
 (deftest boundary-interface-include-stats-test
   (testing "omit stats by default"
