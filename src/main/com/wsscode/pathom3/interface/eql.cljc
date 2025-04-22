@@ -25,7 +25,9 @@
   (let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
         result    (pcr/run-graph! env ast ent-tree*)]
     (as-> result <>
-      (p.trace/with-span! [env {::p.trace/env env ::p.trace/span-type ::trace-mask-output}]
+      (p.trace/with-span! [env {::p.trace/env env
+                                ::p.trace/span-type ::trace-mask-output
+                                ::p.trace/attributes {::p.trace/label "Mask output"}}]
         (pf.eql/map-select-ast (select-ast-env env) <> ast)))))
 
 (defn- string-cap [s max-size]
