@@ -21,14 +21,16 @@
 (defn select-ast-env [{::p.error/keys [lenient-mode?] :as env}]
   (cond-> env lenient-mode? (update ::pf.eql/map-select-include coll/sconj ::pcr/attribute-errors)))
 
+(defn traced-mask-output [env entity ast]
+  (p.trace/with-span! [env {::p.trace/env env
+                            ::p.trace/span-type ::trace-mask-output
+                            ::p.trace/attributes {::p.trace/label "Mask output"}}]
+    (pf.eql/map-select-ast (select-ast-env env) entity ast)))
+
 (defn process-ast* [env ast]
   (let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
         result    (pcr/run-graph! env ast ent-tree*)]
-    (as-> result <>
-      (p.trace/with-span! [env {::p.trace/env env
-                                ::p.trace/span-type ::trace-mask-output
-                                ::p.trace/attributes {::p.trace/label "Mask output"}}]
-        (pf.eql/map-select-ast (select-ast-env env) <> ast)))))
+    (traced-mask-output env result ast)))
 
 (defn- string-cap [s max-size]
   (if (> (count s) max-size)
@@ -57,6 +59,11 @@
       (catch #?(:clj Throwable :cljs :default) e
         (throw (process-error env ast source-entity e))))))
 
+(defn traced-query->ast [env eql]
+  (p.trace/with-span! [_ {::p.trace/env       env
+                          ::p.trace/span-type ::trace-query->ast}]
+    (eql/query->ast eql)))
+
 (>defn process
   "Evaluate EQL expression.
 
@@ -82,19 +89,14 @@
   For more options around processing, check the docs on the connect runner."
   ([env tx]
    [(s/keys) ::eql/query => map?]
-   (process-ast (assoc env ::pcr/root-query tx)
-                (p.trace/with-span! [_ {::p.trace/env       env
-                                        ::p.trace/span-type ::trace-query->ast}]
-                  (eql/query->ast tx))))
+   (process-ast (assoc env ::pcr/root-query tx) (traced-query->ast env tx)))
   ([env entity tx]
    [(s/keys) map? ::eql/query => map?]
    (assert (map? entity) "Entity data must be a map.")
    (process-ast (-> env
                     (assoc ::pcr/root-query tx)
                     (p.ent/with-entity entity))
-                (p.trace/with-span! [_ {::p.trace/env       env
-                                        ::p.trace/span-type ::trace-query->ast}]
-                  (eql/query->ast tx)))))
+                (traced-query->ast env tx))))
 
 (>defn process-one
   "Similar to `process`, but returns a single value instead of a map.
@@ -221,7 +223,6 @@
                          (assoc
                            ::source-request request'
                            ::pcr/omit-run-stats? (not include-stats?)))
-
              entity' (or entity {})]
 
          (try

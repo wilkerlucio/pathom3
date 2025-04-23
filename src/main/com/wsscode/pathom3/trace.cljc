@@ -5,7 +5,8 @@
     [com.wsscode.misc.coll :as coll]
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.misc.time :as time]
-    [com.wsscode.pathom3.path :as p.path]))
+    [com.wsscode.pathom3.path :as p.path]
+    #?(:clj [com.wsscode.promesa.macros :refer [clet ctry]])))
 
 (>def ::span-id symbol?)
 (>def ::span-type "Type of a span" qualified-keyword?)
@@ -82,19 +83,20 @@
                      (not (::span-id span)) (assoc ::span-id (new-span-id))
                      (and parent-span-id (not (::parent-span-id span))) (assoc ::parent-span-id parent-span-id)))))
 
-(defn open-env-span!
+(defn open-span-env!
   "Open a new span, returns env with updated parent-span-id and new span id"
   [env span]
   (let [sid (open-span! env span)]
-    [(assoc env ::parent-span-id sid) sid]))
+    (assoc env ::parent-span-id sid)))
 
 (defn close-span!
   "Closes a span and adds it to the trace."
-  [env span-id]
-  (add-signal! env {::signal-type ::signal-close-span
-                    ::span-id     span-id
-                    ::end-time    (time/now-ms)})
-  span-id)
+  ([env] (close-span! env (::parent-span-id env)))
+  ([env span-id]
+   (add-signal! env {::signal-type ::signal-close-span
+                     ::span-id     span-id
+                     ::end-time    (time/now-ms)})
+   span-id))
 
 (defn under-span
   "Returns a new environment setting the context span id."
@@ -148,6 +150,28 @@
           (let [~sym env#] ~@body))
         (throw (ex-info "With span requires environment as part of the data" {})))))
 
+#?(:clj
+   (defmacro with-span-async!
+     "Like with-span! but supports async body. This can also be used with sync processes, with the adding overhead of
+     checking for a promise. The reason to support sync is that so it can be used in generic functions that support both
+     sync and async."
+     [[sym span] & body]
+     `(if-let [env# (get ~span ::env)]
+        (if (::trace* env#)
+          (clet [span#    (dissoc ~span ::env)
+                 span-id# (open-span! env# span#)
+                 res#     (let [~sym (under-span env# span-id#)]
+                            (ctry
+                              ~@body
+                              (catch #?(:clj Throwable :cljs :default) error#
+                                (mark-error! ~sym error#)
+                                (close-span! ~sym span-id#)
+                                (throw error#))))]
+            (close-span! env# span-id#)
+            res#)
+          (let [~sym env#] ~@body))
+        (throw (ex-info "With span requires environment as part of the data" {})))))
+
 (defn start-tracing!
   "Helper to set up the tracing requirements. This will include the trace atom in env (unless its already there) and
   create the root span for the tracing (also set it as the parent-span-id).
@@ -159,7 +183,7 @@
     env
     (let [env'         (assoc env ::trace* (or (::trace* env) (atom [])))
           root-span-id (open-span! env' {::span-type  ::trace-root
-                                         ::attributes {::label ""}})
+                                         ::attributes {::label " "}})
           env'         (assoc env'
                          ::parent-span-id root-span-id
                          ::root-span-id root-span-id)]

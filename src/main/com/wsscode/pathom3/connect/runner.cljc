@@ -621,37 +621,39 @@
   First, it checks if the expected results from the resolver are already available. In
   case they are, the resolver call is skipped."
   [env node]
-  (let [[env sid] (p.trace/open-env-span! env {::p.trace/span-type  ::trace-resolver-node
-                                               ::p.trace/attributes {::pcp/node      node
-                                                                     ::p.trace/label (-> node ::pco/op-name str)}})]
-    (if (or (resolver-already-ran? env node) (all-requires-ready? env node))
+  (let [env' (p.trace/open-span-env! env {::p.trace/span-type       ::trace-resolver-node
+                                          ::p.trace/attributes {::pcp/node      node
+                                                                ::p.trace/label (-> node ::pco/op-name str)}})]
+    (if (or (resolver-already-ran? env' node) (all-requires-ready? env' node))
       (do
-        (p.trace/set-attributes! env sid {::node-skipped? true})
-        (p.trace/close-span! env sid)
+        (p.trace/set-attributes! env' {::node-skipped? true})
+        (p.trace/close-span! env')
         (run-next-node! env node))
-      (let [_ (merge-node-stats! env node {::node-run-start-ms (time/now-ms)})
+      (let [_ (merge-node-stats! env' node {::node-run-start-ms (time/now-ms)})
             {::keys [batch-hold] :as response}
-            (invoke-resolver-from-node env node)]
+            (invoke-resolver-from-node env' node)]
         (cond
           ; propagate batch hold up, this will make all nodes to stop running
           ; so they can wait for the batch result
           batch-hold response
 
+          ;; default path, errors can take this path if the node is optional
           (or (not (refs/kw-identical? ::node-error response))
               (pcp/node-optional? node))
           (do
-            (merge-resolver-response! env response)
-            (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
-            (p.trace/close-span! env sid)
+            (merge-resolver-response! env' response)
+            (merge-node-stats! env' node {::node-run-finish-ms (time/now-ms)})
+            (p.trace/close-span! env')
             (if-not (and (::pcp/node-resolution-checkpoint? node)
-                         (user-demand-completed? env))
+                         (user-demand-completed? env'))
 
               (run-next-node! env node)))
 
+          ;; error case, just close and merge stats, don't trigger the next node
           :else
           (do
-            (p.trace/close-span! env sid)
-            (merge-node-stats! env node {::node-run-finish-ms (time/now-ms)})
+            (p.trace/close-span! env')
+            (merge-node-stats! env' node {::node-run-finish-ms (time/now-ms)})
             nil))))))
 
 (defn pick-node-highest
@@ -1251,14 +1253,16 @@
 
 (defn run-graph-with-plugins [env ast-or-graph entity-tree* impl!]
   (if (p.path/root? env)
-    (p.trace/with-span! [env {::p.trace/env env ::p.trace/span-type ::trace-run}]
-      (p.plugin/run-with-plugins env ::wrap-root-run-graph!
-        (fn [e a t]
-          (p.plugin/run-with-plugins env ::wrap-run-graph!
-            impl! (setup-root-env e) a t))
-        env ast-or-graph entity-tree*))
-    (p.plugin/run-with-plugins env ::wrap-run-graph!
-      impl! env ast-or-graph entity-tree*)))
+    (p.trace/with-span-async! [env {::p.trace/env env ::p.trace/span-type ::trace-run-request}]
+                              (p.plugin/run-with-plugins env ::wrap-root-run-graph!
+                                (fn [e a t]
+                                  (p.trace/with-span-async! [env' {::p.trace/env e ::p.trace/span-type ::trace-run-entity}]
+                                                            (p.plugin/run-with-plugins env' ::wrap-run-graph!
+                                                              impl! (setup-root-env env') a t)))
+                                env ast-or-graph entity-tree*))
+    (p.trace/with-span-async! [env' {::p.trace/env env ::p.trace/span-type ::trace-run-entity}]
+                              (p.plugin/run-with-plugins env' ::wrap-run-graph!
+                                impl! env' ast-or-graph entity-tree*))))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST
