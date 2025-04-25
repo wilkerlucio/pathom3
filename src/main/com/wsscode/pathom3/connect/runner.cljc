@@ -621,7 +621,7 @@
   First, it checks if the expected results from the resolver are already available. In
   case they are, the resolver call is skipped."
   [env node]
-  (let [env' (p.trace/open-span-env! env {::p.trace/span-type       ::trace-resolver-node
+  (let [env' (p.trace/open-span-env! env {::p.trace/span-type  ::trace-resolver-node
                                           ::p.trace/attributes {::pcp/node      node
                                                                 ::p.trace/label (-> node ::pco/op-name str)}})]
     (if (or (resolver-already-ran? env' node) (all-requires-ready? env' node))
@@ -1253,16 +1253,13 @@
 
 (defn run-graph-with-plugins [env ast-or-graph entity-tree* impl!]
   (if (p.path/root? env)
-    (p.trace/with-span-async! [env {::p.trace/env env ::p.trace/span-type ::trace-run-request}]
-                              (p.plugin/run-with-plugins env ::wrap-root-run-graph!
-                                (fn [e a t]
-                                  (p.trace/with-span-async! [env' {::p.trace/env e ::p.trace/span-type ::trace-run-entity}]
-                                                            (p.plugin/run-with-plugins env' ::wrap-run-graph!
-                                                              impl! (setup-root-env env') a t)))
-                                env ast-or-graph entity-tree*))
-    (p.trace/with-span-async! [env' {::p.trace/env env ::p.trace/span-type ::trace-run-entity}]
-                              (p.plugin/run-with-plugins env' ::wrap-run-graph!
-                                impl! env' ast-or-graph entity-tree*))))
+    (p.plugin/run-with-plugins env ::wrap-root-run-graph!
+      (fn [e a t]
+        (p.plugin/run-with-plugins env ::wrap-run-graph!
+          impl! (setup-root-env e) a t))
+      env ast-or-graph entity-tree*)
+    (p.plugin/run-with-plugins env ::wrap-run-graph!
+      impl! env ast-or-graph entity-tree*)))
 
 (>defn run-graph!
   "Plan and execute a request, given an environment (with indexes), the request AST

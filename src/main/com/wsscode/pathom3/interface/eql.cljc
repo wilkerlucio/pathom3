@@ -217,8 +217,9 @@
        (let [{:pathom/keys [eql entity ast include-stats?] :as request'}
              (normalize-input env request)
              env'    (-> env'
+                         (cond-> include-stats? (-> (p.plugin/register p.trace/trace-plugin)
+                                                    (p.trace/start-tracing!)))
                          (boundary-env request)
-                         (p.trace/start-tracing!)
                          (extend-env env-extension)
                          (assoc
                            ::source-request request'

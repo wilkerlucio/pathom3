@@ -6,7 +6,9 @@
     [com.wsscode.misc.refs :as refs]
     [com.wsscode.misc.time :as time]
     [com.wsscode.pathom3.path :as p.path]
-    #?(:clj [com.wsscode.promesa.macros :refer [clet ctry]])))
+    [com.wsscode.pathom3.plugin :as p.plugin]
+    #?(:clj
+       [com.wsscode.promesa.macros :refer [clet ctry]])))
 
 (>def ::span-id symbol?)
 (>def ::span-type "Type of a span" qualified-keyword?)
@@ -231,6 +233,29 @@
   "Convert the trace events into a trace tree."
   [trace]
   (trace->tree* (normalize-trace trace) nil))
+
+(p.plugin/defplugin trace-plugin
+  {:com.wsscode.pathom3.connect.runner/wrap-root-run-graph!
+   (fn wrap-root-run-graph [root-run-graph]
+     (fn wrap-root-run-graph-internal [env a t]
+       (with-span-async! [env {::env       env
+                               ::span-type ::trace-run-request}]
+         (root-run-graph env a t))))
+
+   :com.wsscode.pathom3.connect.runner/wrap-run-graph!
+   (fn wrap-run-graph [run-graph]
+     (fn wrap-run-graph-internal [env a t]
+       (with-span-async! [env {::env       env
+                               ::span-type ::trace-run-entity}]
+         (run-graph env a t))))
+
+   :com.wsscode.pathom3.connect.runner/wrap-merge-attribute
+   (fn [merge-attribute]
+     (fn [env m k v]
+       (with-span-async! [env {::env        env
+                               ::span-type  ::trace-attribute
+                               ::attributes {::label (str k)}}]
+         (merge-attribute env m k v))))})
 
 (defn live-trace!
   "Helper to react to trace changes and immediately print them
