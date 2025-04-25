@@ -10,6 +10,7 @@
     [com.wsscode.pathom3.error :as p.error]
     [com.wsscode.pathom3.format.eql :as pf.eql]
     [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.pathom3.trace :as p.trace]
     [edn-query-language.core :as eql]))
 
 (>def :pathom/eql ::eql/query)
@@ -20,11 +21,16 @@
 (defn select-ast-env [{::p.error/keys [lenient-mode?] :as env}]
   (cond-> env lenient-mode? (update ::pf.eql/map-select-include coll/sconj ::pcr/attribute-errors)))
 
+(defn traced-mask-output [env entity ast]
+  (p.trace/with-span! [env {::p.trace/env env
+                            ::p.trace/span-type ::trace-mask-output
+                            ::p.trace/attributes {::p.trace/label "Mask output"}}]
+    (pf.eql/map-select-ast (select-ast-env env) entity ast)))
+
 (defn process-ast* [env ast]
   (let [ent-tree* (get env ::p.ent/entity-tree* (p.ent/create-entity {}))
         result    (pcr/run-graph! env ast ent-tree*)]
-    (as-> result <>
-      (pf.eql/map-select-ast (select-ast-env env) <> ast))))
+    (traced-mask-output env result ast)))
 
 (defn- string-cap [s max-size]
   (if (> (count s) max-size)
@@ -53,6 +59,11 @@
       (catch #?(:clj Throwable :cljs :default) e
         (throw (process-error env ast source-entity e))))))
 
+(defn traced-query->ast [env eql]
+  (p.trace/with-span! [_ {::p.trace/env       env
+                          ::p.trace/span-type ::trace-query->ast}]
+    (eql/query->ast eql)))
+
 (>defn process
   "Evaluate EQL expression.
 
@@ -78,14 +89,14 @@
   For more options around processing, check the docs on the connect runner."
   ([env tx]
    [(s/keys) ::eql/query => map?]
-   (process-ast (assoc env ::pcr/root-query tx) (eql/query->ast tx)))
+   (process-ast (assoc env ::pcr/root-query tx) (traced-query->ast env tx)))
   ([env entity tx]
    [(s/keys) map? ::eql/query => map?]
    (assert (map? entity) "Entity data must be a map.")
    (process-ast (-> env
                     (assoc ::pcr/root-query tx)
                     (p.ent/with-entity entity))
-                (eql/query->ast tx))))
+                (traced-query->ast env tx))))
 
 (>defn process-one
   "Similar to `process`, but returns a single value instead of a map.
@@ -206,6 +217,8 @@
        (let [{:pathom/keys [eql entity ast include-stats?] :as request'}
              (normalize-input env request)
              env'    (-> env'
+                         (cond-> include-stats? (-> (p.plugin/register p.trace/trace-plugin)
+                                                    (p.trace/start-tracing!)))
                          (boundary-env request)
                          (extend-env env-extension)
                          (assoc
@@ -214,10 +227,14 @@
              entity' (or entity {})]
 
          (try
-           (if ast
-             (process-ast (p.ent/with-entity env' entity') ast)
-             (process env' entity' (or eql (:pathom/tx request'))))
+           (let [res (if ast
+                       (process-ast (p.ent/with-entity env' entity') ast)
+                       (process env' entity' (or eql (:pathom/tx request'))))]
+
+             (cond-> res
+               include-stats? (assoc ::p.trace/trace (p.trace/trace->tree (p.trace/end-tracing! env')))))
            (catch #?(:clj Throwable :cljs :default) err
-             (p.error/datafy-processor-error err)))))
+             (cond-> (p.error/datafy-processor-error err)
+               include-stats? (assoc ::p.trace/trace (p.trace/trace->tree (p.trace/end-tracing! env'))))))))
       ([request]
        (boundary-interface-internal nil request)))))

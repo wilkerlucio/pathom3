@@ -15,6 +15,7 @@
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.placeholder :as pph]
     [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.pathom3.trace :as p.trace]
     [edn-query-language.core :as eql])
   #?(:cljs
      (:require-macros
@@ -1878,36 +1879,52 @@
    (add-snapshot! graph env {::snapshot-event   ::snapshot-start-graph
                              ::snapshot-message "=== Start query plan ==="})
 
-   (p.plugin/run-with-plugins env ::wrap-compute-run-graph
-     (fn compute-run-graph-internal [graph env]
-       (as-> env <>
-         (p.cache/cached ::plan-cache* <> [(hash (::pci/index-oir env))
-                                           (::available-data env)
-                                           (pf.eql/cacheable-ast (:edn-query-language.ast/node env))
-                                           (boolean optimize-graph?)]
-           #(let [env' (-> (merge (base-env) env)
-                           (vary-meta assoc ::original-env env))]
-              (cond->
-                (compute-run-graph*
-                  (merge (base-graph)
-                         graph
-                         {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
-                          ::source-ast         (:edn-query-language.ast/node env)
-                          ::available-data     (::available-data env)
-                          ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})
-                  env')
+   (p.trace/with-span! [env {::p.trace/env env ::p.trace/span-type ::trace-plan}]
+     (p.plugin/run-with-plugins env ::wrap-compute-run-graph
+       (fn compute-run-graph-internal [graph env]
+         (let [plan-cache-key [(hash (::pci/index-oir env))
+                               (::available-data env)
+                               (pf.eql/cacheable-ast (:edn-query-language.ast/node env))
+                               (boolean optimize-graph?)]
+               is-cached?     (and
+                                (::plan-cache* env)
+                                (boolean (p.cache/cache-find (::plan-cache* env) plan-cache-key)))]
+           (p.trace/set-attributes! env {::plan-cached? is-cached?})
+           (as-> env <>
+             (p.cache/cached ::plan-cache* <> plan-cache-key
+               #(let [env' (-> (merge (base-env) env)
+                               (vary-meta assoc ::original-env env))]
+                  (cond->
+                    (p.trace/with-span! [env' {::p.trace/env env'
+                                               ::p.trace/span-type ::p.trace/trace-compute-graph
+                                               ::p.trace/attributes {::p.trace/internal-span? true}}]
+                      (compute-run-graph*
+                        (merge (base-graph)
+                               graph
+                               {::index-ast          (pf.eql/index-ast (:edn-query-language.ast/node env))
+                                ::source-ast         (:edn-query-language.ast/node env)
+                                ::available-data     (::available-data env)
+                                ::user-request-shape (pfsd/ast->shape-descriptor (:edn-query-language.ast/node env))})
+                        env'))
 
-                optimize-graph?
-                (optimize-graph env')
+                    optimize-graph?
+                    (as-> <>
+                      (p.trace/with-span! [env' {::p.trace/env        env'
+                                                 ::p.trace/span-type  ::trace-plan-optimize
+                                                 ::p.trace/attributes {::p.trace/internal-span? true}}]
+                        (optimize-graph <> env')))
 
-                true
-                (mark-fast-placeholder-processes env')
+                    true
+                    (mark-fast-placeholder-processes env')
 
-                true
-                (ensure-resolver-consistent-params))))
-         (rehydrate-graph-idents <> (:edn-query-language.ast/node env))
-         (verify-plan! env <>)))
-     graph env)))
+                    true
+                    (ensure-resolver-consistent-params))))
+             (rehydrate-graph-idents <> (:edn-query-language.ast/node env))
+             (verify-plan! env <>)
+             (do
+               (p.trace/set-attributes! env {::plan <>})
+               <>))))
+       graph env))))
 
 ; endregion
 

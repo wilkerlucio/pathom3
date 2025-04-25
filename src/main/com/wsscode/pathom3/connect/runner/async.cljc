@@ -19,6 +19,7 @@
     [com.wsscode.pathom3.format.shape-descriptor :as pfsd]
     [com.wsscode.pathom3.path :as p.path]
     [com.wsscode.pathom3.plugin :as p.plugin]
+    [com.wsscode.pathom3.trace :as p.trace]
     [com.wsscode.promesa.macros :refer [clet ctry]]
     [promesa.core :as p]))
 
@@ -209,78 +210,92 @@
    {::pco/keys [op-name]
     ::pcp/keys [input]
     :as        node}]
-  (let [resolver        (pci/resolver env op-name)
-        {::pco/keys [op-name batch? cache? cache-store optionals]
-         :or        {cache? true}
-         :as        r-config} (pco/operation-config resolver)
-        env             (assoc env ::pcp/node node)
-        entity          (p.ent/entity env)
-        input+opts      (pfsd/merge-shapes input optionals)
-        input-data      (pfsd/select-shape-filtering entity input+opts input)
-        input-data      (pcr/enhance-dynamic-input r-config node input-data)
-        params          (pco/params env)
-        cache-store     (pcr/choose-cache-store env cache-store)
-        resolver-cache* (get env cache-store)
-        _               (pcr/merge-node-stats! env node
-                          {::pcr/resolver-run-start-ms (time/now-ms)})
-        missing-check   (try
-                          (pcr/input-missing-check env node entity input input+opts)
-                          (catch #?(:clj Throwable :cljs :default) e (p/rejected e)))
-        response        (-> (cond
-                              missing-check
-                              missing-check
+  (p.trace/with-span-async! [env {::p.trace/env        env
+                                  ::p.trace/span-type  ::trace-resolver-invoke
+                                  ::p.trace/attributes {::pco/op-name            op-name
+                                                        ::p.trace/internal-span? true}}]
+                            (let [resolver        (pci/resolver env op-name)
+                                  {::pco/keys [op-name batch? cache? cache-store optionals]
+                                   :or        {cache? true}
+                                   :as        r-config} (pco/operation-config resolver)
+                                  env             (assoc env ::pcp/node node)
+                                  entity          (p.ent/entity env)
+                                  input+opts      (pfsd/merge-shapes input optionals)
+                                  input-data      (pfsd/select-shape-filtering entity input+opts input)
+                                  input-data      (pcr/enhance-dynamic-input r-config node input-data)
+                                  params          (pco/params env)
+                                  cache-store     (pcr/choose-cache-store env cache-store)
+                                  resolver-cache* (get env cache-store)
+                                  _               (pcr/merge-node-stats! env node
+                                                    {::pcr/resolver-run-start-ms (time/now-ms)})
+                                  missing-check   (try
+                                                    (pcr/input-missing-check env node entity input input+opts)
+                                                    (catch #?(:clj Throwable :cljs :default) e (p/rejected e)))
+                                  response        (-> (cond
+                                                        missing-check
+                                                        missing-check
 
-                              batch?
-                              (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
-                                (val x)
-                                (if (::pcr/unsupported-batch? env)
-                                  (invoke-resolver-cached-batch
-                                    env cache? op-name resolver cache-store input-data params)
-                                  (pcr/batch-hold-token env cache? op-name node cache-store input-data params)))
+                                                        batch?
+                                                        (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
+                                                          (val x)
+                                                          (if (::pcr/unsupported-batch? env)
+                                                            (invoke-resolver-cached-batch
+                                                              env cache? op-name resolver cache-store input-data params)
+                                                            (pcr/batch-hold-token env cache? op-name node cache-store input-data params)))
 
-                              :else
-                              (invoke-resolver-cached
-                                env cache? op-name resolver cache-store input-data params))
-                            (p/catch
-                              (fn [error]
-                                (pcr/report-resolver-error env node error))))]
-    (p/let [response response
-            response (pcr/validate-response! env node response)]
-      (let [finish (time/now-ms)]
-        (pcr/merge-node-stats! env node
-          (cond-> {::pcr/resolver-run-finish-ms finish}
-            (not (::pcr/batch-hold response))
-            (merge (pcr/report-resolver-io-stats env input-data response)))))
-      response)))
+                                                        :else
+                                                        (invoke-resolver-cached
+                                                          env cache? op-name resolver cache-store input-data params))
+                                                      (p/catch
+                                                        (fn [error]
+                                                          (pcr/report-resolver-error env node error))))]
+                              (p/let [response response
+                                      response (pcr/validate-response! env node response)]
+                                (let [finish (time/now-ms)]
+                                  (pcr/merge-node-stats! env node
+                                    (cond-> {::pcr/resolver-run-finish-ms finish}
+                                      (not (::pcr/batch-hold response))
+                                      (merge (pcr/report-resolver-io-stats env input-data response)))))
+                                response))))
 
 (defn run-resolver-node!
   "This function evaluates the resolver associated with the node.
 
-  First it checks if the expected results from the resolver are already available. In
+  First, it checks if the expected results from the resolver are already available. In
   case they are, the resolver call is skipped."
   [env node]
-  (if (or (pcr/resolver-already-ran? env node) (pcr/all-requires-ready? env node))
-    (run-next-node! env node)
-    (p/let [_ (pcr/merge-node-stats! env node {::pcr/node-run-start-ms (time/now-ms)})
-            env' (assoc env ::pcp/node node)
-            {::pcr/keys [batch-hold] :as response}
-            (invoke-resolver-from-node env' node)]
-      (cond
-        batch-hold response
+  (let [env' (p.trace/open-span-env! env {::p.trace/span-type  ::trace-resolver-node
+                                          ::p.trace/attributes {::pcp/node      node
+                                                                ::p.trace/label (-> node ::pco/op-name str)}})]
+    (if (or (pcr/resolver-already-ran? env' node) (pcr/all-requires-ready? env' node))
+      (do
+        (p.trace/set-attributes! env' {::node-skipped? true})
+        (p.trace/close-span! env')
+        (run-next-node! env node))
+      (p/let [_    (pcr/merge-node-stats! env' node {::pcr/node-run-start-ms (time/now-ms)})
+              env' (assoc env' ::pcp/node node)
+              {::pcr/keys [batch-hold] :as response}
+              (invoke-resolver-from-node env' node)]
+        (cond
+          batch-hold response
 
-        (or (not (refs/kw-identical? ::pcr/node-error response))
-            (pcp/node-optional? node))
-        (p/do!
-          (merge-resolver-response! env response)
-          (pcr/merge-node-stats! env node {::pcr/node-run-finish-ms (time/now-ms)})
-          (if-not (and (::pcp/node-resolution-checkpoint? node)
-                       (pcr/user-demand-completed? env))
-            (run-next-node! env node)))
+          ;; default path, errors can take this path if the node is optional
+          (or (not (refs/kw-identical? ::pcr/node-error response))
+              (pcp/node-optional? node))
+          (p/do!
+            (merge-resolver-response! env' response)
+            (p.trace/close-span! env')
+            (pcr/merge-node-stats! env' node {::pcr/node-run-finish-ms (time/now-ms)})
+            (if-not (and (::pcp/node-resolution-checkpoint? node)
+                         (pcr/user-demand-completed? env'))
+              (run-next-node! env node)))
 
-        :else
-        (do
-          (pcr/merge-node-stats! env node {::pcr/node-run-finish-ms (time/now-ms)})
-          nil)))))
+          ;; error case, just close and merge stats, don't trigger the next node
+          :else
+          (do
+            (p.trace/close-span! env')
+            (pcr/merge-node-stats! env' node {::pcr/node-run-finish-ms (time/now-ms)})
+            nil))))))
 
 (defn run-or-node!*
   [{::pcp/keys [graph]
