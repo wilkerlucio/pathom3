@@ -320,7 +320,9 @@
                              ::pcr/node-error)
                            (cond
                              batch?
-                             (if-let [x (p.cache/cache-find resolver-cache* [op-name input-data params])]
+                             (if-let [x (p.cache/cache-find
+                                          resolver-cache*
+                                          (pcr/cache-key env input-data op-name params))]
                                (val x)
                                (invoke-async-batch
                                  env cache? op-name node cache-store input-data params))
