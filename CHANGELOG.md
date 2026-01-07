@@ -1,5 +1,8 @@
 # Changelog
 
+## [NEXT]
+- Use cache-key to find cache find issues #234
+
 ## [2025.01.16-alpha]
 - Add `p.path/at-path-string` helper
 - BREAKING: Error from plan now envelops the graph value to avoid printing too much. You need to call the `:graph-fn` key to get the value now.
