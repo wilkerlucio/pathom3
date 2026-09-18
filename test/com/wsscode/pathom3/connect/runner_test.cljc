@@ -370,7 +370,34 @@
         (is (graph-response? env
               {}
               [[::geo/x 11]]
-              {[::geo/x 11] {::geo/x 11}}))))
+              {[::geo/x 11] {::geo/x 11}}))
+
+        (testing "same idents in a different order"
+          (is (graph-response? env
+                {}
+                [[::geo/x 10] [::geo/x 11]]
+                {[::geo/x 10] {::geo/x 10}
+                 [::geo/x 11] {::geo/x 11}}))
+
+          (is (graph-response? env
+                {}
+                [[::geo/x 11] [::geo/x 10]]
+                {[::geo/x 10] {::geo/x 10}
+                 [::geo/x 11] {::geo/x 11}}))
+
+          (is (graph-response? env
+                {}
+                [[::geo/x 10] [::geo/x 11] [::geo/x 12]]
+                {[::geo/x 10] {::geo/x 10}
+                 [::geo/x 11] {::geo/x 11}
+                 [::geo/x 12] {::geo/x 12}}))
+
+          (is (graph-response? env
+                {}
+                [[::geo/x 11] [::geo/x 12] [::geo/x 10]]
+                {[::geo/x 10] {::geo/x 10}
+                 [::geo/x 11] {::geo/x 11}
+                 [::geo/x 12] {::geo/x 12}})))))
 
     (is (graph-response? full-env
           {}
