@@ -1782,13 +1782,11 @@
     (let [target-idents (pull-idents ast)
           source-idents (pull-idents (::source-ast graph))
           pairs         (zipmap source-idents target-idents)]
-      (reduce
-        (fn [graph [source-ident target-ident]]
-          (update graph ::idents #(-> % (disj source-ident) (conj target-ident))))
-        (-> graph
-            (assoc ::source-ast ast)
-            (update ::index-ast set/rename-keys pairs))
-        (map vector source-idents target-idents)))
+      (-> graph
+          (assoc ::source-ast ast)
+          (update ::index-ast set/rename-keys pairs)
+          (update ::idents #(-> (set/difference % (set source-idents))
+                                (into target-idents)))))
     graph))
 
 (defn ast-contains-params? [{:keys [children]}]

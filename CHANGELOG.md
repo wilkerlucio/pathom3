@@ -2,6 +2,7 @@
 
 ## [NEXT]
 - Use cache-key to find cache find issues #234
+- Fix cached plans dropping idents when a query names the same idents in a different order
 
 ## [2025.01.16-alpha]
 - Add `p.path/at-path-string` helper
