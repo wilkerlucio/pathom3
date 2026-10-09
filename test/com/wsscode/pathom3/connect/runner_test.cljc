@@ -2756,7 +2756,68 @@
         [{[:person/id "aann"] [:person/x {:person/addresses [:address/street]}]}]
         {[:person/id "aann"] {:person/x         1,
                               :person/addresses [{:address/street "First St."}
-                                                 {:address/street "Second St."}]}}))))
+                                                 {:address/street "Second St."}]}}))
+
+    (testing "nested input waits for a batch in the same round"
+
+      ; :entity
+      ; ├─ :entity/nested ────── nested-batch ──▶ :nested/value ─────────┐
+      ; └─ :entity/sibling-key ─ sibling-batch ─▶ :entity/sibling-value ─┤
+      ;                                                                  ▼
+      ;                                             needs-nested-and-sibling ─▶ :entity/result
+      ;
+      ; Both batches hold in the same round. The round runs them one after the other, and
+      ; `sibling-batch` resumes :entity as soon as it finishes, whether or not
+      ; `nested-batch` has reached :entity's copy of :entity/nested yet.
+
+      (let [env (pci/register
+                  [(pco/resolver 'entity->nested
+                     {::pco/input  [:entity/id]
+                      ::pco/output [{:entity/nested
+                                     [:nested/id]}
+                                    :entity/sibling-key]}
+                     (fn [_ {:entity/keys [id]}]
+                       {:entity/nested      {:nested/id id}
+                        :entity/sibling-key id}))
+                   (pco/resolver 'nested-batch
+                     {::pco/input  [:nested/id]
+                      ::pco/output [:nested/value]
+                      ::pco/batch? true}
+                     (fn [_ items] (mapv (fn [{:nested/keys [id]}] {:nested/value (str "nested-value-of-" id)}) items)))
+                   (pco/resolver 'sibling-batch
+                     {::pco/input  [:entity/sibling-key]
+                      ::pco/output [:entity/sibling-value]
+                      ::pco/batch? true}
+                     (fn [_ items] (mapv (fn [{:entity/keys [sibling-key]}] {:entity/sibling-value (str "sibling-value-of-" sibling-key)}) items)))
+                   (pco/resolver 'needs-nested-and-sibling
+                     {::pco/input  [{:entity/nested [:nested/value]} :entity/sibling-value]
+                      ::pco/output [:entity/result]}
+                     (fn [_ {:entity/keys [nested sibling-value]}]
+                       {:entity/result (str (:nested/value nested) " and " sibling-value)}))])]
+
+        (testing "nested batch runs after the batch that resumes the entity"
+          ; :queued-first queues `sibling-batch` before `nested-batch`, so it runs first.
+          ; `nested-batch` is out of the pending map but hasn't run, so nothing waits for it.
+          (check-all-runners
+            env
+            ; Relies on ::batch-pending* keeping insertion order: a Clojure map with up to 8
+            ; keys is an array map
+            {:queued-first {:entity/sibling-key "queued-first"}
+             :entity       {:entity/id "entity"}}
+            [{:queued-first [:entity/sibling-value]}
+             {:entity [:entity/result]}]
+            {:queued-first {:entity/sibling-value "sibling-value-of-queued-first"}
+             :entity       {:entity/result "nested-value-of-entity and sibling-value-of-entity"}}))
+
+        (testing "nested batch runs before the batch that resumes the entity"
+          ; The entity queues `nested-batch` first, so it runs first and merges into the root
+          ; data. `sibling-batch` then resumes the entity, whose own copy of :entity/nested
+          ; doesn't have :nested/value yet.
+          (check-all-runners
+            env
+            {:entity {:entity/id "entity"}}
+            [{:entity [:entity/result]}]
+            {:entity {:entity/result "nested-value-of-entity and sibling-value-of-entity"}}))))))
 
 (deftest run-graph!batch-optional
   (testing "bug #107"

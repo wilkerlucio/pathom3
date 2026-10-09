@@ -541,7 +541,6 @@
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::pcr/batch-pending*)
         batches  @batches*]
-    (reset! batches* {})
 
     (reduce-async
       (fn [_ [{batch-op ::pco/op-name} batch-items]]
@@ -615,9 +614,11 @@
       waits)))
 
 (defn run-batches! [env]
-  (p/do!
-    (run-batches-pending! env)
-    (run-batches-waiting! env)))
+  (let [batches @(::pcr/batch-pending* env)]
+    (p/do!
+      (run-batches-pending! env)
+      (pcr/remove-ran-batches-keeping-new-batch-items! env batches)
+      (run-batches-waiting! env))))
 
 (defn run-graph-impl!
   [env ast-or-graph entity-tree*]

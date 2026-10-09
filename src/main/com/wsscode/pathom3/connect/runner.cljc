@@ -1122,7 +1122,6 @@
 (defn run-batches-pending! [env]
   (let [batches* (-> env ::batch-pending*)
         batches  @batches*]
-    (refs/greset! batches* {})
     (doseq [[{batch-op ::pco/op-name} batch-items] batches]
       (let [resolver     (pci/resolver env batch-op)
             input-groups (batch-group-input-groups batch-items)
@@ -1192,9 +1191,31 @@
         (p.ent/swap-entity! env assoc-in (::p.path/path env')
           (p.ent/entity env'))))))
 
-(defn run-batches! [env]
-  (run-batches-pending! env)
-  (run-batches-waiting! env))
+(defn remove-ran-batches-keeping-new-batch-items!
+  "Removes the round's `batches` from ::batch-pending*. Batch items added to a batch while
+  it ran are appended after its items, and stay pending."
+  [env batches]
+  (refs/gswap! (::batch-pending* env)
+               (fn [pending]
+                 (reduce-kv
+                   (fn [pending batch-key ran-batch-items]
+                     (let [all-batch-items (get pending batch-key)
+                           ran-batch-count (count ran-batch-items)
+                           new-batch-items (subvec all-batch-items ran-batch-count)]
+                       (if (seq new-batch-items)
+                         (assoc pending batch-key new-batch-items)
+                         (dissoc pending batch-key))))
+                   pending
+                   batches))))
+
+(defn run-batches!
+  "The round's batches stay in ::batch-pending* until all of them ran, so a nested input
+  on any of them waits (see missing-maybe-in-pending-batch?)."
+  [env]
+  (let [batches @(::batch-pending* env)]
+    (run-batches-pending! env)
+    (remove-ran-batches-keeping-new-batch-items! env batches)
+    (run-batches-waiting! env)))
 
 (defn attribute-error-resolver []
   (pco/resolver (symbol "com.wsscode.pathom3.connect.runner" "attribute-errors")
